@@ -1,0 +1,171 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from './useAuth';
+import type { Tables, TablesInsert } from '@/integrations/supabase/types';
+
+export type Category = Tables<'categories'>;
+export type Account = Tables<'accounts'>;
+export type Income = Tables<'income'>;
+export type Expense = Tables<'expenses'>;
+
+export function useCategories() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['categories', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name');
+      if (error) throw error;
+      return data as Category[];
+    },
+    enabled: !!user,
+  });
+}
+
+export function useAccounts() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['accounts', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('accounts')
+        .select('*')
+        .order('name');
+      if (error) throw error;
+      return data as Account[];
+    },
+    enabled: !!user,
+  });
+}
+
+export function useIncome(month?: string) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['income', user?.id, month],
+    queryFn: async () => {
+      let query = supabase.from('income').select('*').order('date', { ascending: false });
+      if (month) {
+        const start = `${month}-01`;
+        const end = `${month}-31`;
+        query = query.gte('date', start).lte('date', end);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as Income[];
+    },
+    enabled: !!user,
+  });
+}
+
+export function useExpenses(month?: string) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['expenses', user?.id, month],
+    queryFn: async () => {
+      let query = supabase.from('expenses').select('*').order('date', { ascending: false });
+      if (month) {
+        const start = `${month}-01`;
+        const end = `${month}-31`;
+        query = query.gte('date', start).lte('date', end);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as Expense[];
+    },
+    enabled: !!user,
+  });
+}
+
+export function useAddIncome() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (data: Omit<TablesInsert<'income'>, 'user_id'>) => {
+      const { error } = await supabase.from('income').insert({ ...data, user_id: user!.id });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['income'] }),
+  });
+}
+
+export function useAddExpense() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (data: Omit<TablesInsert<'expenses'>, 'user_id'>) => {
+      const { error } = await supabase.from('expenses').insert({ ...data, user_id: user!.id });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['expenses'] }),
+  });
+}
+
+export function useDeleteIncome() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('income').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['income'] }),
+  });
+}
+
+export function useDeleteExpense() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('expenses').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['expenses'] }),
+  });
+}
+
+export function useAddCategory() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (data: Omit<TablesInsert<'categories'>, 'user_id'>) => {
+      const { error } = await supabase.from('categories').insert({ ...data, user_id: user!.id });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['categories'] }),
+  });
+}
+
+export function useAddAccount() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (data: Omit<TablesInsert<'accounts'>, 'user_id'>) => {
+      const { error } = await supabase.from('accounts').insert({ ...data, user_id: user!.id });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['accounts'] }),
+  });
+}
+
+export function useUpdateExpense() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...data }: { id: string } & Partial<TablesInsert<'expenses'>>) => {
+      const { error } = await supabase.from('expenses').update(data).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['expenses'] }),
+  });
+}
+
+export function useUpdateIncome() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...data }: { id: string } & Partial<TablesInsert<'income'>>) => {
+      const { error } = await supabase.from('income').update(data).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['income'] }),
+  });
+}
