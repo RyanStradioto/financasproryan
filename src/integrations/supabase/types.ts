@@ -90,6 +90,8 @@ export type Database = {
         Row: {
           account_id: string | null
           amount: number
+          attachment_name: string | null
+          attachment_url: string | null
           category_id: string | null
           created_at: string
           date: string
@@ -105,6 +107,8 @@ export type Database = {
         Insert: {
           account_id?: string | null
           amount: number
+          attachment_name?: string | null
+          attachment_url?: string | null
           category_id?: string | null
           created_at?: string
           date?: string
@@ -120,6 +124,8 @@ export type Database = {
         Update: {
           account_id?: string | null
           amount?: number
+          attachment_name?: string | null
+          attachment_url?: string | null
           category_id?: string | null
           created_at?: string
           date?: string
@@ -153,6 +159,8 @@ export type Database = {
         Row: {
           account_id: string | null
           amount: number
+          attachment_name: string | null
+          attachment_url: string | null
           created_at: string
           date: string
           description: string
@@ -165,6 +173,8 @@ export type Database = {
         Insert: {
           account_id?: string | null
           amount: number
+          attachment_name?: string | null
+          attachment_url?: string | null
           created_at?: string
           date?: string
           description?: string
@@ -177,6 +187,8 @@ export type Database = {
         Update: {
           account_id?: string | null
           amount?: number
+          attachment_name?: string | null
+          attachment_url?: string | null
           created_at?: string
           date?: string
           description?: string
