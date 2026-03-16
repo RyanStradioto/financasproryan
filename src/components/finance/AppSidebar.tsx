@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, TrendingUp, TrendingDown, Grid3X3, Landmark, CalendarDays, LogOut, DollarSign } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, TrendingDown, Grid3X3, Landmark, CalendarDays, LogOut, DollarSign, Moon, Sun } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
 
 const links = [
@@ -14,6 +15,7 @@ const links = [
 
 export default function AppSidebar() {
   const { signOut, user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
 
   return (
@@ -48,7 +50,14 @@ export default function AppSidebar() {
         ))}
       </nav>
 
-      <div className="p-3 border-t border-border">
+      <div className="p-3 border-t border-border space-y-0.5">
+        <button
+          onClick={toggleTheme}
+          className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-all w-full"
+        >
+          {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          {theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
+        </button>
         <button
           onClick={signOut}
           className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all w-full"

@@ -1,49 +1,53 @@
-import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useCategories, useAccounts, useAddIncome, useAddExpense } from '@/hooks/useFinanceData';
+import { useCategories, useAccounts, useUpdateIncome, useUpdateExpense, type Income, type Expense } from '@/hooks/useFinanceData';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { toast } from 'sonner';
-import { Plus, Paperclip, X, FileText } from 'lucide-react';
+import { Paperclip, X, FileText, ExternalLink } from 'lucide-react';
 
 type Props = {
-  type: 'income' | 'expense';
-  children?: React.ReactNode;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  transaction: (Income | Expense) & { type: 'income' | 'expense' };
 };
 
-export default function TransactionDialog({ type, children }: Props) {
-  const [open, setOpen] = useState(false);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+export default function EditTransactionDialog({ open, onOpenChange, transaction }: Props) {
+  const [date, setDate] = useState('');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [accountId, setAccountId] = useState('');
-  const [status, setStatus] = useState('concluido');
+  const [status, setStatus] = useState('');
   const [notes, setNotes] = useState('');
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
   const [attachmentName, setAttachmentName] = useState<string | null>(null);
 
   const { data: categories } = useCategories();
   const { data: accounts } = useAccounts();
-  const addIncome = useAddIncome();
-  const addExpense = useAddExpense();
+  const updateIncome = useUpdateIncome();
+  const updateExpense = useUpdateExpense();
   const { upload, uploading } = useFileUpload();
 
-  const reset = () => {
-    setDate(new Date().toISOString().split('T')[0]);
-    setDescription('');
-    setAmount('');
-    setCategoryId('');
-    setAccountId('');
-    setStatus('concluido');
-    setNotes('');
-    setAttachmentUrl(null);
-    setAttachmentName(null);
-  };
+  useEffect(() => {
+    if (transaction) {
+      setDate(transaction.date);
+      setDescription(transaction.description || '');
+      setAmount(String(transaction.amount));
+      setAccountId(transaction.account_id || '');
+      setStatus(transaction.status || 'concluido');
+      setNotes(transaction.notes || '');
+      setAttachmentUrl((transaction as any).attachment_url || null);
+      setAttachmentName((transaction as any).attachment_name || null);
+      if (transaction.type === 'expense') {
+        setCategoryId((transaction as any).category_id || '');
+      }
+    }
+  }, [transaction]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -64,51 +68,38 @@ export default function TransactionDialog({ type, children }: Props) {
     }
 
     try {
-      if (type === 'income') {
-        await addIncome.mutateAsync({
-          date,
-          description,
-          amount: numAmount,
-          account_id: accountId || null,
-          status,
-          notes: notes || null,
-          attachment_url: attachmentUrl,
-          attachment_name: attachmentName,
-        });
+      const baseData = {
+        id: transaction.id,
+        date,
+        description,
+        amount: numAmount,
+        account_id: accountId || null,
+        status,
+        notes: notes || null,
+        attachment_url: attachmentUrl,
+        attachment_name: attachmentName,
+      };
+
+      if (transaction.type === 'income') {
+        await updateIncome.mutateAsync(baseData);
       } else {
-        await addExpense.mutateAsync({
-          date,
-          description,
-          amount: numAmount,
+        await updateExpense.mutateAsync({
+          ...baseData,
           category_id: categoryId || null,
-          account_id: accountId || null,
-          status,
-          notes: notes || null,
-          attachment_url: attachmentUrl,
-          attachment_name: attachmentName,
         });
       }
-      toast.success(type === 'income' ? 'Receita adicionada!' : 'Despesa adicionada!');
-      reset();
-      setOpen(false);
+      toast.success('Transação atualizada!');
+      onOpenChange(false);
     } catch (err: any) {
       toast.error(err.message);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {children || (
-          <Button size="sm" variant={type === 'income' ? 'default' : 'destructive'}>
-            <Plus className="w-4 h-4 mr-1" />
-            {type === 'income' ? 'Nova Receita' : 'Nova Despesa'}
-          </Button>
-        )}
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{type === 'income' ? 'Nova Receita' : 'Nova Despesa'}</DialogTitle>
+          <DialogTitle>Editar {transaction.type === 'income' ? 'Receita' : 'Despesa'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
@@ -135,7 +126,7 @@ export default function TransactionDialog({ type, children }: Props) {
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
-          {type === 'expense' && (
+          {transaction.type === 'expense' && (
             <div className="space-y-1.5">
               <Label>Categoria</Label>
               <Select value={categoryId} onValueChange={setCategoryId}>
@@ -189,6 +180,9 @@ export default function TransactionDialog({ type, children }: Props) {
               <div className="flex items-center gap-2 p-2 rounded-lg bg-muted border border-border">
                 <FileText className="w-4 h-4 text-primary shrink-0" />
                 <span className="text-sm truncate flex-1">{attachmentName || 'Arquivo'}</span>
+                <a href={attachmentUrl} target="_blank" rel="noopener noreferrer" className="p-1 text-muted-foreground hover:text-primary transition-colors">
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
                 <button type="button" onClick={() => { setAttachmentUrl(null); setAttachmentName(null); }} className="p-1 text-muted-foreground hover:text-destructive transition-colors">
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -196,14 +190,14 @@ export default function TransactionDialog({ type, children }: Props) {
             ) : (
               <label className="flex items-center gap-2 p-3 rounded-lg border border-dashed border-border hover:border-primary/50 hover:bg-muted/50 cursor-pointer transition-all">
                 <Paperclip className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">{uploading ? 'Enviando...' : 'Anexar comprovante'}</span>
+                <span className="text-sm text-muted-foreground">{uploading ? 'Enviando...' : 'Anexar comprovante ou documento'}</span>
                 <input type="file" className="hidden" onChange={handleFileUpload} disabled={uploading} accept="image/*,.pdf,.doc,.docx" />
               </label>
             )}
           </div>
 
-          <Button type="submit" className="w-full" disabled={addIncome.isPending || addExpense.isPending}>
-            Adicionar
+          <Button type="submit" className="w-full" disabled={updateIncome.isPending || updateExpense.isPending}>
+            Salvar Alterações
           </Button>
         </form>
       </DialogContent>
