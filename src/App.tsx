@@ -11,6 +11,7 @@ import ExpensesPage from "./pages/ExpensesPage";
 import CategoriesPage from "./pages/CategoriesPage";
 import AccountsPage from "./pages/AccountsPage";
 import CalendarPage from "./pages/CalendarPage";
+import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ function ProtectedRoutes() {
         <Route path="/categorias" element={<CategoriesPage />} />
         <Route path="/contas" element={<AccountsPage />} />
         <Route path="/calendario" element={<CalendarPage />} />
+        <Route path="/configuracoes" element={<SettingsPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppLayout>

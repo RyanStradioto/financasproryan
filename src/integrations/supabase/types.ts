@@ -208,6 +208,39 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          monthly_salary: number
+          updated_at: string
+          user_id: string
+          weekly_summary_enabled: boolean
+          work_days_per_week: number
+          work_hours_per_day: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          monthly_salary?: number
+          updated_at?: string
+          user_id: string
+          weekly_summary_enabled?: boolean
+          work_days_per_week?: number
+          work_hours_per_day?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          monthly_salary?: number
+          updated_at?: string
+          user_id?: string
+          weekly_summary_enabled?: boolean
+          work_days_per_week?: number
+          work_hours_per_day?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
