@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { TrendingUp, TrendingDown, Wallet, PiggyBank } from 'lucide-react';
-import { useIncome, useExpenses } from '@/hooks/useFinanceData';
+import { TrendingUp, TrendingDown, Wallet, PiggyBank, Pencil } from 'lucide-react';
+import { useIncome, useExpenses, type Income, type Expense } from '@/hooks/useFinanceData';
 import { getMonthYear, formatCurrency, formatDate, getStatusColor, getStatusLabel } from '@/lib/format';
 import MonthSelector from '@/components/finance/MonthSelector';
 import StatCard from '@/components/finance/StatCard';
 import TransactionDialog from '@/components/finance/TransactionDialog';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import EditTransactionDialog from '@/components/finance/EditTransactionDialog';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { useCategories } from '@/hooks/useFinanceData';
 
 const CHART_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
@@ -15,13 +16,13 @@ export default function Dashboard() {
   const { data: income = [] } = useIncome(month);
   const { data: expenses = [] } = useExpenses(month);
   const { data: categories = [] } = useCategories();
+  const [editing, setEditing] = useState<((Income & { type: 'income' }) | (Expense & { type: 'expense' })) | null>(null);
 
   const totalIncome = income.reduce((s, i) => s + Number(i.amount), 0);
   const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
   const balance = totalIncome - totalExpenses;
   const savings = totalIncome > 0 ? ((balance / totalIncome) * 100) : 0;
 
-  // Category breakdown for pie chart
   const catBreakdown = categories
     .map(cat => ({
       name: cat.name,
@@ -31,7 +32,6 @@ export default function Dashboard() {
     .filter(c => c.value > 0)
     .sort((a, b) => b.value - a.value);
 
-  // Recent transactions
   const recentTransactions = [
     ...income.map(i => ({ ...i, type: 'income' as const })),
     ...expenses.map(e => ({ ...e, type: 'expense' as const })),
@@ -47,22 +47,19 @@ export default function Dashboard() {
         <MonthSelector month={month} onChange={setMonth} />
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Receitas" value={totalIncome} icon={TrendingUp} trend="up" />
         <StatCard label="Despesas" value={totalExpenses} icon={TrendingDown} trend="down" />
         <StatCard label="Saldo" value={balance} icon={Wallet} trend={balance >= 0 ? 'up' : 'down'} />
-        <StatCard label="Economia" value={savings} icon={PiggyBank} trend="neutral" />
+        <StatCard label="Economia" value={savings} icon={PiggyBank} trend="neutral" suffix="%" />
       </div>
 
-      {/* Quick actions */}
       <div className="flex gap-2">
         <TransactionDialog type="income" />
         <TransactionDialog type="expense" />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Category chart */}
         <div className="stat-card">
           <h3 className="text-sm font-semibold mb-4">Despesas por Categoria</h3>
           {catBreakdown.length > 0 ? (
@@ -95,13 +92,12 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Recent transactions */}
         <div className="stat-card">
           <h3 className="text-sm font-semibold mb-4">Últimas Transações</h3>
           {recentTransactions.length > 0 ? (
             <div className="space-y-2">
               {recentTransactions.map((t) => (
-                <div key={t.id} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+                <div key={t.id} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0 group">
                   <div className="flex items-center gap-3">
                     <div className={`w-2 h-2 rounded-full ${t.type === 'income' ? 'bg-income' : 'bg-expense'}`} />
                     <div>
@@ -109,9 +105,17 @@ export default function Dashboard() {
                       <p className="text-xs text-muted-foreground">{formatDate(t.date)}</p>
                     </div>
                   </div>
-                  <span className={`currency text-sm font-semibold ${t.type === 'income' ? 'text-income' : 'text-expense'}`}>
-                    {t.type === 'income' ? '+' : '-'}{formatCurrency(Number(t.amount))}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`currency text-sm font-semibold ${t.type === 'income' ? 'text-income' : 'text-expense'}`}>
+                      {t.type === 'income' ? '+' : '-'}{formatCurrency(Number(t.amount))}
+                    </span>
+                    <button
+                      onClick={() => setEditing(t as any)}
+                      className="p-1 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-all"
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -120,6 +124,14 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {editing && (
+        <EditTransactionDialog
+          open={!!editing}
+          onOpenChange={(open) => !open && setEditing(null)}
+          transaction={editing}
+        />
+      )}
     </div>
   );
 }
