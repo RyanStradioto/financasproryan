@@ -8,7 +8,7 @@ const links = [
   { to: '/despesas', icon: TrendingDown, label: 'Despesas' },
   { to: '/categorias', icon: Grid3X3, label: 'Categorias' },
   { to: '/contas', icon: Landmark, label: 'Contas' },
-  { to: '/calendario', icon: CalendarDays, label: 'Calendário' },
+  { to: '/configuracoes', icon: Settings, label: 'Config' },
 ];
 
 export default function MobileNav() {

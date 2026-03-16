@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useIncome, useDeleteIncome, useAccounts, type Income } from '@/hooks/useFinanceData';
 import { getMonthYear, formatCurrency, formatDate, getStatusColor, getStatusLabel } from '@/lib/format';
+import { formatWorkTime } from '@/lib/workTime';
+import { useWorkTimeCalc } from '@/hooks/useProfile';
 import MonthSelector from '@/components/finance/MonthSelector';
 import TransactionDialog from '@/components/finance/TransactionDialog';
 import EditTransactionDialog from '@/components/finance/EditTransactionDialog';
-import { Trash2, Pencil, Paperclip } from 'lucide-react';
+import { Trash2, Pencil, Paperclip, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function IncomePage() {
@@ -13,6 +15,7 @@ export default function IncomePage() {
   const { data: accounts = [] } = useAccounts();
   const deleteIncome = useDeleteIncome();
   const [editing, setEditing] = useState<(Income & { type: 'income' }) | null>(null);
+  const { calcWorkTime, hourlyRate } = useWorkTimeCalc();
 
   const total = income.reduce((s, i) => s + Number(i.amount), 0);
 
@@ -51,45 +54,57 @@ export default function IncomePage() {
                 <th className="text-left py-3 px-2 font-medium text-muted-foreground">Descrição</th>
                 <th className="text-left py-3 px-2 font-medium text-muted-foreground">Status</th>
                 <th className="text-right py-3 px-2 font-medium text-muted-foreground">Valor</th>
+                {hourlyRate && <th className="text-center py-3 px-2 font-medium text-muted-foreground">⏱️ Equivalente</th>}
                 <th className="text-left py-3 px-2 font-medium text-muted-foreground">Conta</th>
                 <th className="py-3 px-2 w-20"></th>
               </tr>
             </thead>
             <tbody>
-              {income.map((item) => (
-                <tr key={item.id} className="border-b border-border/50 hover:bg-muted/50 transition-colors group">
-                  <td className="py-3 px-2 text-muted-foreground">{formatDate(item.date)}</td>
-                  <td className="py-3 px-2 font-medium">
-                    <div className="flex items-center gap-1.5">
-                      {item.description || 'Receita'}
-                      {(item as any).attachment_url && (
-                        <a href={(item as any).attachment_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
-                          <Paperclip className="w-3 h-3" />
-                        </a>
-                      )}
-                    </div>
-                  </td>
-                  <td className="py-3 px-2">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
-                      {getStatusLabel(item.status)}
-                    </span>
-                  </td>
-                  <td className="py-3 px-2 text-right currency font-semibold text-income">{formatCurrency(Number(item.amount))}</td>
-                  <td className="py-3 px-2 text-muted-foreground">{getAccountName(item.account_id)}</td>
-                  <td className="py-3 px-2">
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => setEditing({ ...item, type: 'income' })} className="text-muted-foreground hover:text-primary transition-colors p-1">
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => handleDelete(item.id)} className="text-muted-foreground hover:text-destructive transition-colors p-1">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {income.map((item) => {
+                const wt = calcWorkTime(Number(item.amount));
+                return (
+                  <tr key={item.id} className="border-b border-border/50 hover:bg-muted/50 transition-colors group">
+                    <td className="py-3 px-2 text-muted-foreground">{formatDate(item.date)}</td>
+                    <td className="py-3 px-2 font-medium">
+                      <div className="flex items-center gap-1.5">
+                        {item.description || 'Receita'}
+                        {item.attachment_url && (
+                          <a href={item.attachment_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
+                            <Paperclip className="w-3 h-3" />
+                          </a>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3 px-2">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
+                        {getStatusLabel(item.status)}
+                      </span>
+                    </td>
+                    <td className="py-3 px-2 text-right currency font-semibold text-income">{formatCurrency(Number(item.amount))}</td>
+                    {hourlyRate && (
+                      <td className="py-3 px-2 text-center">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-accent/50 text-xs font-medium text-accent-foreground">
+                          <Clock className="w-3 h-3" />
+                          {formatWorkTime(wt)}
+                        </span>
+                      </td>
+                    )}
+                    <td className="py-3 px-2 text-muted-foreground">{getAccountName(item.account_id)}</td>
+                    <td className="py-3 px-2">
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => setEditing({ ...item, type: 'income' })} className="text-muted-foreground hover:text-primary transition-colors p-1">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => handleDelete(item.id)} className="text-muted-foreground hover:text-destructive transition-colors p-1">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {income.length === 0 && !isLoading && (
-                <tr><td colSpan={6} className="py-12 text-center text-muted-foreground">Nenhuma receita neste mês</td></tr>
+                <tr><td colSpan={hourlyRate ? 7 : 6} className="py-12 text-center text-muted-foreground">Nenhuma receita neste mês</td></tr>
               )}
             </tbody>
             {income.length > 0 && (
@@ -97,6 +112,14 @@ export default function IncomePage() {
                 <tr className="border-t-2 border-border">
                   <td colSpan={3} className="py-3 px-2 font-semibold text-muted-foreground">TOTAL</td>
                   <td className="py-3 px-2 text-right currency font-bold text-income">{formatCurrency(total)}</td>
+                  {hourlyRate && (
+                    <td className="py-3 px-2 text-center">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-accent/50 text-xs font-bold text-accent-foreground">
+                        <Clock className="w-3 h-3" />
+                        {formatWorkTime(calcWorkTime(total))}
+                      </span>
+                    </td>
+                  )}
                   <td colSpan={2}></td>
                 </tr>
               </tfoot>
