@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, TrendingUp, TrendingDown, Grid3X3, Landmark, CalendarDays, Settings, LogOut, DollarSign, Moon, Sun } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, TrendingDown, Grid3X3, Landmark, CalendarDays, Settings, LogOut, DollarSign, Moon, Sun, Upload } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
