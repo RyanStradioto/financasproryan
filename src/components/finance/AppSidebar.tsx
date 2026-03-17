@@ -11,6 +11,7 @@ const links = [
   { to: '/categorias', icon: Grid3X3, label: 'Categorias' },
   { to: '/contas', icon: Landmark, label: 'Contas' },
   { to: '/calendario', icon: CalendarDays, label: 'Calendário' },
+  { to: '/importar', icon: Upload, label: 'Importar' },
   { to: '/configuracoes', icon: Settings, label: 'Configurações' },
 ];
 

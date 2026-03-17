@@ -40,6 +40,7 @@ function ProtectedRoutes() {
         <Route path="/contas" element={<AccountsPage />} />
         <Route path="/calendario" element={<CalendarPage />} />
         <Route path="/configuracoes" element={<SettingsPage />} />
+        <Route path="/importar" element={<ImportPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppLayout>

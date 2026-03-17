@@ -8,6 +8,7 @@ const links = [
   { to: '/despesas', icon: TrendingDown, label: 'Despesas' },
   { to: '/categorias', icon: Grid3X3, label: 'Categorias' },
   { to: '/contas', icon: Landmark, label: 'Contas' },
+  { to: '/importar', icon: Upload, label: 'Importar' },
   { to: '/configuracoes', icon: Settings, label: 'Config' },
 ];
 
