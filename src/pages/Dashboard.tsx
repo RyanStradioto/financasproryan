@@ -18,10 +18,20 @@ export default function Dashboard() {
   const { data: categories = [] } = useCategories();
   const [editing, setEditing] = useState<((Income & { type: 'income' }) | (Expense & { type: 'expense' })) | null>(null);
 
-  const totalIncome = income.reduce((s, i) => s + Number(i.amount), 0);
-  const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
-  const balance = totalIncome - totalExpenses;
+  // Only count "concluido" (paid) for balance and savings
+  const totalIncome = income
+    .filter(i => i.status === 'concluido')
+    .reduce((s, i) => s + Number(i.amount), 0);
+  const totalExpensesPaid = expenses
+    .filter(e => e.status === 'concluido')
+    .reduce((s, e) => s + Number(e.amount), 0);
+  const totalExpensesAll = expenses.reduce((s, e) => s + Number(e.amount), 0);
+  const balance = totalIncome - totalExpensesPaid;
   const savings = totalIncome > 0 ? ((balance / totalIncome) * 100) : 0;
+
+  const pendingExpenses = expenses
+    .filter(e => e.status !== 'concluido')
+    .reduce((s, e) => s + Number(e.amount), 0);
 
   const catBreakdown = categories
     .map(cat => ({
@@ -49,10 +59,18 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Receitas" value={totalIncome} icon={TrendingUp} trend="up" />
-        <StatCard label="Despesas" value={totalExpenses} icon={TrendingDown} trend="down" />
+        <StatCard label="Despesas (pagas)" value={totalExpensesPaid} icon={TrendingDown} trend="down" />
         <StatCard label="Saldo" value={balance} icon={Wallet} trend={balance >= 0 ? 'up' : 'down'} />
-        <StatCard label="Economia" value={savings} icon={PiggyBank} trend="neutral" suffix="%" />
+        <StatCard label="Economia" value={savings} icon={PiggyBank} trend={savings >= 0 ? 'up' : 'down'} suffix="%" />
       </div>
+
+      {pendingExpenses > 0 && (
+        <div className="rounded-lg bg-warning/10 border border-warning/20 px-4 py-3 text-sm">
+          <span className="font-medium text-warning">⏳ Pendente/Agendado:</span>{' '}
+          <span className="currency font-semibold">{formatCurrency(pendingExpenses)}</span>{' '}
+          <span className="text-muted-foreground">em despesas ainda não pagas</span>
+        </div>
+      )}
 
       <div className="flex gap-2">
         <TransactionDialog type="income" />
@@ -102,7 +120,12 @@ export default function Dashboard() {
                     <div className={`w-2 h-2 rounded-full ${t.type === 'income' ? 'bg-income' : 'bg-expense'}`} />
                     <div>
                       <p className="text-sm font-medium">{t.description || (t.type === 'income' ? 'Receita' : 'Despesa')}</p>
-                      <p className="text-xs text-muted-foreground">{formatDate(t.date)}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-muted-foreground">{formatDate(t.date)}</p>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${getStatusColor(t.status)}`}>
+                          {getStatusLabel(t.status)}
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

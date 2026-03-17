@@ -78,6 +78,24 @@ export function useExpenses(month?: string) {
   });
 }
 
+export function useRecentDescriptions(type: 'income' | 'expenses') {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['recent-descriptions', type, user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from(type)
+        .select('description')
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      const unique = [...new Set((data || []).map(d => d.description).filter(Boolean))];
+      return unique.slice(0, 50);
+    },
+    enabled: !!user,
+  });
+}
+
 export function useAddIncome() {
   const qc = useQueryClient();
   const { user } = useAuth();
@@ -96,6 +114,19 @@ export function useAddExpense() {
   return useMutation({
     mutationFn: async (data: Omit<TablesInsert<'expenses'>, 'user_id'>) => {
       const { error } = await supabase.from('expenses').insert({ ...data, user_id: user!.id });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['expenses'] }),
+  });
+}
+
+export function useAddExpenseBatch() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (items: Omit<TablesInsert<'expenses'>, 'user_id'>[]) => {
+      const rows = items.map(d => ({ ...d, user_id: user!.id }));
+      const { error } = await supabase.from('expenses').insert(rows);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['expenses'] }),
@@ -130,6 +161,28 @@ export function useAddCategory() {
   return useMutation({
     mutationFn: async (data: Omit<TablesInsert<'categories'>, 'user_id'>) => {
       const { error } = await supabase.from('categories').insert({ ...data, user_id: user!.id });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['categories'] }),
+  });
+}
+
+export function useUpdateCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...data }: { id: string } & Partial<TablesInsert<'categories'>>) => {
+      const { error } = await supabase.from('categories').update(data).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['categories'] }),
+  });
+}
+
+export function useDeleteCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('categories').update({ archived: true }).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['categories'] }),
