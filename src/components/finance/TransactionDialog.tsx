@@ -46,6 +46,30 @@ export default function TransactionDialog({ type, children }: Props) {
     return recentDescs.filter(d => d.toLowerCase().includes(lower)).slice(0, 5);
   }, [description, recentDescs]);
 
+  const suggestCategory = useCallback((desc: string) => {
+    if (!desc || desc.length < 3 || type !== 'expense') return;
+    if (aiDebounce.current) clearTimeout(aiDebounce.current);
+    aiDebounce.current = setTimeout(async () => {
+      const cats = categories?.filter(c => !c.archived);
+      if (!cats || cats.length === 0) return;
+      setAiSuggesting(true);
+      try {
+        const { data } = await supabase.functions.invoke('suggest-category', {
+          body: {
+            description: desc,
+            categories: cats.map(c => ({ id: c.id, name: c.name, icon: c.icon })),
+          },
+        });
+        if (data?.category_id && !categoryId) {
+          setCategoryId(data.category_id);
+          const cat = cats.find(c => c.id === data.category_id);
+          if (cat) toast.info(`IA sugeriu: ${cat.icon} ${cat.name}`, { duration: 2000 });
+        }
+      } catch { /* silent */ }
+      finally { setAiSuggesting(false); }
+    }, 800);
+  }, [categories, categoryId, type]);
+
   const reset = () => {
     setDate(new Date().toISOString().split('T')[0]);
     setDescription('');
