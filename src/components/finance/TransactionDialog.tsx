@@ -218,7 +218,11 @@ export default function TransactionDialog({ type, children }: Props) {
           {type === 'expense' && (
             <>
               <div className="space-y-1.5">
-                <Label>Categoria</Label>
+                <Label className="flex items-center gap-1.5">
+                  Categoria
+                  {aiSuggesting && <Loader2 className="w-3 h-3 animate-spin text-primary" />}
+                  {!aiSuggesting && categoryId && <Sparkles className="w-3 h-3 text-primary" />}
+                </Label>
                 <Select value={categoryId} onValueChange={setCategoryId}>
                   <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
                   <SelectContent>
