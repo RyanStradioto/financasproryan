@@ -29,6 +29,8 @@ export default function TransactionDialog({ type, children }: Props) {
   const [attachmentName, setAttachmentName] = useState<string | null>(null);
   const [installments, setInstallments] = useState('1');
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [aiSuggesting, setAiSuggesting] = useState(false);
+  const aiDebounce = useRef<ReturnType<typeof setTimeout>>();
 
   const { data: categories } = useCategories();
   const { data: accounts } = useAccounts();
