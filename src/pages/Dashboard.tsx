@@ -6,6 +6,10 @@ import MonthSelector from '@/components/finance/MonthSelector';
 import StatCard from '@/components/finance/StatCard';
 import TransactionDialog from '@/components/finance/TransactionDialog';
 import EditTransactionDialog from '@/components/finance/EditTransactionDialog';
+import TrendChart from '@/components/finance/TrendChart';
+import CashFlowForecast from '@/components/finance/CashFlowForecast';
+import SmartAlerts from '@/components/finance/SmartAlerts';
+import Achievements from '@/components/finance/Achievements';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { useCategories } from '@/hooks/useFinanceData';
 
@@ -18,14 +22,12 @@ export default function Dashboard() {
   const { data: categories = [] } = useCategories();
   const [editing, setEditing] = useState<((Income & { type: 'income' }) | (Expense & { type: 'expense' })) | null>(null);
 
-  // Only count "concluido" (paid) for balance and savings
   const totalIncome = income
     .filter(i => i.status === 'concluido')
     .reduce((s, i) => s + Number(i.amount), 0);
   const totalExpensesPaid = expenses
     .filter(e => e.status === 'concluido')
     .reduce((s, e) => s + Number(e.amount), 0);
-  const totalExpensesAll = expenses.reduce((s, e) => s + Number(e.amount), 0);
   const balance = totalIncome - totalExpensesPaid;
   const savings = totalIncome > 0 ? ((balance / totalIncome) * 100) : 0;
 
@@ -57,6 +59,7 @@ export default function Dashboard() {
         <MonthSelector month={month} onChange={setMonth} />
       </div>
 
+      {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Receitas" value={totalIncome} icon={TrendingUp} trend="up" />
         <StatCard label="Despesas (pagas)" value={totalExpensesPaid} icon={TrendingDown} trend="down" />
@@ -72,11 +75,22 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Quick Actions */}
       <div className="flex gap-2">
         <TransactionDialog type="income" />
         <TransactionDialog type="expense" />
       </div>
 
+      {/* Smart Alerts */}
+      <SmartAlerts expenses={expenses} income={income} categories={categories} />
+
+      {/* Charts Row */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <TrendChart />
+        <CashFlowForecast />
+      </div>
+
+      {/* Category Breakdown + Achievements */}
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="stat-card">
           <h3 className="text-sm font-semibold mb-4">Despesas por Categoria</h3>
@@ -110,42 +124,45 @@ export default function Dashboard() {
           )}
         </div>
 
-        <div className="stat-card">
-          <h3 className="text-sm font-semibold mb-4">Últimas Transações</h3>
-          {recentTransactions.length > 0 ? (
-            <div className="space-y-2">
-              {recentTransactions.map((t) => (
-                <div key={t.id} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0 group">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${t.type === 'income' ? 'bg-income' : 'bg-expense'}`} />
-                    <div>
-                      <p className="text-sm font-medium">{t.description || (t.type === 'income' ? 'Receita' : 'Despesa')}</p>
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs text-muted-foreground">{formatDate(t.date)}</p>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${getStatusColor(t.status)}`}>
-                          {getStatusLabel(t.status)}
-                        </span>
-                      </div>
+        <Achievements expenses={expenses} income={income} categories={categories} />
+      </div>
+
+      {/* Recent Transactions */}
+      <div className="stat-card">
+        <h3 className="text-sm font-semibold mb-4">Últimas Transações</h3>
+        {recentTransactions.length > 0 ? (
+          <div className="space-y-2">
+            {recentTransactions.map((t) => (
+              <div key={t.id} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0 group">
+                <div className="flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full ${t.type === 'income' ? 'bg-income' : 'bg-expense'}`} />
+                  <div>
+                    <p className="text-sm font-medium">{t.description || (t.type === 'income' ? 'Receita' : 'Despesa')}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-muted-foreground">{formatDate(t.date)}</p>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${getStatusColor(t.status)}`}>
+                        {getStatusLabel(t.status)}
+                      </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`currency text-sm font-semibold ${t.type === 'income' ? 'text-income' : 'text-expense'}`}>
-                      {t.type === 'income' ? '+' : '-'}{formatCurrency(Number(t.amount))}
-                    </span>
-                    <button
-                      onClick={() => setEditing(t as any)}
-                      className="p-1 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-all"
-                    >
-                      <Pencil className="w-3 h-3" />
-                    </button>
-                  </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground text-center py-8">Nenhuma transação neste mês</p>
-          )}
-        </div>
+                <div className="flex items-center gap-2">
+                  <span className={`currency text-sm font-semibold ${t.type === 'income' ? 'text-income' : 'text-expense'}`}>
+                    {t.type === 'income' ? '+' : '-'}{formatCurrency(Number(t.amount))}
+                  </span>
+                  <button
+                    onClick={() => setEditing(t as any)}
+                    className="p-1 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-all"
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground text-center py-8">Nenhuma transação neste mês</p>
+        )}
       </div>
 
       {editing && (
