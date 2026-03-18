@@ -1,1 +1,10 @@
 project_id = "eohnperxrykjzoofhfqu"
+
+[functions.suggest-category]
+verify_jwt = false
+
+[functions.financial-insights]
+verify_jwt = false
+
+[functions.weekly-summary]
+verify_jwt = false

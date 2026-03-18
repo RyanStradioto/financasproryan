@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useCategories, useAccounts, useAddIncome, useAddExpense, useAddExpenseBatch, useRecentDescriptions } from '@/hooks/useFinanceData';
 import { useFileUpload } from '@/hooks/useFileUpload';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus, Paperclip, X, FileText } from 'lucide-react';
+import { Plus, Paperclip, X, FileText, Sparkles, Loader2 } from 'lucide-react';
 
 type Props = {
   type: 'income' | 'expense';
@@ -28,6 +29,8 @@ export default function TransactionDialog({ type, children }: Props) {
   const [attachmentName, setAttachmentName] = useState<string | null>(null);
   const [installments, setInstallments] = useState('1');
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [aiSuggesting, setAiSuggesting] = useState(false);
+  const aiDebounce = useRef<ReturnType<typeof setTimeout>>();
 
   const { data: categories } = useCategories();
   const { data: accounts } = useAccounts();
@@ -42,6 +45,30 @@ export default function TransactionDialog({ type, children }: Props) {
     const lower = description.toLowerCase();
     return recentDescs.filter(d => d.toLowerCase().includes(lower)).slice(0, 5);
   }, [description, recentDescs]);
+
+  const suggestCategory = useCallback((desc: string) => {
+    if (!desc || desc.length < 3 || type !== 'expense') return;
+    if (aiDebounce.current) clearTimeout(aiDebounce.current);
+    aiDebounce.current = setTimeout(async () => {
+      const cats = categories?.filter(c => !c.archived);
+      if (!cats || cats.length === 0) return;
+      setAiSuggesting(true);
+      try {
+        const { data } = await supabase.functions.invoke('suggest-category', {
+          body: {
+            description: desc,
+            categories: cats.map(c => ({ id: c.id, name: c.name, icon: c.icon })),
+          },
+        });
+        if (data?.category_id && !categoryId) {
+          setCategoryId(data.category_id);
+          const cat = cats.find(c => c.id === data.category_id);
+          if (cat) toast.info(`IA sugeriu: ${cat.icon} ${cat.name}`, { duration: 2000 });
+        }
+      } catch { /* silent */ }
+      finally { setAiSuggesting(false); }
+    }, 800);
+  }, [categories, categoryId, type]);
 
   const reset = () => {
     setDate(new Date().toISOString().split('T')[0]);
@@ -168,7 +195,7 @@ export default function TransactionDialog({ type, children }: Props) {
             <Input
               placeholder="Descreva a transação..."
               value={description}
-              onChange={(e) => { setDescription(e.target.value); setShowSuggestions(true); }}
+              onChange={(e) => { setDescription(e.target.value); setShowSuggestions(true); suggestCategory(e.target.value); }}
               onFocus={() => setShowSuggestions(true)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
               autoComplete="off"
@@ -191,7 +218,11 @@ export default function TransactionDialog({ type, children }: Props) {
           {type === 'expense' && (
             <>
               <div className="space-y-1.5">
-                <Label>Categoria</Label>
+                <Label className="flex items-center gap-1.5">
+                  Categoria
+                  {aiSuggesting && <Loader2 className="w-3 h-3 animate-spin text-primary" />}
+                  {!aiSuggesting && categoryId && <Sparkles className="w-3 h-3 text-primary" />}
+                </Label>
                 <Select value={categoryId} onValueChange={setCategoryId}>
                   <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
                   <SelectContent>
