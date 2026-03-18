@@ -195,7 +195,7 @@ export default function TransactionDialog({ type, children }: Props) {
             <Input
               placeholder="Descreva a transação..."
               value={description}
-              onChange={(e) => { setDescription(e.target.value); setShowSuggestions(true); }}
+              onChange={(e) => { setDescription(e.target.value); setShowSuggestions(true); suggestCategory(e.target.value); }}
               onFocus={() => setShowSuggestions(true)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
               autoComplete="off"
