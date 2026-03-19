@@ -14,244 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      credit_cards: {
-        Row: {
-          id: string
-          user_id: string
-          name: string
-          icon: string
-          color: string
-          credit_limit: number
-          closing_day: number
-          due_day: number
-          archived: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          name: string
-          icon?: string
-          color?: string
-          credit_limit?: number
-          closing_day?: number
-          due_day?: number
-          archived?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          name?: string
-          icon?: string
-          color?: string
-          credit_limit?: number
-          closing_day?: number
-          due_day?: number
-          archived?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      credit_card_transactions: {
-        Row: {
-          id: string
-          user_id: string
-          credit_card_id: string
-          category_id: string | null
-          description: string
-          amount: number
-          date: string
-          bill_month: string
-          is_installment: boolean
-          installment_number: number | null
-          total_installments: number | null
-          installment_group_id: string | null
-          is_recurring: boolean
-          notes: string | null
-          paid: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          credit_card_id: string
-          category_id?: string | null
-          description?: string
-          amount: number
-          date?: string
-          bill_month: string
-          is_installment?: boolean
-          installment_number?: number | null
-          total_installments?: number | null
-          installment_group_id?: string | null
-          is_recurring?: boolean
-          notes?: string | null
-          paid?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          credit_card_id?: string
-          category_id?: string | null
-          description?: string
-          amount?: number
-          date?: string
-          bill_month?: string
-          is_installment?: boolean
-          installment_number?: number | null
-          total_installments?: number | null
-          installment_group_id?: string | null
-          is_recurring?: boolean
-          notes?: string | null
-          paid?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "credit_card_transactions_credit_card_id_fkey"
-            columns: ["credit_card_id"]
-            isOneToOne: false
-            referencedRelation: "credit_cards"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      investments: {
-        Row: {
-          id: string
-          user_id: string
-          name: string
-          type: string
-          institution: string
-          icon: string
-          color: string
-          current_value: number
-          total_invested: number
-          archived: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          name: string
-          type?: string
-          institution?: string
-          icon?: string
-          color?: string
-          current_value?: number
-          total_invested?: number
-          archived?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          name?: string
-          type?: string
-          institution?: string
-          icon?: string
-          color?: string
-          current_value?: number
-          total_invested?: number
-          archived?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      investment_transactions: {
-        Row: {
-          id: string
-          user_id: string
-          investment_id: string
-          account_id: string | null
-          type: string
-          amount: number
-          date: string
-          description: string
-          notes: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          investment_id: string
-          account_id?: string | null
-          type?: string
-          amount: number
-          date?: string
-          description?: string
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          investment_id?: string
-          account_id?: string | null
-          type?: string
-          amount?: number
-          date?: string
-          description?: string
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "investment_transactions_investment_id_fkey"
-            columns: ["investment_id"]
-            isOneToOne: false
-            referencedRelation: "investments"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      transaction_classifications: {
-        Row: {
-          id: string
-          user_id: string
-          keyword: string
-          type: string
-          category_id: string | null
-          investment_id: string | null
-          confidence: number
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          keyword: string
-          type: string
-          category_id?: string | null
-          investment_id?: string | null
-          confidence?: number
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          keyword?: string
-          type?: string
-          category_id?: string | null
-          investment_id?: string | null
-          confidence?: number
-          created_at?: string
-        }
-        Relationships: []
-      }
       accounts: {
         Row: {
           archived: boolean
@@ -318,6 +80,123 @@ export type Database = {
           icon?: string
           id?: string
           monthly_budget?: number
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      credit_card_transactions: {
+        Row: {
+          amount: number
+          bill_month: string
+          category_id: string | null
+          created_at: string
+          credit_card_id: string
+          date: string
+          description: string
+          id: string
+          installment_group_id: string | null
+          installment_number: number | null
+          is_installment: boolean
+          is_recurring: boolean
+          notes: string | null
+          paid: boolean
+          total_installments: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          bill_month: string
+          category_id?: string | null
+          created_at?: string
+          credit_card_id: string
+          date?: string
+          description?: string
+          id?: string
+          installment_group_id?: string | null
+          installment_number?: number | null
+          is_installment?: boolean
+          is_recurring?: boolean
+          notes?: string | null
+          paid?: boolean
+          total_installments?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          bill_month?: string
+          category_id?: string | null
+          created_at?: string
+          credit_card_id?: string
+          date?: string
+          description?: string
+          id?: string
+          installment_group_id?: string | null
+          installment_number?: number | null
+          is_installment?: boolean
+          is_recurring?: boolean
+          notes?: string | null
+          paid?: boolean
+          total_installments?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_card_transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_card_transactions_credit_card_id_fkey"
+            columns: ["credit_card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_cards: {
+        Row: {
+          archived: boolean
+          closing_day: number
+          color: string
+          created_at: string
+          credit_limit: number
+          due_day: number
+          icon: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived?: boolean
+          closing_day?: number
+          color?: string
+          created_at?: string
+          credit_limit?: number
+          due_day?: number
+          icon?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archived?: boolean
+          closing_day?: number
+          color?: string
+          created_at?: string
+          credit_limit?: number
+          due_day?: number
+          icon?: string
+          id?: string
           name?: string
           updated_at?: string
           user_id?: string
@@ -446,6 +325,108 @@ export type Database = {
           },
         ]
       }
+      investment_transactions: {
+        Row: {
+          account_id: string | null
+          amount: number
+          created_at: string
+          date: string
+          description: string
+          id: string
+          investment_id: string
+          notes: string | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          amount: number
+          created_at?: string
+          date?: string
+          description?: string
+          id?: string
+          investment_id: string
+          notes?: string | null
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          created_at?: string
+          date?: string
+          description?: string
+          id?: string
+          investment_id?: string
+          notes?: string | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "investment_transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "investment_transactions_investment_id_fkey"
+            columns: ["investment_id"]
+            isOneToOne: false
+            referencedRelation: "investments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      investments: {
+        Row: {
+          archived: boolean
+          color: string
+          created_at: string
+          current_value: number
+          icon: string
+          id: string
+          institution: string
+          name: string
+          total_invested: number
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived?: boolean
+          color?: string
+          created_at?: string
+          current_value?: number
+          icon?: string
+          id?: string
+          institution?: string
+          name: string
+          total_invested?: number
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archived?: boolean
+          color?: string
+          created_at?: string
+          current_value?: number
+          icon?: string
+          id?: string
+          institution?: string
+          name?: string
+          total_invested?: number
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -478,6 +459,54 @@ export type Database = {
           work_hours_per_day?: number
         }
         Relationships: []
+      }
+      transaction_classifications: {
+        Row: {
+          category_id: string | null
+          confidence: number
+          created_at: string
+          id: string
+          investment_id: string | null
+          keyword: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          category_id?: string | null
+          confidence?: number
+          created_at?: string
+          id?: string
+          investment_id?: string | null
+          keyword: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          category_id?: string | null
+          confidence?: number
+          created_at?: string
+          id?: string
+          investment_id?: string | null
+          keyword?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_classifications_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_classifications_investment_id_fkey"
+            columns: ["investment_id"]
+            isOneToOne: false
+            referencedRelation: "investments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
