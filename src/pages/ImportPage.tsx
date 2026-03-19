@@ -23,55 +23,94 @@ type ParsedRow = {
   classificationReason: string;
 };
 
+// Split a CSV line respecting quoted fields
+function splitCsvLine(line: string): string[] {
+  const cols: string[] = [];
+  let cur = '', inQuote = false;
+  for (const ch of line) {
+    if (ch === '"') { inQuote = !inQuote; continue; }
+    if (ch === ',' && !inQuote) { cols.push(cur.trim()); cur = ''; continue; }
+    cur += ch;
+  }
+  cols.push(cur.trim());
+  return cols;
+}
+
+// Parse a monetary value — handles both US dot-decimal and BR comma-decimal
+// IMPORTANT: does NOT blindly remove dots (that broke -24.00 → 2400)
+function parseMoney(raw: string): number | null {
+  const s = raw.trim();
+  if (!s) return null;
+  // BR format: comma as decimal separator e.g. "1.234,56" or "-24,00"
+  if (/,\d{1,2}$/.test(s)) {
+    const n = parseFloat(s.replace(/\./g, '').replace(',', '.'));
+    return isNaN(n) ? null : n;
+  }
+  // US / Nubank format: dot as decimal e.g. "-24.00" — parse directly
+  const n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+
+function parseDateStr(raw: string): string {
+  const br = raw.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (br) {
+    const [, d, m, y] = br;
+    return `${y.length === 2 ? '20' + y : y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw.trim())) return raw.trim().substring(0, 10);
+  return new Date().toISOString().split('T')[0];
+}
+
 // ---------------------------------------------------------------------
-// Nubank CSV format: "Data","Descrição","Valor"
-// Positive = income, Negative = expense. Investment keywords override.
+// Nubank CSV: Data, Valor, Identificador, Descrição  (positional!)
+// Positive Valor = receita, Negative = despesa
+// Investment keywords in Descrição override the classification.
 // ---------------------------------------------------------------------
 function parseNubankCSV(text: string, rules: any[]): ParsedRow[] {
-  const lines = text.trim().split('\n');
+  const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) return [];
-  const rows: ParsedRow[] = [];
 
-  // Detect if it's Nubank format by checking header
   const header = lines[0].toLowerCase();
-  const isNubank = header.includes('data') && header.includes('descri') && header.includes('valor');
+  // Nubank CSV has exactly "valor" and "identificador" in the header
+  const isNubank = header.includes('valor') && header.includes('identificador');
 
+  const rows: ParsedRow[] = [];
   for (let i = 1; i < lines.length; i++) {
-    const raw = lines[i];
-    // Handle quoted CSV
-    const cols = raw.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(c => c.trim().replace(/^"|"$/g, ''));
-    if (cols.length < 3) continue;
+    const cols = splitCsvLine(lines[i]);
+    if (cols.length < 2) continue;
 
-    let date = '', description = '', amount = 0;
+    let date: string;
+    let rawAmount: string;
+    let description: string;
 
-    for (const col of cols) {
-      // ISO date
-      const isoMatch = col.match(/^(\d{4})-(\d{2})-(\d{2})/);
-      if (isoMatch && !date) { date = col.substring(0, 10); continue; }
-      // BR date DD/MM/YYYY
-      const brMatch = col.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
-      if (brMatch && !date) {
-        const [, d, m, y] = brMatch;
-        const year = y.length === 2 ? `20${y}` : y;
-        date = `${year}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-        continue;
+    if (isNubank && cols.length >= 4) {
+      // Positional: col[0]=Data, col[1]=Valor, col[2]=Identificador, col[3]=Descrição
+      date = parseDateStr(cols[0]);
+      rawAmount = cols[1];
+      description = cols[3] || cols[2] || 'Transação';
+    } else {
+      // Generic fallback — scan by content
+      date = new Date().toISOString().split('T')[0];
+      rawAmount = '0';
+      description = 'Transação importada';
+      let gotAmount = false;
+      for (const col of cols) {
+        if (!col) continue;
+        if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(col) || /^\d{4}-\d{2}-\d{2}/.test(col)) {
+          date = parseDateStr(col); continue;
+        }
+        const n = parseMoney(col);
+        if (n !== null && !gotAmount && col.length <= 15) { rawAmount = col; gotAmount = true; continue; }
+        if (col.length > 3) description = col;
       }
-      // Number
-      const numStr = col.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
-      const num = parseFloat(numStr);
-      if (!isNaN(num) && numStr.length > 0 && !amount) { amount = num; continue; }
-      // Description
-      if (col.length > 1 && !description && !/^\d/.test(col)) description = col;
     }
 
-    if (!date) date = new Date().toISOString().split('T')[0];
-    if (!description) description = 'Transação importada';
+    const amount = parseMoney(rawAmount);
+    if (amount === null) continue;
 
     const result = classifyDescription(description, amount, rules);
-
     rows.push({
-      date,
-      description,
+      date, description,
       amount: Math.abs(amount),
       type: result.type,
       categoryId: result.categoryId ?? '',
@@ -91,15 +130,15 @@ function parseOFX(text: string, rules: any[]): ParsedRow[] {
   while ((match = stmtRx.exec(text)) !== null) {
     const block = match[1];
     const get = (tag: string) => {
-      const rx = new RegExp(`<${tag}>([^<\n]+)`, 'i');
-      const m = block.match(rx);
+      const m = block.match(new RegExp(`<${tag}>([^<\n]+)`, 'i'));
       return m ? m[1].trim() : '';
     };
     const dtStr = get('DTPOSTED');
     const date = dtStr.length >= 8
       ? `${dtStr.slice(0, 4)}-${dtStr.slice(4, 6)}-${dtStr.slice(6, 8)}`
       : new Date().toISOString().split('T')[0];
-    const amount = parseFloat(get('TRNAMT').replace(',', '.')) || 0;
+    // OFX standard uses dot as decimal — parseFloat directly, no replacement
+    const amount = parseFloat(get('TRNAMT')) || 0;
     const description = get('MEMO') || get('NAME') || 'Transação OFX';
     const result = classifyDescription(description, amount, rules);
     rows.push({
