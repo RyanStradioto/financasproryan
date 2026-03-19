@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { TrendingUp, TrendingDown, Wallet, PiggyBank, Pencil } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, PiggyBank, Pencil, BarChart3 } from 'lucide-react';
 import { useIncome, useExpenses, type Income, type Expense } from '@/hooks/useFinanceData';
+import { useNetWorth } from '@/hooks/useInvestments';
 import { getMonthYear, formatCurrency, formatDate, getStatusColor, getStatusLabel } from '@/lib/format';
 import MonthSelector from '@/components/finance/MonthSelector';
 import StatCard from '@/components/finance/StatCard';
@@ -20,6 +21,8 @@ export default function Dashboard() {
   const { data: income = [] } = useIncome(month);
   const { data: expenses = [] } = useExpenses(month);
   const { data: categories = [] } = useCategories();
+  const { investmentTotal } = useNetWorth();
+
   const [editing, setEditing] = useState<((Income & { type: 'income' }) | (Expense & { type: 'expense' })) | null>(null);
 
   const totalIncome = income
@@ -59,12 +62,26 @@ export default function Dashboard() {
         <MonthSelector month={month} onChange={setMonth} />
       </div>
 
-      {/* Stat Cards */}
+      {/* Stat Cards — Cashflow */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Receitas" value={totalIncome} icon={TrendingUp} trend="up" />
         <StatCard label="Despesas (pagas)" value={totalExpensesPaid} icon={TrendingDown} trend="down" />
         <StatCard label="Saldo" value={balance} icon={Wallet} trend={balance >= 0 ? 'up' : 'down'} />
         <StatCard label="Economia" value={savings} icon={PiggyBank} trend={savings >= 0 ? 'up' : 'down'} suffix="%" />
+      </div>
+
+      {/* Patrimony Card */}
+      <div className="rounded-xl bg-primary/5 border border-primary/20 p-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <BarChart3 className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Patrimônio em Investimentos</p>
+            <p className="text-xl font-bold text-primary">{formatCurrency(investmentTotal)}</p>
+          </div>
+        </div>
+        <a href="/investimentos" className="text-xs text-primary hover:underline">Ver detalhes →</a>
       </div>
 
       {pendingExpenses > 0 && (
