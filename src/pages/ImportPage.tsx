@@ -8,7 +8,7 @@ import { useCreditCards, useAddCreditCardTransaction } from '@/hooks/useCreditCa
 import { useClassificationRules, classifyDescription } from '@/hooks/useClassification';
 import { formatCurrency } from '@/lib/format';
 import { toast } from 'sonner';
-import { Upload, Trash2, Check, FileSpreadsheet, TrendingUp, TrendingDown, BarChart3, Info, CreditCard, Building2, Link2, AlertTriangle } from 'lucide-react';
+import { Upload, Trash2, Check, TrendingUp, TrendingDown, BarChart3, Info, CreditCard, Building2, Link2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
 
@@ -70,6 +70,12 @@ function dedupeKey(date: string, description: string, amount: number): string {
   return `${date}|${description.toLowerCase().trim()}|${Math.abs(amount).toFixed(2)}`;
 }
 
+/** Get unique months (YYYY-MM) from a list of rows */
+function getImportedMonths(rows: ParsedRow[]): string[] {
+  const months = new Set(rows.map(r => r.date.substring(0, 7)));
+  return [...months].sort();
+}
+
 // ── CSV parser ───────────────────────────────────────────────────
 
 function parseCSV(text: string, rules: any[], source: 'bank' | 'cc'): ParsedRow[] {
@@ -94,7 +100,6 @@ function parseCSV(text: string, rules: any[], source: 'bank' | 'cc'): ParsedRow[
       description = cols[3] || cols[2] || 'Transação';
     } else if (isNubank && cols.length >= 3) {
       date = parseDateStr(cols[0]);
-      // Try col[2] as description, col[1] as amount
       rawAmount = cols[1];
       description = cols[2] || 'Transação';
     } else {
@@ -143,7 +148,7 @@ function parseOFX(text: string, rules: any[], source: 'bank' | 'cc'): ParsedRow[
   while ((match = stmtRx.exec(text)) !== null) {
     const block = match[1];
     const get = (tag: string) => {
-      const m = block.match(new RegExp(`<${tag}>([^<\\n]+)`, 'i'));
+      const m = block.match(new RegExp(`<${tag}>([^<\n]+)`, 'i'));
       return m ? m[1].trim() : '';
     };
     const dtStr = get('DTPOSTED');
@@ -329,7 +334,13 @@ export default function ImportPage() {
       }
 
       for (const r of incomeRows) {
-        await addIncome.mutateAsync({ date: r.date, description: r.description, amount: r.amount, status: 'concluido' });
+        await addIncome.mutateAsync({
+          date: r.date,
+          description: r.description,
+          amount: r.amount,
+          category_id: r.categoryId || null,
+          status: 'concluido',
+        });
       }
 
       for (const r of investmentRows) {
@@ -366,7 +377,19 @@ export default function ImportPage() {
         }
       }
 
-      toast.success(`✅ ${allSelected.length} transações importadas!`);
+      // Build months summary for the toast
+      const importedMonths = getImportedMonths(allSelected);
+      const monthsLabel = importedMonths.map(m => {
+        const [y, mo] = m.split('-');
+        const names = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        return `${names[parseInt(mo) - 1]}/${y}`;
+      }).join(', ');
+
+      toast.success(
+        `✅ ${allSelected.length} transações importadas! Acesse o Dashboard e selecione o mês ${monthsLabel} para ver as transações.`,
+        { duration: 8000 }
+      );
+
       setBankRows([]); setCcRows([]); setBankFileName(''); setCcFileName('');
     } catch (err: any) {
       toast.error(err.message);
@@ -378,14 +401,29 @@ export default function ImportPage() {
   const hasAnyData = bankRows.length > 0 || ccRows.length > 0;
   const totalSelected = bankRows.filter(r => r.selected && r.type !== 'cc_payment').length + ccRows.filter(r => r.selected).length;
 
-  const renderUploadArea = (label: string, icon: React.ReactNode, fileName: string, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, hint: string) => (
-    <label className="stat-card flex flex-col items-center justify-center py-10 cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all">
-      <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-3">
+  // ── Upload area ──────────────────────────────────────────────────
+  const renderUploadArea = (
+    label: string,
+    icon: React.ReactNode,
+    fileName: string,
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void,
+    hint: string,
+    loaded: boolean
+  ) => (
+    <label className={`flex flex-col items-center justify-center py-8 cursor-pointer rounded-xl border-2 border-dashed transition-all
+      ${loaded
+        ? 'border-primary/40 bg-primary/5 hover:bg-primary/10'
+        : 'border-border bg-muted/30 hover:border-primary/30 hover:bg-muted/50'
+      }`}>
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${loaded ? 'bg-primary/15' : 'bg-muted'}`}>
         {icon}
       </div>
       <p className="font-medium mb-1 text-sm">{label}</p>
-      <p className="text-xs text-muted-foreground text-center px-4">{hint}</p>
-      {fileName && <Badge variant="secondary" className="mt-2">{fileName}</Badge>}
+      {loaded ? (
+        <Badge variant="secondary" className="mt-1 text-xs">{fileName}</Badge>
+      ) : (
+        <p className="text-xs text-muted-foreground text-center px-4">{hint}</p>
+      )}
       <input type="file" className="hidden" onChange={onChange} accept=".csv,.ofx,.qfx" />
     </label>
   );
@@ -490,7 +528,7 @@ export default function ImportPage() {
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Importar Extrato</h1>
-        <p className="text-sm text-muted-foreground">Importe extratos do banco e da fatura do cartão — o app cruza os dados automaticamente</p>
+        <p className="text-sm text-muted-foreground">Importe o extrato do banco e a fatura do cartão juntos — o app cruza os dados automaticamente</p>
       </div>
 
       {/* Instructions */}
@@ -500,31 +538,31 @@ export default function ImportPage() {
         </div>
         <ol className="text-xs text-muted-foreground space-y-1 ml-6 list-decimal">
           <li><strong>Extrato do banco:</strong> Exporte o CSV/OFX do seu banco (ex: Nubank → Exportar dados)</li>
-          <li><strong>Fatura do cartão:</strong> Exporte separadamente a fatura do cartão de crédito</li>
-          <li>O app <strong>detecta automaticamente</strong> o "pagamento de fatura" no extrato e cruza com os itens individuais da fatura</li>
+          <li><strong>Fatura do cartão (opcional):</strong> Exporte a fatura do cartão de crédito separadamente</li>
+          <li>Anexe os dois arquivos abaixo e clique <strong>Importar</strong> — tudo é processado de uma vez</li>
           <li><strong>Transações duplicadas</strong> são identificadas e desmarcadas automaticamente</li>
         </ol>
       </div>
 
-      {/* Upload areas */}
-      {!hasAnyData && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {renderUploadArea(
-            'Extrato do Banco',
-            <Building2 className="w-6 h-6 text-primary" />,
-            bankFileName,
-            handleBankFile,
-            'CSV ou OFX do extrato bancário geral do mês'
-          )}
-          {renderUploadArea(
-            'Fatura do Cartão',
-            <CreditCard className="w-6 h-6 text-primary" />,
-            ccFileName,
-            handleCCFile,
-            'CSV ou OFX da fatura do cartão de crédito (opcional)'
-          )}
-        </div>
-      )}
+      {/* Upload areas — always visible */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {renderUploadArea(
+          bankFileName ? 'Extrato carregado ✓' : 'Extrato do Banco',
+          <Building2 className={`w-6 h-6 ${bankFileName ? 'text-primary' : 'text-muted-foreground'}`} />,
+          bankFileName,
+          handleBankFile,
+          'CSV ou OFX do extrato bancário do mês',
+          !!bankFileName
+        )}
+        {renderUploadArea(
+          ccFileName ? 'Fatura carregada ✓' : 'Fatura do Cartão',
+          <CreditCard className={`w-6 h-6 ${ccFileName ? 'text-primary' : 'text-muted-foreground'}`} />,
+          ccFileName,
+          handleCCFile,
+          'CSV ou OFX da fatura do cartão (opcional)',
+          !!ccFileName
+        )}
+      </div>
 
       {hasAnyData && (
         <>
@@ -563,22 +601,6 @@ export default function ImportPage() {
               <Button variant="outline" size="sm" onClick={() => { setBankRows([]); setCcRows([]); setBankFileName(''); setCcFileName(''); }}>
                 <Trash2 className="w-4 h-4 mr-1" /> Limpar
               </Button>
-              {!ccFileName && bankRows.length > 0 && (
-                <label className="inline-flex">
-                  <Button variant="outline" size="sm" asChild>
-                    <span><CreditCard className="w-4 h-4 mr-1" /> Adicionar Fatura</span>
-                  </Button>
-                  <input type="file" className="hidden" onChange={handleCCFile} accept=".csv,.ofx,.qfx" />
-                </label>
-              )}
-              {!bankFileName && ccRows.length > 0 && (
-                <label className="inline-flex">
-                  <Button variant="outline" size="sm" asChild>
-                    <span><Building2 className="w-4 h-4 mr-1" /> Adicionar Extrato</span>
-                  </Button>
-                  <input type="file" className="hidden" onChange={handleBankFile} accept=".csv,.ofx,.qfx" />
-                </label>
-              )}
               <Button size="sm" onClick={handleImport} disabled={totalSelected === 0 || addExpenseBatch.isPending}>
                 <Check className="w-4 h-4 mr-1" /> Importar {totalSelected}
               </Button>
@@ -598,11 +620,10 @@ export default function ImportPage() {
               </TabsList>
               <TabsContent value="bank">
                 {bankRows.length > 0 ? renderTable(bankRows, setBankRows, false) : (
-                  <label className="stat-card flex flex-col items-center py-8 cursor-pointer">
-                    <Building2 className="w-8 h-8 text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">Clique para adicionar o extrato bancário</p>
-                    <input type="file" className="hidden" onChange={handleBankFile} accept=".csv,.ofx,.qfx" />
-                  </label>
+                  <div className="stat-card flex flex-col items-center py-8 text-muted-foreground">
+                    <Building2 className="w-8 h-8 mb-2 opacity-40" />
+                    <p className="text-sm">Nenhum extrato carregado — use a área acima</p>
+                  </div>
                 )}
               </TabsContent>
               <TabsContent value="cc">
