@@ -65,9 +65,15 @@ function parseDateStr(raw: string): string {
   return new Date().toISOString().split('T')[0];
 }
 
-/** Generate a dedup key from date+description+amount */
+/**
+ * Dedup key: usa YYYY-MM (não o dia) + descrição + valor.
+ * Usar apenas o mês evita falsos positivos quando a mesma descrição/valor
+ * aparece em dias diferentes dentro do mesmo mês.
+ * Usar só o mês (não a data completa) mantém a detecção robusta para reimportações do mesmo período.
+ */
 function dedupeKey(date: string, description: string, amount: number): string {
-  return `${date}|${description.toLowerCase().trim()}|${Math.abs(amount).toFixed(2)}`;
+  const month = date.substring(0, 7); // YYYY-MM
+  return `${month}|${description.toLowerCase().trim()}|${Math.abs(amount).toFixed(2)}`;
 }
 
 /** Get unique months (YYYY-MM) from a list of rows */
@@ -228,6 +234,7 @@ export default function ImportPage() {
   const [bankFileName, setBankFileName] = useState('');
   const [ccFileName, setCcFileName] = useState('');
   const [activeTab, setActiveTab] = useState('bank');
+  const [forceImport, setForceImport] = useState(false);
 
   const { data: categories = [] } = useCategories();
   const { data: investments = [] } = useInvestments();
@@ -258,13 +265,21 @@ export default function ImportPage() {
       return {
         ...row,
         isDuplicate,
-        selected: !isDuplicate,
+        selected: !isDuplicate, // marcado por padrão somente se não for duplicata
         type: isCCPayment ? 'cc_payment' as RowType : row.type,
-        classificationReason: isDuplicate ? '⚠️ Já importado anteriormente' : isCCPayment ? 'Pagamento de fatura detectado' : row.classificationReason,
+        classificationReason: isDuplicate ? '⚠️ Já importado no mesmo período' : isCCPayment ? 'Pagamento de fatura detectado' : row.classificationReason,
         confidence: isDuplicate ? 'low' : isCCPayment ? 'high' : row.confidence,
       };
     });
   }, [existingKeys]);
+
+  // Forçar importação: marca todas as duplicatas como selecionadas
+  const handleForceImport = useCallback(() => {
+    setForceImport(true);
+    setBankRows(prev => prev.map(r => r.isDuplicate ? { ...r, selected: true } : r));
+    setCcRows(prev => prev.map(r => r.isDuplicate ? { ...r, selected: true } : r));
+    toast.info('Todas as transações foram marcadas. Revise e clique Importar.');
+  }, []);
 
   const handleBankFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -338,7 +353,6 @@ export default function ImportPage() {
           date: r.date,
           description: r.description,
           amount: r.amount,
-          category_id: r.categoryId || null,
           status: 'concluido',
         });
       }
@@ -583,10 +597,19 @@ export default function ImportPage() {
           )}
 
           {/* Duplicate warning */}
-          {bankRows.filter(r => r.isDuplicate).length > 0 && (
-            <div className="rounded-lg bg-warning/5 border border-warning/20 px-4 py-3 text-sm flex items-center gap-3 text-warning">
-              <AlertTriangle className="w-5 h-5 shrink-0" />
-              <p><strong>{bankRows.filter(r => r.isDuplicate).length} transação(ões) duplicada(s)</strong> foram detectadas e desmarcadas. Elas já existem no seu banco de dados.</p>
+          {bankRows.filter(r => r.isDuplicate).length > 0 && !forceImport && (
+            <div className="rounded-lg bg-warning/5 border border-warning/20 px-4 py-3 text-sm flex items-start gap-3 text-warning">
+              <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p><strong>{bankRows.filter(r => r.isDuplicate).length} transação(ões) detectada(s) como já importadas</strong> e desmarcadas automaticamente.</p>
+                <p className="text-xs mt-1 text-muted-foreground">Se tiver certeza que <strong>não estão no banco</strong> (ex: data errada em importação anterior), clique abaixo para forçar a importação.</p>
+                <button
+                  onClick={handleForceImport}
+                  className="mt-2 text-xs underline text-warning hover:text-warning/80 transition-colors"
+                >
+                  Forçar reimportação de todas (ignorar dedup)
+                </button>
+              </div>
             </div>
           )}
 
