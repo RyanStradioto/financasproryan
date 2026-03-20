@@ -328,86 +328,107 @@ export default function ImportPage() {
     setter(prev => prev.map((r, idx) => idx === i ? { ...r, [field]: value } : r));
 
   const handleImport = async () => {
-    // Combine bank (non-cc-payment) + cc rows
     const bankSelected = bankRows.filter(r => r.selected && r.type !== 'cc_payment');
     const ccSelected = ccRows.filter(r => r.selected);
     const allSelected = [...bankSelected, ...ccSelected];
 
     if (allSelected.length === 0) { toast.error('Selecione ao menos uma transação'); return; }
 
-    try {
-      // Bank expenses
-      const expenseRows = bankSelected.filter(r => r.type === 'expense');
-      const incomeRows = bankSelected.filter(r => r.type === 'income');
-      const investmentRows = bankSelected.filter(r => r.type === 'investment');
+    const expenseRows = bankSelected.filter(r => r.type === 'expense');
+    const incomeRows  = bankSelected.filter(r => r.type === 'income');
+    const investmentRows = bankSelected.filter(r => r.type === 'investment');
 
-      if (expenseRows.length > 0) {
-        await addExpenseBatch.mutateAsync(expenseRows.map(r => ({
-          date: r.date, description: r.description, amount: r.amount,
-          category_id: r.categoryId || null, status: 'concluido',
-        })));
-      }
+    console.log('[Import] Iniciando:', {
+      expenses: expenseRows.length, income: incomeRows.length,
+      investments: investmentRows.length, ccItems: ccSelected.length, userId: user?.id,
+    });
 
-      for (const r of incomeRows) {
-        await addIncome.mutateAsync({
-          date: r.date,
-          description: r.description,
-          amount: r.amount,
-          status: 'concluido',
-        });
-      }
+    let successCount = 0;
+    const errorMessages: string[] = [];
 
-      for (const r of investmentRows) {
-        if (!r.investmentId) continue;
+    const { supabase: sb } = await import('@/integrations/supabase/client');
+
+    // ── Despesas ─────────────────────────────────────────────────
+    if (expenseRows.length > 0) {
+      const payload = expenseRows.map(r => ({
+        date: r.date, description: r.description, amount: r.amount,
+        category_id: r.categoryId || null, status: 'concluido', user_id: user!.id,
+      }));
+      console.log('[Import] Inserindo despesas:', payload);
+      const { error } = await sb.from('expenses').insert(payload);
+      if (error) { console.error('[Import] Erro despesas:', error); errorMessages.push(`Despesas: ${error.message}`); }
+      else { successCount += expenseRows.length; console.log('[Import] Despesas OK'); }
+    }
+
+    // ── Receitas ─────────────────────────────────────────────────
+    if (incomeRows.length > 0) {
+      const payload = incomeRows.map(r => ({
+        date: r.date, description: r.description, amount: r.amount,
+        status: 'concluido', user_id: user!.id,
+      }));
+      console.log('[Import] Inserindo receitas:', payload);
+      const { error } = await sb.from('income').insert(payload);
+      if (error) { console.error('[Import] Erro receitas:', error); errorMessages.push(`Receitas: ${error.message}`); }
+      else { successCount += incomeRows.length; console.log('[Import] Receitas OK'); }
+    }
+
+    // ── Investimentos ─────────────────────────────────────────────
+    for (const r of investmentRows) {
+      if (!r.investmentId) continue;
+      try {
         await addInvestmentTx.mutateAsync({
           investment_id: r.investmentId, type: 'aporte',
           amount: r.amount, date: r.date, description: r.description,
         });
-      }
-
-      // CC transactions — save to credit_card_transactions table
-      if (ccSelected.length > 0) {
-        const defaultCardId = ccSelected[0]?.creditCardId || creditCards[0]?.id;
-        if (defaultCardId) {
-          for (const r of ccSelected) {
-            const cardId = r.creditCardId || defaultCardId;
-            const billMonth = r.date.substring(0, 7); // YYYY-MM from the transaction date
-            await addCCTransaction.mutateAsync({
-              credit_card_id: cardId,
-              category_id: r.categoryId || null,
-              description: r.description,
-              amount: r.amount,
-              date: r.date,
-              bill_month: billMonth,
-              installments: 1,
-            });
-          }
-        } else {
-          // Fallback: save as regular expenses if no CC configured
-          await addExpenseBatch.mutateAsync(ccSelected.map(r => ({
-            date: r.date, description: r.description, amount: r.amount,
-            category_id: r.categoryId || null, status: 'concluido',
-          })));
-        }
-      }
-
-      // Build months summary for the toast
-      const importedMonths = getImportedMonths(allSelected);
-      const monthsLabel = importedMonths.map(m => {
-        const [y, mo] = m.split('-');
-        const names = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-        return `${names[parseInt(mo) - 1]}/${y}`;
-      }).join(', ');
-
-      toast.success(
-        `✅ ${allSelected.length} transações importadas! Acesse o Dashboard e selecione o mês ${monthsLabel} para ver as transações.`,
-        { duration: 8000 }
-      );
-
-      setBankRows([]); setCcRows([]); setBankFileName(''); setCcFileName('');
-    } catch (err: any) {
-      toast.error(err.message);
+        successCount++;
+      } catch (e: any) { errorMessages.push(`Investimento "${r.description}": ${e.message}`); }
     }
+
+    // ── Fatura do cartão ──────────────────────────────────────────
+    if (ccSelected.length > 0) {
+      const defaultCardId = ccSelected[0]?.creditCardId || creditCards[0]?.id;
+      if (defaultCardId) {
+        for (const r of ccSelected) {
+          try {
+            await addCCTransaction.mutateAsync({
+              credit_card_id: r.creditCardId || defaultCardId,
+              category_id: r.categoryId || null,
+              description: r.description, amount: r.amount,
+              date: r.date, bill_month: r.date.substring(0, 7), installments: 1,
+            });
+            successCount++;
+          } catch (e: any) { errorMessages.push(`Fatura "${r.description}": ${e.message}`); }
+        }
+      } else {
+        const payload = ccSelected.map(r => ({
+          date: r.date, description: r.description, amount: r.amount,
+          category_id: r.categoryId || null, status: 'concluido', user_id: user!.id,
+        }));
+        const { error } = await sb.from('expenses').insert(payload);
+        if (error) errorMessages.push(`Fatura (sem cartão): ${error.message}`);
+        else successCount += ccSelected.length;
+      }
+    }
+
+    // ── Resultado ─────────────────────────────────────────────────
+    if (errorMessages.length > 0) {
+      console.error('[Import] Erros:', errorMessages);
+      toast.error(
+        `⚠️ ${successCount}/${allSelected.length} importadas. Erro: ${errorMessages[0]}`,
+        { duration: 10000 }
+      );
+    }
+
+    if (successCount > 0) {
+      const months = getImportedMonths(allSelected);
+      const monthsLabel = months.map(m => {
+        const [y, mo] = m.split('-');
+        return `${['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][+mo-1]}/${y}`;
+      }).join(', ');
+      toast.success(`✅ ${successCount} transações salvas! Veja em Receitas/Despesas no mês ${monthsLabel}.`, { duration: 8000 });
+      setBankRows([]); setCcRows([]); setBankFileName(''); setCcFileName(''); setForceImport(false);
+    }
+
   };
 
   const activeCategories = categories.filter(c => !c.archived);

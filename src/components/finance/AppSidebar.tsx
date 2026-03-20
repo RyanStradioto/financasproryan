@@ -14,7 +14,7 @@ const links = [
   { to: '/contas', icon: Landmark, label: 'Contas' },
   { to: '/calendario', icon: CalendarDays, label: 'Calendário' },
   { to: '/insights', icon: Brain, label: 'Insights IA' },
-  { to: '/importar', icon: Upload, label: 'Importar CSV' },
+  { to: '/importar', icon: Upload, label: 'Importar Extrato' },
   { to: '/configuracoes', icon: Settings, label: 'Configurações' },
 ];
 

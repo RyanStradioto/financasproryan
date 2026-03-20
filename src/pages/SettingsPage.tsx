@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useProfile, useUpsertProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { User, Briefcase, Clock, CalendarDays, Mail, Save } from 'lucide-react';
+import { User, Briefcase, Clock, CalendarDays, Mail, Save, Trash2, AlertTriangle } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -14,6 +15,11 @@ export default function SettingsPage() {
   const [hoursPerDay, setHoursPerDay] = useState('');
   const [daysPerWeek, setDaysPerWeek] = useState('');
   const [weeklyEmail, setWeeklyEmail] = useState(true);
+
+  // Data cleanup state
+  const [keepMonth, setKeepMonth] = useState('2026-03');
+  const [confirmText, setConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -35,6 +41,41 @@ export default function SettingsPage() {
       toast.success('Perfil salvo com sucesso!');
     } catch {
       toast.error('Erro ao salvar perfil');
+    }
+  };
+
+  const handleDeleteOutsideMonth = async () => {
+    if (confirmText !== 'EXCLUIR') {
+      toast.error('Digite EXCLUIR para confirmar');
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      const start = `${keepMonth}-01`;
+      const end = `${keepMonth}-31`;
+
+      // Deletar receitas fora do mês
+      const { error: incErr } = await supabase
+        .from('income')
+        .delete()
+        .or(`date.lt.${start},date.gt.${end}`);
+
+      // Deletar despesas fora do mês
+      const { error: expErr } = await supabase
+        .from('expenses')
+        .delete()
+        .or(`date.lt.${start},date.gt.${end}`);
+
+      if (incErr || expErr) {
+        toast.error(`Erro: ${incErr?.message || expErr?.message}`);
+      } else {
+        toast.success(`✅ Dados fora de ${keepMonth} excluídos com sucesso!`);
+        setConfirmText('');
+      }
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -154,6 +195,50 @@ export default function SettingsPage() {
         <Save className="w-4 h-4" />
         {upsert.isPending ? 'Salvando...' : 'Salvar Configurações'}
       </button>
+
+      {/* ── Zona de Perigo ── */}
+      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5 space-y-4">
+        <div className="flex items-center gap-2 text-destructive font-semibold text-sm">
+          <AlertTriangle className="w-4 h-4" />
+          Zona de Perigo — Limpeza de Dados
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Exclui <strong>todas as receitas e despesas</strong> que estejam <strong>fora do mês</strong> selecionado abaixo.
+          Esta ação é <strong>irreversível</strong>.
+        </p>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Mês a manter (YYYY-MM)</label>
+            <input
+              type="month"
+              value={keepMonth}
+              onChange={e => setKeepMonth(e.target.value)}
+              className="flex h-10 rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-destructive/30"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">
+              Digite <strong>EXCLUIR</strong> para confirmar
+            </label>
+            <input
+              type="text"
+              value={confirmText}
+              onChange={e => setConfirmText(e.target.value)}
+              placeholder="EXCLUIR"
+              className="flex h-10 w-full rounded-lg border border-destructive/30 bg-muted/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-destructive/30"
+            />
+          </div>
+          <button
+            onClick={handleDeleteOutsideMonth}
+            disabled={isDeleting || confirmText !== 'EXCLUIR'}
+            className="flex items-center gap-2 px-4 py-2 bg-destructive text-destructive-foreground rounded-lg text-sm font-medium hover:bg-destructive/90 transition-colors disabled:opacity-40"
+          >
+            <Trash2 className="w-4 h-4" />
+            {isDeleting ? 'Excluindo...' : `Excluir dados fora de ${keepMonth}`}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
