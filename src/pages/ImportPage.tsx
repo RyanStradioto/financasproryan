@@ -27,6 +27,7 @@ type ParsedRow = {
   classificationReason: string;
   isDuplicate: boolean;
   source: 'bank' | 'cc';
+  fitId?: string; // OFX unique ID for dedup
 };
 
 // ── Parsing helpers ──────────────────────────────────────────────
@@ -65,21 +66,45 @@ function parseDateStr(raw: string): string {
   return new Date().toISOString().split('T')[0];
 }
 
-/**
- * Dedup key: usa YYYY-MM (não o dia) + descrição + valor.
- * Usar apenas o mês evita falsos positivos quando a mesma descrição/valor
- * aparece em dias diferentes dentro do mesmo mês.
- * Usar só o mês (não a data completa) mantém a detecção robusta para reimportações do mesmo período.
- */
 function dedupeKey(date: string, description: string, amount: number): string {
-  const month = date.substring(0, 7); // YYYY-MM
+  const month = date.substring(0, 7);
   return `${month}|${description.toLowerCase().trim()}|${Math.abs(amount).toFixed(2)}`;
 }
 
-/** Get unique months (YYYY-MM) from a list of rows */
 function getImportedMonths(rows: ParsedRow[]): string[] {
   const months = new Set(rows.map(r => r.date.substring(0, 7)));
   return [...months].sort();
+}
+
+// ── OFX type detection ───────────────────────────────────────────
+
+type OFXType = 'bank' | 'creditcard';
+
+function detectOFXType(text: string): OFXType {
+  if (/<CREDITCARDMSGSRSV1>/i.test(text) || /<CCSTMTTRNRS>/i.test(text) || /<CCSTMTRS>/i.test(text)) {
+    return 'creditcard';
+  }
+  return 'bank';
+}
+
+/**
+ * Extracts the bill month from a credit card OFX.
+ * Uses DTEND from BANKTRANLIST which represents the closing date.
+ * The bill month is the month AFTER the closing date (when you pay).
+ */
+function extractCCBillMonth(text: string): string {
+  const dtEndMatch = text.match(/<DTEND>(\d{8})/i);
+  if (dtEndMatch) {
+    const dtStr = dtEndMatch[1];
+    const year = parseInt(dtStr.slice(0, 4));
+    const month = parseInt(dtStr.slice(4, 6));
+    // Bill month = month after closing (DTEND)
+    const billDate = new Date(year, month, 1); // month is already 0-indexed +1
+    return `${billDate.getFullYear()}-${String(billDate.getMonth() + 1).padStart(2, '0')}`;
+  }
+  // Fallback: current month
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
 // ── CSV parser ───────────────────────────────────────────────────
@@ -147,7 +172,32 @@ function parseCSV(text: string, rules: any[], source: 'bank' | 'cc'): ParsedRow[
 
 // ── OFX parser ───────────────────────────────────────────────────
 
-function parseOFX(text: string, rules: any[], source: 'bank' | 'cc'): ParsedRow[] {
+const CC_PAYMENT_KEYWORDS = [
+  'pagamento de fatura', 'pag fatura', 'fatura cartao', 'fatura cartão',
+  'pagto fatura', 'pgto cartao', 'pgto cartão', 'pag cartao', 'pag cartão',
+  'pagamento nubank', 'debito automatico cartao',
+];
+
+const CC_CREDIT_SKIP_KEYWORDS = [
+  'pagamento recebido', 'ajuste a crédito',
+];
+
+function detectCCPayment(description: string): boolean {
+  const lower = description.toLowerCase();
+  return CC_PAYMENT_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+function shouldSkipCCCredit(description: string): boolean {
+  const lower = description.toLowerCase();
+  return CC_CREDIT_SKIP_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+function parseOFX(text: string, rules: any[]): { rows: ParsedRow[]; detectedType: OFXType; billMonth?: string } {
+  const detectedType = detectOFXType(text);
+  const isCreditCard = detectedType === 'creditcard';
+  const source: 'bank' | 'cc' = isCreditCard ? 'cc' : 'bank';
+  const billMonth = isCreditCard ? extractCCBillMonth(text) : undefined;
+
   const rows: ParsedRow[] = [];
   const stmtRx = /<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi;
   let match;
@@ -161,45 +211,66 @@ function parseOFX(text: string, rules: any[], source: 'bank' | 'cc'): ParsedRow[
     const date = dtStr.length >= 8
       ? `${dtStr.slice(0, 4)}-${dtStr.slice(4, 6)}-${dtStr.slice(6, 8)}`
       : new Date().toISOString().split('T')[0];
-    const amount = parseFloat(get('TRNAMT')) || 0;
-    if (amount === 0) continue;
+    const rawAmount = parseFloat(get('TRNAMT')) || 0;
+    if (rawAmount === 0) continue;
     const description = get('MEMO') || get('NAME') || 'Transação OFX';
-    const result = classifyDescription(description, amount, rules);
+    const fitId = get('FITID');
+    const trnType = get('TRNTYPE').toUpperCase();
+
+    // For credit card OFX: skip "Pagamento recebido" and other credits (they're not purchases)
+    if (isCreditCard && trnType === 'CREDIT' && shouldSkipCCCredit(description)) {
+      console.log('[OFX] Ignorando crédito no cartão:', description, rawAmount);
+      continue;
+    }
+
+    const amount = Math.abs(rawAmount);
+    const isIncome = !isCreditCard && rawAmount > 0;
+    
+    let rowType: RowType;
+    let classReason: string;
+    
+    if (isCreditCard) {
+      rowType = 'expense';
+      classReason = 'Fatura do cartão';
+    } else if (detectCCPayment(description)) {
+      rowType = 'cc_payment';
+      classReason = 'Pagamento de fatura detectado';
+    } else {
+      const result = classifyDescription(description, rawAmount, rules);
+      rowType = isIncome ? 'income' : result.type as RowType;
+      classReason = result.reason;
+    }
+
+    const result = classifyDescription(description, rawAmount, rules);
+
     rows.push({
-      date, description, amount: Math.abs(amount),
-      type: source === 'cc' ? 'expense' : result.type as RowType,
+      date, description, amount,
+      type: rowType,
       categoryId: result.categoryId ?? '',
       investmentId: result.investmentId ?? '',
       creditCardId: '',
       selected: true,
-      confidence: result.confidence,
-      classificationReason: source === 'cc' ? 'Fatura do cartão' : result.reason,
+      confidence: isCreditCard ? 'high' : result.confidence,
+      classificationReason: classReason,
       isDuplicate: false,
       source,
+      fitId,
     });
   }
-  return rows;
+  return { rows, detectedType, billMonth };
 }
 
-function parseFile(text: string, fileName: string, rules: any[], source: 'bank' | 'cc'): ParsedRow[] {
+function parseFile(text: string, fileName: string, rules: any[], forcedSource?: 'bank' | 'cc'): { rows: ParsedRow[]; detectedType?: OFXType; billMonth?: string } {
   const ext = fileName.toLowerCase();
   if (ext.endsWith('.ofx') || ext.endsWith('.qfx')) {
-    return parseOFX(text, rules, source);
+    const result = parseOFX(text, rules);
+    // If user forced a source via upload slot, override
+    if (forcedSource && forcedSource !== (result.detectedType === 'creditcard' ? 'cc' : 'bank')) {
+      return { rows: result.rows.map(r => ({ ...r, source: forcedSource })), detectedType: result.detectedType, billMonth: result.billMonth };
+    }
+    return result;
   }
-  return parseCSV(text, rules, source);
-}
-
-// ── CC payment detection ─────────────────────────────────────────
-
-const CC_PAYMENT_KEYWORDS = [
-  'pagamento de fatura', 'pag fatura', 'fatura cartao', 'fatura cartão',
-  'pagto fatura', 'pgto cartao', 'pgto cartão', 'pag cartao', 'pag cartão',
-  'nubank', 'pagamento nubank', 'debito automatico cartao',
-];
-
-function detectCCPayment(description: string): boolean {
-  const lower = description.toLowerCase();
-  return CC_PAYMENT_KEYWORDS.some(kw => lower.includes(kw));
+  return { rows: parseCSV(text, rules, forcedSource || 'bank') };
 }
 
 // ── Type labels & colors ─────────────────────────────────────────
@@ -233,8 +304,10 @@ export default function ImportPage() {
   const [ccRows, setCcRows] = useState<ParsedRow[]>([]);
   const [bankFileName, setBankFileName] = useState('');
   const [ccFileName, setCcFileName] = useState('');
+  const [ccBillMonth, setCcBillMonth] = useState('');
   const [activeTab, setActiveTab] = useState('bank');
   const [forceImport, setForceImport] = useState(false);
+  const [autoDetectedInfo, setAutoDetectedInfo] = useState('');
 
   const { data: categories = [] } = useCategories();
   const { data: investments = [] } = useInvestments();
@@ -248,7 +321,7 @@ export default function ImportPage() {
   const addCCTransaction = useAddCreditCardTransaction();
   const { user } = useAuth();
 
-  // Build set of existing transaction keys for dedup
+  // Build set of existing keys for dedup
   const existingKeys = useMemo(() => {
     const keys = new Set<string>();
     existingExpenses.forEach(e => keys.add(dedupeKey(e.date, e.description, e.amount)));
@@ -256,24 +329,21 @@ export default function ImportPage() {
     return keys;
   }, [existingExpenses, existingIncome]);
 
-  // Mark duplicates and detect CC payments
+  // Mark duplicates
   const markRows = useCallback((parsed: ParsedRow[]): ParsedRow[] => {
     return parsed.map(row => {
       const key = dedupeKey(row.date, row.description, row.amount);
       const isDuplicate = existingKeys.has(key);
-      const isCCPayment = row.source === 'bank' && detectCCPayment(row.description);
       return {
         ...row,
         isDuplicate,
-        selected: !isDuplicate, // marcado por padrão somente se não for duplicata
-        type: isCCPayment ? 'cc_payment' as RowType : row.type,
-        classificationReason: isDuplicate ? '⚠️ Já importado no mesmo período' : isCCPayment ? 'Pagamento de fatura detectado' : row.classificationReason,
-        confidence: isDuplicate ? 'low' : isCCPayment ? 'high' : row.confidence,
+        selected: !isDuplicate,
+        classificationReason: isDuplicate ? '⚠️ Já importado no mesmo período' : row.classificationReason,
+        confidence: isDuplicate ? 'low' : row.confidence,
       };
     });
   }, [existingKeys]);
 
-  // Forçar importação: marca todas as duplicatas como selecionadas
   const handleForceImport = useCallback(() => {
     setForceImport(true);
     setBankRows(prev => prev.map(r => r.isDuplicate ? { ...r, selected: true } : r));
@@ -281,43 +351,69 @@ export default function ImportPage() {
     toast.info('Todas as transações foram marcadas. Revise e clique Importar.');
   }, []);
 
-  const handleBankFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = useCallback((slot: 'bank' | 'cc') => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setBankFileName(file.name);
+    
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
-      const parsed = parseFile(text, file.name, classificationRules, 'bank');
-      if (parsed.length === 0) { toast.error('Nenhuma transação encontrada no arquivo'); return; }
-      const marked = markRows(parsed);
-      setBankRows(marked);
-      const dupes = marked.filter(r => r.isDuplicate).length;
-      const ccPay = marked.filter(r => r.type === 'cc_payment').length;
-      toast.success(`${parsed.length} transações lidas${dupes > 0 ? ` (${dupes} duplicadas detectadas)` : ''}${ccPay > 0 ? ` — ${ccPay} pagamento(s) de fatura identificado(s)` : ''}`);
+      const result = parseFile(text, file.name, classificationRules);
+      
+      if (result.rows.length === 0) {
+        toast.error('Nenhuma transação encontrada no arquivo');
+        return;
+      }
+
+      const isOFXCreditCard = result.detectedType === 'creditcard';
+      
+      // Auto-detect: if user uploaded a CC OFX in the bank slot, redirect to CC slot
+      if (slot === 'bank' && isOFXCreditCard) {
+        setCcFileName(file.name);
+        setCcRows(result.rows);
+        if (result.billMonth) setCcBillMonth(result.billMonth);
+        setAutoDetectedInfo(`📋 "${file.name}" foi detectado como fatura de cartão de crédito e movido para o slot correto.`);
+        toast.success(`${result.rows.length} transações da fatura lidas (auto-detectado como cartão de crédito)`);
+        e.target.value = '';
+        return;
+      }
+      
+      // Auto-detect: if user uploaded a bank OFX in the CC slot, redirect to bank slot  
+      if (slot === 'cc' && !isOFXCreditCard) {
+        setBankFileName(file.name);
+        const marked = markRows(result.rows);
+        setBankRows(marked);
+        setAutoDetectedInfo(`📋 "${file.name}" foi detectado como extrato bancário e movido para o slot correto.`);
+        const dupes = marked.filter(r => r.isDuplicate).length;
+        const ccPay = marked.filter(r => r.type === 'cc_payment').length;
+        toast.success(`${result.rows.length} transações lidas (auto-detectado como extrato bancário)${dupes > 0 ? ` (${dupes} duplicadas)` : ''}${ccPay > 0 ? ` — ${ccPay} pagamento(s) de fatura` : ''}`);
+        e.target.value = '';
+        return;
+      }
+
+      // Normal flow
+      if (slot === 'cc' || isOFXCreditCard) {
+        setCcFileName(file.name);
+        setCcRows(result.rows);
+        if (result.billMonth) setCcBillMonth(result.billMonth);
+        toast.success(`${result.rows.length} transações da fatura lidas`);
+      } else {
+        setBankFileName(file.name);
+        const marked = markRows(result.rows);
+        setBankRows(marked);
+        const dupes = marked.filter(r => r.isDuplicate).length;
+        const ccPay = marked.filter(r => r.type === 'cc_payment').length;
+        toast.success(`${result.rows.length} transações lidas${dupes > 0 ? ` (${dupes} duplicadas)` : ''}${ccPay > 0 ? ` — ${ccPay} pagamento(s) de fatura` : ''}`);
+      }
+      
+      setAutoDetectedInfo('');
     };
     reader.readAsText(file, 'UTF-8');
     e.target.value = '';
   }, [classificationRules, markRows]);
 
-  const handleCCFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setCcFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      const parsed = parseFile(text, file.name, classificationRules, 'cc');
-      if (parsed.length === 0) { toast.error('Nenhuma transação encontrada no arquivo da fatura'); return; }
-      setCcRows(parsed);
-      toast.success(`${parsed.length} transações da fatura lidas`);
-    };
-    reader.readAsText(file, 'UTF-8');
-    e.target.value = '';
-  }, [classificationRules]);
-
   // Cross-reference: total CC rows vs CC payment in bank
-  const ccTotal = useMemo(() => ccRows.filter(r => r.selected).reduce((s, r) => s + r.amount, 0), [ccRows]);
+  const ccTotal = useMemo(() => ccRows.filter(r => r.selected && r.type === 'expense').reduce((s, r) => s + r.amount, 0), [ccRows]);
   const bankCCPayment = useMemo(() => bankRows.filter(r => r.type === 'cc_payment').reduce((s, r) => s + r.amount, 0), [bankRows]);
   const crossRefMatch = ccTotal > 0 && bankCCPayment > 0 && Math.abs(ccTotal - bankCCPayment) < 1;
 
@@ -341,6 +437,7 @@ export default function ImportPage() {
     console.log('[Import] Iniciando:', {
       expenses: expenseRows.length, income: incomeRows.length,
       investments: investmentRows.length, ccItems: ccSelected.length, userId: user?.id,
+      ccBillMonth,
     });
 
     let successCount = 0;
@@ -388,18 +485,37 @@ export default function ImportPage() {
     if (ccSelected.length > 0) {
       const defaultCardId = ccSelected[0]?.creditCardId || creditCards[0]?.id;
       if (defaultCardId) {
-        for (const r of ccSelected) {
-          try {
-            await addCCTransaction.mutateAsync({
-              credit_card_id: r.creditCardId || defaultCardId,
-              category_id: r.categoryId || null,
-              description: r.description, amount: r.amount,
-              date: r.date, bill_month: r.date.substring(0, 7), installments: 1,
-            });
-            successCount++;
-          } catch (e: any) { errorMessages.push(`Fatura "${r.description}": ${e.message}`); }
+        // Use the detected bill month or derive from the transaction dates
+        const effectiveBillMonth = ccBillMonth || ccSelected[0]?.date.substring(0, 7);
+        
+        const ccPayload = ccSelected.map(r => ({
+          user_id: user!.id,
+          credit_card_id: r.creditCardId || defaultCardId,
+          category_id: r.categoryId || null,
+          description: r.description,
+          amount: r.amount,
+          date: r.date,
+          bill_month: effectiveBillMonth,
+          is_installment: false,
+          installment_number: null,
+          total_installments: null,
+          installment_group_id: null,
+          is_recurring: false,
+          notes: null,
+          paid: false,
+        }));
+        
+        console.log('[Import] Inserindo transações CC em lote:', ccPayload.length, 'bill_month:', effectiveBillMonth);
+        const { error } = await sb.from('credit_card_transactions').insert(ccPayload);
+        if (error) { 
+          console.error('[Import] Erro CC:', error); 
+          errorMessages.push(`Fatura: ${error.message}`); 
+        } else { 
+          successCount += ccSelected.length; 
+          console.log('[Import] CC OK'); 
         }
       } else {
+        // No credit card registered — save as regular expenses
         const payload = ccSelected.map(r => ({
           date: r.date, description: r.description, amount: r.amount,
           category_id: r.categoryId || null, status: 'concluido', user_id: user!.id,
@@ -425,10 +541,9 @@ export default function ImportPage() {
         const [y, mo] = m.split('-');
         return `${['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][+mo-1]}/${y}`;
       }).join(', ');
-      toast.success(`✅ ${successCount} transações salvas! Veja em Receitas/Despesas no mês ${monthsLabel}.`, { duration: 8000 });
-      setBankRows([]); setCcRows([]); setBankFileName(''); setCcFileName(''); setForceImport(false);
+      toast.success(`✅ ${successCount} transações salvas! Período: ${monthsLabel}.`, { duration: 8000 });
+      setBankRows([]); setCcRows([]); setBankFileName(''); setCcFileName(''); setCcBillMonth(''); setForceImport(false); setAutoDetectedInfo('');
     }
-
   };
 
   const activeCategories = categories.filter(c => !c.archived);
@@ -563,7 +678,7 @@ export default function ImportPage() {
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Importar Extrato</h1>
-        <p className="text-sm text-muted-foreground">Importe o extrato do banco e a fatura do cartão juntos — o app cruza os dados automaticamente</p>
+        <p className="text-sm text-muted-foreground">Importe o extrato do banco e a fatura do cartão — o app detecta automaticamente o tipo do arquivo OFX</p>
       </div>
 
       {/* Instructions */}
@@ -572,20 +687,29 @@ export default function ImportPage() {
           <Info className="w-4 h-4 text-primary" /> Como funciona
         </div>
         <ol className="text-xs text-muted-foreground space-y-1 ml-6 list-decimal">
-          <li><strong>Extrato do banco:</strong> Exporte o CSV/OFX do seu banco (ex: Nubank → Exportar dados)</li>
-          <li><strong>Fatura do cartão (opcional):</strong> Exporte a fatura do cartão de crédito separadamente</li>
-          <li>Anexe os dois arquivos abaixo e clique <strong>Importar</strong> — tudo é processado de uma vez</li>
-          <li><strong>Transações duplicadas</strong> são identificadas e desmarcadas automaticamente</li>
+          <li><strong>Extrato do banco:</strong> Exporte o OFX/CSV do seu banco (conta corrente)</li>
+          <li><strong>Fatura do cartão:</strong> Exporte o OFX/CSV da fatura do cartão de crédito</li>
+          <li>O app <strong>detecta automaticamente</strong> se o arquivo é extrato ou fatura (pode soltar em qualquer slot!)</li>
+          <li>"Pagamento de fatura" no extrato é <strong>substituído pelos itens detalhados</strong> da fatura</li>
+          <li>Transações duplicadas são identificadas e desmarcadas automaticamente</li>
         </ol>
       </div>
 
-      {/* Upload areas — always visible */}
+      {/* Auto-detection info */}
+      {autoDetectedInfo && (
+        <div className="rounded-lg bg-primary/5 border border-primary/20 px-4 py-3 text-sm text-primary flex items-center gap-2">
+          <Info className="w-4 h-4 shrink-0" />
+          {autoDetectedInfo}
+        </div>
+      )}
+
+      {/* Upload areas */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {renderUploadArea(
           bankFileName ? 'Extrato carregado ✓' : 'Extrato do Banco',
           <Building2 className={`w-6 h-6 ${bankFileName ? 'text-primary' : 'text-muted-foreground'}`} />,
           bankFileName,
-          handleBankFile,
+          handleFileUpload('bank'),
           'CSV ou OFX do extrato bancário do mês',
           !!bankFileName
         )}
@@ -593,14 +717,22 @@ export default function ImportPage() {
           ccFileName ? 'Fatura carregada ✓' : 'Fatura do Cartão',
           <CreditCard className={`w-6 h-6 ${ccFileName ? 'text-primary' : 'text-muted-foreground'}`} />,
           ccFileName,
-          handleCCFile,
-          'CSV ou OFX da fatura do cartão (opcional)',
+          handleFileUpload('cc'),
+          'CSV ou OFX da fatura do cartão de crédito',
           !!ccFileName
         )}
       </div>
 
       {hasAnyData && (
         <>
+          {/* Bill month info */}
+          {ccBillMonth && (
+            <div className="rounded-lg bg-muted/40 border border-border px-4 py-2 text-sm flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-muted-foreground" />
+              <span>Mês da fatura detectado: <strong>{ccBillMonth.split('-').reverse().join('/')}</strong></span>
+            </div>
+          )}
+
           {/* Cross-reference banner */}
           {ccRows.length > 0 && bankCCPayment > 0 && (
             <div className={`rounded-lg border px-4 py-3 text-sm flex items-center gap-3 ${
@@ -623,7 +755,7 @@ export default function ImportPage() {
               <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
               <div className="flex-1">
                 <p><strong>{bankRows.filter(r => r.isDuplicate).length} transação(ões) detectada(s) como já importadas</strong> e desmarcadas automaticamente.</p>
-                <p className="text-xs mt-1 text-muted-foreground">Se tiver certeza que <strong>não estão no banco</strong> (ex: data errada em importação anterior), clique abaixo para forçar a importação.</p>
+                <p className="text-xs mt-1 text-muted-foreground">Se tiver certeza que <strong>não estão no banco</strong>, clique abaixo para forçar a importação.</p>
                 <button
                   onClick={handleForceImport}
                   className="mt-2 text-xs underline text-warning hover:text-warning/80 transition-colors"
@@ -642,7 +774,7 @@ export default function ImportPage() {
               <span className="font-medium text-foreground">{totalSelected} selecionadas</span>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => { setBankRows([]); setCcRows([]); setBankFileName(''); setCcFileName(''); }}>
+              <Button variant="outline" size="sm" onClick={() => { setBankRows([]); setCcRows([]); setBankFileName(''); setCcFileName(''); setCcBillMonth(''); setAutoDetectedInfo(''); }}>
                 <Trash2 className="w-4 h-4 mr-1" /> Limpar
               </Button>
               <Button size="sm" onClick={handleImport} disabled={totalSelected === 0 || addExpenseBatch.isPending}>
