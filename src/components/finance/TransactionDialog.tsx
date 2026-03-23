@@ -223,9 +223,10 @@ export default function TransactionDialog({ type, children }: Props) {
                   {aiSuggesting && <Loader2 className="w-3 h-3 animate-spin text-primary" />}
                   {!aiSuggesting && categoryId && <Sparkles className="w-3 h-3 text-primary" />}
                 </Label>
-                <Select value={categoryId} onValueChange={setCategoryId}>
+                <Select value={categoryId} onValueChange={(v) => setCategoryId(v === '__none__' ? '' : v)}>
                   <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="__none__">Sem categoria</SelectItem>
                     {categories?.filter(c => !c.archived).map(c => (
                       <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>
                     ))}
