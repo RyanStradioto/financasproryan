@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, TrendingUp, TrendingDown, Grid3X3, Landmark, CalendarDays, Settings, LogOut, DollarSign, Moon, Sun, Upload, Brain, BarChart3, CreditCard } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, TrendingDown, Grid3X3, Landmark, CalendarDays, Settings, LogOut, DollarSign, Moon, Sun, Upload, Brain, BarChart3, CreditCard, FileText } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
@@ -13,6 +13,7 @@ const links = [
   { to: '/categorias', icon: Grid3X3, label: 'Categorias' },
   { to: '/contas', icon: Landmark, label: 'Contas' },
   { to: '/calendario', icon: CalendarDays, label: 'Calendário' },
+  { to: '/relatorio', icon: FileText, label: 'Relatório' },
   { to: '/insights', icon: Brain, label: 'Insights IA' },
   { to: '/importar', icon: Upload, label: 'Importar Extrato' },
   { to: '/configuracoes', icon: Settings, label: 'Configurações' },

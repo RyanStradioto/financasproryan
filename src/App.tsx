@@ -16,6 +16,7 @@ import ImportPage from "./pages/ImportPage";
 import InsightsPage from "./pages/InsightsPage";
 import InvestmentsPage from "./pages/InvestmentsPage";
 import CreditCardsPage from "./pages/CreditCardsPage";
+import ReportPage from "./pages/ReportPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ function ProtectedRoutes() {
         <Route path="/insights" element={<InsightsPage />} />
         <Route path="/investimentos" element={<InvestmentsPage />} />
         <Route path="/cartoes" element={<CreditCardsPage />} />
+        <Route path="/relatorio" element={<ReportPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppLayout>

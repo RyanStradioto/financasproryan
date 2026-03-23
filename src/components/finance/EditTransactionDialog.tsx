@@ -129,9 +129,10 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
           {transaction.type === 'expense' && (
             <div className="space-y-1.5">
               <Label>Categoria</Label>
-              <Select value={categoryId} onValueChange={setCategoryId}>
+              <Select value={categoryId || '__none__'} onValueChange={(v) => setCategoryId(v === '__none__' ? '' : v)}>
                 <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="__none__">Sem categoria</SelectItem>
                   {categories?.filter(c => !c.archived).map(c => (
                     <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>
                   ))}
