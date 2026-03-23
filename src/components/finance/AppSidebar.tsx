@@ -13,6 +13,7 @@ const links = [
   { to: '/categorias', icon: Grid3X3, label: 'Categorias' },
   { to: '/contas', icon: Landmark, label: 'Contas' },
   { to: '/calendario', icon: CalendarDays, label: 'Calendário' },
+  { to: '/relatorio', icon: FileText, label: 'Relatório' },
   { to: '/insights', icon: Brain, label: 'Insights IA' },
   { to: '/importar', icon: Upload, label: 'Importar Extrato' },
   { to: '/configuracoes', icon: Settings, label: 'Configurações' },
