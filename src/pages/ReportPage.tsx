@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { TrendingUp, TrendingDown, Wallet, PiggyBank, CreditCard, FileText, Download } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 const CHART_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
 
@@ -103,6 +105,144 @@ export default function ReportPage() {
     ? getMonthLabel(startMonth)
     : `${getMonthLabel(startMonth)} — ${getMonthLabel(endMonth)}`;
 
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let y = 20;
+
+    // Title
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Relatorio Financeiro', pageWidth / 2, y, { align: 'center' });
+    y += 8;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(periodLabel.normalize('NFD').replace(/[\u0300-\u036f]/g, ''), pageWidth / 2, y, { align: 'center' });
+    y += 14;
+
+    // Summary
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Resumo', 14, y);
+    y += 8;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+
+    const fmtBRL = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+
+    const summaryData = [
+      ['Receitas', fmtBRL(totalIncome)],
+      ['Despesas', fmtBRL(totalExpenses)],
+      ['Saldo', fmtBRL(balance)],
+      ['Taxa de Economia', `${savingsRate.toFixed(1)}%`],
+    ];
+
+    (doc as unknown as { autoTable: (opts: Record<string, unknown>) => void }).autoTable({
+      startY: y,
+      head: [['Item', 'Valor']],
+      body: summaryData,
+      theme: 'grid',
+      headStyles: { fillColor: [59, 130, 246] },
+      margin: { left: 14, right: 14 },
+    });
+
+    y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 12;
+
+    // Category breakdown
+    if (catBreakdown.length > 0) {
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Despesas por Categoria', 14, y);
+      y += 8;
+
+      const catData = catBreakdown.map(c => [
+        c.name.normalize('NFD').replace(/[\u0300-\u036f]/g, ''),
+        fmtBRL(c.value),
+        totalExpenses > 0 ? `${((c.value / totalExpenses) * 100).toFixed(1)}%` : '0%',
+      ]);
+
+      (doc as unknown as { autoTable: (opts: Record<string, unknown>) => void }).autoTable({
+        startY: y,
+        head: [['Categoria', 'Valor', '% Total']],
+        body: catData,
+        theme: 'grid',
+        headStyles: { fillColor: [59, 130, 246] },
+        margin: { left: 14, right: 14 },
+      });
+
+      y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 12;
+    }
+
+    // Top 10 expenses
+    if (topExpenses.length > 0) {
+      if (y > 240) { doc.addPage(); y = 20; }
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Top 10 Maiores Despesas', 14, y);
+      y += 8;
+
+      const topData = topExpenses.map((e, i) => {
+        const cat = categories.find(c => c.id === e.category_id);
+        return [
+          String(i + 1),
+          (e.description || 'Despesa').normalize('NFD').replace(/[\u0300-\u036f]/g, ''),
+          cat ? cat.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : '-',
+          e.date,
+          fmtBRL(Number(e.amount)),
+        ];
+      });
+
+      (doc as unknown as { autoTable: (opts: Record<string, unknown>) => void }).autoTable({
+        startY: y,
+        head: [['#', 'Descricao', 'Categoria', 'Data', 'Valor']],
+        body: topData,
+        theme: 'grid',
+        headStyles: { fillColor: [59, 130, 246] },
+        margin: { left: 14, right: 14 },
+        columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 60 } },
+      });
+
+      y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 12;
+    }
+
+    // Account breakdown
+    if (accountBreakdown.length > 0) {
+      if (y > 240) { doc.addPage(); y = 20; }
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Resumo por Conta', 14, y);
+      y += 8;
+
+      const accData = accountBreakdown.map(a => [
+        a.name.normalize('NFD').replace(/[\u0300-\u036f]/g, ''),
+        fmtBRL(a.income),
+        fmtBRL(a.expense),
+        fmtBRL(a.balance),
+      ]);
+
+      (doc as unknown as { autoTable: (opts: Record<string, unknown>) => void }).autoTable({
+        startY: y,
+        head: [['Conta', 'Receitas', 'Despesas', 'Saldo']],
+        body: accData,
+        theme: 'grid',
+        headStyles: { fillColor: [59, 130, 246] },
+        margin: { left: 14, right: 14 },
+      });
+    }
+
+    // Footer
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`FinancasPro - Pagina ${i}/${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+    }
+
+    const fileName = `relatorio_${startMonth}${startMonth !== endMonth ? `_a_${endMonth}` : ''}.pdf`;
+    doc.save(fileName);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
@@ -140,6 +280,12 @@ export default function ReportPage() {
               <FileText className="w-4 h-4" />
               Gerar Relatório
             </Button>
+            {generated && (
+              <Button onClick={handleExportPDF} variant="outline" className="gap-2">
+                <Download className="w-4 h-4" />
+                Exportar PDF
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

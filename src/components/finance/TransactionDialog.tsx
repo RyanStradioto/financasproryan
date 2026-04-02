@@ -28,6 +28,7 @@ export default function TransactionDialog({ type, children }: Props) {
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
   const [attachmentName, setAttachmentName] = useState<string | null>(null);
   const [installments, setInstallments] = useState('1');
+  const [startInstallment, setStartInstallment] = useState('1');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [aiSuggesting, setAiSuggesting] = useState(false);
   const aiDebounce = useRef<ReturnType<typeof setTimeout>>();
@@ -81,6 +82,7 @@ export default function TransactionDialog({ type, children }: Props) {
     setAttachmentUrl(null);
     setAttachmentName(null);
     setInstallments('1');
+    setStartInstallment('1');
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,12 +120,15 @@ export default function TransactionDialog({ type, children }: Props) {
       } else if (numInstallments > 1) {
         // Create installment records
         const baseDate = new Date(date + 'T00:00:00');
-        const items = Array.from({ length: numInstallments }, (_, i) => {
+        const start = parseInt(startInstallment) || 1;
+        const remaining = numInstallments - start + 1;
+        const items = Array.from({ length: remaining }, (_, i) => {
+          const installNum = start + i;
           const d = new Date(baseDate);
           d.setMonth(d.getMonth() + i);
           return {
             date: d.toISOString().split('T')[0],
-            description: `${description || 'Despesa'} (${i + 1}/${numInstallments})`,
+            description: `${description || 'Despesa'} (${installNum}/${numInstallments})`,
             amount: numAmount,
             category_id: categoryId || null,
             account_id: accountId || null,
@@ -134,7 +139,7 @@ export default function TransactionDialog({ type, children }: Props) {
           };
         });
         await addExpenseBatch.mutateAsync(items);
-        toast.success(`${numInstallments} parcelas criadas!`);
+        toast.success(`${remaining} parcelas criadas! (${start}/${numInstallments} a ${numInstallments}/${numInstallments})`);
         reset();
         setOpen(false);
         return;
@@ -259,13 +264,28 @@ export default function TransactionDialog({ type, children }: Props) {
                 </div>
               </div>
               {parseInt(installments) > 1 && (
-                <div className="rounded-lg bg-muted/50 border border-border p-3 text-xs text-muted-foreground">
-                  💳 Serão criadas <span className="font-semibold text-foreground">{installments} parcelas</span> de{' '}
-                  <span className="font-semibold text-foreground currency">
-                    R$ {amount ? parseFloat(amount.replace(',', '.')).toFixed(2).replace('.', ',') : '0,00'}
-                  </span>{' '}
-                  nos próximos meses.
-                </div>
+                <>
+                  <div className="space-y-1.5">
+                    <Label>Parcela inicial (já pagas antes)</Label>
+                    <Select value={startInstallment} onValueChange={setStartInstallment}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: parseInt(installments) }, (_, i) => i + 1).map(n => (
+                          <SelectItem key={n} value={String(n)}>
+                            {n === 1 ? '1ª (nenhuma paga)' : `${n}ª (${n - 1} já paga${n - 1 > 1 ? 's' : ''})`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="rounded-lg bg-muted/50 border border-border p-3 text-xs text-muted-foreground">
+                    💳 Serão criadas <span className="font-semibold text-foreground">{parseInt(installments) - parseInt(startInstallment) + 1} parcelas</span> de{' '}
+                    <span className="font-semibold text-foreground currency">
+                      R$ {amount ? parseFloat(amount.replace(',', '.')).toFixed(2).replace('.', ',') : '0,00'}
+                    </span>{' '}
+                    ({startInstallment}/{installments} a {installments}/{installments})
+                  </div>
+                </>
               )}
             </>
           )}

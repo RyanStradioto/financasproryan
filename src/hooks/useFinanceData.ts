@@ -110,7 +110,7 @@ export function useAddIncome() {
       const { error } = await supabase.from('income').insert({ ...data, user_id: user!.id });
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['income'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['income'] }).then(() => qc.invalidateQueries({ queryKey: ['accumulated-balance'] })),
   });
 }
 
@@ -122,7 +122,7 @@ export function useAddExpense() {
       const { error } = await supabase.from('expenses').insert({ ...data, user_id: user!.id });
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['expenses'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['expenses'] }).then(() => qc.invalidateQueries({ queryKey: ['accumulated-balance'] })),
   });
 }
 
@@ -135,7 +135,7 @@ export function useAddExpenseBatch() {
       const { error } = await supabase.from('expenses').insert(rows);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['expenses'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['expenses'] }).then(() => qc.invalidateQueries({ queryKey: ['accumulated-balance'] })),
   });
 }
 

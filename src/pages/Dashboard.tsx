@@ -13,6 +13,7 @@ import SmartAlerts from '@/components/finance/SmartAlerts';
 import Achievements from '@/components/finance/Achievements';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { useCategories } from '@/hooks/useFinanceData';
+import { useAccumulatedBalance } from '@/hooks/useAccumulatedBalance';
 
 const CHART_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
 
@@ -22,6 +23,7 @@ export default function Dashboard() {
   const { data: expenses = [] } = useExpenses(month);
   const { data: categories = [] } = useCategories();
   const { investmentTotal } = useNetWorth();
+  const { data: accumulatedBalance = 0 } = useAccumulatedBalance(month);
 
   const [editing, setEditing] = useState<((Income & { type: 'income' }) | (Expense & { type: 'expense' })) | null>(null);
 
@@ -31,8 +33,8 @@ export default function Dashboard() {
   const totalExpensesPaid = expenses
     .filter(e => e.status === 'concluido')
     .reduce((s, e) => s + Number(e.amount), 0);
-  const balance = totalIncome - totalExpensesPaid;
-  const savings = totalIncome > 0 ? ((balance / totalIncome) * 100) : 0;
+  const balance = accumulatedBalance;
+  const savings = totalIncome > 0 ? (((totalIncome - totalExpensesPaid) / totalIncome) * 100) : 0;
 
   const pendingExpenses = expenses
     .filter(e => e.status !== 'concluido')

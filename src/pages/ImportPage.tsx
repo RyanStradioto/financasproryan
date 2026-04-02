@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { Upload, Trash2, Check, TrendingUp, TrendingDown, BarChart3, Info, CreditCard, Building2, Link2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
+import { useQueryClient } from '@tanstack/react-query';
 
 type RowType = 'income' | 'expense' | 'investment' | 'cc_payment';
 
@@ -109,7 +110,7 @@ function extractCCBillMonth(text: string): string {
 
 // ── CSV parser ───────────────────────────────────────────────────
 
-function parseCSV(text: string, rules: Array<{ [key: string]: string }>, source: 'bank' | 'cc'): ParsedRow[] {
+function parseCSV(text: string, rules: Array<{ [key: string]: string }>, source: 'bank' | 'cc', categories: Array<{ id: string; name: string }> = []): ParsedRow[] {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) return [];
 
@@ -152,7 +153,7 @@ function parseCSV(text: string, rules: Array<{ [key: string]: string }>, source:
     const amount = parseMoney(rawAmount);
     if (amount === null || amount === 0) continue;
 
-    const result = classifyDescription(description, amount, rules);
+    const result = classifyDescription(description, amount, rules, categories);
     rows.push({
       date, description,
       amount: Math.abs(amount),
@@ -192,7 +193,7 @@ function shouldSkipCCCredit(description: string): boolean {
   return CC_CREDIT_SKIP_KEYWORDS.some(kw => lower.includes(kw));
 }
 
-function parseOFX(text: string, rules: Array<{ [key: string]: string }>): { rows: ParsedRow[]; detectedType: OFXType; billMonth?: string } {
+function parseOFX(text: string, rules: Array<{ [key: string]: string }>, categories: Array<{ id: string; name: string }> = []): { rows: ParsedRow[]; detectedType: OFXType; billMonth?: string } {
   const detectedType = detectOFXType(text);
   const isCreditCard = detectedType === 'creditcard';
   const source: 'bank' | 'cc' = isCreditCard ? 'cc' : 'bank';
@@ -236,12 +237,12 @@ function parseOFX(text: string, rules: Array<{ [key: string]: string }>): { rows
       rowType = 'cc_payment';
       classReason = 'Pagamento de fatura detectado';
     } else {
-      const result = classifyDescription(description, rawAmount, rules);
+      const result = classifyDescription(description, rawAmount, rules, categories);
       rowType = isIncome ? 'income' : result.type as RowType;
       classReason = result.reason;
     }
 
-    const result = classifyDescription(description, rawAmount, rules);
+    const result = classifyDescription(description, rawAmount, rules, categories);
 
     rows.push({
       date, description, amount,
@@ -260,17 +261,17 @@ function parseOFX(text: string, rules: Array<{ [key: string]: string }>): { rows
   return { rows, detectedType, billMonth };
 }
 
-function parseFile(text: string, fileName: string, rules: Array<{ [key: string]: string }>, forcedSource?: 'bank' | 'cc'): { rows: ParsedRow[]; detectedType?: OFXType; billMonth?: string } {
+function parseFile(text: string, fileName: string, rules: Array<{ [key: string]: string }>, forcedSource?: 'bank' | 'cc', categories: Array<{ id: string; name: string }> = []): { rows: ParsedRow[]; detectedType?: OFXType; billMonth?: string } {
   const ext = fileName.toLowerCase();
   if (ext.endsWith('.ofx') || ext.endsWith('.qfx')) {
-    const result = parseOFX(text, rules);
+    const result = parseOFX(text, rules, categories);
     // If user forced a source via upload slot, override
     if (forcedSource && forcedSource !== (result.detectedType === 'creditcard' ? 'cc' : 'bank')) {
       return { rows: result.rows.map(r => ({ ...r, source: forcedSource })), detectedType: result.detectedType, billMonth: result.billMonth };
     }
     return result;
   }
-  return { rows: parseCSV(text, rules, forcedSource || 'bank') };
+  return { rows: parseCSV(text, rules, forcedSource || 'bank', categories) };
 }
 
 // ── Type labels & colors ─────────────────────────────────────────
@@ -320,6 +321,7 @@ export default function ImportPage() {
   const addInvestmentTx = useAddInvestmentTransaction();
   const addCCTransaction = useAddCreditCardTransaction();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   // Build set of existing keys for dedup
   const existingKeys = useMemo(() => {
@@ -358,7 +360,7 @@ export default function ImportPage() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
-      const result = parseFile(text, file.name, classificationRules);
+      const result = parseFile(text, file.name, classificationRules, undefined, categories);
       
       if (result.rows.length === 0) {
         toast.error('Nenhuma transação encontrada no arquivo');
@@ -410,7 +412,7 @@ export default function ImportPage() {
     };
     reader.readAsText(file, 'UTF-8');
     e.target.value = '';
-  }, [classificationRules, markRows]);
+  }, [classificationRules, markRows, categories]);
 
   // Cross-reference: total CC rows vs CC payment in bank
   const ccTotal = useMemo(() => ccRows.filter(r => r.selected && r.type === 'expense').reduce((s, r) => s + r.amount, 0), [ccRows]);
@@ -539,6 +541,13 @@ export default function ImportPage() {
     }
 
     if (successCount > 0) {
+      // Invalidate all queries so data appears everywhere
+      await queryClient.invalidateQueries({ queryKey: ['income'] });
+      await queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      await queryClient.invalidateQueries({ queryKey: ['finance-history'] });
+      await queryClient.invalidateQueries({ queryKey: ['credit-card-transactions'] });
+      await queryClient.invalidateQueries({ queryKey: ['accumulated-balance'] });
+
       const months = getImportedMonths(allSelected);
       const monthsLabel = months.map(m => {
         const [y, mo] = m.split('-');
