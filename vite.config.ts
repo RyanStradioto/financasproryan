@@ -21,16 +21,13 @@ export default defineConfig(({ mode }) => ({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: (id: string) => {
-          if (id.includes('recharts')) return 'recharts';
-          if (id.includes('react-hook-form')) return 'react-hook-form';
-          if (id.includes('@tanstack/react-query')) return 'tanstack-react-query';
-          if (id.includes('@supabase/supabase-js')) return 'supabase';
-          if (id.includes('@radix-ui')) return 'radix-ui';
-          if (id.includes('node_modules')) return 'vendors';
+        manualChunks: {
+          'recharts': ['recharts'],
+          'radix-ui': ['@radix-ui/react-dialog', '@radix-ui/react-select'],
+          'supabase': ['@supabase/supabase-js'],
         },
       },
     },
-    chunkSizeWarningLimit: 600,
+    chunkSizeWarningLimit: 700,
   },
 }));
