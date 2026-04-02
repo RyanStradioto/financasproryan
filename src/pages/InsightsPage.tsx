@@ -49,8 +49,9 @@ export default function InsightsPage() {
 
       setInsights(data?.insights || []);
       setGenerated(true);
-    } catch (err: any) {
-      toast.error('Erro ao gerar insights: ' + (err.message || 'Tente novamente'));
+    } catch (err) {
+      const error = err as Error;
+      toast.error('Erro ao gerar insights: ' + (error.message || 'Tente novamente'));
     } finally {
       setLoading(false);
     }

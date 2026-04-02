@@ -168,7 +168,7 @@ export default function Dashboard() {
                     {t.type === 'income' ? '+' : '-'}{formatCurrency(Number(t.amount))}
                   </span>
                   <button
-                    onClick={() => setEditing(t as any)}
+                    onClick={() => setEditing(t as Transaction)}
                     className="p-1 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-all"
                   >
                     <Pencil className="w-3 h-3" />

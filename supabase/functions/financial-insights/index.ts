@@ -13,11 +13,11 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const totalIncome = income.reduce((s: number, i: any) => s + Number(i.amount), 0);
-    const totalExpenses = expenses.reduce((s: number, e: any) => s + Number(e.amount), 0);
+    const totalIncome = income.reduce((s: number, i: Record<string, unknown>) => s + Number(i.amount), 0);
+    const totalExpenses = expenses.reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0);
 
-    const catSummary = categories.map((c: any) => {
-      const spent = expenses.filter((e: any) => e.category_id === c.id).reduce((s: number, e: any) => s + Number(e.amount), 0);
+    const catSummary = categories.map((c: Record<string, unknown>) => {
+      const spent = expenses.filter((e: Record<string, unknown>) => e.category_id === c.id).reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0);
       return `${c.icon} ${c.name}: R$ ${spent.toFixed(2)} (orçamento: R$ ${c.monthly_budget || 0})`;
     }).join("\n");
 

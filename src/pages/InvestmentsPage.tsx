@@ -82,7 +82,10 @@ export default function InvestmentsPage() {
       toast.success('Investimento cadastrado!');
       setShowNewInvestment(false);
       setNewInv({ name: '', type: 'cdb', institution: '', current_value: '' });
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e) {
+      const error = e as Error;
+      toast.error(error.message);
+    }
   };
 
   const handleAporte = async () => {
@@ -100,7 +103,10 @@ export default function InvestmentsPage() {
       toast.success(`${label} registrado como movimentação patrimonial ✅`);
       setShowAporte(null);
       setAporteData({ amount: '', date: new Date().toISOString().split('T')[0], type: 'aporte', account_id: '', description: '' });
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e) {
+      const error = e as Error;
+      toast.error(error.message);
+    }
   };
 
   return (
@@ -308,7 +314,7 @@ export default function InvestmentsPage() {
           <div className="space-y-4">
             <div>
               <Label>Tipo</Label>
-              <Select value={aporteData.type} onValueChange={(v: any) => setAporteData(p => ({ ...p, type: v }))}>
+              <Select value={aporteData.type} onValueChange={(v: string) => setAporteData(p => ({ ...p, type: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="aporte">Aporte (entrada no investimento)</SelectItem>

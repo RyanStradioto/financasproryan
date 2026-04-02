@@ -109,7 +109,7 @@ function extractCCBillMonth(text: string): string {
 
 // ── CSV parser ───────────────────────────────────────────────────
 
-function parseCSV(text: string, rules: any[], source: 'bank' | 'cc'): ParsedRow[] {
+function parseCSV(text: string, rules: Array<{ [key: string]: string }>, source: 'bank' | 'cc'): ParsedRow[] {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) return [];
 
@@ -192,7 +192,7 @@ function shouldSkipCCCredit(description: string): boolean {
   return CC_CREDIT_SKIP_KEYWORDS.some(kw => lower.includes(kw));
 }
 
-function parseOFX(text: string, rules: any[]): { rows: ParsedRow[]; detectedType: OFXType; billMonth?: string } {
+function parseOFX(text: string, rules: Array<{ [key: string]: string }>): { rows: ParsedRow[]; detectedType: OFXType; billMonth?: string } {
   const detectedType = detectOFXType(text);
   const isCreditCard = detectedType === 'creditcard';
   const source: 'bank' | 'cc' = isCreditCard ? 'cc' : 'bank';
@@ -260,7 +260,7 @@ function parseOFX(text: string, rules: any[]): { rows: ParsedRow[]; detectedType
   return { rows, detectedType, billMonth };
 }
 
-function parseFile(text: string, fileName: string, rules: any[], forcedSource?: 'bank' | 'cc'): { rows: ParsedRow[]; detectedType?: OFXType; billMonth?: string } {
+function parseFile(text: string, fileName: string, rules: Array<{ [key: string]: string }>, forcedSource?: 'bank' | 'cc'): { rows: ParsedRow[]; detectedType?: OFXType; billMonth?: string } {
   const ext = fileName.toLowerCase();
   if (ext.endsWith('.ofx') || ext.endsWith('.qfx')) {
     const result = parseOFX(text, rules);
@@ -420,7 +420,7 @@ export default function ImportPage() {
   const toggleRow = (setter: React.Dispatch<React.SetStateAction<ParsedRow[]>>, i: number) =>
     setter(prev => prev.map((r, idx) => idx === i ? { ...r, selected: !r.selected } : r));
 
-  const updateRow = (setter: React.Dispatch<React.SetStateAction<ParsedRow[]>>, i: number, field: keyof ParsedRow, value: any) =>
+  const updateRow = (setter: React.Dispatch<React.SetStateAction<ParsedRow[]>>, i: number, field: keyof ParsedRow, value: unknown) =>
     setter(prev => prev.map((r, idx) => idx === i ? { ...r, [field]: value } : r));
 
   const handleImport = async () => {
@@ -478,7 +478,10 @@ export default function ImportPage() {
           amount: r.amount, date: r.date, description: r.description,
         });
         successCount++;
-      } catch (e: any) { errorMessages.push(`Investimento "${r.description}": ${e.message}`); }
+      } catch (e) {
+        const error = e as Error;
+        errorMessages.push(`Investimento "${r.description}": ${error.message}`);
+      }
     }
 
     // ── Fatura do cartão ──────────────────────────────────────────
@@ -613,7 +616,7 @@ export default function ImportPage() {
                 </p>
               </td>
               <td className="py-2 px-2">
-                <Select value={row.type} onValueChange={(v: any) => updateRow(setter, i, 'type', v)}>
+                <Select value={row.type} onValueChange={(v: string) => updateRow(setter, i, 'type', v)}>
                   <SelectTrigger className={`h-7 text-xs border-0 px-2 ${TYPE_COLORS[row.type]}`}>
                     <SelectValue />
                   </SelectTrigger>

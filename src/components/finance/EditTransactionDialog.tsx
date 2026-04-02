@@ -41,10 +41,10 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
       setAccountId(transaction.account_id || '');
       setStatus(transaction.status || 'concluido');
       setNotes(transaction.notes || '');
-      setAttachmentUrl((transaction as any).attachment_url || null);
-      setAttachmentName((transaction as any).attachment_name || null);
+      setAttachmentUrl(transaction.attachment_url || null);
+      setAttachmentName(transaction.attachment_name || null);
       if (transaction.type === 'expense') {
-        setCategoryId((transaction as any).category_id || '');
+        setCategoryId(transaction.category_id || '');
       }
     }
   }, [transaction]);
@@ -90,8 +90,9 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
       }
       toast.success('Transação atualizada!');
       onOpenChange(false);
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err) {
+      const error = err as Error;
+      toast.error(error.message);
     }
   };
 

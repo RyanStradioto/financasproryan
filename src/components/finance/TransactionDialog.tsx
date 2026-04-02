@@ -154,8 +154,9 @@ export default function TransactionDialog({ type, children }: Props) {
       toast.success(type === 'income' ? 'Receita adicionada!' : 'Despesa adicionada!');
       reset();
       setOpen(false);
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err) {
+      const error = err as Error;
+      toast.error(error.message);
     }
   };
 

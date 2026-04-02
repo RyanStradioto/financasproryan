@@ -4,7 +4,19 @@ import { useFinanceHistory } from '@/hooks/useFinanceHistory';
 import { formatCurrency } from '@/lib/format';
 import { Calculator } from 'lucide-react';
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+interface TooltipPayload {
+  value: number;
+  payload?: { forecast?: boolean };
+  color?: string;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: TooltipPayload[];
+  label?: string;
+}
+
+const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (!active || !payload) return null;
   const val = payload[0]?.value || 0;
   const isForecast = payload[0]?.payload?.forecast;

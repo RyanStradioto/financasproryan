@@ -81,7 +81,10 @@ export default function CreditCardsPage() {
       toast.success('Cartão adicionado!');
       setShowNewCard(false);
       setNewCard({ name: '', color: CARD_COLORS[0], credit_limit: '', closing_day: '10', due_day: '17' });
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e) {
+      const error = e as Error;
+      toast.error(error.message);
+    }
   };
 
   const handleAddTx = async () => {
@@ -103,7 +106,10 @@ export default function CreditCardsPage() {
       toast.success(n > 1 ? `Compra lançada em ${n}x nas próximas faturas!` : 'Compra lançada!');
       setShowNewTx(false);
       setNewTx({ description: '', amount: '', date: new Date().toISOString().split('T')[0], category_id: '', installments: '1', notes: '' });
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e) {
+      const error = e as Error;
+      toast.error(error.message);
+    }
   };
 
   const monthLabel = () => {

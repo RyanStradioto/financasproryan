@@ -25,8 +25,9 @@ export default function Auth() {
         if (error) throw error;
         toast.success('Conta criada! Verifique seu email.');
       }
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err) {
+      const error = err as Error;
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }

@@ -35,7 +35,7 @@ export default function ReportPage() {
   if (generated) {
     const [sy, sm] = startMonth.split('-').map(Number);
     const [ey, em] = endMonth.split('-').map(Number);
-    let cur = new Date(sy, sm - 1);
+    const cur = new Date(sy, sm - 1);
     const end = new Date(ey, em - 1);
     while (cur <= end) {
       monthsInRange.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}`);

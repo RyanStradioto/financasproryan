@@ -17,8 +17,9 @@ export function useFileUpload() {
       if (error) throw error;
       const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path);
       return urlData.publicUrl;
-    } catch (err: any) {
-      toast.error('Erro ao enviar arquivo: ' + err.message);
+    } catch (err) {
+      const error = err as Error;
+      toast.error('Erro ao enviar arquivo: ' + error.message);
       return null;
     } finally {
       setUploading(false);

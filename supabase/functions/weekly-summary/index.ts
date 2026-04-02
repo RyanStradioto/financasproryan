@@ -65,20 +65,20 @@ Deno.serve(async (req) => {
         .select("*")
         .eq("user_id", profile.user_id);
 
-      const totalIncome = (income || []).reduce((s: number, i: any) => s + Number(i.amount), 0);
-      const totalExpenses = (expenses || []).reduce((s: number, e: any) => s + Number(e.amount), 0);
+      const totalIncome = (income || []).reduce((s: number, i: Record<string, unknown>) => s + Number(i.amount), 0);
+      const totalExpenses = (expenses || []).reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0);
       const balance = totalIncome - totalExpenses;
       const savingsRate = totalIncome > 0 ? ((balance / totalIncome) * 100).toFixed(1) : "0";
 
       // Category breakdown
       const catBreakdown = (categories || [])
-        .map((cat: any) => ({
+        .map((cat: Record<string, unknown>) => ({
           name: cat.name,
           icon: cat.icon,
-          value: (expenses || []).filter((e: any) => e.category_id === cat.id).reduce((s: number, e: any) => s + Number(e.amount), 0),
+          value: (expenses || []).filter((e: Record<string, unknown>) => e.category_id === cat.id).reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0),
         }))
-        .filter((c: any) => c.value > 0)
-        .sort((a: any, b: any) => b.value - a.value);
+        .filter((c: Record<string, unknown>) => c.value > 0)
+        .sort((a: Record<string, unknown>, b: Record<string, unknown>) => (b.value as number) - (a.value as number));
 
       // Work time calculation
       const hourlyRate = profile.monthly_salary > 0
@@ -139,8 +139,8 @@ Deno.serve(async (req) => {
     ${catBreakdown.length > 0 ? `
     <div style="margin-bottom:24px;">
       <p style="color:#ccc;font-size:14px;font-weight:600;margin:0 0 12px;">📊 Gastos por Categoria</p>
-      ${catBreakdown.slice(0, 5).map((cat: any, i: number) => {
-        const pct = totalExpenses > 0 ? ((cat.value / totalExpenses) * 100).toFixed(0) : 0;
+      ${catBreakdown.slice(0, 5).map((cat: Record<string, unknown>, i: number) => {
+        const pct = totalExpenses > 0 ? ((cat.value as number / totalExpenses) * 100).toFixed(0) : 0;
         return `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #222;">
           <span style="color:#aaa;font-size:13px;">${cat.icon} ${cat.name}</span>

@@ -14,7 +14,7 @@ const ICONS = ['🏠', '🛒', '🚗', '💰', '🎮', '🍔', '📚', '🏋️'
 
 function CurrencyInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let raw = e.target.value.replace(/[^\d]/g, '');
+    const raw = e.target.value.replace(/[^\d]/g, '');
     if (!raw) { onChange(''); return; }
     const num = parseInt(raw) / 100;
     onChange(num.toFixed(2).replace('.', ','));
@@ -64,7 +64,10 @@ export default function CategoriesPage() {
       await addCategory.mutateAsync({ name: trimmed, icon, monthly_budget: numBudget });
       toast.success('Categoria criada!');
       setName(''); setIcon('🏷️'); setBudget(''); setOpen(false);
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) {
+      const error = err as Error;
+      toast.error(error.message);
+    }
   };
 
   const openEdit = (cat: typeof activeCategories[0]) => {
@@ -89,7 +92,10 @@ export default function CategoriesPage() {
       await updateCategory.mutateAsync({ id: editId, name: trimmed, icon: editIcon, monthly_budget: numBudget });
       toast.success('Categoria atualizada!');
       setEditOpen(false);
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) {
+      const error = err as Error;
+      toast.error(error.message);
+    }
   };
 
   const handleDelete = async () => {
@@ -97,7 +103,10 @@ export default function CategoriesPage() {
       await deleteCategory.mutateAsync(editId);
       toast.success('Categoria arquivada');
       setEditOpen(false);
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) {
+      const error = err as Error;
+      toast.error(error.message);
+    }
   };
 
   const isAddValid = name.trim().length > 0;

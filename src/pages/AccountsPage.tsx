@@ -34,7 +34,10 @@ export default function AccountsPage() {
       setIcon('🏦');
       setInitialBalance('');
       setOpen(false);
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err) {
+      const error = err as Error;
+      toast.error(error.message);
+    }
   };
 
   const activeAccounts = accounts.filter(a => !a.archived);

@@ -3,12 +3,24 @@ import { useFinanceHistory, type MonthSummary } from '@/hooks/useFinanceHistory'
 import { formatCurrency } from '@/lib/format';
 import { TrendingUp } from 'lucide-react';
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+interface TooltipPayload {
+  value: number;
+  name: string;
+  color: string;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: TooltipPayload[];
+  label?: string;
+}
+
+const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (!active || !payload) return null;
   return (
     <div className="bg-popover border border-border rounded-lg shadow-lg p-3 text-xs">
       <p className="font-semibold mb-1.5">{label}</p>
-      {payload.map((p: any) => (
+      {payload.map((p: TooltipPayload) => (
         <div key={p.name} className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />

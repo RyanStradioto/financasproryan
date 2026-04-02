@@ -19,12 +19,12 @@ export function useProfile() {
     queryKey: ['profile', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('profiles' as any)
+        .from('profiles')
         .select('*')
         .eq('user_id', user!.id)
         .maybeSingle();
       if (error) throw error;
-      return (data as unknown) as Profile | null;
+      return data as Profile | null;
     },
     enabled: !!user,
   });
@@ -36,8 +36,8 @@ export function useUpsertProfile() {
   return useMutation({
     mutationFn: async (data: Partial<Omit<Profile, 'id' | 'user_id' | 'created_at' | 'updated_at'>>) => {
       const { error } = await supabase
-        .from('profiles' as any)
-        .upsert({ ...data, user_id: user!.id } as any, { onConflict: 'user_id' });
+        .from('profiles')
+        .upsert({ ...data, user_id: user!.id }, { onConflict: 'user_id' });
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['profile'] }),

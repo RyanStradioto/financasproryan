@@ -72,8 +72,9 @@ export default function SettingsPage() {
         toast.success(`✅ Dados fora de ${keepMonth} excluídos com sucesso!`);
         setConfirmText('');
       }
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      const error = e as Error;
+      toast.error(error.message);
     } finally {
       setIsDeleting(false);
     }
