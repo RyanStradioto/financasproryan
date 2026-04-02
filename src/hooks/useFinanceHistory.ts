@@ -27,7 +27,8 @@ export function useFinanceHistory(monthsBack = 6) {
       const firstMonth = months[0];
       const lastMonth = months[months.length - 1];
       const startDate = `${firstMonth}-01`;
-      const endDate = `${lastMonth}-31`;
+      const [ly, lm] = lastMonth.split('-').map(Number);
+      const endDate = `${lastMonth}-${String(new Date(ly, lm, 0).getDate()).padStart(2, '0')}`;
 
       const [incomeRes, expenseRes] = await Promise.all([
         supabase.from('income').select('date, amount, status')

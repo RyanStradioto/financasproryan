@@ -4,18 +4,21 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
 
-const links = [
+const mainLinks = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/receitas', icon: TrendingUp, label: 'Receitas' },
   { to: '/despesas', icon: TrendingDown, label: 'Despesas' },
   { to: '/investimentos', icon: BarChart3, label: 'Investimentos' },
   { to: '/cartoes', icon: CreditCard, label: 'Cartões' },
+];
+
+const toolLinks = [
   { to: '/categorias', icon: Grid3X3, label: 'Categorias' },
   { to: '/contas', icon: Landmark, label: 'Contas' },
   { to: '/calendario', icon: CalendarDays, label: 'Calendário' },
   { to: '/relatorio', icon: FileText, label: 'Relatório' },
   { to: '/insights', icon: Brain, label: 'Insights IA' },
-  { to: '/importar', icon: Upload, label: 'Importar Extrato' },
+  { to: '/importar', icon: Upload, label: 'Importar' },
   { to: '/configuracoes', icon: Settings, label: 'Configurações' },
 ];
 
@@ -24,49 +27,58 @@ export default function AppSidebar() {
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
 
+  const renderLink = ({ to, icon: Icon, label }: { to: string; icon: typeof LayoutDashboard; label: string }) => (
+    <NavLink
+      key={to}
+      to={to}
+      className={cn(
+        'flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
+        location.pathname === to
+          ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
+          : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+      )}
+    >
+      <Icon className="w-4 h-4" />
+      {label}
+    </NavLink>
+  );
+
   return (
-    <aside className="hidden lg:flex flex-col w-64 bg-card border-r border-border h-screen sticky top-0">
-      <div className="p-5 border-b border-border">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-            <DollarSign className="w-5 h-5 text-primary" />
+    <aside className="hidden lg:flex flex-col w-[260px] bg-card/50 backdrop-blur-sm border-r border-border/50 h-screen sticky top-0">
+      {/* Logo */}
+      <div className="p-5 border-b border-border/50">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/20">
+            <DollarSign className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
             <h1 className="font-bold text-sm tracking-tight">FinançasPro</h1>
-            <p className="text-xs text-muted-foreground truncate max-w-[160px]">{user?.email}</p>
+            <p className="text-[11px] text-muted-foreground truncate max-w-[160px]">{user?.email}</p>
           </div>
         </div>
       </div>
 
-      <nav className="flex-1 p-3 space-y-0.5">
-        {links.map(({ to, icon: Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={cn(
-              'flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
-              location.pathname === to
-                ? 'bg-primary/10 text-primary'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-            )}
-          >
-            <Icon className="w-4 h-4" />
-            {label}
-          </NavLink>
-        ))}
+      {/* Navigation */}
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 px-3 pt-2 pb-1">Principal</p>
+        {mainLinks.map(renderLink)}
+
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 px-3 pt-4 pb-1">Ferramentas</p>
+        {toolLinks.map(renderLink)}
       </nav>
 
-      <div className="p-3 border-t border-border space-y-0.5">
+      {/* Footer */}
+      <div className="p-3 border-t border-border/50 space-y-0.5">
         <button
           onClick={toggleTheme}
-          className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-all w-full"
+          className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200 w-full"
         >
           {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           {theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
         </button>
         <button
           onClick={signOut}
-          className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all w-full"
+          className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all duration-200 w-full"
         >
           <LogOut className="w-4 h-4" />
           Sair

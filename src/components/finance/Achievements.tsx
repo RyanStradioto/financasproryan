@@ -69,32 +69,35 @@ export default function Achievements({ expenses, income, categories }: Props) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 mb-3">
-        <Trophy className="w-4 h-4 text-primary" />
+        <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+          <Trophy className="w-4 h-4 text-primary" />
+        </div>
         <h3 className="text-sm font-semibold">Conquistas do Mês</h3>
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-3">
         {achievements.map(a => (
           <div
             key={a.id}
-            className={`rounded-lg border p-3 transition-all ${
+            className={`rounded-xl border p-3.5 transition-all duration-300 ${
               a.unlocked
-                ? 'bg-primary/5 border-primary/20'
-                : 'bg-muted/30 border-border/50 opacity-60'
+                ? 'bg-gradient-to-br from-primary/8 to-primary/2 border-primary/20 shadow-sm'
+                : 'bg-muted/20 border-border/50 opacity-50'
             }`}
           >
             <div className="flex items-center gap-2 mb-2">
-              <div className={`${a.unlocked ? 'text-primary' : 'text-muted-foreground'}`}>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${a.unlocked ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>
                 {a.icon}
               </div>
-              <span className="text-xs font-semibold truncate">{a.title}</span>
+              <span className="text-xs font-bold truncate">{a.title}</span>
             </div>
-            <p className="text-[10px] text-muted-foreground mb-2">{a.description}</p>
-            <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+            <p className="text-[10px] text-muted-foreground mb-2.5 leading-relaxed">{a.description}</p>
+            <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all duration-700 ${a.unlocked ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                className={`h-full rounded-full transition-all duration-1000 ${a.unlocked ? 'bg-gradient-to-r from-primary to-primary/70' : 'bg-muted-foreground/20'}`}
                 style={{ width: `${a.progress || 0}%` }}
               />
             </div>
+            <p className="text-[10px] text-muted-foreground mt-1 text-right font-medium">{Math.round(a.progress || 0)}%</p>
           </div>
         ))}
       </div>

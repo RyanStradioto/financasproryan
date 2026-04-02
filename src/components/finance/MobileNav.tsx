@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, TrendingUp, TrendingDown, Grid3X3, Landmark, Settings, Upload, Brain, BarChart3, CreditCard, FileText } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, TrendingDown, BarChart3, CreditCard, FileText, Brain, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const links = [
@@ -17,21 +17,32 @@ export default function MobileNav() {
   const location = useLocation();
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-lg border-t border-border z-50 px-2 pb-[env(safe-area-inset-bottom)]">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card/90 backdrop-blur-xl border-t border-border/50 z-50 px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_24px_rgba(0,0,0,0.08)]">
       <div className="flex justify-around">
-        {links.map(({ to, icon: Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={cn(
-              'flex flex-col items-center gap-0.5 py-2 px-2 text-[10px] font-medium transition-colors min-w-0',
-              location.pathname === to ? 'text-primary' : 'text-muted-foreground'
-            )}
-          >
-            <Icon className="w-5 h-5" />
-            <span className="truncate">{label}</span>
-          </NavLink>
-        ))}
+        {links.map(({ to, icon: Icon, label }) => {
+          const isActive = location.pathname === to;
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              className={cn(
+                'flex flex-col items-center gap-0.5 py-2.5 px-2 text-[10px] font-medium transition-all duration-200 min-w-0 relative',
+                isActive ? 'text-primary' : 'text-muted-foreground'
+              )}
+            >
+              {isActive && (
+                <div className="absolute -top-0.5 w-8 h-0.5 rounded-full bg-primary" />
+              )}
+              <div className={cn(
+                'w-8 h-8 rounded-xl flex items-center justify-center transition-all',
+                isActive ? 'bg-primary/10 scale-105' : ''
+              )}>
+                <Icon className="w-4.5 h-4.5" />
+              </div>
+              <span className="truncate">{label}</span>
+            </NavLink>
+          );
+        })}
       </div>
     </nav>
   );

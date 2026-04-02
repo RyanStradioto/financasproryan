@@ -40,6 +40,12 @@ export function useAccounts() {
   });
 }
 
+function getLastDayOfMonth(yearMonth: string): string {
+  const [y, m] = yearMonth.split('-').map(Number);
+  const lastDay = new Date(y, m, 0).getDate();
+  return `${yearMonth}-${String(lastDay).padStart(2, '0')}`;
+}
+
 export function useIncome(month?: string) {
   const { user } = useAuth();
   return useQuery({
@@ -48,7 +54,7 @@ export function useIncome(month?: string) {
       let query = supabase.from('income').select('*').order('date', { ascending: false });
       if (month) {
         const start = `${month}-01`;
-        const end = `${month}-31`;
+        const end = getLastDayOfMonth(month);
         query = query.gte('date', start).lte('date', end);
       }
       const { data, error } = await query;
@@ -67,7 +73,7 @@ export function useExpenses(month?: string) {
       let query = supabase.from('expenses').select('*').order('date', { ascending: false });
       if (month) {
         const start = `${month}-01`;
-        const end = `${month}-31`;
+        const end = getLastDayOfMonth(month);
         query = query.gte('date', start).lte('date', end);
       }
       const { data, error } = await query;
