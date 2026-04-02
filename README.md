@@ -1,53 +1,163 @@
-# Welcome to your Lovable project
+# 💰 Finanças Pro Ryan
 
-## Project info
+Uma aplicação moderna e responsiva para gerenciamento de finanças pessoais, construída com React, TypeScript, Vite e Supabase.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## 🚀 Live Demo
 
-## How can I edit this code?
+**[Acesse a Aplicação →](https://financasproryan-gmh1q90yz-ryanstradiotos-projects.vercel.app)**
 
-There are several ways of editing your application.
+## 📚 Documentação
 
-**Use Lovable**
+- **[📖 Guia de Recuperação de Dados](DATA_RECOVERY_GUIDE.md)** - Se seus dados desapareceram
+- **[🔧 Troubleshooting](TROUBLESHOOTING.md)** - Problemas comuns e soluções
+- **[✅ Verificação de Deployment](DEPLOYMENT_VERIFICATION.md)** - Status técnico da aplicação
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## 🎯 Funcionalidades
 
-Changes made via Lovable will be committed automatically to this repo.
+### 💳 Gerenciamento de Transações
+- ✅ Adicionar, editar e deletar despesas
+- ✅ Adicionar, editar e deletar receitas
+- ✅ Organizar por categorias personalizáveis
+- ✅ Múltiplas contas bancárias/carteiras
+- ✅ Status de transação (concluído, pendente, agendado)
 
-**Use your preferred IDE**
+### 📊 Análise Financeira
+- ✅ Dashboard com resumo de gastos
+- ✅ Gráficos de despesas por categoria
+- ✅ Relatórios mensal/anual
+- ✅ Orçamento por categoria
+- ✅ Histórico de transações
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 🔐 Segurança
+- ✅ Autenticação segura com Supabase
+- ✅ Row Level Security (RLS) no banco de dados
+- ✅ Dados criptografados
+- ✅ Apenas você pode acessar seus dados
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### 🎨 Interface
+- ✅ Design responsivo (mobile, tablet, desktop)
+- ✅ Tema claro/escuro
+- ✅ Componentes modernos (Shadcn UI + Radix UI)
+- ✅ Gráficos interativos (Recharts)
 
-Follow these steps:
+## 🛠️ Stack Tecnológico
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+| Tecnologia | Versão | Propósito |
+|-----------|--------|----------|
+| **React** | 18.x | UI Framework |
+| **TypeScript** | Latest | Type Safety |
+| **Vite** | 5.4.21 | Build Tool |
+| **Tailwind CSS** | 3.x | Styling |
+| **Supabase** | Latest | Backend & Database |
+| **PostgreSQL** | 15+ | Database |
+| **Vercel** | - | Hosting |
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## 🚀 Como Iniciar (Desenvolvimento)
 
-# Step 3: Install the necessary dependencies.
-npm i
+### Pré-requisitos
+- Node.js 18.x ou superior
+- npm 10.x ou superior
+- Conta no Supabase
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### Instalação
+
+```bash
+# 1. Clone o repositório
+git clone https://github.com/RyanStradioto/financasproryan.git
+cd financasproryan
+
+# 2. Instale dependências
+npm install
+
+# 3. Configure variáveis de ambiente
+cp .env.example .env.local
+# Edite .env.local com suas credenciais Supabase
+
+# 4. Inicie servidor de desenvolvimento
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+A aplicação estará disponível em `http://localhost:8080`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 📋 Scripts Disponíveis
 
-**Use GitHub Codespaces**
+```bash
+npm run dev          # Inicia servidor de desenvolvimento
+npm run build        # Build para produção
+npm run preview      # Preview do build
+npm run lint         # Verifica qualidade do código
+npm run test         # Roda testes unitários
+npm run test:watch   # Testes em modo watch
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
+## 🗄️ Banco de Dados
+
+### Tabelas
+- `users` - Usuários autenticados (gerenciado por Supabase)
+- `categories` - Categorias de despesas
+- `accounts` - Contas bancárias/carteiras
+- `income` - Receitas/Ganhos
+- `expenses` - Despesas/Gastos
+- `credit_cards` - Cartões de crédito
+- `investments` - Investimentos
+
+### Row Level Security (RLS)
+Todas as tabelas possuem RLS ativado:
+- Cada usuário vê apenas seus próprios dados
+- Impossível acessar dados de outros usuários
+- Proteção contra SQL injection
+
+## 🔄 Como Restaurar Dados
+
+Se seus dados foram perdidos, veja: **[DATA_RECOVERY_GUIDE.md](DATA_RECOVERY_GUIDE.md)**
+
+Três opções:
+1. **SQL Script** (Recomendado)
+2. **Importar CSV**
+3. **Inserir Manualmente**
+
+## 🐛 Problemas?
+
+Veja: **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)**
+
+Seções tratadas:
+- ❌ Deployment has Failed
+- ❌ No Production Deployment
+- ❌ Aplicação não carrega
+- ❌ Dados desapareceram
+- ❌ Não consigo fazer login
+- ❌ Outros erros
+
+## 📊 Status de Produção
+
+| Componente | Status |
+|-----------|--------|
+| Build | ✅ Sucesso |
+| Testes | ✅ Passan |
+| Deployments | ✅ Ativo |
+| Supabase | ✅ Online |
+| Performance | ✅ Otimizado |
+
+## 🔗 Links Úteis
+
+| Recurso | Link |
+|---------|------|
+| **Live App** | https://financasproryan-gmh1q90yz-ryanstradiotos-projects.vercel.app |
+| **GitHub** | https://github.com/RyanStradioto/financasproryan |
+| **Supabase** | https://eohnperxrykjzoofhfqu.supabase.co |
+| **Vercel** | https://vercel.com/ryanstradiotos-projects/financasproryan |
+
+## 📝 Licença
+
+MIT - Sinta-se livre para usar e modificar
+
+## 👤 Autor
+
+Desenvolvido por [Ryan Stradioto](https://github.com/RyanStradioto)
+
+---
+
+**Última atualização**: 01 Apr 2026 | **Status**: ✅ Production Ready
 - Edit files directly within the Codespace and commit and push your changes once you're done.
 
 ## What technologies are used for this project?
