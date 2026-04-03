@@ -189,8 +189,8 @@ export default function IncomePage() {
       </div>
 
       {/* Filter bar */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[160px]">
+      <div className="space-y-2">
+        <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
           <input
             type="text"
@@ -205,34 +205,36 @@ export default function IncomePage() {
             </button>
           )}
         </div>
-        <select
-          value={filterStatus}
-          onChange={e => setFilterStatus(e.target.value)}
-          className="h-9 rounded-lg border border-border bg-muted/50 px-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
-        >
-          <option value="">Status</option>
-          <option value="concluido">Concluído</option>
-          <option value="pendente">Pendente</option>
-          <option value="agendado">Agendado</option>
-        </select>
-        {accounts.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
           <select
-            value={filterAccount}
-            onChange={e => setFilterAccount(e.target.value)}
-            className="h-9 rounded-lg border border-border bg-muted/50 px-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer max-w-[140px]"
+            value={filterStatus}
+            onChange={e => setFilterStatus(e.target.value)}
+            className="h-9 rounded-lg border border-border bg-muted/50 px-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
           >
-            <option value="">Conta</option>
-            {accounts.map(a => <option key={a.id} value={a.id}>{a.icon} {a.name}</option>)}
+            <option value="">Status</option>
+            <option value="concluido">Concluído</option>
+            <option value="pendente">Pendente</option>
+            <option value="agendado">Agendado</option>
           </select>
-        )}
-        {activeFilters && (
-          <button
-            onClick={clearFilters}
-            className="h-9 flex items-center gap-1.5 px-3 rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 text-xs font-medium transition-colors"
-          >
-            <X className="w-3.5 h-3.5" /> Limpar
-          </button>
-        )}
+          {accounts.length > 0 && (
+            <select
+              value={filterAccount}
+              onChange={e => setFilterAccount(e.target.value)}
+              className="h-9 rounded-lg border border-border bg-muted/50 px-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer max-w-[140px]"
+            >
+              <option value="">Conta</option>
+              {accounts.map(a => <option key={a.id} value={a.id}>{a.icon} {a.name}</option>)}
+            </select>
+          )}
+          {activeFilters && (
+            <button
+              onClick={clearFilters}
+              className="h-9 flex items-center gap-1.5 px-3 rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 text-xs font-medium transition-colors"
+            >
+              <X className="w-3.5 h-3.5" /> Limpar
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Mobile card list */}
@@ -253,32 +255,34 @@ export default function IncomePage() {
           </div>
         )}
         {filtered.map((item) => (
-          <div key={item.id} className="stat-card p-4 space-y-3">
-            <div className="flex items-start justify-between gap-3">
+          <div key={item.id} className="stat-card p-3.5">
+            <div className="flex items-start justify-between gap-3 mb-3">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <p className="font-semibold truncate text-sm">{item.description || 'Receita'}</p>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <p className="font-bold text-sm leading-snug">{item.description || 'Receita'}</p>
                   {item.attachment_url && (
                     <a href={item.attachment_url} target="_blank" rel="noopener noreferrer" className="text-primary shrink-0">
                       <Paperclip className="w-3 h-3" />
                     </a>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                    <DatePicker date={item.date} onChange={d => handleDateChange(item.id, d)} />
-                  </p>
-                  <div className="text-xs mt-0.5">
-                    <OptionPicker value={item.account_id} options={accounts} placeholder="Conta" onChange={v => handleAccountChange(item.id, v)} />
-                  </div>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="font-extrabold text-income currency text-base">{formatCurrency(Number(item.amount))}</p>
-                <div className="mt-1">
-                  <StatusPicker status={item.status} onChange={s => handleStatusChange(item.id, s)} />
+                <div className="flex items-center gap-1 flex-wrap">
+                  <DatePicker date={item.date} onChange={d => handleDateChange(item.id, d)} />
+                  <span className="text-border/80 text-xs">·</span>
+                  <OptionPicker value={item.account_id} options={accounts} placeholder="Conta" onChange={v => handleAccountChange(item.id, v)} />
                 </div>
               </div>
+              <div className="shrink-0 flex flex-col items-end gap-1.5">
+                <p className="font-extrabold text-income text-lg tabular-nums leading-none currency">{formatCurrency(Number(item.amount))}</p>
+                <StatusPicker status={item.status} onChange={s => handleStatusChange(item.id, s)} />
+                {hourlyRate > 0 && (
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                    <Clock className="w-2.5 h-2.5" />{formatWorkTime(calcWorkTime(Number(item.amount)))}
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2 pt-2 border-t border-border/40">
+            <div className="flex items-center gap-2 pt-2.5 border-t border-border/40">
               <button
                 onClick={() => setEditing({ ...item, type: 'income' })}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
