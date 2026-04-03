@@ -157,12 +157,22 @@ export default function ExpensesPage() {
     return counts;
   }, [expenses, filterStatus]);
 
+  const STATUS_ORDER: Record<string, number> = { concluido: 0, pendente: 1, agendado: 2 };
+
   const filtered = expenses.filter(e => {
     if (filterStatus && e.status !== filterStatus) return false;
     if (filterCategory && e.category_id !== filterCategory) return false;
     if (filterAccount && e.account_id !== filterAccount) return false;
     if (filterSearch && !e.description?.toLowerCase().includes(filterSearch.toLowerCase())) return false;
     return true;
+  }).sort((a, b) => {
+    const sa = STATUS_ORDER[a.status] ?? 99;
+    const sb = STATUS_ORDER[b.status] ?? 99;
+    if (sa !== sb) return sa - sb;
+    const catA = categories.find(c => c.id === a.category_id)?.name ?? '';
+    const catB = categories.find(c => c.id === b.category_id)?.name ?? '';
+    if (catA !== catB) return catA.localeCompare(catB);
+    return new Date(b.date).getTime() - new Date(a.date).getTime();
   });
 
   const total = filtered.reduce((s, e) => s + Number(e.amount), 0);
