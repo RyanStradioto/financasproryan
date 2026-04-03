@@ -417,7 +417,8 @@ export default function ImportPage() {
   // Cross-reference: total CC rows vs CC payment in bank
   const ccTotal = useMemo(() => ccRows.filter(r => r.selected && r.type === 'expense').reduce((s, r) => s + r.amount, 0), [ccRows]);
   const bankCCPayment = useMemo(() => bankRows.filter(r => r.type === 'cc_payment').reduce((s, r) => s + r.amount, 0), [bankRows]);
-  const crossRefMatch = ccTotal > 0 && bankCCPayment > 0 && Math.abs(ccTotal - bankCCPayment) < 1;
+  const ccPaymentCount = bankRows.filter(r => r.type === 'cc_payment').length;
+  const ccItemCount = ccRows.filter(r => r.selected && r.type === 'expense').length;
 
   const toggleRow = (setter: React.Dispatch<React.SetStateAction<ParsedRow[]>>, i: number) =>
     setter(prev => prev.map((r, idx) => idx === i ? { ...r, selected: !r.selected } : r));
@@ -610,19 +611,29 @@ export default function ImportPage() {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, i) => (
+          {rows.map((row, i) => {
+            const isCCPaymentReplaced = row.type === 'cc_payment' && !showCCColumn && ccRows.length > 0;
+            return (
             <tr key={i} className={`border-b border-border/50 transition-colors ${
+              isCCPaymentReplaced ? 'opacity-40 bg-warning/5' :
               row.isDuplicate ? 'opacity-30 bg-warning/5' : row.selected ? 'hover:bg-muted/50' : 'opacity-40'
             }`}>
               <td className="py-2 px-2">
-                <input type="checkbox" checked={row.selected} onChange={() => toggleRow(setter, i)} className="accent-primary" />
+                {isCCPaymentReplaced
+                  ? <span className="block w-4 h-4 text-center text-warning/50 text-xs leading-4">—</span>
+                  : <input type="checkbox" checked={row.selected} onChange={() => toggleRow(setter, i)} className="accent-primary" />
+                }
               </td>
               <td className="py-2 px-2 text-muted-foreground whitespace-nowrap">{row.date}</td>
               <td className="py-2 px-2 max-w-[180px]">
                 <p className="font-medium truncate">{row.description}</p>
-                <p className={`text-[10px] ${CONFIDENCE_COLORS[row.confidence]}`}>
-                  {row.isDuplicate ? '🔁' : row.confidence === 'high' ? '✅' : row.confidence === 'medium' ? '⚠️' : '❓'} {row.classificationReason}
-                </p>
+                {isCCPaymentReplaced ? (
+                  <p className="text-[10px] text-warning/70">↩ substituído pelos itens da fatura</p>
+                ) : (
+                  <p className={`text-[10px] ${CONFIDENCE_COLORS[row.confidence]}`}>
+                    {row.isDuplicate ? '🔁' : row.confidence === 'high' ? '✅' : row.confidence === 'medium' ? '⚠️' : '❓'} {row.classificationReason}
+                  </p>
+                )}
               </td>
               <td className="py-2 px-2">
                 <Select value={row.type} onValueChange={(v: string) => updateRow(setter, i, 'type', v)}>
@@ -680,7 +691,8 @@ export default function ImportPage() {
                 )}
               </td>
             </tr>
-          ))}
+          );
+          })}
         </tbody>
       </table>
     </div>
@@ -747,17 +759,29 @@ export default function ImportPage() {
 
           {/* Cross-reference banner */}
           {ccRows.length > 0 && bankCCPayment > 0 && (
-            <div className={`rounded-lg border px-4 py-3 text-sm flex items-center gap-3 ${
-              crossRefMatch ? 'bg-income/5 border-income/20 text-income' : 'bg-warning/5 border-warning/20 text-warning'
-            }`}>
-              <Link2 className="w-5 h-5 shrink-0" />
-              <div>
-                {crossRefMatch ? (
-                  <p>✅ <strong>Cruzamento ok!</strong> A fatura ({formatCurrency(ccTotal)}) bate com o pagamento no extrato ({formatCurrency(bankCCPayment)}). Os itens da fatura serão importados individualmente e o pagamento genérico será ignorado.</p>
-                ) : (
-                  <p>⚠️ A fatura ({formatCurrency(ccTotal)}) <strong>não bate exatamente</strong> com o pagamento no extrato ({formatCurrency(bankCCPayment)}). Diferença: {formatCurrency(Math.abs(ccTotal - bankCCPayment))}. Verifique os valores.</p>
-                )}
+            <div className="rounded-lg bg-primary/5 border border-primary/20 px-4 py-3 text-sm">
+              <div className="flex items-center gap-2 mb-3 font-semibold text-foreground">
+                <Link2 className="w-4 h-4 text-primary" />
+                Cruzamento extrato + fatura
               </div>
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <div className="bg-background/60 rounded-lg p-2.5 border border-border/50">
+                  <p className="text-[11px] text-muted-foreground mb-0.5">💳 Fatura do cartão</p>
+                  <p className="font-semibold text-foreground">{formatCurrency(ccTotal)}</p>
+                  <p className="text-[11px] text-muted-foreground">{ccItemCount} compra{ccItemCount !== 1 ? 's' : ''}</p>
+                </div>
+                <div className="bg-background/60 rounded-lg p-2.5 border border-border/50">
+                  <p className="text-[11px] text-muted-foreground mb-0.5">🏦 Pago no extrato</p>
+                  <p className="font-semibold text-warning">{formatCurrency(bankCCPayment)}</p>
+                  <p className="text-[11px] text-muted-foreground">{ccPaymentCount} lançamento{ccPaymentCount !== 1 ? 's' : ''} — excluído{ccPaymentCount !== 1 ? 's' : ''}</p>
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                ✅ Os itens da fatura serão importados individualmente. Os pagamentos genéricos do extrato são ignorados para evitar duplicação.
+                {Math.abs(ccTotal - bankCCPayment) > 1 && (
+                  <> A diferença de <span className="text-foreground font-medium">{formatCurrency(Math.abs(ccTotal - bankCCPayment))}</span> é normal — pode incluir parcelas de meses anteriores ou coberturas de ciclos diferentes.</>
+                )}
+              </p>
             </div>
           )}
 
