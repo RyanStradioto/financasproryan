@@ -160,8 +160,13 @@ export default function TransactionDialog({ type, children }: Props) {
       reset();
       setOpen(false);
     } catch (err) {
-      const error = err as Error;
-      toast.error(error.message);
+      console.error('Erro ao adicionar transação:', err);
+      const msg = err instanceof Error
+        ? err.message
+        : (typeof err === 'object' && err !== null && 'message' in err
+          ? String((err as { message: unknown }).message)
+          : 'Erro desconhecido ao salvar');
+      toast.error(msg || 'Erro ao salvar. Verifique o console.');
     }
   };
 

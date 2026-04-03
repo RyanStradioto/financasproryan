@@ -106,11 +106,23 @@ export function useAddIncome() {
   const qc = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: async (data: Omit<TablesInsert<'income'>, 'user_id'>) => {
-      const { error } = await supabase.from('income').insert({ ...data, user_id: user!.id });
+    mutationFn: async (data: Omit<TablesInsert<'income'>, 'user_id'>): Promise<Income> => {
+      const { data: inserted, error } = await supabase
+        .from('income')
+        .insert({ ...data, user_id: user!.id })
+        .select()
+        .single();
       if (error) throw error;
+      return inserted as Income;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['income'] }).then(() => qc.invalidateQueries({ queryKey: ['accumulated-balance'] })),
+    onSuccess: (newItem) => {
+      const itemMonth = newItem.date.substring(0, 7);
+      qc.setQueryData<Income[]>(['income', user!.id, itemMonth], (old) =>
+        old ? [newItem, ...old.filter(i => i.id !== newItem.id)] : [newItem]
+      );
+      qc.invalidateQueries({ queryKey: ['income'] });
+      qc.invalidateQueries({ queryKey: ['accumulated-balance'] });
+    },
   });
 }
 
@@ -118,11 +130,23 @@ export function useAddExpense() {
   const qc = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: async (data: Omit<TablesInsert<'expenses'>, 'user_id'>) => {
-      const { error } = await supabase.from('expenses').insert({ ...data, user_id: user!.id });
+    mutationFn: async (data: Omit<TablesInsert<'expenses'>, 'user_id'>): Promise<Expense> => {
+      const { data: inserted, error } = await supabase
+        .from('expenses')
+        .insert({ ...data, user_id: user!.id })
+        .select()
+        .single();
       if (error) throw error;
+      return inserted as Expense;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['expenses'] }).then(() => qc.invalidateQueries({ queryKey: ['accumulated-balance'] })),
+    onSuccess: (newItem) => {
+      const itemMonth = newItem.date.substring(0, 7);
+      qc.setQueryData<Expense[]>(['expenses', user!.id, itemMonth], (old) =>
+        old ? [newItem, ...old.filter(i => i.id !== newItem.id)] : [newItem]
+      );
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+      qc.invalidateQueries({ queryKey: ['accumulated-balance'] });
+    },
   });
 }
 
