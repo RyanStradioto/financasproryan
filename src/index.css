@@ -285,3 +285,70 @@
 .data-table tbody tr:hover {
   background: hsl(var(--muted) / 0.5);
 }
+
+/* ── Mobile UX Enhancements ─────────────────────── */
+
+/* Mobile card tap feedback */
+@media (hover: none) {
+  .stat-card:active {
+    transform: scale(0.985);
+    transition: transform 0.1s ease;
+  }
+}
+
+/* Input / select / textarea — no iOS zoom, smooth focus */
+input, select, textarea {
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Smooth scrolling inside dialogs (bottom sheet) */
+[data-radix-scroll-area-viewport],
+.overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Dialog overlay — tap to dismiss feels more responsive */
+[data-radix-dialog-overlay] {
+  cursor: pointer;
+}
+
+/* Dialog content — prevent iOS rubber-band scrolling outside sheet */
+[data-radix-dialog-content] {
+  overscroll-behavior: contain;
+}
+
+/* Better desktop table hover */
+.data-table tbody tr:hover td:first-child {
+  border-left: 2px solid hsl(var(--primary) / 0.4);
+}
+
+/* Currency values monospace everywhere */
+td.currency, span.currency, p.currency {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Better select trigger on mobile */
+@media (max-width: 640px) {
+  [data-radix-select-trigger] {
+    min-height: 44px;
+  }
+}
+
+/* Smooth button press */
+button:active:not(:disabled) {
+  transform: scale(0.97);
+  transition: transform 0.08s ease;
+}
+
+/* Keep action button transitions smooth */
+button {
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.08s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Page transition — fade children in with stagger */
+.animate-fade-in > * {
+  animation: fade-in 0.3s ease-out both;
+}
+

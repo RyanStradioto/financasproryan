@@ -47,6 +47,13 @@ export default function TransactionDialog({ type, children }: Props) {
     return recentDescs.filter(d => d.toLowerCase().includes(lower)).slice(0, 5);
   }, [description, recentDescs]);
 
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, '');
+    if (!digits) { setAmount(''); return; }
+    const num = parseInt(digits, 10) / 100;
+    setAmount(num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  };
+
   const suggestCategory = useCallback((desc: string) => {
     if (!desc || desc.length < 3 || type !== 'expense') return;
     if (aiDebounce.current) clearTimeout(aiDebounce.current);
@@ -97,7 +104,7 @@ export default function TransactionDialog({ type, children }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const numAmount = parseFloat(amount.replace(',', '.'));
+    const numAmount = parseFloat(amount.replace(/\./g, '').replace(',', '.'));
     if (isNaN(numAmount) || numAmount <= 0) {
       toast.error('Valor inválido');
       return;
@@ -181,43 +188,65 @@ export default function TransactionDialog({ type, children }: Props) {
         )}
       </DialogTrigger>
       <DialogContent className="max-h-[92dvh] overflow-y-auto">
-        <DialogHeader className="mb-1">
-          <DialogTitle className="text-base font-bold">
-            {type === 'income' ? '+ Nova Receita' : '- Nova Despesa'}
+        <DialogHeader className="mb-3">
+          <DialogTitle className="text-base font-bold flex items-center gap-2">
+            <span className={`w-7 h-7 rounded-xl flex items-center justify-center text-white text-sm font-bold ${type === 'income' ? 'bg-income' : 'bg-expense'}`}>
+              {type === 'income' ? '↑' : '↓'}
+            </span>
+            {type === 'income' ? 'Nova Receita' : 'Nova Despesa'}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-3.5 pb-2">
-          {/* Amount — big and prominent */}
-          <div className="rounded-2xl bg-muted/40 border border-border/60 p-4 space-y-1">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Valor (R$)</Label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold text-lg">R$</span>
-              <Input
+
+        <form onSubmit={handleSubmit} className="space-y-3 pb-2">
+
+          {/* Amount — currency masked */}
+          <div className={`rounded-2xl p-4 ${type === 'income' ? 'bg-income/8 border border-income/20' : 'bg-expense/8 border border-expense/20'}`}>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Valor</p>
+            <div className="flex items-center gap-2">
+              <span className={`text-xl font-bold shrink-0 ${ type === 'income' ? 'text-income' : 'text-expense'}`}>R$</span>
+              <input
                 placeholder="0,00"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={handleAmountChange}
                 required
                 inputMode="decimal"
-                className="font-mono text-2xl font-bold h-14 pl-12 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-foreground"
+                style={{ fontSize: '28px', lineHeight: 1.2 }}
+                className={`flex-1 font-mono font-bold bg-transparent outline-none border-none min-w-0 ${
+                  type === 'income' ? 'text-income' : 'text-expense'
+                } placeholder:text-muted-foreground/30`}
               />
             </div>
           </div>
 
-          {/* Date */}
-          <div className="space-y-1.5">
-            <Label className="text-sm font-medium">Data</Label>
-            <Input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              required
-              className="h-12 text-base"
-            />
+          {/* Date + Status */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-muted-foreground">Data</Label>
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+                style={{ fontSize: '16px' }}
+                className="h-11"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-muted-foreground">Status</Label>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="concluido">{type === 'income' ? '✓ Recebido' : '✓ Pago'}</SelectItem>
+                  <SelectItem value="pendente">⏳ Pendente</SelectItem>
+                  <SelectItem value="agendado">📅 Agendado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Description */}
-          <div className="space-y-1.5 relative">
-            <Label className="text-sm font-medium">Descrição</Label>
+          <div className="space-y-1 relative">
+            <Label className="text-xs font-medium text-muted-foreground">Descrição</Label>
             <Input
               placeholder="Descreva a transação..."
               value={description}
@@ -225,7 +254,8 @@ export default function TransactionDialog({ type, children }: Props) {
               onFocus={() => setShowSuggestions(true)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
               autoComplete="off"
-              className="h-12 text-base"
+              style={{ fontSize: '16px' }}
+              className="h-11"
             />
             {showSuggestions && filteredSuggestions.length > 0 && (
               <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-popover border border-border rounded-xl shadow-lg overflow-hidden">
@@ -233,7 +263,7 @@ export default function TransactionDialog({ type, children }: Props) {
                   <button
                     key={i}
                     type="button"
-                    className="w-full text-left px-4 py-3 text-sm hover:bg-muted transition-colors border-b border-border/40 last:border-0"
+                    className="w-full text-left px-4 py-3 text-sm hover:bg-muted active:bg-muted transition-colors border-b border-border/40 last:border-0"
                     onMouseDown={() => { setDescription(s); setShowSuggestions(false); }}
                   >
                     {s}
@@ -245,14 +275,14 @@ export default function TransactionDialog({ type, children }: Props) {
 
           {type === 'expense' && (
             <>
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium flex items-center gap-1.5">
+              <div className="space-y-1">
+                <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                   Categoria
                   {aiSuggesting && <Loader2 className="w-3 h-3 animate-spin text-primary" />}
                   {!aiSuggesting && categoryId && <Sparkles className="w-3 h-3 text-primary" />}
                 </Label>
                 <Select value={categoryId} onValueChange={(v) => setCategoryId(v === '__none__' ? '' : v)}>
-                  <SelectTrigger className="h-12 text-base"><SelectValue placeholder="Selecionar categoria..." /></SelectTrigger>
+                  <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue placeholder="Selecionar categoria..." /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">Sem categoria</SelectItem>
                     {categories?.filter(c => !c.archived).map(c => (
@@ -262,11 +292,11 @@ export default function TransactionDialog({ type, children }: Props) {
                 </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-sm font-medium">Parcelas</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-muted-foreground">Parcelas</Label>
                   <Select value={installments} onValueChange={setInstallments}>
-                    <SelectTrigger className="h-12 text-base"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {[1,2,3,4,5,6,7,8,9,10,11,12,18,24,36,48].map(n => (
                         <SelectItem key={n} value={String(n)}>{n === 1 ? 'À vista' : `${n}x`}</SelectItem>
@@ -274,14 +304,14 @@ export default function TransactionDialog({ type, children }: Props) {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-sm font-medium">Status</Label>
-                  <Select value={status} onValueChange={setStatus}>
-                    <SelectTrigger className="h-12 text-base"><SelectValue /></SelectTrigger>
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-muted-foreground">Conta</Label>
+                  <Select value={accountId} onValueChange={setAccountId}>
+                    <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue placeholder="Conta..." /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="concluido">Pago</SelectItem>
-                      <SelectItem value="pendente">Pendente</SelectItem>
-                      <SelectItem value="agendado">Agendado</SelectItem>
+                      {accounts?.filter(a => !a.archived).map(a => (
+                        <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -289,10 +319,10 @@ export default function TransactionDialog({ type, children }: Props) {
 
               {parseInt(installments) > 1 && (
                 <>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-medium">Parcela inicial (já pagas antes)</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium text-muted-foreground">Parcela inicial</Label>
                     <Select value={startInstallment} onValueChange={setStartInstallment}>
-                      <SelectTrigger className="h-12 text-base"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {Array.from({ length: parseInt(installments) }, (_, i) => i + 1).map(n => (
                           <SelectItem key={n} value={String(n)}>
@@ -303,11 +333,9 @@ export default function TransactionDialog({ type, children }: Props) {
                     </Select>
                   </div>
                   <div className="rounded-xl bg-primary/5 border border-primary/15 p-3 text-xs text-muted-foreground">
-                    💳 Serão criadas <span className="font-semibold text-foreground">{parseInt(installments) - parseInt(startInstallment) + 1} parcelas</span> de{' '}
-                    <span className="font-semibold text-foreground currency">
-                      R$ {amount ? parseFloat(amount.replace(',', '.')).toFixed(2).replace('.', ',') : '0,00'}
-                    </span>{' '}
-                    ({startInstallment}/{installments} até {installments}/{installments})
+                    💳 <span className="font-semibold text-foreground">{parseInt(installments) - parseInt(startInstallment) + 1} parcelas</span> de{' '}
+                    <span className="font-semibold text-foreground currency">R$ {amount || '0,00'}</span>
+                    {' '}({startInstallment}/{installments} até {installments}/{installments})
                   </div>
                 </>
               )}
@@ -315,37 +343,10 @@ export default function TransactionDialog({ type, children }: Props) {
           )}
 
           {type === 'income' && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Conta</Label>
-                <Select value={accountId} onValueChange={setAccountId}>
-                  <SelectTrigger className="h-12 text-base"><SelectValue placeholder="Conta..." /></SelectTrigger>
-                  <SelectContent>
-                    {accounts?.filter(a => !a.archived).map(a => (
-                      <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Status</Label>
-                <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger className="h-12 text-base"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="concluido">Recebido</SelectItem>
-                    <SelectItem value="pendente">Pendente</SelectItem>
-                    <SelectItem value="agendado">Agendado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-
-          {type === 'expense' && (
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Conta</Label>
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-muted-foreground">Conta</Label>
               <Select value={accountId} onValueChange={setAccountId}>
-                <SelectTrigger className="h-12 text-base"><SelectValue placeholder="Selecionar conta..." /></SelectTrigger>
+                <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue placeholder="Selecionar conta..." /></SelectTrigger>
                 <SelectContent>
                   {accounts?.filter(a => !a.archived).map(a => (
                     <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
@@ -355,32 +356,33 @@ export default function TransactionDialog({ type, children }: Props) {
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <Label className="text-sm font-medium">Observações</Label>
+          <div className="space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground">Observações (opcional)</Label>
             <Textarea
               placeholder="Notas adicionais..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              className="text-base resize-none"
+              style={{ fontSize: '16px' }}
+              className="resize-none"
             />
           </div>
 
           {/* Attachment */}
-          <div className="space-y-1.5">
-            <Label className="text-sm font-medium">Comprovante</Label>
+          <div className="space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground">Comprovante (opcional)</Label>
             {attachmentUrl ? (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-muted border border-border">
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/60 border border-border">
                 <FileText className="w-4 h-4 text-primary shrink-0" />
                 <span className="text-sm truncate flex-1">{attachmentName || 'Arquivo'}</span>
-                <button type="button" onClick={() => { setAttachmentUrl(null); setAttachmentName(null); }} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10">
+                <button type="button" onClick={() => { setAttachmentUrl(null); setAttachmentName(null); }} className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
                   <X className="w-4 h-4" />
                 </button>
               </div>
             ) : (
-              <label className="flex items-center gap-3 p-3.5 rounded-xl border border-dashed border-border hover:border-primary/50 hover:bg-muted/50 cursor-pointer transition-all active:bg-muted">
-                <Paperclip className="w-5 h-5 text-muted-foreground shrink-0" />
-                <span className="text-sm text-muted-foreground">{uploading ? 'Enviando...' : 'Foto / PDF do comprovante'}</span>
+              <label className="flex items-center gap-3 p-3 rounded-xl border border-dashed border-border/60 hover:border-primary/40 hover:bg-muted/30 cursor-pointer transition-all active:bg-muted/50">
+                <Paperclip className="w-4 h-4 text-muted-foreground shrink-0" />
+                <span className="text-sm text-muted-foreground">{uploading ? 'Enviando...' : 'Foto ou PDF do comprovante'}</span>
                 <input type="file" className="hidden" onChange={handleFileUpload} disabled={uploading} accept="image/*,.pdf,.doc,.docx" />
               </label>
             )}
@@ -388,8 +390,7 @@ export default function TransactionDialog({ type, children }: Props) {
 
           <Button
             type="submit"
-            size="lg"
-            className="w-full h-13 text-base font-semibold mt-2"
+            className={`w-full h-12 text-[15px] font-semibold ${type === 'income' ? 'bg-income hover:bg-income/90' : 'bg-expense hover:bg-expense/90'} text-white`}
             disabled={addIncome.isPending || addExpense.isPending || addExpenseBatch.isPending}
           >
             {(addIncome.isPending || addExpense.isPending || addExpenseBatch.isPending)

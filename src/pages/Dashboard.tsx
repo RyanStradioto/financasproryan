@@ -107,8 +107,16 @@ export default function Dashboard() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 gap-3">
-        <TransactionDialog type="income" />
-        <TransactionDialog type="expense" />
+        <TransactionDialog type="income">
+          <button className="flex items-center justify-center gap-2 w-full h-12 rounded-2xl bg-income text-white font-semibold text-sm hover:bg-income/90 active:scale-[0.97] transition-all shadow-sm shadow-income/20">
+            <ArrowUpRight className="w-4 h-4" /> Nova Receita
+          </button>
+        </TransactionDialog>
+        <TransactionDialog type="expense">
+          <button className="flex items-center justify-center gap-2 w-full h-12 rounded-2xl bg-expense text-white font-semibold text-sm hover:bg-expense/90 active:scale-[0.97] transition-all shadow-sm shadow-expense/20">
+            <ArrowDownRight className="w-4 h-4" /> Nova Despesa
+          </button>
+        </TransactionDialog>
       </div>
 
       {/* Smart Alerts */}
