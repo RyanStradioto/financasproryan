@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { User, Briefcase, Clock, CalendarDays, Mail, Save, Trash2, AlertTriangle } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { supabase } from '@/integrations/supabase/client';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -16,10 +18,14 @@ export default function SettingsPage() {
   const [daysPerWeek, setDaysPerWeek] = useState('');
   const [weeklyEmail, setWeeklyEmail] = useState(true);
 
-  // Data cleanup state
-  const [keepMonth, setKeepMonth] = useState('2026-03');
-  const [confirmText, setConfirmText] = useState('');
+  // Delete by month state
+  const [deleteMonthsOpen, setDeleteMonthsOpen] = useState(false);
+  const [availableMonths, setAvailableMonths] = useState<{ month: string; count: number }[]>([]);
+  const [selectedMonths, setSelectedMonths] = useState<string[]>([]);
+  const [confirmDeleteText, setConfirmDeleteText] = useState('');
+  const [isLoadingMonths, setIsLoadingMonths] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (profile) {
@@ -44,34 +50,69 @@ export default function SettingsPage() {
     }
   };
 
-  const handleDeleteOutsideMonth = async () => {
-    if (confirmText !== 'EXCLUIR') {
+  const MONTH_LABELS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  const formatMonthLabel = (m: string) => {
+    const [y, mo] = m.split('-');
+    return `${MONTH_LABELS[+mo - 1]}/${y}`;
+  };
+
+  const loadAvailableMonths = async () => {
+    setIsLoadingMonths(true);
+    try {
+      const [{ data: incData }, { data: expData }, { data: ccData }] = await Promise.all([
+        supabase.from('income').select('date'),
+        supabase.from('expenses').select('date'),
+        supabase.from('credit_card_transactions').select('date'),
+      ]);
+      const countMap = new Map<string, number>();
+      [...(incData ?? []), ...(expData ?? []), ...(ccData ?? [])].forEach(r => {
+        const mo = (r.date as string).substring(0, 7);
+        countMap.set(mo, (countMap.get(mo) ?? 0) + 1);
+      });
+      const sorted = Array.from(countMap.entries())
+        .map(([month, count]) => ({ month, count }))
+        .sort((a, b) => b.month.localeCompare(a.month));
+      setAvailableMonths(sorted);
+    } finally {
+      setIsLoadingMonths(false);
+    }
+  };
+
+  const handleOpenDeleteMonths = () => {
+    setDeleteMonthsOpen(true);
+    setSelectedMonths([]);
+    setConfirmDeleteText('');
+    loadAvailableMonths();
+  };
+
+  const toggleMonth = (m: string) =>
+    setSelectedMonths(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]);
+
+  const handleDeleteSelectedMonths = async () => {
+    if (confirmDeleteText !== 'EXCLUIR') {
       toast.error('Digite EXCLUIR para confirmar');
+      return;
+    }
+    if (selectedMonths.length === 0) {
+      toast.error('Selecione ao menos um mês');
       return;
     }
     setIsDeleting(true);
     try {
-      const start = `${keepMonth}-01`;
-      const end = `${keepMonth}-31`;
-
-      // Deletar receitas fora do mês
-      const { error: incErr } = await supabase
-        .from('income')
-        .delete()
-        .or(`date.lt.${start},date.gt.${end}`);
-
-      // Deletar despesas fora do mês
-      const { error: expErr } = await supabase
-        .from('expenses')
-        .delete()
-        .or(`date.lt.${start},date.gt.${end}`);
-
-      if (incErr || expErr) {
-        toast.error(`Erro: ${incErr?.message || expErr?.message}`);
-      } else {
-        toast.success(`✅ Dados fora de ${keepMonth} excluídos com sucesso!`);
-        setConfirmText('');
+      for (const month of selectedMonths) {
+        const start = `${month}-01`;
+        const end = `${month}-31`;
+        await Promise.all([
+          supabase.from('income').delete().gte('date', start).lte('date', end),
+          supabase.from('expenses').delete().gte('date', start).lte('date', end),
+          supabase.from('credit_card_transactions').delete().gte('date', start).lte('date', end),
+        ]);
       }
+      await queryClient.invalidateQueries();
+      const label = selectedMonths.map(formatMonthLabel).join(', ');
+      toast.success(`✅ Dados de ${label} excluídos!`);
+      setDeleteMonthsOpen(false);
     } catch (e) {
       const error = e as Error;
       toast.error(error.message);
@@ -204,42 +245,105 @@ export default function SettingsPage() {
           Zona de Perigo — Limpeza de Dados
         </div>
         <p className="text-xs text-muted-foreground">
-          Exclui <strong>todas as receitas e despesas</strong> que estejam <strong>fora do mês</strong> selecionado abaixo.
+          Exclui <strong>todas as receitas, despesas e lançamentos de cartão</strong> dos meses selecionados.
           Esta ação é <strong>irreversível</strong>.
         </p>
-
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Mês a manter (YYYY-MM)</label>
-            <input
-              type="month"
-              value={keepMonth}
-              onChange={e => setKeepMonth(e.target.value)}
-              className="flex h-10 rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-destructive/30"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
-              Digite <strong>EXCLUIR</strong> para confirmar
-            </label>
-            <input
-              type="text"
-              value={confirmText}
-              onChange={e => setConfirmText(e.target.value)}
-              placeholder="EXCLUIR"
-              className="flex h-10 w-full rounded-lg border border-destructive/30 bg-muted/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-destructive/30"
-            />
-          </div>
-          <button
-            onClick={handleDeleteOutsideMonth}
-            disabled={isDeleting || confirmText !== 'EXCLUIR'}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-destructive text-destructive-foreground rounded-xl text-sm font-semibold hover:bg-destructive/90 active:scale-[0.98] transition-all disabled:opacity-40"
-          >
-            <Trash2 className="w-4 h-4" />
-            {isDeleting ? 'Excluindo...' : `Excluir dados fora de ${keepMonth}`}
-          </button>
-        </div>
+        <button
+          onClick={handleOpenDeleteMonths}
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-destructive text-destructive-foreground rounded-xl text-sm font-semibold hover:bg-destructive/90 active:scale-[0.98] transition-all"
+        >
+          <Trash2 className="w-4 h-4" />
+          Excluir dados por mês
+        </button>
       </div>
+
+      {/* ── Dialog: selecionar meses para excluir ── */}
+      <Dialog open={deleteMonthsOpen} onOpenChange={setDeleteMonthsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="w-4 h-4" />
+              Excluir dados por mês
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Selecione os meses cujos dados você quer excluir permanentemente (receitas, despesas e fatura do cartão).
+            </p>
+
+            {/* Month checklist */}
+            <div className="max-h-60 overflow-y-auto space-y-1 rounded-lg border border-border p-2 bg-muted/30">
+              {isLoadingMonths ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Carregando meses...</p>
+              ) : availableMonths.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado encontrado</p>
+              ) : (
+                availableMonths.map(({ month, count }) => (
+                  <label key={month} className="flex items-center gap-3 px-2 py-2 rounded-lg cursor-pointer hover:bg-muted/60 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={selectedMonths.includes(month)}
+                      onChange={() => toggleMonth(month)}
+                      className="accent-destructive w-4 h-4 shrink-0"
+                    />
+                    <span className="flex-1 text-sm font-medium">{formatMonthLabel(month)}</span>
+                    <span className="text-xs text-muted-foreground">{count} lançamento{count !== 1 ? 's' : ''}</span>
+                  </label>
+                ))
+              )}
+            </div>
+
+            {/* Select all / clear */}
+            {availableMonths.length > 0 && (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedMonths(availableMonths.map(m => m.month))}
+                  className="text-xs text-muted-foreground hover:text-foreground underline transition-colors"
+                >
+                  Selecionar todos
+                </button>
+                <span className="text-xs text-muted-foreground">·</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedMonths([])}
+                  className="text-xs text-muted-foreground hover:text-foreground underline transition-colors"
+                >
+                  Limpar seleção
+                </button>
+                {selectedMonths.length > 0 && (
+                  <span className="text-xs text-destructive font-medium ml-auto">{selectedMonths.length} mês(es) selecionado(s)</span>
+                )}
+              </div>
+            )}
+
+            {/* Confirmation input */}
+            {selectedMonths.length > 0 && (
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground block">
+                  Digite <strong className="text-destructive">EXCLUIR</strong> para confirmar
+                </label>
+                <input
+                  type="text"
+                  value={confirmDeleteText}
+                  onChange={e => setConfirmDeleteText(e.target.value)}
+                  placeholder="EXCLUIR"
+                  className="flex h-10 w-full rounded-lg border border-destructive/30 bg-muted/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-destructive/30"
+                />
+                <button
+                  onClick={handleDeleteSelectedMonths}
+                  disabled={isDeleting || confirmDeleteText !== 'EXCLUIR'}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-destructive text-destructive-foreground rounded-xl text-sm font-semibold hover:bg-destructive/90 active:scale-[0.98] transition-all disabled:opacity-40"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  {isDeleting ? 'Excluindo...' : `Excluir ${selectedMonths.length} mês(es)`}
+                </button>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
