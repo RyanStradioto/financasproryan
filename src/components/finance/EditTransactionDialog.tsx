@@ -20,6 +20,7 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
   const [date, setDate] = useState('');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
+  const [amountFocused, setAmountFocused] = useState(false);
   const [categoryId, setCategoryId] = useState('');
   const [accountId, setAccountId] = useState('');
   const [status, setStatus] = useState('');
@@ -121,22 +122,30 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
         <form onSubmit={handleSubmit} className="space-y-3 pb-2">
 
           {/* Amount — currency masked */}
-          <div className={`rounded-2xl p-4 ${
-            transaction.type === 'income' ? 'bg-income/8 border border-income/20' : 'bg-expense/8 border border-expense/20'
-          }`}>
+          <div
+            onClick={() => document.getElementById('edit-amount-input')?.focus()}
+            className={`rounded-2xl p-4 cursor-text transition-all ${
+              transaction.type === 'income'
+                ? amountFocused ? 'bg-income/10 border-2 border-income/60' : 'bg-income/8 border border-income/20'
+                : amountFocused ? 'bg-expense/10 border-2 border-expense/60' : 'bg-expense/8 border border-expense/20'
+            }`}
+          >
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Valor</p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 overflow-hidden">
               <span className={`text-xl font-bold shrink-0 ${
                 transaction.type === 'income' ? 'text-income' : 'text-expense'
               }`}>R$</span>
               <input
+                id="edit-amount-input"
                 placeholder="0,00"
                 value={amount}
                 onChange={handleAmountChange}
+                onFocus={() => setAmountFocused(true)}
+                onBlur={() => setAmountFocused(false)}
                 required
                 inputMode="decimal"
-                style={{ fontSize: '28px', lineHeight: 1.2 }}
-                className={`flex-1 font-mono font-bold bg-transparent outline-none border-none min-w-0 ${
+                style={{ fontSize: '26px', lineHeight: 1.2, outline: 'none', boxShadow: 'none' }}
+                className={`flex-1 font-mono font-bold bg-transparent border-none min-w-0 w-0 ${
                   transaction.type === 'income' ? 'text-income' : 'text-expense'
                 } placeholder:text-muted-foreground/30`}
               />

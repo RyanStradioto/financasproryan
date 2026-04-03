@@ -222,11 +222,18 @@
   background: hsl(var(--muted-foreground) / 0.35);
 }
 
-/* Better focus ring */
+/* Better focus ring — skip bare inputs/selects/textareas (they use container highlight instead) */
 *:focus-visible {
   outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
   border-radius: var(--radius);
+}
+
+/* Bare inputs (no .input class) inside dialogs should not show the global focus ring */
+[data-radix-dialog-content] input:focus-visible,
+[data-radix-dialog-content] textarea:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .animate-fade-in {

@@ -37,7 +37,7 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(
         // Mobile: bottom sheet sliding up from bottom
-        "fixed bottom-0 left-0 right-0 z-50 w-full rounded-t-2xl border-t border-x bg-background px-4 pb-[env(safe-area-inset-bottom)] pt-4 shadow-xl",
+        "fixed bottom-0 left-0 right-0 z-50 w-full rounded-t-2xl border-t border-x bg-background px-4 pb-[env(safe-area-inset-bottom)] pt-4 shadow-xl overflow-x-hidden",
         "duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
