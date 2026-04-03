@@ -1,4 +1,5 @@
-import { AlertTriangle, Clock, TrendingDown, CheckCircle, Bell } from 'lucide-react';
+import { useState } from 'react';
+import { AlertTriangle, Clock, TrendingDown, CheckCircle, Bell, ChevronDown } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import type { Category, Expense, Income } from '@/hooks/useFinanceData';
 
@@ -17,6 +18,7 @@ type Props = {
 };
 
 export default function SmartAlerts({ expenses, income, categories }: Props) {
+  const [open, setOpen] = useState(true);
   const alerts: Alert[] = [];
 
   // 1. Budget exceeded alerts
@@ -104,22 +106,31 @@ export default function SmartAlerts({ expenses, income, categories }: Props) {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2 mb-3">
-        <Bell className="w-4 h-4 text-primary" />
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-2 w-full group"
+      >
+        <Bell className="w-4 h-4 text-primary shrink-0" />
         <h3 className="text-sm font-semibold">Alertas Inteligentes</h3>
-      </div>
-      {alerts.slice(0, 5).map(alert => (
-        <div
-          key={alert.id}
-          className={`flex items-start gap-3 rounded-lg border px-4 py-3 text-sm transition-all ${typeStyles[alert.type]}`}
-        >
-          <div className="mt-0.5 shrink-0">{alert.icon}</div>
-          <div>
-            <p className="font-medium">{alert.title}</p>
-            <p className="text-xs opacity-80 mt-0.5">{alert.description}</p>
-          </div>
+        <span className="text-xs text-muted-foreground ml-1">({alerts.length})</span>
+        <ChevronDown className={`w-4 h-4 text-muted-foreground ml-auto transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="space-y-2 pt-1">
+          {alerts.slice(0, 5).map(alert => (
+            <div
+              key={alert.id}
+              className={`flex items-start gap-3 rounded-lg border px-4 py-3 text-sm transition-all ${typeStyles[alert.type]}`}
+            >
+              <div className="mt-0.5 shrink-0">{alert.icon}</div>
+              <div>
+                <p className="font-medium">{alert.title}</p>
+                <p className="text-xs opacity-80 mt-0.5">{alert.description}</p>
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
