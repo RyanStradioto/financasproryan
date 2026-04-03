@@ -10,6 +10,65 @@ import { Trash2, Pencil, Paperclip, Clock, TrendingUp, ChevronDown, Search, X, F
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
+function DatePicker({ date, onChange }: { date: string; onChange: (d: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  return editing ? (
+    <input
+      type="date"
+      defaultValue={date}
+      autoFocus
+      onBlur={e => { if (e.target.value) onChange(e.target.value); setEditing(false); }}
+      onChange={e => { if (e.target.value) { onChange(e.target.value); setEditing(false); } }}
+      className="h-7 w-[130px] rounded-lg border border-primary/40 bg-muted/50 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+    />
+  ) : (
+    <button
+      onClick={() => setEditing(true)}
+      className="text-muted-foreground hover:text-foreground hover:bg-muted/60 px-1.5 py-0.5 rounded-md transition-colors text-sm group/date flex items-center gap-1.5"
+    >
+      {formatDate(date)}
+      <Pencil className="w-3 h-3 opacity-0 group-hover/date:opacity-40 shrink-0" />
+    </button>
+  );
+}
+
+interface PickerOption { id: string; icon?: string | null; name: string; }
+function OptionPicker({ value, options, placeholder, onChange }: {
+  value: string | null;
+  options: PickerOption[];
+  placeholder: string;
+  onChange: (id: string | null) => void;
+}) {
+  const selected = options.find(o => o.id === value);
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 px-1.5 py-0.5 rounded-md transition-colors group/pick">
+          {selected ? `${selected.icon ?? ''} ${selected.name}`.trim() : <span className="opacity-40">—</span>}
+          <ChevronDown className="w-3 h-3 opacity-0 group-hover/pick:opacity-40 shrink-0" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-44 p-1 max-h-52 overflow-y-auto" align="start">
+        <button
+          onClick={() => onChange(null)}
+          className={`w-full text-left px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors hover:bg-muted ${!value ? 'opacity-40 cursor-default' : ''}`}
+        >
+          — Nenhum
+        </button>
+        {options.map(o => (
+          <button
+            key={o.id}
+            onClick={() => onChange(o.id)}
+            className={`w-full text-left px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors hover:bg-muted ${o.id === value ? 'opacity-50 cursor-default' : ''}`}
+          >
+            {o.icon} {o.name}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 const STATUSES = [
   { value: 'concluido', label: 'Concluído' },
   { value: 'pendente',  label: 'Pendente'  },
@@ -58,6 +117,16 @@ export default function IncomePage() {
     try {
       await updateIncome.mutateAsync({ id, status });
     } catch { toast.error('Erro ao atualizar status'); }
+  };
+
+  const handleDateChange = async (id: string, date: string) => {
+    try { await updateIncome.mutateAsync({ id, date }); }
+    catch { toast.error('Erro ao atualizar data'); }
+  };
+
+  const handleAccountChange = async (id: string, account_id: string | null) => {
+    try { await updateIncome.mutateAsync({ id, account_id: account_id ?? undefined }); }
+    catch { toast.error('Erro ao atualizar conta'); }
   };
 
   // Filters
@@ -195,8 +264,12 @@ export default function IncomePage() {
                     </a>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">{formatDate(item.date)}</p>
-                {item.account_id && <p className="text-xs text-muted-foreground mt-0.5">{getAccountName(item.account_id)}</p>}
+                <p className="text-xs text-muted-foreground">
+                    <DatePicker date={item.date} onChange={d => handleDateChange(item.id, d)} />
+                  </p>
+                  <div className="text-xs mt-0.5">
+                    <OptionPicker value={item.account_id} options={accounts} placeholder="Conta" onChange={v => handleAccountChange(item.id, v)} />
+                  </div>
               </div>
               <div className="text-right shrink-0">
                 <p className="font-extrabold text-income currency text-base">{formatCurrency(Number(item.amount))}</p>
@@ -250,7 +323,9 @@ export default function IncomePage() {
                 const wt = calcWorkTime(Number(item.amount));
                 return (
                   <tr key={item.id} className="border-b border-border/30 hover:bg-muted/40 transition-all group">
-                    <td className="py-3.5 px-4 text-muted-foreground">{formatDate(item.date)}</td>
+                    <td className="py-3.5 px-4">
+                      <DatePicker date={item.date} onChange={d => handleDateChange(item.id, d)} />
+                    </td>
                     <td className="py-3.5 px-4 font-medium">
                       <div className="flex items-center gap-1.5">
                         {item.description || 'Receita'}
@@ -273,7 +348,9 @@ export default function IncomePage() {
                         </span>
                       </td>
                     )}
-                    <td className="py-3.5 px-4 text-muted-foreground">{getAccountName(item.account_id)}</td>
+                    <td className="py-3.5 px-4">
+                      <OptionPicker value={item.account_id} options={accounts} placeholder="Conta" onChange={v => handleAccountChange(item.id, v)} />
+                    </td>
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                         <button onClick={() => setEditing({ ...item, type: 'income' })} className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all p-1.5 rounded-lg">
