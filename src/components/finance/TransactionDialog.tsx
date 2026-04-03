@@ -174,7 +174,7 @@ export default function TransactionDialog({ type, children }: Props) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {children || (
-          <Button size="sm" variant={type === 'income' ? 'default' : 'destructive'}>
+          <Button size="sm" variant={type === 'income' ? 'default' : 'destructive'} className="w-full">
             <Plus className="w-4 h-4 mr-1" />
             {type === 'income' ? 'Nova Receita' : 'Nova Despesa'}
           </Button>

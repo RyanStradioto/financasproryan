@@ -57,9 +57,9 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground">Visão geral das suas finanças</p>
         </div>
         <div className="flex items-center gap-2">
@@ -106,7 +106,7 @@ export default function Dashboard() {
       )}
 
       {/* Quick Actions */}
-      <div className="flex gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <TransactionDialog type="income" />
         <TransactionDialog type="expense" />
       </div>
@@ -128,7 +128,7 @@ export default function Dashboard() {
             Despesas por Categoria
           </h3>
           {catBreakdown.length > 0 ? (
-            <div className="flex items-center gap-6">
+            <div className="flex flex-col sm:flex-row items-center gap-6">
               <div className="w-44 h-44 shrink-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -150,7 +150,7 @@ export default function Dashboard() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="flex-1 space-y-2.5">
+              <div className="flex-1 w-full space-y-2.5">
                 {catBreakdown.slice(0, 6).map((cat, i) => {
                   const pct = totalExpensesPaid > 0 ? ((cat.value / totalExpensesPaid) * 100).toFixed(0) : '0';
                   return (

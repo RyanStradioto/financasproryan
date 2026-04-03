@@ -59,7 +59,65 @@ export default function IncomePage() {
         </div>
       </div>
 
-      <div className="stat-card p-0 overflow-hidden">
+      {/* Mobile card list */}
+      <div className="sm:hidden space-y-3">
+        {income.length === 0 && !isLoading && (
+          <div className="stat-card flex flex-col items-center py-12 gap-3">
+            <div className="w-14 h-14 rounded-2xl bg-muted/50 flex items-center justify-center">
+              <TrendingUp className="w-6 h-6 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-medium text-muted-foreground">Nenhuma receita neste mês</p>
+          </div>
+        )}
+        {income.map((item) => (
+          <div key={item.id} className="stat-card p-4 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <p className="font-semibold truncate text-sm">{item.description || 'Receita'}</p>
+                  {item.attachment_url && (
+                    <a href={item.attachment_url} target="_blank" rel="noopener noreferrer" className="text-primary shrink-0">
+                      <Paperclip className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">{formatDate(item.date)}</p>
+                {item.account_id && <p className="text-xs text-muted-foreground mt-0.5">{getAccountName(item.account_id)}</p>}
+              </div>
+              <div className="text-right shrink-0">
+                <p className="font-extrabold text-income currency text-base">{formatCurrency(Number(item.amount))}</p>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-semibold mt-1 ${getStatusColor(item.status)}`}>
+                  {getStatusLabel(item.status)}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 pt-2 border-t border-border/40">
+              <button
+                onClick={() => setEditing({ ...item, type: 'income' })}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
+              >
+                <Pencil className="w-3.5 h-3.5" /> Editar
+              </button>
+              <div className="w-px h-5 bg-border" />
+              <button
+                onClick={() => handleDelete(item.id)}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Excluir
+              </button>
+            </div>
+          </div>
+        ))}
+        {income.length > 0 && (
+          <div className="flex items-center justify-between px-4 py-3 rounded-2xl bg-income/8 border border-income/15">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total</span>
+            <span className="font-extrabold text-income currency">{formatCurrency(total)}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden sm:block stat-card p-0 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm data-table">
             <thead>
