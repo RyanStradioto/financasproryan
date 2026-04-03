@@ -1,21 +1,64 @@
 import { useState } from 'react';
-import { useIncome, useDeleteIncome, useAccounts, type Income } from '@/hooks/useFinanceData';
+import { useIncome, useDeleteIncome, useUpdateIncome, useAccounts, type Income } from '@/hooks/useFinanceData';
 import { getMonthYear, formatCurrency, formatDate, getStatusColor, getStatusLabel } from '@/lib/format';
 import { formatWorkTime } from '@/lib/workTime';
 import { useWorkTimeCalc } from '@/hooks/useProfile';
 import MonthSelector from '@/components/finance/MonthSelector';
 import TransactionDialog from '@/components/finance/TransactionDialog';
 import EditTransactionDialog from '@/components/finance/EditTransactionDialog';
-import { Trash2, Pencil, Paperclip, Clock, TrendingUp } from 'lucide-react';
+import { Trash2, Pencil, Paperclip, Clock, TrendingUp, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+
+const STATUSES = [
+  { value: 'concluido', label: 'Concluído' },
+  { value: 'pendente',  label: 'Pendente'  },
+  { value: 'agendado',  label: 'Agendado'  },
+];
+
+function StatusPicker({ status, onChange }: { status: string; onChange: (s: string) => void }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer hover:opacity-80 transition-opacity ${getStatusColor(status)}`}
+        >
+          {getStatusLabel(status)}
+          <ChevronDown className="w-3 h-3 opacity-60" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-36 p-1" align="start">
+        {STATUSES.map(s => (
+          <button
+            key={s.value}
+            onClick={() => onChange(s.value)}
+            className={`w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors hover:bg-muted ${
+              s.value === status ? 'opacity-50 cursor-default' : ''
+            }`}
+          >
+            <span className={`inline-block w-2 h-2 rounded-full ${s.value === 'concluido' ? 'bg-success' : s.value === 'pendente' ? 'bg-warning' : 'bg-info'}`} />
+            {s.label}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export default function IncomePage() {
   const [month, setMonth] = useState(getMonthYear());
   const { data: income = [], isLoading } = useIncome(month);
   const { data: accounts = [] } = useAccounts();
   const deleteIncome = useDeleteIncome();
+  const updateIncome = useUpdateIncome();
   const [editing, setEditing] = useState<(Income & { type: 'income' }) | null>(null);
   const { calcWorkTime, hourlyRate } = useWorkTimeCalc();
+
+  const handleStatusChange = async (id: string, status: string) => {
+    try {
+      await updateIncome.mutateAsync({ id, status });
+    } catch { toast.error('Erro ao atualizar status'); }
+  };
 
   const total = income.reduce((s, i) => s + Number(i.amount), 0);
 
@@ -86,9 +129,9 @@ export default function IncomePage() {
               </div>
               <div className="text-right shrink-0">
                 <p className="font-extrabold text-income currency text-base">{formatCurrency(Number(item.amount))}</p>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-semibold mt-1 ${getStatusColor(item.status)}`}>
-                  {getStatusLabel(item.status)}
-                </span>
+                <div className="mt-1">
+                  <StatusPicker status={item.status} onChange={s => handleStatusChange(item.id, s)} />
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2 pt-2 border-t border-border/40">
@@ -148,9 +191,7 @@ export default function IncomePage() {
                       </div>
                     </td>
                     <td className="py-3.5 px-4">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${getStatusColor(item.status)}`}>
-                        {getStatusLabel(item.status)}
-                      </span>
+                      <StatusPicker status={item.status} onChange={s => handleStatusChange(item.id, s)} />
                     </td>
                     <td className="py-3.5 px-4 text-right currency font-bold text-income">{formatCurrency(Number(item.amount))}</td>
                     {hourlyRate && (
