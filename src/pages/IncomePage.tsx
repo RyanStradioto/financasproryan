@@ -6,7 +6,7 @@ import { useWorkTimeCalc } from '@/hooks/useProfile';
 import MonthSelector from '@/components/finance/MonthSelector';
 import TransactionDialog from '@/components/finance/TransactionDialog';
 import EditTransactionDialog from '@/components/finance/EditTransactionDialog';
-import { Trash2, Pencil, Paperclip, Clock, TrendingUp, ChevronDown } from 'lucide-react';
+import { Trash2, Pencil, Paperclip, Clock, TrendingUp, ChevronDown, Search, X, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
@@ -60,7 +60,22 @@ export default function IncomePage() {
     } catch { toast.error('Erro ao atualizar status'); }
   };
 
-  const total = income.reduce((s, i) => s + Number(i.amount), 0);
+  // Filters
+  const [filterSearch, setFilterSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterAccount, setFilterAccount] = useState('');
+
+  const activeFilters = !!(filterSearch || filterStatus || filterAccount);
+  const clearFilters = () => { setFilterSearch(''); setFilterStatus(''); setFilterAccount(''); };
+
+  const filtered = income.filter(i => {
+    if (filterStatus && i.status !== filterStatus) return false;
+    if (filterAccount && i.account_id !== filterAccount) return false;
+    if (filterSearch && !i.description?.toLowerCase().includes(filterSearch.toLowerCase())) return false;
+    return true;
+  });
+
+  const total = filtered.reduce((s, i) => s + Number(i.amount), 0);
 
   const getAccountName = (id: string | null) => {
     if (!id) return '—';
@@ -98,8 +113,57 @@ export default function IncomePage() {
           <p className="text-xl font-extrabold text-income currency">{formatCurrency(total)}</p>
         </div>
         <div className="ml-auto text-right">
-          <p className="text-xs text-muted-foreground">{income.length} transação(ões)</p>
+          <p className="text-xs text-muted-foreground">
+            {activeFilters ? `${filtered.length} de ` : ''}{income.length} transação(ões)
+          </p>
         </div>
+      </div>
+
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[160px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Buscar receita..."
+            value={filterSearch}
+            onChange={e => setFilterSearch(e.target.value)}
+            className="h-9 w-full rounded-lg border border-border bg-muted/50 pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+          {filterSearch && (
+            <button onClick={() => setFilterSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        <select
+          value={filterStatus}
+          onChange={e => setFilterStatus(e.target.value)}
+          className="h-9 rounded-lg border border-border bg-muted/50 px-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
+        >
+          <option value="">Status</option>
+          <option value="concluido">Concluído</option>
+          <option value="pendente">Pendente</option>
+          <option value="agendado">Agendado</option>
+        </select>
+        {accounts.length > 0 && (
+          <select
+            value={filterAccount}
+            onChange={e => setFilterAccount(e.target.value)}
+            className="h-9 rounded-lg border border-border bg-muted/50 px-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer max-w-[140px]"
+          >
+            <option value="">Conta</option>
+            {accounts.map(a => <option key={a.id} value={a.id}>{a.icon} {a.name}</option>)}
+          </select>
+        )}
+        {activeFilters && (
+          <button
+            onClick={clearFilters}
+            className="h-9 flex items-center gap-1.5 px-3 rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 text-xs font-medium transition-colors"
+          >
+            <X className="w-3.5 h-3.5" /> Limpar
+          </button>
+        )}
       </div>
 
       {/* Mobile card list */}
@@ -112,7 +176,14 @@ export default function IncomePage() {
             <p className="text-sm font-medium text-muted-foreground">Nenhuma receita neste mês</p>
           </div>
         )}
-        {income.map((item) => (
+        {income.length > 0 && filtered.length === 0 && (
+          <div className="stat-card flex flex-col items-center py-12 gap-3">
+            <Filter className="w-8 h-8 text-muted-foreground opacity-40" />
+            <p className="text-sm font-medium text-muted-foreground">Nenhuma receita encontrada com esses filtros</p>
+            <button onClick={clearFilters} className="text-xs text-primary underline">Limpar filtros</button>
+          </div>
+        )}
+        {filtered.map((item) => (
           <div key={item.id} className="stat-card p-4 space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
@@ -151,7 +222,7 @@ export default function IncomePage() {
             </div>
           </div>
         ))}
-        {income.length > 0 && (
+        {filtered.length > 0 && (
           <div className="flex items-center justify-between px-4 py-3 rounded-2xl bg-income/8 border border-income/15">
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total</span>
             <span className="font-extrabold text-income currency">{formatCurrency(total)}</span>
@@ -175,7 +246,7 @@ export default function IncomePage() {
               </tr>
             </thead>
             <tbody>
-              {income.map((item) => {
+              {filtered.map((item) => {
                 const wt = calcWorkTime(Number(item.amount));
                 return (
                   <tr key={item.id} className="border-b border-border/30 hover:bg-muted/40 transition-all group">
@@ -229,8 +300,19 @@ export default function IncomePage() {
                   </div>
                 </td></tr>
               )}
+              {income.length > 0 && filtered.length === 0 && (
+                <tr><td colSpan={hourlyRate ? 7 : 6} className="py-16 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <Filter className="w-8 h-8 text-muted-foreground opacity-40" />
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Nenhuma receita com esses filtros</p>
+                      <button onClick={clearFilters} className="text-xs text-primary underline mt-1">Limpar filtros</button>
+                    </div>
+                  </div>
+                </td></tr>
+              )}
             </tbody>
-            {income.length > 0 && (
+            {filtered.length > 0 && (
               <tfoot>
                 <tr className="border-t-2 border-border bg-muted/20">
                   <td colSpan={3} className="py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-muted-foreground">TOTAL</td>

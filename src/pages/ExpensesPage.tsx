@@ -6,7 +6,7 @@ import { useWorkTimeCalc } from '@/hooks/useProfile';
 import MonthSelector from '@/components/finance/MonthSelector';
 import TransactionDialog from '@/components/finance/TransactionDialog';
 import EditTransactionDialog from '@/components/finance/EditTransactionDialog';
-import { Trash2, Pencil, Paperclip, Clock, ChevronDown } from 'lucide-react';
+import { Trash2, Pencil, Paperclip, Clock, ChevronDown, Filter, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
@@ -61,7 +61,24 @@ export default function ExpensesPage() {
     } catch { toast.error('Erro ao atualizar status'); }
   };
 
-  const total = expenses.reduce((s, e) => s + Number(e.amount), 0);
+  // Filters
+  const [filterSearch, setFilterSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterAccount, setFilterAccount] = useState('');
+
+  const activeFilters = !!(filterSearch || filterStatus || filterCategory || filterAccount);
+  const clearFilters = () => { setFilterSearch(''); setFilterStatus(''); setFilterCategory(''); setFilterAccount(''); };
+
+  const filtered = expenses.filter(e => {
+    if (filterStatus && e.status !== filterStatus) return false;
+    if (filterCategory && e.category_id !== filterCategory) return false;
+    if (filterAccount && e.account_id !== filterAccount) return false;
+    if (filterSearch && !e.description?.toLowerCase().includes(filterSearch.toLowerCase())) return false;
+    return true;
+  });
+
+  const total = filtered.reduce((s, e) => s + Number(e.amount), 0);
 
   const getCategoryName = (id: string | null) => {
     if (!id) return '—';
@@ -105,8 +122,67 @@ export default function ExpensesPage() {
           <p className="text-xl font-extrabold text-expense currency">{formatCurrency(total)}</p>
         </div>
         <div className="ml-auto text-right">
-          <p className="text-xs text-muted-foreground">{expenses.length} transação(ões)</p>
+          <p className="text-xs text-muted-foreground">
+            {activeFilters ? `${filtered.length} de ` : ''}{expenses.length} transação(ões)
+          </p>
         </div>
+      </div>
+
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[160px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Buscar despesa..."
+            value={filterSearch}
+            onChange={e => setFilterSearch(e.target.value)}
+            className="h-9 w-full rounded-lg border border-border bg-muted/50 pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+          {filterSearch && (
+            <button onClick={() => setFilterSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        <select
+          value={filterStatus}
+          onChange={e => setFilterStatus(e.target.value)}
+          className="h-9 rounded-lg border border-border bg-muted/50 px-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
+        >
+          <option value="">Status</option>
+          <option value="concluido">Concluído</option>
+          <option value="pendente">Pendente</option>
+          <option value="agendado">Agendado</option>
+        </select>
+        {categories.length > 0 && (
+          <select
+            value={filterCategory}
+            onChange={e => setFilterCategory(e.target.value)}
+            className="h-9 rounded-lg border border-border bg-muted/50 px-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer max-w-[160px]"
+          >
+            <option value="">Categoria</option>
+            {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+          </select>
+        )}
+        {accounts.length > 0 && (
+          <select
+            value={filterAccount}
+            onChange={e => setFilterAccount(e.target.value)}
+            className="h-9 rounded-lg border border-border bg-muted/50 px-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer max-w-[140px]"
+          >
+            <option value="">Conta</option>
+            {accounts.map(a => <option key={a.id} value={a.id}>{a.icon} {a.name}</option>)}
+          </select>
+        )}
+        {activeFilters && (
+          <button
+            onClick={clearFilters}
+            className="h-9 flex items-center gap-1.5 px-3 rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 text-xs font-medium transition-colors"
+          >
+            <X className="w-3.5 h-3.5" /> Limpar
+          </button>
+        )}
       </div>
 
       {/* Mobile card list */}
@@ -119,7 +195,14 @@ export default function ExpensesPage() {
             <p className="text-sm font-medium text-muted-foreground">Nenhuma despesa neste mês</p>
           </div>
         )}
-        {expenses.map((item) => (
+        {expenses.length > 0 && filtered.length === 0 && (
+          <div className="stat-card flex flex-col items-center py-12 gap-3">
+            <Filter className="w-8 h-8 text-muted-foreground opacity-40" />
+            <p className="text-sm font-medium text-muted-foreground">Nenhuma despesa encontrada com esses filtros</p>
+            <button onClick={clearFilters} className="text-xs text-primary underline">Limpar filtros</button>
+          </div>
+        )}
+        {filtered.map((item) => (
           <div key={item.id} className="stat-card p-4 space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
@@ -159,7 +242,7 @@ export default function ExpensesPage() {
             </div>
           </div>
         ))}
-        {expenses.length > 0 && (
+        {filtered.length > 0 && (
           <div className="flex items-center justify-between px-4 py-3 rounded-2xl bg-expense/8 border border-expense/15">
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total</span>
             <span className="font-extrabold text-expense currency">{formatCurrency(total)}</span>
@@ -184,7 +267,7 @@ export default function ExpensesPage() {
               </tr>
             </thead>
             <tbody>
-              {expenses.map((item) => {
+              {filtered.map((item) => {
                 const wt = calcWorkTime(Number(item.amount));
                 return (
                   <tr key={item.id} className="border-b border-border/30 hover:bg-muted/40 transition-all group">
@@ -239,8 +322,19 @@ export default function ExpensesPage() {
                   </div>
                 </td></tr>
               )}
+              {expenses.length > 0 && filtered.length === 0 && (
+                <tr><td colSpan={hourlyRate ? 8 : 7} className="py-16 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <Filter className="w-8 h-8 text-muted-foreground opacity-40" />
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Nenhuma despesa com esses filtros</p>
+                      <button onClick={clearFilters} className="text-xs text-primary underline mt-1">Limpar filtros</button>
+                    </div>
+                  </div>
+                </td></tr>
+              )}
             </tbody>
-            {expenses.length > 0 && (
+            {filtered.length > 0 && (
               <tfoot>
                 <tr className="border-t-2 border-border bg-muted/20">
                   <td colSpan={4} className="py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-muted-foreground">TOTAL</td>
