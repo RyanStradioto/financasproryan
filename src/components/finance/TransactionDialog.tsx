@@ -180,29 +180,44 @@ export default function TransactionDialog({ type, children }: Props) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{type === 'income' ? 'Nova Receita' : 'Nova Despesa'}</DialogTitle>
+      <DialogContent className="max-h-[92dvh] overflow-y-auto">
+        <DialogHeader className="mb-1">
+          <DialogTitle className="text-base font-bold">
+            {type === 'income' ? '+ Nova Receita' : '- Nova Despesa'}
+          </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Data</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Valor (R$)</Label>
+        <form onSubmit={handleSubmit} className="space-y-3.5 pb-2">
+          {/* Amount — big and prominent */}
+          <div className="rounded-2xl bg-muted/40 border border-border/60 p-4 space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Valor (R$)</Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold text-lg">R$</span>
               <Input
                 placeholder="0,00"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 required
-                className="font-mono"
+                inputMode="decimal"
+                className="font-mono text-2xl font-bold h-14 pl-12 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-foreground"
               />
             </div>
           </div>
+
+          {/* Date */}
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium">Data</Label>
+            <Input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              required
+              className="h-12 text-base"
+            />
+          </div>
+
+          {/* Description */}
           <div className="space-y-1.5 relative">
-            <Label>Descrição</Label>
+            <Label className="text-sm font-medium">Descrição</Label>
             <Input
               placeholder="Descreva a transação..."
               value={description}
@@ -210,14 +225,15 @@ export default function TransactionDialog({ type, children }: Props) {
               onFocus={() => setShowSuggestions(true)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
               autoComplete="off"
+              className="h-12 text-base"
             />
             {showSuggestions && filteredSuggestions.length > 0 && (
-              <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
+              <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-popover border border-border rounded-xl shadow-lg overflow-hidden">
                 {filteredSuggestions.map((s, i) => (
                   <button
                     key={i}
                     type="button"
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors"
+                    className="w-full text-left px-4 py-3 text-sm hover:bg-muted transition-colors border-b border-border/40 last:border-0"
                     onMouseDown={() => { setDescription(s); setShowSuggestions(false); }}
                   >
                     {s}
@@ -226,16 +242,17 @@ export default function TransactionDialog({ type, children }: Props) {
               </div>
             )}
           </div>
+
           {type === 'expense' && (
             <>
               <div className="space-y-1.5">
-                <Label className="flex items-center gap-1.5">
+                <Label className="text-sm font-medium flex items-center gap-1.5">
                   Categoria
                   {aiSuggesting && <Loader2 className="w-3 h-3 animate-spin text-primary" />}
                   {!aiSuggesting && categoryId && <Sparkles className="w-3 h-3 text-primary" />}
                 </Label>
                 <Select value={categoryId} onValueChange={(v) => setCategoryId(v === '__none__' ? '' : v)}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                  <SelectTrigger className="h-12 text-base"><SelectValue placeholder="Selecionar categoria..." /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">Sem categoria</SelectItem>
                     {categories?.filter(c => !c.archived).map(c => (
@@ -244,11 +261,12 @@ export default function TransactionDialog({ type, children }: Props) {
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Parcelas</Label>
+                  <Label className="text-sm font-medium">Parcelas</Label>
                   <Select value={installments} onValueChange={setInstallments}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-12 text-base"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {[1,2,3,4,5,6,7,8,9,10,11,12,18,24,36,48].map(n => (
                         <SelectItem key={n} value={String(n)}>{n === 1 ? 'À vista' : `${n}x`}</SelectItem>
@@ -257,9 +275,9 @@ export default function TransactionDialog({ type, children }: Props) {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Status</Label>
+                  <Label className="text-sm font-medium">Status</Label>
                   <Select value={status} onValueChange={setStatus}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-12 text-base"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="concluido">Pago</SelectItem>
                       <SelectItem value="pendente">Pendente</SelectItem>
@@ -268,12 +286,13 @@ export default function TransactionDialog({ type, children }: Props) {
                   </Select>
                 </div>
               </div>
+
               {parseInt(installments) > 1 && (
                 <>
                   <div className="space-y-1.5">
-                    <Label>Parcela inicial (já pagas antes)</Label>
+                    <Label className="text-sm font-medium">Parcela inicial (já pagas antes)</Label>
                     <Select value={startInstallment} onValueChange={setStartInstallment}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-12 text-base"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {Array.from({ length: parseInt(installments) }, (_, i) => i + 1).map(n => (
                           <SelectItem key={n} value={String(n)}>
@@ -283,23 +302,24 @@ export default function TransactionDialog({ type, children }: Props) {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="rounded-lg bg-muted/50 border border-border p-3 text-xs text-muted-foreground">
+                  <div className="rounded-xl bg-primary/5 border border-primary/15 p-3 text-xs text-muted-foreground">
                     💳 Serão criadas <span className="font-semibold text-foreground">{parseInt(installments) - parseInt(startInstallment) + 1} parcelas</span> de{' '}
                     <span className="font-semibold text-foreground currency">
                       R$ {amount ? parseFloat(amount.replace(',', '.')).toFixed(2).replace('.', ',') : '0,00'}
                     </span>{' '}
-                    ({startInstallment}/{installments} a {installments}/{installments})
+                    ({startInstallment}/{installments} até {installments}/{installments})
                   </div>
                 </>
               )}
             </>
           )}
+
           {type === 'income' && (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Conta</Label>
+                <Label className="text-sm font-medium">Conta</Label>
                 <Select value={accountId} onValueChange={setAccountId}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                  <SelectTrigger className="h-12 text-base"><SelectValue placeholder="Conta..." /></SelectTrigger>
                   <SelectContent>
                     {accounts?.filter(a => !a.archived).map(a => (
                       <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
@@ -308,9 +328,9 @@ export default function TransactionDialog({ type, children }: Props) {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Status</Label>
+                <Label className="text-sm font-medium">Status</Label>
                 <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-12 text-base"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="concluido">Recebido</SelectItem>
                     <SelectItem value="pendente">Pendente</SelectItem>
@@ -320,11 +340,12 @@ export default function TransactionDialog({ type, children }: Props) {
               </div>
             </div>
           )}
+
           {type === 'expense' && (
             <div className="space-y-1.5">
-              <Label>Conta</Label>
+              <Label className="text-sm font-medium">Conta</Label>
               <Select value={accountId} onValueChange={setAccountId}>
-                <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                <SelectTrigger className="h-12 text-base"><SelectValue placeholder="Selecionar conta..." /></SelectTrigger>
                 <SelectContent>
                   {accounts?.filter(a => !a.archived).map(a => (
                     <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
@@ -333,38 +354,48 @@ export default function TransactionDialog({ type, children }: Props) {
               </Select>
             </div>
           )}
+
           <div className="space-y-1.5">
-            <Label>Observações</Label>
+            <Label className="text-sm font-medium">Observações</Label>
             <Textarea
               placeholder="Notas adicionais..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
+              className="text-base resize-none"
             />
           </div>
 
           {/* Attachment */}
           <div className="space-y-1.5">
-            <Label>Anexo</Label>
+            <Label className="text-sm font-medium">Comprovante</Label>
             {attachmentUrl ? (
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-muted border border-border">
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-muted border border-border">
                 <FileText className="w-4 h-4 text-primary shrink-0" />
                 <span className="text-sm truncate flex-1">{attachmentName || 'Arquivo'}</span>
-                <button type="button" onClick={() => { setAttachmentUrl(null); setAttachmentName(null); }} className="p-1 text-muted-foreground hover:text-destructive transition-colors">
-                  <X className="w-3.5 h-3.5" />
+                <button type="button" onClick={() => { setAttachmentUrl(null); setAttachmentName(null); }} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10">
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             ) : (
-              <label className="flex items-center gap-2 p-3 rounded-lg border border-dashed border-border hover:border-primary/50 hover:bg-muted/50 cursor-pointer transition-all">
-                <Paperclip className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">{uploading ? 'Enviando...' : 'Anexar comprovante'}</span>
+              <label className="flex items-center gap-3 p-3.5 rounded-xl border border-dashed border-border hover:border-primary/50 hover:bg-muted/50 cursor-pointer transition-all active:bg-muted">
+                <Paperclip className="w-5 h-5 text-muted-foreground shrink-0" />
+                <span className="text-sm text-muted-foreground">{uploading ? 'Enviando...' : 'Foto / PDF do comprovante'}</span>
                 <input type="file" className="hidden" onChange={handleFileUpload} disabled={uploading} accept="image/*,.pdf,.doc,.docx" />
               </label>
             )}
           </div>
 
-          <Button type="submit" className="w-full" disabled={addIncome.isPending || addExpense.isPending || addExpenseBatch.isPending}>
-            Adicionar
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full h-13 text-base font-semibold mt-2"
+            disabled={addIncome.isPending || addExpense.isPending || addExpenseBatch.isPending}
+          >
+            {(addIncome.isPending || addExpense.isPending || addExpenseBatch.isPending)
+              ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              : <Plus className="w-4 h-4 mr-2" />}
+            {type === 'income' ? 'Adicionar Receita' : 'Adicionar Despesa'}
           </Button>
         </form>
       </DialogContent>
