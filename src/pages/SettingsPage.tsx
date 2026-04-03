@@ -101,13 +101,17 @@ export default function SettingsPage() {
     setIsDeleting(true);
     try {
       for (const month of selectedMonths) {
+        const [y, mo] = month.split('-').map(Number);
+        const lastDay = new Date(y, mo, 0).getDate();
         const start = `${month}-01`;
-        const end = `${month}-31`;
-        await Promise.all([
+        const end = `${month}-${String(lastDay).padStart(2, '0')}`;
+        const results = await Promise.all([
           supabase.from('income').delete().gte('date', start).lte('date', end),
           supabase.from('expenses').delete().gte('date', start).lte('date', end),
           supabase.from('credit_card_transactions').delete().gte('date', start).lte('date', end),
         ]);
+        const errs = results.map(r => r.error).filter(Boolean);
+        if (errs.length > 0) throw new Error(errs[0]!.message);
       }
       await queryClient.invalidateQueries();
       const label = selectedMonths.map(formatMonthLabel).join(', ');
