@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useExpenses, useDeleteExpense, useUpdateExpense, useCategories, useAccounts, type Expense } from '@/hooks/useFinanceData';
 import { getMonthYear, formatCurrency, formatDate, getStatusColor, getStatusLabel } from '@/lib/format';
 import { formatWorkTime } from '@/lib/workTime';
@@ -43,7 +43,7 @@ function OptionPicker({ value, options, placeholder, onChange }: {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 px-1.5 py-0.5 rounded-md transition-colors group/pick">
+        <button className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 px-1.5 py-0.5 rounded-md transition-colors group/pick whitespace-nowrap">
           {selected ? `${selected.icon ?? ''} ${selected.name}`.trim() : <span className="opacity-40">—</span>}
           <ChevronDown className="w-3 h-3 opacity-0 group-hover/pick:opacity-40 shrink-0" />
         </button>
@@ -144,6 +144,19 @@ export default function ExpensesPage() {
   const activeFilters = !!(filterSearch || filterStatus || filterCategory || filterAccount);
   const clearFilters = () => { setFilterSearch(''); setFilterStatus(''); setFilterCategory(''); setFilterAccount(''); };
 
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    expenses.forEach(e => { counts[e.status] = (counts[e.status] ?? 0) + 1; });
+    return counts;
+  }, [expenses]);
+
+  const categoryCounts = useMemo(() => {
+    const base = filterStatus ? expenses.filter(e => e.status === filterStatus) : expenses;
+    const counts: Record<string, number> = {};
+    base.forEach(e => { if (e.category_id) counts[e.category_id] = (counts[e.category_id] ?? 0) + 1; });
+    return counts;
+  }, [expenses, filterStatus]);
+
   const filtered = expenses.filter(e => {
     if (filterStatus && e.status !== filterStatus) return false;
     if (filterCategory && e.category_id !== filterCategory) return false;
@@ -203,59 +216,82 @@ export default function ExpensesPage() {
       </div>
 
       {/* Filter bar */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[160px]">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Buscar despesa..."
-            value={filterSearch}
-            onChange={e => setFilterSearch(e.target.value)}
-            className="h-9 w-full rounded-lg border border-border bg-muted/50 pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-          {filterSearch && (
-            <button onClick={() => setFilterSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-              <X className="w-3.5 h-3.5" />
+      <div className="space-y-2">
+        {/* Search + account row */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Buscar despesa..."
+              value={filterSearch}
+              onChange={e => setFilterSearch(e.target.value)}
+              className="h-9 w-full rounded-lg border border-border bg-muted/50 pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            {filterSearch && (
+              <button onClick={() => setFilterSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          {accounts.length > 0 && (
+            <select
+              value={filterAccount}
+              onChange={e => setFilterAccount(e.target.value)}
+              className="h-9 rounded-lg border border-border bg-muted/50 px-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer max-w-[140px]"
+            >
+              <option value="">Conta</option>
+              {accounts.map(a => <option key={a.id} value={a.id}>{a.icon} {a.name}</option>)}
+            </select>
+          )}
+          {activeFilters && (
+            <button onClick={clearFilters} className="h-9 flex items-center gap-1 px-3 rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 text-xs font-medium transition-colors shrink-0">
+              <X className="w-3.5 h-3.5" /> Limpar
             </button>
           )}
         </div>
-        <select
-          value={filterStatus}
-          onChange={e => setFilterStatus(e.target.value)}
-          className="h-9 rounded-lg border border-border bg-muted/50 px-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
-        >
-          <option value="">Status</option>
-          <option value="concluido">Concluído</option>
-          <option value="pendente">Pendente</option>
-          <option value="agendado">Agendado</option>
-        </select>
-        {categories.length > 0 && (
-          <select
-            value={filterCategory}
-            onChange={e => setFilterCategory(e.target.value)}
-            className="h-9 rounded-lg border border-border bg-muted/50 px-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer max-w-[160px]"
-          >
-            <option value="">Categoria</option>
-            {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
-          </select>
-        )}
-        {accounts.length > 0 && (
-          <select
-            value={filterAccount}
-            onChange={e => setFilterAccount(e.target.value)}
-            className="h-9 rounded-lg border border-border bg-muted/50 px-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer max-w-[140px]"
-          >
-            <option value="">Conta</option>
-            {accounts.map(a => <option key={a.id} value={a.id}>{a.icon} {a.name}</option>)}
-          </select>
-        )}
-        {activeFilters && (
-          <button
-            onClick={clearFilters}
-            className="h-9 flex items-center gap-1.5 px-3 rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 text-xs font-medium transition-colors"
-          >
-            <X className="w-3.5 h-3.5" /> Limpar
-          </button>
+        {/* Status pills */}
+        <div className="flex flex-wrap gap-1.5">
+          {[{ value: '', label: 'Todos' }, ...STATUSES].map(s => {
+            const count = s.value ? (statusCounts[s.value] ?? 0) : expenses.length;
+            if (s.value && count === 0) return null;
+            const active = filterStatus === s.value;
+            return (
+              <button key={s.value} onClick={() => setFilterStatus(s.value)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all border ${
+                  active ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground bg-transparent'
+                }`}>
+                {s.label}
+                <span className={`text-[10px] rounded-full px-1.5 py-0.5 font-bold ${active ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'}`}>{count}</span>
+              </button>
+            );
+          })}
+        </div>
+        {/* Category pills */}
+        {categories.filter(c => categoryCounts[c.id]).length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            <button onClick={() => setFilterCategory('')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all border ${
+                !filterCategory ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground bg-transparent'
+              }`}>
+              Todas
+              <span className={`text-[10px] rounded-full px-1.5 py-0.5 font-bold ${!filterCategory ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'}`}>
+                {Object.values(categoryCounts).reduce((a, b) => a + b, 0)}
+              </span>
+            </button>
+            {categories.filter(c => categoryCounts[c.id]).map(c => {
+              const active = filterCategory === c.id;
+              return (
+                <button key={c.id} onClick={() => setFilterCategory(active ? '' : c.id)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all border ${
+                    active ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground bg-transparent'
+                  }`}>
+                  {c.icon} {c.name}
+                  <span className={`text-[10px] rounded-full px-1.5 py-0.5 font-bold ${active ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'}`}>{categoryCounts[c.id]}</span>
+                </button>
+              );
+            })}
+          </div>
         )}
       </div>
 
