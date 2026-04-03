@@ -41,12 +41,12 @@ export default function ExpensesPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex items-start justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Despesas</h1>
           <p className="text-sm text-muted-foreground">Acompanhe seus gastos</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           <MonthSelector month={month} onChange={setMonth} />
           <TransactionDialog type="expense" />
         </div>

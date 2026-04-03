@@ -29,7 +29,8 @@ export default function StatCard({ label, value, icon: Icon, trend, suffix, clas
         </div>
       </div>
       <p className={cn(
-        'text-2xl font-extrabold currency tracking-tight',
+        'font-extrabold currency tracking-tight leading-tight',
+        'text-xl sm:text-2xl',
         trend === 'up' ? 'text-income' : trend === 'down' ? 'text-expense' : ''
       )}>
         {suffix ? `${value.toFixed(1)}${suffix}` : formatCurrency(value)}

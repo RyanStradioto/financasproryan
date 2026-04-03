@@ -151,16 +151,16 @@ export default function SettingsPage() {
         </div>
 
         {hourlyRate > 0 && (
-          <div className="pl-6 p-4 rounded-lg bg-primary/5 border border-primary/10 space-y-2">
-            <p className="text-xs font-medium text-primary">📊 Seus Coeficientes</p>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <span className="text-muted-foreground">Valor/hora:</span>
-                <span className="ml-2 font-semibold currency">{formatCurrency(hourlyRate)}</span>
+          <div className="ml-0 sm:ml-6 p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-3">
+            <p className="text-xs font-semibold text-primary flex items-center gap-1.5">📊 Seus Coeficientes</p>
+            <div className="flex flex-col gap-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Valor/hora</span>
+                <span className="font-bold currency text-foreground">{formatCurrency(hourlyRate)}</span>
               </div>
-              <div>
-                <span className="text-muted-foreground">Valor/dia:</span>
-                <span className="ml-2 font-semibold currency">{formatCurrency(dailyRate)}</span>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Valor/dia</span>
+                <span className="font-bold currency text-foreground">{formatCurrency(dailyRate)}</span>
               </div>
             </div>
           </div>
@@ -191,7 +191,7 @@ export default function SettingsPage() {
       <button
         onClick={handleSave}
         disabled={upsert.isPending}
-        className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-50"
       >
         <Save className="w-4 h-4" />
         {upsert.isPending ? 'Salvando...' : 'Salvar Configurações'}
@@ -233,7 +233,7 @@ export default function SettingsPage() {
           <button
             onClick={handleDeleteOutsideMonth}
             disabled={isDeleting || confirmText !== 'EXCLUIR'}
-            className="flex items-center gap-2 px-4 py-2 bg-destructive text-destructive-foreground rounded-lg text-sm font-medium hover:bg-destructive/90 transition-colors disabled:opacity-40"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-destructive text-destructive-foreground rounded-xl text-sm font-semibold hover:bg-destructive/90 active:scale-[0.98] transition-all disabled:opacity-40"
           >
             <Trash2 className="w-4 h-4" />
             {isDeleting ? 'Excluindo...' : `Excluir dados fora de ${keepMonth}`}
