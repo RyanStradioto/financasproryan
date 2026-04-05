@@ -157,15 +157,15 @@ export default function Dashboard() {
       </div>
 
       {/* ── Secondary info row ─────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {/* Patrimônio */}
         <div className="stat-card flex items-center gap-3 p-3 sm:p-4">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+          <div className="hidden sm:flex w-10 h-10 rounded-xl bg-primary/10 items-center justify-center shrink-0">
+            <BarChart3 className="w-5 h-5 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Investimentos</p>
-            <p className="text-sm sm:text-lg font-extrabold text-primary currency leading-tight whitespace-nowrap overflow-hidden overflow-ellipsis">{formatCurrency(investmentTotal)}</p>
+            <p className="text-base sm:text-lg font-extrabold text-primary currency leading-tight">{formatCurrency(investmentTotal)}</p>
           </div>
           <a href="/investimentos" className="shrink-0 text-muted-foreground hover:text-primary transition-colors">
             <ChevronRight className="w-4 h-4" />
@@ -174,12 +174,12 @@ export default function Dashboard() {
 
         {/* Pendentes */}
         <div className={cn('stat-card flex items-center gap-3 p-3 sm:p-4', pendingAmount > 0 ? 'border-l-4 border-l-warning' : '')}>
-          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-warning/10 flex items-center justify-center shrink-0">
-            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-warning" />
+          <div className="hidden sm:flex w-10 h-10 rounded-xl bg-warning/10 items-center justify-center shrink-0">
+            <Clock className="w-5 h-5 text-warning" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Pendentes</p>
-            <p className="text-sm sm:text-lg font-extrabold text-warning currency leading-tight whitespace-nowrap overflow-hidden overflow-ellipsis">{formatCurrency(pendingAmount)}</p>
+            <p className="text-base sm:text-lg font-extrabold text-warning currency leading-tight">{formatCurrency(pendingAmount)}</p>
             <p className="text-[10px] sm:text-xs text-muted-foreground">{expenses.filter(e => e.status !== 'concluido').length} transações</p>
           </div>
         </div>
@@ -187,23 +187,23 @@ export default function Dashboard() {
         {/* Horas trabalhadas (só se houver taxa configurada) */}
         {workTimeTotal != null ? (
           <div className="stat-card flex items-center gap-3 p-3 sm:p-4">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-accent flex items-center justify-center shrink-0">
-              <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-accent-foreground" />
+            <div className="hidden sm:flex w-10 h-10 rounded-xl bg-accent items-center justify-center shrink-0">
+              <Zap className="w-5 h-5 text-accent-foreground" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Trabalho</p>
-              <p className="text-sm sm:text-lg font-extrabold leading-tight">{formatWorkTime(workTimeTotal)}</p>
+              <p className="text-base sm:text-lg font-extrabold leading-tight">{formatWorkTime(workTimeTotal)}</p>
               <p className="text-[10px] sm:text-xs text-muted-foreground">p/ pagar despesas</p>
             </div>
           </div>
         ) : (
           <div className="stat-card flex items-center gap-3 p-3 sm:p-4">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <Target className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+            <div className="hidden sm:flex w-10 h-10 rounded-xl bg-primary/10 items-center justify-center shrink-0">
+              <Target className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Lançado</p>
-              <p className="text-sm sm:text-lg font-extrabold currency break-all leading-tight">{formatCurrency(totalExpensesAll)}</p>
+              <p className="text-base sm:text-lg font-extrabold currency leading-tight">{formatCurrency(totalExpensesAll)}</p>
               <p className="text-[10px] sm:text-xs text-muted-foreground">{expenses.length} despesas</p>
             </div>
           </div>
