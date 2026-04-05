@@ -22,16 +22,16 @@ const CHART_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#e
 // Mini stat card with colored left border accent
 function KpiCard({ label, value, sub, color, icon: Icon, trend }: { label: string; value: string; sub?: string; color: string; icon: React.ElementType; trend?: 'up' | 'down' | 'neutral' }) {
   return (
-    <div className={cn('stat-card flex items-center gap-4 p-4 border-l-4 animate-slide-up', color)}>
+    <div className={cn('stat-card flex items-center gap-3 p-3 sm:p-4 border-l-4 animate-slide-up', color)}>
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
-        <p className="text-xl sm:text-2xl font-extrabold currency tracking-tight truncate">{value}</p>
-        {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+        <p className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">{label}</p>
+        <p className="text-base sm:text-xl font-extrabold currency tracking-tight leading-tight break-all">{value}</p>
+        {sub && <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 leading-tight">{sub}</p>}
       </div>
-      <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
+      <div className={cn('w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0',
         trend === 'up' ? 'bg-income/15' : trend === 'down' ? 'bg-expense/15' : 'bg-primary/15'
       )}>
-        <Icon className={cn('w-5 h-5', trend === 'up' ? 'text-income' : trend === 'down' ? 'text-expense' : 'text-primary')} />
+        <Icon className={cn('w-4 h-4 sm:w-5 sm:h-5', trend === 'up' ? 'text-income' : trend === 'down' ? 'text-expense' : 'text-primary')} />
       </div>
     </div>
   );
@@ -121,22 +121,24 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* ── Header ─────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Visão geral das suas finanças</p>
+      <div className="space-y-3">
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-sm text-muted-foreground">Visão geral das suas finanças</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
           <MonthSelector month={month} onChange={setMonth} />
-          <div className="flex gap-2">
+          <div className="flex gap-2 ml-auto">
             <TransactionDialog type="income">
-              <button className="h-9 px-4 rounded-xl bg-income text-white font-semibold text-xs flex items-center gap-1.5 hover:bg-income/90 active:scale-[0.97] transition-all shadow-sm shadow-income/20">
-                <ArrowUpRight className="w-3.5 h-3.5" /> Receita
+              <button className="h-9 px-3 sm:px-4 rounded-xl bg-income text-white font-semibold text-xs flex items-center gap-1.5 hover:bg-income/90 active:scale-[0.97] transition-all shadow-sm shadow-income/20">
+                <ArrowUpRight className="w-3.5 h-3.5" /> <span className="hidden xs:inline">Nova </span>Receita
               </button>
             </TransactionDialog>
             <TransactionDialog type="expense">
-              <button className="h-9 px-4 rounded-xl bg-expense text-white font-semibold text-xs flex items-center gap-1.5 hover:bg-expense/90 active:scale-[0.97] transition-all shadow-sm shadow-expense/20">
-                <ArrowDownRight className="w-3.5 h-3.5" /> Despesa
+              <button className="h-9 px-3 sm:px-4 rounded-xl bg-expense text-white font-semibold text-xs flex items-center gap-1.5 hover:bg-expense/90 active:scale-[0.97] transition-all shadow-sm shadow-expense/20">
+                <ArrowDownRight className="w-3.5 h-3.5" /> <span className="hidden xs:inline">Nova </span>Despesa
               </button>
             </TransactionDialog>
           </div>
@@ -150,20 +152,20 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard label="Receitas" value={formatCurrency(totalIncome)} sub="concluídas" color="border-l-income" icon={TrendingUp} trend="up" />
         <KpiCard label="Despesas" value={formatCurrency(totalExpensesPaid)} sub="pagas" color="border-l-expense" icon={TrendingDown} trend="down" />
-        <KpiCard label="Saldo Acumulado" value={formatCurrency(balance)} sub={balance >= 0 ? 'positivo ✓' : 'negativo'} color={balance >= 0 ? 'border-l-primary' : 'border-l-expense'} icon={Wallet} trend={balance >= 0 ? 'up' : 'down'} />
-        <KpiCard label="Taxa de Economia" value={`${savings.toFixed(1)}%`} sub={savings >= 20 ? 'meta atingida ✓' : `meta: 20%`} color={savings >= 20 ? 'border-l-income' : 'border-l-warning'} icon={PiggyBank} trend={savings >= 20 ? 'up' : 'neutral'} />
+        <KpiCard label="Saldo" value={formatCurrency(balance)} sub={balance >= 0 ? 'positivo ✓' : 'negativo'} color={balance >= 0 ? 'border-l-primary' : 'border-l-expense'} icon={Wallet} trend={balance >= 0 ? 'up' : 'down'} />
+        <KpiCard label="Economia" value={`${savings.toFixed(1)}%`} sub={savings >= 20 ? 'meta ✓' : 'meta: 20%'} color={savings >= 20 ? 'border-l-income' : 'border-l-warning'} icon={PiggyBank} trend={savings >= 20 ? 'up' : 'neutral'} />
       </div>
 
       {/* ── Secondary info row ─────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {/* Patrimônio */}
-        <div className="stat-card flex items-center gap-4 p-4">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <BarChart3 className="w-5 h-5 text-primary" />
+        <div className="stat-card flex items-center gap-3 p-3 sm:p-4">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Investimentos</p>
-            <p className="text-lg font-extrabold text-primary currency truncate">{formatCurrency(investmentTotal)}</p>
+            <p className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Investimentos</p>
+            <p className="text-sm sm:text-lg font-extrabold text-primary currency break-all leading-tight">{formatCurrency(investmentTotal)}</p>
           </div>
           <a href="/investimentos" className="shrink-0 text-muted-foreground hover:text-primary transition-colors">
             <ChevronRight className="w-4 h-4" />
@@ -171,38 +173,38 @@ export default function Dashboard() {
         </div>
 
         {/* Pendentes */}
-        <div className={cn('stat-card flex items-center gap-4 p-4', pendingAmount > 0 ? 'border-l-4 border-l-warning' : '')}>
-          <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center shrink-0">
-            <Clock className="w-5 h-5 text-warning" />
+        <div className={cn('stat-card flex items-center gap-3 p-3 sm:p-4', pendingAmount > 0 ? 'border-l-4 border-l-warning' : '')}>
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-warning/10 flex items-center justify-center shrink-0">
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-warning" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Pendente/Agendado</p>
-            <p className="text-lg font-extrabold text-warning currency truncate">{formatCurrency(pendingAmount)}</p>
-            <p className="text-xs text-muted-foreground">{expenses.filter(e => e.status !== 'concluido').length} transações</p>
+            <p className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Pendentes</p>
+            <p className="text-sm sm:text-lg font-extrabold text-warning currency break-all leading-tight">{formatCurrency(pendingAmount)}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">{expenses.filter(e => e.status !== 'concluido').length} transações</p>
           </div>
         </div>
 
         {/* Horas trabalhadas (só se houver taxa configurada) */}
         {workTimeTotal != null ? (
-          <div className="stat-card flex items-center gap-4 p-4">
-            <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center shrink-0">
-              <Zap className="w-5 h-5 text-accent-foreground" />
+          <div className="stat-card flex items-center gap-3 p-3 sm:p-4">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-accent flex items-center justify-center shrink-0">
+              <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-accent-foreground" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Horas p/ Pagar Despesas</p>
-              <p className="text-lg font-extrabold truncate">{formatWorkTime(workTimeTotal)}</p>
-              <p className="text-xs text-muted-foreground">do mês de trabalho</p>
+              <p className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Trabalho</p>
+              <p className="text-sm sm:text-lg font-extrabold leading-tight">{formatWorkTime(workTimeTotal)}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">p/ pagar despesas</p>
             </div>
           </div>
         ) : (
-          <div className="stat-card flex items-center gap-4 p-4">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <Target className="w-5 h-5 text-primary" />
+          <div className="stat-card flex items-center gap-3 p-3 sm:p-4">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Target className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Total Lançado</p>
-              <p className="text-lg font-extrabold currency truncate">{formatCurrency(totalExpensesAll)}</p>
-              <p className="text-xs text-muted-foreground">{expenses.length} despesas no mês</p>
+              <p className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Lançado</p>
+              <p className="text-sm sm:text-lg font-extrabold currency break-all leading-tight">{formatCurrency(totalExpensesAll)}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">{expenses.length} despesas</p>
             </div>
           </div>
         )}
