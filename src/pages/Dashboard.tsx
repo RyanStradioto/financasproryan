@@ -22,16 +22,16 @@ const CHART_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#e
 // Mini stat card with colored left border accent
 function KpiCard({ label, value, sub, color, icon: Icon, trend }: { label: string; value: string; sub?: string; color: string; icon: React.ElementType; trend?: 'up' | 'down' | 'neutral' }) {
   return (
-    <div className={cn('stat-card flex items-center gap-3 p-3 sm:p-4 border-l-4 animate-slide-up', color)}>
+    <div className={cn('stat-card flex items-center gap-2 sm:gap-3 p-3 sm:p-4 border-l-4 animate-slide-up', color)}>
       <div className="flex-1 min-w-0">
         <p className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">{label}</p>
-        <p className="text-base sm:text-xl font-extrabold currency tracking-tight leading-tight break-all">{value}</p>
+        <p className="text-sm sm:text-xl font-extrabold currency tracking-tight leading-tight whitespace-nowrap overflow-hidden overflow-ellipsis">{value}</p>
         {sub && <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 leading-tight">{sub}</p>}
       </div>
-      <div className={cn('w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0',
+      <div className={cn('hidden sm:flex w-10 h-10 rounded-xl items-center justify-center shrink-0',
         trend === 'up' ? 'bg-income/15' : trend === 'down' ? 'bg-expense/15' : 'bg-primary/15'
       )}>
-        <Icon className={cn('w-4 h-4 sm:w-5 sm:h-5', trend === 'up' ? 'text-income' : trend === 'down' ? 'text-expense' : 'text-primary')} />
+        <Icon className={cn('w-5 h-5', trend === 'up' ? 'text-income' : trend === 'down' ? 'text-expense' : 'text-primary')} />
       </div>
     </div>
   );
@@ -130,15 +130,15 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-2">
           <MonthSelector month={month} onChange={setMonth} />
-          <div className="flex gap-2 ml-auto">
+          <div className="flex gap-2 ml-auto shrink-0">
             <TransactionDialog type="income">
-              <button className="h-9 px-3 sm:px-4 rounded-xl bg-income text-white font-semibold text-xs flex items-center gap-1.5 hover:bg-income/90 active:scale-[0.97] transition-all shadow-sm shadow-income/20">
-                <ArrowUpRight className="w-3.5 h-3.5" /> <span className="hidden xs:inline">Nova </span>Receita
+              <button className="h-9 w-9 sm:w-auto sm:px-4 rounded-xl bg-income text-white font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-income/90 active:scale-[0.97] transition-all shadow-sm shadow-income/20">
+                <ArrowUpRight className="w-4 h-4 shrink-0" /> <span className="hidden sm:inline">Receita</span>
               </button>
             </TransactionDialog>
             <TransactionDialog type="expense">
-              <button className="h-9 px-3 sm:px-4 rounded-xl bg-expense text-white font-semibold text-xs flex items-center gap-1.5 hover:bg-expense/90 active:scale-[0.97] transition-all shadow-sm shadow-expense/20">
-                <ArrowDownRight className="w-3.5 h-3.5" /> <span className="hidden xs:inline">Nova </span>Despesa
+              <button className="h-9 w-9 sm:w-auto sm:px-4 rounded-xl bg-expense text-white font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-expense/90 active:scale-[0.97] transition-all shadow-sm shadow-expense/20">
+                <ArrowDownRight className="w-4 h-4 shrink-0" /> <span className="hidden sm:inline">Despesa</span>
               </button>
             </TransactionDialog>
           </div>
@@ -165,7 +165,7 @@ export default function Dashboard() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Investimentos</p>
-            <p className="text-sm sm:text-lg font-extrabold text-primary currency break-all leading-tight">{formatCurrency(investmentTotal)}</p>
+            <p className="text-sm sm:text-lg font-extrabold text-primary currency leading-tight whitespace-nowrap overflow-hidden overflow-ellipsis">{formatCurrency(investmentTotal)}</p>
           </div>
           <a href="/investimentos" className="shrink-0 text-muted-foreground hover:text-primary transition-colors">
             <ChevronRight className="w-4 h-4" />
@@ -179,7 +179,7 @@ export default function Dashboard() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Pendentes</p>
-            <p className="text-sm sm:text-lg font-extrabold text-warning currency break-all leading-tight">{formatCurrency(pendingAmount)}</p>
+            <p className="text-sm sm:text-lg font-extrabold text-warning currency leading-tight whitespace-nowrap overflow-hidden overflow-ellipsis">{formatCurrency(pendingAmount)}</p>
             <p className="text-[10px] sm:text-xs text-muted-foreground">{expenses.filter(e => e.status !== 'concluido').length} transações</p>
           </div>
         </div>
