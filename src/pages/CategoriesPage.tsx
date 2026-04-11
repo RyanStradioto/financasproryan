@@ -205,8 +205,18 @@ export default function CategoriesPage() {
           );
         })}
         {activeCategories.length === 0 && (
-          <div className="col-span-full text-center py-12 text-muted-foreground">
-            Crie sua primeira categoria para organizar seus gastos
+          <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+              <Plus className="w-8 h-8 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold mb-1">Nenhuma categoria ainda</h3>
+            <p className="text-sm text-muted-foreground mb-6 max-w-xs">
+              Crie sua primeira categoria para organizar seus gastos e definir orçamentos mensais
+            </p>
+            <Button onClick={() => setOpen(true)} size="lg">
+              <Plus className="w-4 h-4 mr-2" />
+              Criar Primeira Categoria
+            </Button>
           </div>
         )}
       </div>

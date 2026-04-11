@@ -1,6 +1,7 @@
 import AppSidebar from './AppSidebar';
 import MobileNav from './MobileNav';
 import MobileHeader from './MobileHeader';
+import UpdateNotification from './UpdateNotification';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -13,6 +14,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
       <MobileNav />
+      <UpdateNotification />
     </div>
   );
 }

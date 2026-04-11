@@ -1,0 +1,9 @@
+{
+  "version": "1.1.0",
+  "date": "2026-04-11",
+  "changes": [
+    "✅ Categorias agora acessível pelo menu do celular",
+    "✅ Botão para criar primeira categoria quando não há nenhuma",
+    "✅ Sistema de notificação de atualizações"
+  ]
+}
