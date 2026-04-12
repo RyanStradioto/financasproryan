@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useProfile, useUpsertProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { User, Briefcase, Clock, CalendarDays, Mail, Save, Trash2, AlertTriangle } from 'lucide-react';
+import { User, Briefcase, Clock, CalendarDays, Mail, Save, Trash2, AlertTriangle, Send } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -17,6 +17,7 @@ export default function SettingsPage() {
   const [hoursPerDay, setHoursPerDay] = useState('');
   const [daysPerWeek, setDaysPerWeek] = useState('');
   const [weeklyEmail, setWeeklyEmail] = useState(true);
+  const [sendingTest, setSendingTest] = useState(false);
 
   // Delete by month state
   const [deleteMonthsOpen, setDeleteMonthsOpen] = useState(false);
@@ -126,6 +127,21 @@ export default function SettingsPage() {
   };
 
   const monthlySalary = Number(salary) || 0;
+
+  const handleTestEmail = async () => {
+    setSendingTest(true);
+    try {
+      const { error } = await supabase.functions.invoke('weekly-summary');
+      if (error) throw error;
+      toast.success('Resumo enviado! Verifique sua caixa de entrada.');
+    } catch (e) {
+      const err = e as Error;
+      toast.error(`Erro: ${err.message}`);
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
   const hpd = Number(hoursPerDay) || 8;
   const dpw = Number(daysPerWeek) || 5;
   const hourlyRate = monthlySalary > 0 ? monthlySalary / (dpw * 4.33 * hpd) : 0;
@@ -217,7 +233,7 @@ export default function SettingsPage() {
           <Mail className="w-4 h-4 text-primary" />
           Notificações
         </div>
-        <div className="pl-6">
+        <div className="pl-6 space-y-4">
           <label className="flex items-center gap-3 cursor-pointer">
             <div
               onClick={() => setWeeklyEmail(!weeklyEmail)}
@@ -227,9 +243,17 @@ export default function SettingsPage() {
             </div>
             <div>
               <p className="text-sm font-medium">Resumo Semanal por Email</p>
-              <p className="text-xs text-muted-foreground">Receba toda segunda um resumo das suas finanças</p>
+              <p className="text-xs text-muted-foreground">Receba toda segunda-feira um resumo das suas finanças</p>
             </div>
           </label>
+          <button
+            onClick={handleTestEmail}
+            disabled={sendingTest}
+            className="flex items-center gap-2 h-9 px-4 rounded-xl border border-border bg-muted/50 text-sm font-medium hover:bg-muted transition-all disabled:opacity-50"
+          >
+            <Send className="w-3.5 h-3.5" />
+            {sendingTest ? 'Enviando...' : 'Testar Envio Agora'}
+          </button>
         </div>
       </div>
 

@@ -170,8 +170,31 @@ Deno.serve(async (req) => {
 
       results.push({ email, totalIncome, totalExpenses, balance });
 
-      // For now, log the summary (email sending requires email infrastructure)
-      console.log(`Weekly summary generated for ${email}: Income=${formatBRL(totalIncome)}, Expenses=${formatBRL(totalExpenses)}, Balance=${formatBRL(balance)}`);
+      // Send email via Resend
+      const resendApiKey = Deno.env.get("RESEND_API_KEY");
+      if (resendApiKey) {
+        const res = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${resendApiKey}`,
+          },
+          body: JSON.stringify({
+            from: "FinançasPro <noreply@financaspro.app>",
+            to: [email],
+            subject: `💰 Resumo Semanal — ${weekLabel}`,
+            html,
+          }),
+        });
+        const resData = await res.json();
+        if (!res.ok) {
+          console.error(`Resend error for ${email}:`, resData);
+        } else {
+          console.log(`Email sent to ${email}:`, resData.id);
+        }
+      } else {
+        console.log(`RESEND_API_KEY not set — email not sent for ${email}`);
+      }
     }
 
     return new Response(JSON.stringify({ success: true, processed: results.length, results }), {

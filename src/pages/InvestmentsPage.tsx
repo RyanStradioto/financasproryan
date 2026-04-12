@@ -47,13 +47,26 @@ export default function InvestmentsPage() {
 
   const [showNewInvestment, setShowNewInvestment] = useState(false);
   const [showAporte, setShowAporte] = useState<string | null>(null);
+  const [initialType, setInitialType] = useState<string>('aporte');
+
+  const openMovimentacao = (id: string, type: string) => {
+    setInitialType(type);
+    setAporteData(p => ({ ...p, type: type as typeof aporteData.type }));
+    setShowAporte(id);
+  };
   const [selectedInvestment, setSelectedInvestment] = useState<string | null>(null);
 
   const [newInv, setNewInv] = useState({ name: '', type: 'cdb', institution: '', current_value: '' });
-  const [aporteData, setAporteData] = useState({
+  const [aporteData, setAporteData] = useState<{
+    amount: string;
+    date: string;
+    type: 'aporte' | 'resgate' | 'rendimento' | 'taxa' | 'ir';
+    account_id: string;
+    description: string;
+  }>({
     amount: '',
     date: new Date().toISOString().split('T')[0],
-    type: 'aporte' as const,
+    type: 'aporte',
     account_id: '',
     description: '',
   });
@@ -188,11 +201,18 @@ export default function InvestmentsPage() {
                   </div>
                   <div className="flex gap-1">
                     <button
-                      onClick={(e) => { e.stopPropagation(); setShowAporte(inv.id); }}
-                      className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors"
-                      title="Registrar movimentação"
+                      onClick={(e) => { e.stopPropagation(); openMovimentacao(inv.id, 'aporte'); }}
+                      className="p-1.5 rounded-lg hover:bg-income/10 text-income transition-colors"
+                      title="Aporte (depositar)"
                     >
                       <ArrowUpCircle className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openMovimentacao(inv.id, 'resgate'); }}
+                      className="p-1.5 rounded-lg hover:bg-expense/10 text-expense transition-colors"
+                      title="Resgate (retirar)"
+                    >
+                      <ArrowDownCircle className="w-4 h-4" />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteInvestment.mutate(inv.id); }}
