@@ -8,4 +8,6 @@ verify_jwt = false
 
 [functions.weekly-summary]
 verify_jwt = false
-schedule = "0 9 * * 1"
+
+[functions.monthly-summary]
+verify_jwt = false

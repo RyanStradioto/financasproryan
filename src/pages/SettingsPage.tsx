@@ -18,6 +18,7 @@ export default function SettingsPage() {
   const [daysPerWeek, setDaysPerWeek] = useState('');
   const [weeklyEmail, setWeeklyEmail] = useState(true);
   const [sendingTest, setSendingTest] = useState(false);
+  const [sendingMonthly, setSendingMonthly] = useState(false);
 
   // Delete by month state
   const [deleteMonthsOpen, setDeleteMonthsOpen] = useState(false);
@@ -133,12 +134,26 @@ export default function SettingsPage() {
     try {
       const { error } = await supabase.functions.invoke('weekly-summary');
       if (error) throw error;
-      toast.success('Resumo enviado! Verifique sua caixa de entrada.');
+      toast.success('Resumo semanal enviado! Verifique sua caixa de entrada.');
     } catch (e) {
       const err = e as Error;
       toast.error(`Erro: ${err.message}`);
     } finally {
       setSendingTest(false);
+    }
+  };
+
+  const handleTestMonthly = async () => {
+    setSendingMonthly(true);
+    try {
+      const { error } = await supabase.functions.invoke('monthly-summary');
+      if (error) throw error;
+      toast.success('Relatório mensal enviado! Verifique sua caixa de entrada.');
+    } catch (e) {
+      const err = e as Error;
+      toast.error(`Erro: ${err.message}`);
+    } finally {
+      setSendingMonthly(false);
     }
   };
 
@@ -246,14 +261,24 @@ export default function SettingsPage() {
               <p className="text-xs text-muted-foreground">Receba toda segunda-feira um resumo das suas finanças</p>
             </div>
           </label>
-          <button
-            onClick={handleTestEmail}
-            disabled={sendingTest}
-            className="flex items-center gap-2 h-9 px-4 rounded-xl border border-border bg-muted/50 text-sm font-medium hover:bg-muted transition-all disabled:opacity-50"
-          >
-            <Send className="w-3.5 h-3.5" />
-            {sendingTest ? 'Enviando...' : 'Testar Envio Agora'}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={handleTestEmail}
+              disabled={sendingTest}
+              className="flex items-center gap-2 h-9 px-4 rounded-xl border border-border bg-muted/50 text-sm font-medium hover:bg-muted transition-all disabled:opacity-50"
+            >
+              <Send className="w-3.5 h-3.5" />
+              {sendingTest ? 'Enviando...' : 'Testar Resumo Semanal'}
+            </button>
+            <button
+              onClick={handleTestMonthly}
+              disabled={sendingMonthly}
+              className="flex items-center gap-2 h-9 px-4 rounded-xl border border-primary/30 bg-primary/10 text-sm font-medium hover:bg-primary/20 transition-all disabled:opacity-50"
+            >
+              <Send className="w-3.5 h-3.5" />
+              {sendingMonthly ? 'Enviando...' : 'Testar Relatório Mensal'}
+            </button>
+          </div>
         </div>
       </div>
 
