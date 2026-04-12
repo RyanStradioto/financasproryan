@@ -312,7 +312,7 @@ Deno.serve(async (req) => {
     }
 
     const results = [];
-    let reportMonthLabel = "";
+    const reportRange = getMonthRange(1);
 
     for (const profile of profilesToProcess) {
       if (!profile.email) continue;
@@ -329,28 +329,15 @@ Deno.serve(async (req) => {
         dataClient = createClient(url, key);
       }
 
-      let selectedRange = getMonthRange(1);
-      let income: Array<Record<string, unknown>> = [];
-      let expenses: Array<Record<string, unknown>> = [];
-      let cardTx: Array<Record<string, unknown>> = [];
-      for (let m = 1; m <= 6; m++) {
-        const range = getMonthRange(m);
-        const [incomeResult, expensesResult, cardResult] = await Promise.all([
-          dataClient.from("income").select("id,amount,date,category_id").eq("user_id", profile.user_id).gte("date", range.startDate).lte("date", range.endDate),
-          dataClient.from("expenses").select("id,amount,date,category_id").eq("user_id", profile.user_id).gte("date", range.startDate).lte("date", range.endDate),
-          dataClient.from("credit_card_transactions").select("id,amount,date,category_id").eq("user_id", profile.user_id).gte("date", range.startDate).lte("date", range.endDate),
-        ]);
-        const inData = incomeResult.data || [];
-        const exData = expensesResult.data || [];
-        const ccData = cardResult.data || [];
-        if (inData.length > 0 || exData.length > 0 || ccData.length > 0 || m === 6) {
-          selectedRange = range;
-          income = inData;
-          expenses = exData;
-          cardTx = ccData;
-          break;
-        }
-      }
+      const [incomeResult, expensesResult, cardResult] = await Promise.all([
+        dataClient.from("income").select("id,amount,date,category_id").eq("user_id", profile.user_id).gte("date", reportRange.startDate).lte("date", reportRange.endDate),
+        dataClient.from("expenses").select("id,amount,date,category_id").eq("user_id", profile.user_id).gte("date", reportRange.startDate).lte("date", reportRange.endDate),
+        dataClient.from("credit_card_transactions").select("id,amount,date,category_id").eq("user_id", profile.user_id).gte("date", reportRange.startDate).lte("date", reportRange.endDate),
+      ]);
+
+      const income = incomeResult.data || [];
+      const expenses = expensesResult.data || [];
+      const cardTx = cardResult.data || [];
 
       const { data: categoriesResult } = await dataClient
         .from("categories")
@@ -367,7 +354,7 @@ Deno.serve(async (req) => {
         cardTx.reduce((s: number, e: any) => s + Number(e.amount), 0);
       const balance = totalIncome - totalExpenses;
       const savingsRate = totalIncome > 0 ? (balance / totalIncome) * 100 : 0;
-      const avgDailyExpense = selectedRange.daysInMonth > 0 ? totalExpenses / selectedRange.daysInMonth : 0;
+      const avgDailyExpense = reportRange.daysInMonth > 0 ? totalExpenses / reportRange.daysInMonth : 0;
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const catBreakdown: CatItem[] = categories
@@ -386,7 +373,7 @@ Deno.serve(async (req) => {
 
       const insights = generateInsights(totalIncome, totalExpenses, balance, savingsRate, catBreakdown);
       const html = buildMonthlyHtml({
-        label: selectedRange.label,
+        label: reportRange.label,
         totalIncome,
         totalExpenses,
         balance,
@@ -398,8 +385,6 @@ Deno.serve(async (req) => {
         avgDailyExpense,
       });
 
-      reportMonthLabel = selectedRange.label;
-
       results.push({ email: profile.email, totalIncome, totalExpenses, balance, savingsRate: savingsRate.toFixed(1) });
 
       if (resendApiKey) {
@@ -409,7 +394,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             from: "FinancasPro <onboarding@resend.dev>",
             to: [profile.email],
-            subject: `Relatorio Mensal | ${selectedRange.label}`,
+            subject: `Relatorio Mensal | ${reportRange.label}`,
             html,
           }),
         });
@@ -420,7 +405,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, month: reportMonthLabel || getMonthRange(1).label, processed: results.length, results }), {
+    return new Response(JSON.stringify({ success: true, month: reportRange.label, processed: results.length, results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
