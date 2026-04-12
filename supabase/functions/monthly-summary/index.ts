@@ -329,10 +329,12 @@ Deno.serve(async (req) => {
         dataClient = createClient(url, key);
       }
 
+      const monthKey = `${reportRange.year}-${String(reportRange.month).padStart(2, "0")}`;
+
       const [incomeResult, expensesResult, cardResult] = await Promise.all([
         dataClient.from("income").select("id,amount,date,category_id").eq("user_id", profile.user_id).gte("date", reportRange.startDate).lte("date", reportRange.endDate),
         dataClient.from("expenses").select("id,amount,date,category_id").eq("user_id", profile.user_id).gte("date", reportRange.startDate).lte("date", reportRange.endDate),
-        dataClient.from("credit_card_transactions").select("id,amount,date,category_id").eq("user_id", profile.user_id).gte("date", reportRange.startDate).lte("date", reportRange.endDate),
+        dataClient.from("credit_card_transactions").select("id,amount,date,bill_month,category_id").eq("user_id", profile.user_id).eq("bill_month", monthKey),
       ]);
 
       const income = incomeResult.data || [];
