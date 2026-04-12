@@ -325,7 +325,7 @@ Deno.serve(async (req) => {
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
       .select("*")
-      .eq("weekly_summary_enabled", true); // reuse the same preference toggle
+      .eq("monthly_summary_enabled", true);
 
     if (profilesError) throw profilesError;
     if (!profiles || profiles.length === 0) {
