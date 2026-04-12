@@ -1,10 +1,11 @@
 {
-  "version": "1.1.1",
+  "version": "1.1.2",
   "date": "2026-04-11",
   "changes": [
     "✅ Categorias agora acessível pelo menu do celular",
     "✅ Botão para criar primeira categoria quando não há nenhuma",
     "✅ Sistema de notificação de atualizações",
-    "✅ Correção no envio de teste do relatório mensal"
+    "✅ Correção no envio de teste do relatório mensal",
+    "✅ Retry e tratamento melhorado de erro nos botões de teste"
   ]
 }

@@ -131,6 +131,43 @@ export default function SettingsPage() {
 
   const FUNCTIONS_BASE_URL = 'https://gashcjenhwamgxrrmbsa.supabase.co/functions/v1';
 
+  const callTestFunction = async (path: 'weekly-summary' | 'monthly-summary', jwt: string) => {
+    const attempt = async () => {
+      const res = await fetch(`${FUNCTIONS_BASE_URL}/${path}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${jwt}`,
+        },
+        body: '{}',
+      });
+
+      const raw = await res.text();
+      let parsed: any = null;
+      try {
+        parsed = raw ? JSON.parse(raw) : null;
+      } catch {
+        parsed = null;
+      }
+
+      if (!res.ok) {
+        const message = parsed?.error || parsed?.message || raw || `HTTP ${res.status}`;
+        throw new Error(message);
+      }
+
+      return parsed;
+    };
+
+    try {
+      return await attempt();
+    } catch (firstErr) {
+      // Retry once for transient network/proxy failures
+      return await attempt().catch(() => {
+        throw firstErr;
+      });
+    }
+  };
+
   const handleTestEmail = async () => {
     setSendingTest(true);
     try {
@@ -141,16 +178,7 @@ export default function SettingsPage() {
       }
       const jwt = session?.access_token;
       if (!jwt) throw new Error('Sessao expirada. Faca login novamente e tente de novo.');
-      const res = await fetch(`${FUNCTIONS_BASE_URL}/weekly-summary`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${jwt}`,
-        },
-        body: '{}',
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro ao enviar email');
+      await callTestFunction('weekly-summary', jwt);
       toast.success('Resumo semanal enviado! Verifique sua caixa de entrada.');
     } catch (e) {
       const err = e as Error;
@@ -170,16 +198,7 @@ export default function SettingsPage() {
       }
       const jwt = session?.access_token;
       if (!jwt) throw new Error('Sessao expirada. Faca login novamente e tente de novo.');
-      const res = await fetch(`${FUNCTIONS_BASE_URL}/monthly-summary`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${jwt}`,
-        },
-        body: '{}',
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro ao enviar email');
+      await callTestFunction('monthly-summary', jwt);
       toast.success('Relatório mensal enviado! Verifique sua caixa de entrada.');
     } catch (e) {
       const err = e as Error;
