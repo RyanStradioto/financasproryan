@@ -21,6 +21,24 @@ function monthName(year: number, month: number): string {
   return raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
+function getMonthRange(monthsAgo: number) {
+  const now = new Date();
+  const d = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1);
+  const year = d.getFullYear();
+  const month = d.getMonth() + 1;
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
+  const endDate = `${year}-${String(month).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
+  return {
+    year,
+    month,
+    label: monthName(year, month),
+    daysInMonth,
+    startDate,
+    endDate,
+  };
+}
+
 function generateInsights(
   totalIncome: number,
   totalExpenses: number,
@@ -86,6 +104,7 @@ function buildMonthlyHtml(params: {
 
   const balanceColor = balance >= 0 ? "#16a34a" : "#dc2626";
   const savingsColor = savingsRate >= 20 ? "#16a34a" : savingsRate >= 10 ? "#d97706" : "#dc2626";
+  const logoUrl = "https://financasproryan.vercel.app/pwa-192x192.png";
 
   const categoryRows = categories.slice(0, 8).map((c) => {
     const pct = totalExpenses > 0 ? Math.round((c.value / totalExpenses) * 100) : 0;
@@ -123,7 +142,16 @@ function buildMonthlyHtml(params: {
             <td style="padding:22px 24px;background:#1f1137;color:#ffffff;">
               <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td style="font-size:24px;font-weight:700;">FinancasPro</td>
+                  <td>
+                    <table cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td width="42" valign="middle" style="padding-right:10px;">
+                          <img src="${logoUrl}" width="34" height="34" alt="FinancasPro" style="display:block;border-radius:8px;" />
+                        </td>
+                        <td valign="middle" style="font-size:24px;font-weight:700;">FinancasPro</td>
+                      </tr>
+                    </table>
+                  </td>
                   <td align="right" style="font-size:13px;color:#ddd6fe;">${label}</td>
                 </tr>
                 <tr>
@@ -168,6 +196,12 @@ function buildMonthlyHtml(params: {
               <div style="border:1px solid #e5e7eb;background:#fafafa;border-radius:10px;padding:12px;">
                 <div style="font-size:13px;color:#111827;font-weight:700;">Media diaria de despesas</div>
                 <div style="font-size:20px;color:#111827;font-weight:700;margin-top:4px;">${fmt(avgDailyExpense)}</div>
+                <div style="margin-top:10px;">
+                  <div style="font-size:12px;color:#4b5563;margin-bottom:5px;">Grafico rapido (Receitas x Despesas)</div>
+                  <div style="height:8px;background:#e5e7eb;border-radius:999px;overflow:hidden;">
+                    <div style="height:8px;width:${Math.min(100, totalIncome > 0 ? Math.round((totalExpenses / totalIncome) * 100) : 100)}%;background:#7c3aed;"></div>
+                  </div>
+                </div>
               </div>
             </td>
           </tr>
@@ -219,6 +253,14 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     const userJwt = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
     const isServiceRoleCall = userJwt === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const browserOrigin = req.headers.get("origin");
+
+    if (!userJwt && browserOrigin) {
+      return new Response(JSON.stringify({ error: "Sessao invalida. Faca login novamente para enviar teste." }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     interface ProfileEntry {
       user_id: string;
@@ -269,15 +311,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    const now = new Date();
-    const prevMonth = now.getMonth() === 0 ? 12 : now.getMonth();
-    const prevYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
-    const daysInMonth = new Date(prevYear, prevMonth, 0).getDate();
-    const startDate = `${prevYear}-${String(prevMonth).padStart(2, "0")}-01`;
-    const endDate = `${prevYear}-${String(prevMonth).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
-    const label = monthName(prevYear, prevMonth);
-
     const results = [];
+    let reportMonthLabel = "";
 
     for (const profile of profilesToProcess) {
       if (!profile.email) continue;
@@ -294,23 +329,45 @@ Deno.serve(async (req) => {
         dataClient = createClient(url, key);
       }
 
-      const [incomeResult, expensesResult, categoriesResult] = await Promise.all([
-        dataClient.from("income").select("id,amount,date,category_id").eq("user_id", profile.user_id).gte("date", startDate).lte("date", endDate),
-        dataClient.from("expenses").select("id,amount,date,category_id").eq("user_id", profile.user_id).gte("date", startDate).lte("date", endDate),
-        dataClient.from("categories").select("id,name,icon,monthly_budget").eq("user_id", profile.user_id),
-      ]);
+      let selectedRange = getMonthRange(1);
+      let income: Array<Record<string, unknown>> = [];
+      let expenses: Array<Record<string, unknown>> = [];
+      let cardTx: Array<Record<string, unknown>> = [];
+      for (let m = 1; m <= 6; m++) {
+        const range = getMonthRange(m);
+        const [incomeResult, expensesResult, cardResult] = await Promise.all([
+          dataClient.from("income").select("id,amount,date,category_id").eq("user_id", profile.user_id).gte("date", range.startDate).lte("date", range.endDate),
+          dataClient.from("expenses").select("id,amount,date,category_id").eq("user_id", profile.user_id).gte("date", range.startDate).lte("date", range.endDate),
+          dataClient.from("credit_card_transactions").select("id,amount,date,category_id").eq("user_id", profile.user_id).gte("date", range.startDate).lte("date", range.endDate),
+        ]);
+        const inData = incomeResult.data || [];
+        const exData = expensesResult.data || [];
+        const ccData = cardResult.data || [];
+        if (inData.length > 0 || exData.length > 0 || ccData.length > 0 || m === 6) {
+          selectedRange = range;
+          income = inData;
+          expenses = exData;
+          cardTx = ccData;
+          break;
+        }
+      }
 
-      const income = incomeResult.data || [];
-      const expenses = expensesResult.data || [];
-      const categories = categoriesResult.data || [];
+      const { data: categoriesResult } = await dataClient
+        .from("categories")
+        .select("id,name,icon,monthly_budget")
+        .eq("user_id", profile.user_id);
+
+      const categories = categoriesResult || [];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const totalIncome = income.reduce((s: number, i: any) => s + Number(i.amount), 0);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const totalExpenses = expenses.reduce((s: number, e: any) => s + Number(e.amount), 0);
+      const totalExpenses = expenses.reduce((s: number, e: any) => s + Number(e.amount), 0) +
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        cardTx.reduce((s: number, e: any) => s + Number(e.amount), 0);
       const balance = totalIncome - totalExpenses;
       const savingsRate = totalIncome > 0 ? (balance / totalIncome) * 100 : 0;
-      const avgDailyExpense = daysInMonth > 0 ? totalExpenses / daysInMonth : 0;
+      const avgDailyExpense = selectedRange.daysInMonth > 0 ? totalExpenses / selectedRange.daysInMonth : 0;
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const catBreakdown: CatItem[] = categories
@@ -320,14 +377,16 @@ Deno.serve(async (req) => {
           icon: String(cat.icon || "-"),
           budget: Number(cat.monthly_budget) || 0,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          value: expenses.filter((e: any) => e.category_id === cat.id).reduce((s: number, e: any) => s + Number(e.amount), 0),
+          value: expenses.filter((e: any) => e.category_id === cat.id).reduce((s: number, e: any) => s + Number(e.amount), 0) +
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            cardTx.filter((e: any) => e.category_id === cat.id).reduce((s: number, e: any) => s + Number(e.amount), 0),
         }))
         .filter((c: CatItem) => c.value > 0)
         .sort((a: CatItem, b: CatItem) => b.value - a.value);
 
       const insights = generateInsights(totalIncome, totalExpenses, balance, savingsRate, catBreakdown);
       const html = buildMonthlyHtml({
-        label,
+        label: selectedRange.label,
         totalIncome,
         totalExpenses,
         balance,
@@ -335,9 +394,11 @@ Deno.serve(async (req) => {
         categories: catBreakdown,
         insights,
         incomeCount: income.length,
-        expenseCount: expenses.length,
+        expenseCount: expenses.length + cardTx.length,
         avgDailyExpense,
       });
+
+      reportMonthLabel = selectedRange.label;
 
       results.push({ email: profile.email, totalIncome, totalExpenses, balance, savingsRate: savingsRate.toFixed(1) });
 
@@ -348,7 +409,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             from: "FinancasPro <onboarding@resend.dev>",
             to: [profile.email],
-            subject: `Relatorio Mensal | ${label}`,
+            subject: `Relatorio Mensal | ${selectedRange.label}`,
             html,
           }),
         });
@@ -359,7 +420,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, month: label, processed: results.length, results }), {
+    return new Response(JSON.stringify({ success: true, month: reportMonthLabel || getMonthRange(1).label, processed: results.length, results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

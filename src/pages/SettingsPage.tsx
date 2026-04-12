@@ -129,11 +129,28 @@ export default function SettingsPage() {
 
   const monthlySalary = Number(salary) || 0;
 
+  const FUNCTIONS_BASE_URL = 'https://gashcjenhwamgxrrmbsa.supabase.co/functions/v1';
+
   const handleTestEmail = async () => {
     setSendingTest(true);
     try {
-      const { error } = await supabase.functions.invoke('weekly-summary');
-      if (error) throw error;
+      let { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        const refreshed = await supabase.auth.refreshSession();
+        session = refreshed.data.session;
+      }
+      const jwt = session?.access_token;
+      if (!jwt) throw new Error('Sessao expirada. Faca login novamente e tente de novo.');
+      const res = await fetch(`${FUNCTIONS_BASE_URL}/weekly-summary`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${jwt}`,
+        },
+        body: '{}',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao enviar email');
       toast.success('Resumo semanal enviado! Verifique sua caixa de entrada.');
     } catch (e) {
       const err = e as Error;
@@ -146,8 +163,23 @@ export default function SettingsPage() {
   const handleTestMonthly = async () => {
     setSendingMonthly(true);
     try {
-      const { error } = await supabase.functions.invoke('monthly-summary');
-      if (error) throw error;
+      let { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        const refreshed = await supabase.auth.refreshSession();
+        session = refreshed.data.session;
+      }
+      const jwt = session?.access_token;
+      if (!jwt) throw new Error('Sessao expirada. Faca login novamente e tente de novo.');
+      const res = await fetch(`${FUNCTIONS_BASE_URL}/monthly-summary`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${jwt}`,
+        },
+        body: '{}',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao enviar email');
       toast.success('Relatório mensal enviado! Verifique sua caixa de entrada.');
     } catch (e) {
       const err = e as Error;

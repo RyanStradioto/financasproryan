@@ -205,6 +205,14 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     const userJwt = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
     const isServiceRoleCall = userJwt === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const browserOrigin = req.headers.get("origin");
+
+    if (!userJwt && browserOrigin) {
+      return new Response(JSON.stringify({ error: "Sessao invalida. Faca login novamente para enviar teste." }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     interface ProfileEntry {
       user_id: string;
