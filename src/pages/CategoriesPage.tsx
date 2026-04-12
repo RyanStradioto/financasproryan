@@ -113,16 +113,19 @@ export default function CategoriesPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="space-y-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Categorias</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Categorias</h1>
           <p className="text-sm text-muted-foreground">Orçamento por categoria</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <MonthSelector month={month} onChange={setMonth} />
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button size="sm"><Plus className="w-4 h-4 mr-1" />Nova Categoria</Button>
+              <Button size="sm" className="ml-auto shrink-0">
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline ml-1">Nova Categoria</span>
+              </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader><DialogTitle>Nova Categoria</DialogTitle></DialogHeader>
@@ -155,7 +158,7 @@ export default function CategoriesPage() {
         </div>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         {activeCategories.map(cat => {
           const spent = expenses
             .filter(e => e.category_id === cat.id)
@@ -167,38 +170,39 @@ export default function CategoriesPage() {
           return (
             <div
               key={cat.id}
-              className="stat-card cursor-pointer group hover:ring-1 hover:ring-primary/30 transition-all"
+              className="stat-card !p-3 sm:!p-5 cursor-pointer group hover:ring-1 hover:ring-primary/30 transition-all"
               onClick={() => openEdit(cat)}
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">{cat.icon}</span>
-                  <h3 className="font-semibold text-sm">{cat.name}</h3>
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-base sm:text-xl shrink-0">{cat.icon}</span>
+                  <h3 className="font-semibold text-xs sm:text-sm truncate">{cat.name}</h3>
                 </div>
-                <Pencil className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                <Pencil className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-muted-foreground opacity-40 shrink-0 ml-1" />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Gasto no mês</span>
-                  <span className={`currency font-medium ${overBudget ? 'text-expense' : 'text-foreground'}`}>{formatCurrency(spent)}</span>
+                  <span className="hidden sm:inline">Gasto</span>
+                  <span className={`currency font-semibold text-xs ${overBudget ? 'text-expense' : 'text-foreground'}`}>{formatCurrency(spent)}</span>
                 </div>
                 {budgetNum > 0 && (
                   <>
-                    <div className="relative">
-                      <Progress value={pct} className="h-2.5" />
-                    </div>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Orçamento: {formatCurrency(budgetNum)}</span>
-                      <span className={pct >= 90 ? 'text-expense font-semibold' : pct >= 60 ? 'text-warning font-semibold' : 'text-income font-medium'}>
+                    <Progress value={pct} className="h-1.5 sm:h-2.5" />
+                    <div className="flex justify-between text-[10px] sm:text-xs text-muted-foreground">
+                      <span className="truncate">{formatCurrency(budgetNum)}</span>
+                      <span className={`shrink-0 ml-1 font-semibold ${pct >= 90 ? 'text-expense' : pct >= 60 ? 'text-warning' : 'text-income'}`}>
                         {Math.round(pct)}%
                       </span>
                     </div>
                     {overBudget && (
-                      <p className="text-xs text-expense font-medium">
-                        ⚠️ Excedido em {formatCurrency(spent - budgetNum)}
+                      <p className="text-[10px] sm:text-xs text-expense font-medium leading-tight">
+                        +{formatCurrency(spent - budgetNum)}
                       </p>
                     )}
                   </>
+                )}
+                {budgetNum === 0 && (
+                  <p className="text-[10px] text-muted-foreground">Sem orçamento</p>
                 )}
               </div>
             </div>
