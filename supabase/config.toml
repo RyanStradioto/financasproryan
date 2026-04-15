@@ -9,8 +9,5 @@ verify_jwt = false
 [functions.weekly-summary]
 verify_jwt = false
 
-[functions.weekly-summary.crons]
-send_weekly = "0 12 * * 1"  # Every Monday at 12:00 UTC
-
 [functions.monthly-summary]
 verify_jwt = false
