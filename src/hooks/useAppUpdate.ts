@@ -23,27 +23,40 @@ export function useAppUpdate() {
       const data: VersionInfo = await res.json();
       const storedVersion = localStorage.getItem(VERSION_KEY);
 
+      console.log('📌 Verificando atualizações:', { stored: storedVersion, current: data.current });
+
       if (!storedVersion) {
-        // Primeira vez — salva a versão atual sem mostrar notificação
+        // Primeira vez — salva a versão atual
         localStorage.setItem(VERSION_KEY, data.current);
+        console.log('✅ Primeira vez - versão armazenada:', data.current);
         return;
       }
 
       if (storedVersion !== data.current) {
-        // Accumulate changes from versions newer than stored
-        const newerVersions = data.versions.filter(v => v.version > storedVersion);
-        const accumulatedChanges = newerVersions.flatMap(v => v.changes);
-        const latestVersion = data.versions.find(v => v.version === data.current);
+        // Encontra versões mais novas
+        const storedNum = parseFloat(storedVersion);
+        const currentNum = parseFloat(data.current);
+        
+        console.log('🔍 Comparação de versões:', { stored: storedNum, current: currentNum });
+        
+        if (currentNum > storedNum) {
+          const newerVersions = data.versions.filter(v => parseFloat(v.version) > storedNum);
+          const accumulatedChanges = newerVersions.flatMap(v => v.changes);
+          const latestVersion = data.versions.find(v => v.version === data.current);
 
-        setVersionInfo({
-          version: data.current,
-          date: latestVersion?.date || data.versions[data.versions.length - 1].date,
-          changes: accumulatedChanges
-        });
-        setUpdateAvailable(true);
+          if (accumulatedChanges.length > 0) {
+            setVersionInfo({
+              version: data.current,
+              date: latestVersion?.date || data.versions[data.versions.length - 1].date,
+              changes: accumulatedChanges
+            });
+            setUpdateAvailable(true);
+            console.log('🔔 NOVA ATUALIZAÇÃO DETECTADA:', { version: data.current, changes: accumulatedChanges.length });
+          }
+        }
       }
-    } catch {
-      // Silencioso — sem rede ou erro de fetch
+    } catch (error) {
+      console.error('Erro ao verificar atualizações:', error);
     }
   }, []);
 

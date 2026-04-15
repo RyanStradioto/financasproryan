@@ -21,24 +21,46 @@ serve(async (req) => {
       return `${c.icon} ${c.name}: R$ ${spent.toFixed(2)} (orçamento: R$ ${c.monthly_budget || 0})`;
     }).join("\n");
 
-    const prompt = `Analise os dados financeiros abaixo e gere 4-5 insights/dicas personalizados em português brasileiro. Seja específico, analítico e acionável. Use os números reais, identifique tendências, compare com padrões típicos e sugira ações concretas baseadas nos dados. Evite conselhos genéricos como "reduza gastos com alimentação". Formato: retorne um JSON array de objetos com "icon" (emoji), "title" (curto), "description" (1-2 frases específicas), "type" ("tip" | "warning" | "achievement").
+    // Calcular métricas analíticas detalhadas
+    const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome * 100) : 0;
+    const dailyAvg = totalExpenses / 30;
+    const categoryMetrics = categories.map((c: Record<string, unknown>) => {
+      const spent = expenses.filter((e: Record<string, unknown>) => e.category_id === c.id).reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0);
+      const budget = Number(c.monthly_budget) || 0;
+      return { name: c.name, spent, budget, pct: totalExpenses > 0 ? (spent / totalExpenses * 100) : 0 };
+    }).sort((a, b) => b.spent - a.spent);
 
-Dados do mês:
-- Receita total: R$ ${totalIncome.toFixed(2)}
-- Despesa total: R$ ${totalExpenses.toFixed(2)}
-- Saldo: R$ ${(totalIncome - totalExpenses).toFixed(2)}
-- Taxa de economia: ${totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome * 100).toFixed(1) : 0}%
-${profile?.monthly_salary ? `- Salário: R$ ${profile.monthly_salary}` : ''}
+    const prompt = `VOCÊ É UM ESPECIALISTA EM FINANÇAS PESSOAIS. Faça uma análise PROFUNDA e MUITO ESPECÍFICA com números reais.
 
-Gastos por categoria:
-${catSummary}
+📊 DADOS DO MÊS:
+Receita: R$ ${totalIncome.toFixed(2)}
+Despesas: R$ ${totalExpenses.toFixed(2)}
+Saldo: R$ ${(totalIncome - totalExpenses).toFixed(2)}
+Taxa poupança: ${savingsRate.toFixed(1)}%
+Média diária: R$ ${dailyAvg.toFixed(2)}
+${profile?.monthly_salary ? `Salário: R$ ${profile.monthly_salary} | Percentual gasto: ${(totalExpenses / Number(profile.monthly_salary) * 100).toFixed(1)}%` : ''}
 
-Instruções específicas:
-- Identifique categorias com crescimento anormal comparado ao mês anterior (se disponível)
-- Sugira otimizações baseadas em padrões de gasto reais
-- Destaque economias potenciais específicas
-- Compare com benchmarks típicos de orçamento
-- Forneça recomendações personalizadas baseadas nos dados`;
+💰 GASTOS DETALHADOS:
+${categoryMetrics.map(c => `${c.name}: R$ ${c.spent.toFixed(2)} (${c.pct.toFixed(1)}% do total)${c.budget ? ` [Orçamento: R$ ${c.budget}]` : ''}`).join('\\n')}
+
+🎯 ANÁLISE REQUERIDA:
+1. Se categoria >40%: calcule EXATAMENTE economias cortando 5%, 10%, 15%
+2. Se ultrapassou orçamento: diga QUANTO e quantos dias faltam para resolver
+3. Se poupança <20%: mostre qual categoria atingindo X% chega a 20%
+4. Se sobra dinheiro: calcule quanto junta em 3/6/12 meses
+5. Compare com padrão: Alimentação 25-35%, Transporte 10-15%, Lazer 5-10%
+
+⚡ FORMATO OBRIGATÓRIO: JSON array com 4-5 objetos
+[{"icon":"emoji","title":"título","description":"análise com NÚMEROS específicos","type":"warning|tip|achievement"}]
+
+🚫 ERROS A EVITAR:
+ERRADO: "Reduza gastos com alimentação"
+CORRETO: "Alimentação consumiu R$ 850 (42%). Cortando 15% (R$ 128) cai para 28% - padrão ideal"
+
+ERRADO: "Poupança boa"
+CORRETO: "Poupança 22% = R$ 450. Em 6 meses terá R$ 2.700 para emergências"
+
+Seja EXTREMAMENTE específico com valores, percentuais e ações.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
