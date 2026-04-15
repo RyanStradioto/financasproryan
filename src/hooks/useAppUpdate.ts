@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 
 interface VersionInfo {
-  version: string;
-  date: string;
-  changes: string[];
+  current: string;
+  versions: Array<{
+    version: string;
+    date: string;
+    changes: string[];
+  }>;
 }
 
 const VERSION_KEY = 'financaspro_app_version';
@@ -22,12 +25,21 @@ export function useAppUpdate() {
 
       if (!storedVersion) {
         // Primeira vez — salva a versão atual sem mostrar notificação
-        localStorage.setItem(VERSION_KEY, data.version);
+        localStorage.setItem(VERSION_KEY, data.current);
         return;
       }
 
-      if (storedVersion !== data.version) {
-        setVersionInfo(data);
+      if (storedVersion !== data.current) {
+        // Accumulate changes from versions newer than stored
+        const newerVersions = data.versions.filter(v => v.version > storedVersion);
+        const accumulatedChanges = newerVersions.flatMap(v => v.changes);
+        const latestVersion = data.versions.find(v => v.version === data.current);
+
+        setVersionInfo({
+          version: data.current,
+          date: latestVersion?.date || data.versions[data.versions.length - 1].date,
+          changes: accumulatedChanges
+        });
         setUpdateAvailable(true);
       }
     } catch {

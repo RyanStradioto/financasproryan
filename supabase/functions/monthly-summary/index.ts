@@ -9,6 +9,38 @@ const corsHeaders = {
 const fmt = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
+function normalizeText(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function formatScheduleDate(date: Date): string {
+  const weekday = normalizeText(new Intl.DateTimeFormat("pt-BR", {
+    weekday: "long",
+    timeZone: "America/Sao_Paulo",
+  }).format(date));
+  const day = new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "America/Sao_Paulo",
+  }).format(date);
+  const time = new Intl.DateTimeFormat("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "America/Sao_Paulo",
+  }).format(date);
+  return `${weekday}, ${day} as ${time}`;
+}
+
+function getNextMonthlySend(now = new Date()): string {
+  let next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 12, 0, 0));
+  if (now >= next) {
+    next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 12, 0, 0));
+  }
+  return formatScheduleDate(next);
+}
+
 interface CatItem {
   name: string;
   icon: string;
@@ -88,6 +120,7 @@ function buildMonthlyHtml(params: {
   incomeCount: number;
   expenseCount: number;
   avgDailyExpense: number;
+  nextScheduledSend: string;
 }): string {
   const {
     label,
@@ -100,6 +133,7 @@ function buildMonthlyHtml(params: {
     incomeCount,
     expenseCount,
     avgDailyExpense,
+    nextScheduledSend,
   } = params;
 
   const balanceColor = balance >= 0 ? "#16a34a" : "#dc2626";
@@ -156,6 +190,9 @@ function buildMonthlyHtml(params: {
                 </tr>
                 <tr>
                   <td colspan="2" style="padding-top:6px;font-size:13px;color:#c4b5fd;">Relatorio mensal consolidado</td>
+                </tr>
+                <tr>
+                  <td colspan="2" style="padding-top:8px;font-size:12px;color:#ddd6fe;">Proximo envio automatico: ${nextScheduledSend} (horario de Brasilia)</td>
                 </tr>
               </table>
             </td>
@@ -313,6 +350,7 @@ Deno.serve(async (req) => {
 
     const results = [];
     const reportRange = getMonthRange(1);
+    const nextScheduledSend = getNextMonthlySend();
 
     for (const profile of profilesToProcess) {
       if (!profile.email) continue;
@@ -331,20 +369,42 @@ Deno.serve(async (req) => {
 
       const monthKey = `${reportRange.year}-${String(reportRange.month).padStart(2, "0")}`;
 
-      const [incomeResult, expensesResult, cardResult] = await Promise.all([
-        dataClient.from("income").select("id,amount,date,category_id").eq("user_id", profile.user_id).gte("date", reportRange.startDate).lte("date", reportRange.endDate),
+      const [incomeResult, expensesResult, cardEqResult, cardLikeResult, cardDateResult] = await Promise.all([
+        dataClient.from("income").select("id,amount,date,description,status").eq("user_id", profile.user_id).gte("date", reportRange.startDate).lte("date", reportRange.endDate),
         dataClient.from("expenses").select("id,amount,date,category_id").eq("user_id", profile.user_id).gte("date", reportRange.startDate).lte("date", reportRange.endDate),
         dataClient.from("credit_card_transactions").select("id,amount,date,bill_month,category_id").eq("user_id", profile.user_id).eq("bill_month", monthKey),
+        dataClient.from("credit_card_transactions").select("id,amount,date,bill_month,category_id").eq("user_id", profile.user_id).like("bill_month", `${monthKey}%`),
+        dataClient.from("credit_card_transactions").select("id,amount,date,bill_month,category_id").eq("user_id", profile.user_id).gte("date", reportRange.startDate).lte("date", reportRange.endDate),
       ]);
+
+      if (incomeResult.error) throw incomeResult.error;
+      if (expensesResult.error) throw expensesResult.error;
+      if (cardEqResult.error) throw cardEqResult.error;
+      if (cardLikeResult.error) throw cardLikeResult.error;
+      if (cardDateResult.error) throw cardDateResult.error;
 
       const income = incomeResult.data || [];
       const expenses = expensesResult.data || [];
-      const cardTx = cardResult.data || [];
+      const cardMerged = [
+        ...(cardEqResult.data || []),
+        ...(cardLikeResult.data || []),
+        ...(cardDateResult.data || []),
+      ];
+      const cardMap = new Map<string, Record<string, unknown>>();
+      for (const tx of cardMerged) {
+        const id = String(tx.id);
+        if (!cardMap.has(id)) cardMap.set(id, tx as Record<string, unknown>);
+      }
+      const cardTx = Array.from(cardMap.values());
 
-      const { data: categoriesResult } = await dataClient
+      const { data: categoriesResult, error: categoriesError } = await dataClient
         .from("categories")
         .select("id,name,icon,monthly_budget")
         .eq("user_id", profile.user_id);
+
+      if (categoriesError) {
+        console.error("Failed to load categories", categoriesError);
+      }
 
       const categories = categoriesResult || [];
 
@@ -385,6 +445,7 @@ Deno.serve(async (req) => {
         incomeCount: income.length,
         expenseCount: expenses.length + cardTx.length,
         avgDailyExpense,
+        nextScheduledSend,
       });
 
       results.push({ email: profile.email, totalIncome, totalExpenses, balance, savingsRate: savingsRate.toFixed(1) });

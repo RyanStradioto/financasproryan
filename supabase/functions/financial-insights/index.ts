@@ -21,7 +21,7 @@ serve(async (req) => {
       return `${c.icon} ${c.name}: R$ ${spent.toFixed(2)} (orçamento: R$ ${c.monthly_budget || 0})`;
     }).join("\n");
 
-    const prompt = `Analise os dados financeiros abaixo e gere 4-5 insights/dicas personalizados em português brasileiro. Seja específico, use os números reais. Formato: retorne um JSON array de objetos com "icon" (emoji), "title" (curto), "description" (1-2 frases), "type" ("tip" | "warning" | "achievement").
+    const prompt = `Analise os dados financeiros abaixo e gere 4-5 insights/dicas personalizados em português brasileiro. Seja específico, analítico e acionável. Use os números reais, identifique tendências, compare com padrões típicos e sugira ações concretas baseadas nos dados. Evite conselhos genéricos como "reduza gastos com alimentação". Formato: retorne um JSON array de objetos com "icon" (emoji), "title" (curto), "description" (1-2 frases específicas), "type" ("tip" | "warning" | "achievement").
 
 Dados do mês:
 - Receita total: R$ ${totalIncome.toFixed(2)}
@@ -31,7 +31,14 @@ Dados do mês:
 ${profile?.monthly_salary ? `- Salário: R$ ${profile.monthly_salary}` : ''}
 
 Gastos por categoria:
-${catSummary}`;
+${catSummary}
+
+Instruções específicas:
+- Identifique categorias com crescimento anormal comparado ao mês anterior (se disponível)
+- Sugira otimizações baseadas em padrões de gasto reais
+- Destaque economias potenciais específicas
+- Compare com benchmarks típicos de orçamento
+- Forneça recomendações personalizadas baseadas nos dados`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

@@ -8,6 +8,49 @@ import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useQueryClient } from '@tanstack/react-query';
 
+const formatScheduleDate = (date: Date) => {
+  const weekday = new Intl.DateTimeFormat('pt-BR', {
+    weekday: 'long',
+    timeZone: 'America/Sao_Paulo',
+  }).format(date);
+  const day = new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'America/Sao_Paulo',
+  }).format(date);
+  const time = new Intl.DateTimeFormat('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'America/Sao_Paulo',
+  }).format(date);
+
+  return `${weekday}, ${day} às ${time}`;
+};
+
+const getNextWeeklySend = (now = new Date()) => {
+  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12, 0, 0));
+  let daysUntilMonday = (1 - next.getUTCDay() + 7) % 7;
+
+  if (daysUntilMonday === 0 && now >= next) {
+    daysUntilMonday = 7;
+  }
+
+  next.setUTCDate(next.getUTCDate() + daysUntilMonday);
+  return formatScheduleDate(next);
+};
+
+const getNextMonthlySend = (now = new Date()) => {
+  let next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 12, 0, 0));
+
+  if (now >= next) {
+    next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 12, 0, 0));
+  }
+
+  return formatScheduleDate(next);
+};
+
 export default function SettingsPage() {
   const { user } = useAuth();
   const { data: profile, isLoading } = useProfile();
@@ -212,6 +255,8 @@ export default function SettingsPage() {
   const dpw = Number(daysPerWeek) || 5;
   const hourlyRate = monthlySalary > 0 ? monthlySalary / (dpw * 4.33 * hpd) : 0;
   const dailyRate = hourlyRate * hpd;
+  const nextWeeklySend = getNextWeeklySend();
+  const nextMonthlySend = getNextMonthlySend();
 
   return (
     <div className="space-y-6 animate-fade-in max-w-2xl">
@@ -312,6 +357,18 @@ export default function SettingsPage() {
               <p className="text-xs text-muted-foreground">Receba toda segunda-feira um resumo das suas finanças</p>
             </div>
           </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-border bg-muted/30 px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Próximo semanal</p>
+              <p className="mt-1 text-sm font-medium text-foreground">{nextWeeklySend}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Envio automático toda segunda-feira às 09:00.</p>
+            </div>
+            <div className="rounded-xl border border-border bg-muted/30 px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Próximo mensal</p>
+              <p className="mt-1 text-sm font-medium text-foreground">{nextMonthlySend}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Envio automático no dia 1 de cada mês às 09:00.</p>
+            </div>
+          </div>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={handleTestEmail}

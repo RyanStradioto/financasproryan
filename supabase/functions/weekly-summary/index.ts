@@ -9,6 +9,40 @@ const corsHeaders = {
 const fmt = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
+function normalizeText(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function formatScheduleDate(date: Date): string {
+  const weekday = normalizeText(new Intl.DateTimeFormat("pt-BR", {
+    weekday: "long",
+    timeZone: "America/Sao_Paulo",
+  }).format(date));
+  const day = new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "America/Sao_Paulo",
+  }).format(date);
+  const time = new Intl.DateTimeFormat("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "America/Sao_Paulo",
+  }).format(date);
+  return `${weekday}, ${day} as ${time}`;
+}
+
+function getNextWeeklySend(now = new Date()): string {
+  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12, 0, 0));
+  let daysUntilMonday = (1 - next.getUTCDay() + 7) % 7;
+  if (daysUntilMonday === 0 && now >= next) {
+    daysUntilMonday = 7;
+  }
+  next.setUTCDate(next.getUTCDate() + daysUntilMonday);
+  return formatScheduleDate(next);
+}
+
 interface CatItem {
   name: string;
   icon: string;
@@ -26,31 +60,31 @@ function generateInsights(
   const tips: string[] = [];
 
   if (totalIncome === 0 && totalExpenses > 0) {
-    tips.push("Nenhuma receita foi registrada nesta semana. Registre entradas para ter um saldo mais preciso.");
+    tips.push("Nenhuma receita foi registrada neste mês. Registre entradas para ter um saldo mais preciso.");
   } else if (balance < 0) {
-    tips.push(`A semana fechou no negativo em ${fmt(Math.abs(balance))}. Ajuste os gastos para recuperar margem na proxima semana.`);
+    tips.push(`O mês fechou no negativo em ${fmt(Math.abs(balance))}. Ajuste os gastos para recuperar margem no próximo mês.`);
   } else if (savingsRate < 10 && totalIncome > 0) {
-    tips.push(`A taxa de poupanca ficou em ${savingsRate.toFixed(1)}%. O objetivo recomendado e 20%.`);
+    tips.push(`A taxa de poupança ficou em ${savingsRate.toFixed(1)}%. O objetivo recomendado é 20%.`);
   } else if (savingsRate >= 20) {
-    tips.push(`Boa semana: poupanca de ${savingsRate.toFixed(1)}%. Mantenha o padrao para consolidar o resultado mensal.`);
+    tips.push(`Bom mês: poupança de ${savingsRate.toFixed(1)}%. Mantenha o padrão para consolidar o resultado anual.`);
   }
 
   const overBudget = categories.filter((c) => c.budget > 0 && c.value > c.budget);
   if (overBudget.length > 0) {
     const names = overBudget.slice(0, 2).map((c) => c.name).join(", ");
-    tips.push(`Categorias acima do orcamento: ${names}. Revise limites para evitar excesso recorrente.`);
+    tips.push(`Categorias acima do orçamento: ${names}. Revise limites para evitar excesso recorrente.`);
   }
 
   if (categories.length > 0 && totalExpenses > 0) {
     const top = categories[0];
     const pct = Math.round((top.value / totalExpenses) * 100);
     if (pct > 35) {
-      tips.push(`${top.name} concentrou ${pct}% das despesas da semana. Uma pequena reducao nessa categoria gera grande impacto.`);
+      tips.push(`${top.name} concentrou ${pct}% das despesas do mês. Uma pequena redução nessa categoria gera grande impacto.`);
     }
   }
 
   if (tips.length === 0) {
-    tips.push("Semana equilibrada. Continue registrando todas as transacoes para manter previsibilidade.");
+    tips.push("Mês equilibrado. Continue registrando todas as transações para manter previsibilidade.");
   }
 
   return tips.slice(0, 4);
@@ -66,6 +100,7 @@ function buildWeeklyHtml(params: {
   insights: string[];
   incomeCount: number;
   expenseCount: number;
+  nextScheduledSend: string;
 }): string {
   const {
     weekLabel,
@@ -77,6 +112,7 @@ function buildWeeklyHtml(params: {
     insights,
     incomeCount,
     expenseCount,
+    nextScheduledSend,
   } = params;
 
   const balanceColor = balance >= 0 ? "#16a34a" : "#dc2626";
@@ -119,10 +155,13 @@ function buildWeeklyHtml(params: {
               <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td style="font-size:24px;font-weight:700;">FinancasPro</td>
-                  <td align="right" style="font-size:13px;color:#cbd5e1;">Semana ${weekLabel}</td>
+                  <td align="right" style="font-size:13px;color:#cbd5e1;">Mês ${weekLabel}</td>
                 </tr>
                 <tr>
-                  <td colspan="2" style="padding-top:6px;font-size:13px;color:#94a3b8;">Resumo semanal das suas financas</td>
+                  <td colspan="2" style="padding-top:6px;font-size:13px;color:#94a3b8;">Resumo mensal das suas finanças</td>
+                </tr>
+                <tr>
+                  <td colspan="2" style="padding-top:8px;font-size:12px;color:#cbd5e1;">Proximo envio automatico: ${nextScheduledSend} (horario de Brasilia)</td>
                 </tr>
               </table>
             </td>
@@ -161,7 +200,7 @@ function buildWeeklyHtml(params: {
           ${categories.length > 0 ? `
           <tr>
             <td style="padding:8px 24px 8px 24px;">
-              <div style="font-size:15px;font-weight:700;color:#111827;margin-bottom:6px;">Categorias da semana</div>
+              <div style="font-size:15px;font-weight:700;color:#111827;margin-bottom:6px;">Categorias do mês</div>
               <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 ${categoryRows}
               </table>
@@ -171,7 +210,7 @@ function buildWeeklyHtml(params: {
 
           <tr>
             <td style="padding:10px 24px 20px 24px;">
-              <div style="font-size:15px;font-weight:700;color:#111827;margin-bottom:8px;">Recomendacoes para proxima semana</div>
+              <div style="font-size:15px;font-weight:700;color:#111827;margin-bottom:8px;">Recomendações para o próximo mês</div>
               <ul style="padding-left:18px;margin:0;">${insightRows}</ul>
             </td>
           </tr>
@@ -270,13 +309,13 @@ Deno.serve(async (req) => {
     }
 
     const now = new Date();
-    const weekAgo = new Date(now);
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    const startDate = weekAgo.toISOString().split("T")[0];
+    // Get current month data instead of weekly
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startDate = startOfMonth.toISOString().split("T")[0];
     const endDate = now.toISOString().split("T")[0];
-    const d1 = startDate.split("-").reverse();
-    const d2 = endDate.split("-").reverse();
-    const weekLabel = `${d1[0]}/${d1[1]} a ${d2[0]}/${d2[1]}`;
+    const monthNameStr = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(now);
+    const weekLabel = monthNameStr.charAt(0).toUpperCase() + monthNameStr.slice(1);
+    const nextScheduledSend = getNextWeeklySend(now);
 
     const results = [];
 
@@ -297,10 +336,14 @@ Deno.serve(async (req) => {
       }
 
       const [incomeResult, expensesResult, categoriesResult] = await Promise.all([
-        dataClient.from("income").select("id,amount,date,description,category_id").eq("user_id", profile.user_id).gte("date", startDate).lte("date", endDate),
+        dataClient.from("income").select("id,amount,date,description,status").eq("user_id", profile.user_id).gte("date", startDate).lte("date", endDate),
         dataClient.from("expenses").select("id,amount,date,description,category_id,status").eq("user_id", profile.user_id).gte("date", startDate).lte("date", endDate),
         dataClient.from("categories").select("id,name,icon,color,monthly_budget").eq("user_id", profile.user_id),
       ]);
+
+      if (incomeResult.error) throw incomeResult.error;
+      if (expensesResult.error) throw expensesResult.error;
+      if (categoriesResult.error) throw categoriesResult.error;
 
       const income = incomeResult.data || [];
       const expenses = expensesResult.data || [];
@@ -338,6 +381,7 @@ Deno.serve(async (req) => {
         insights,
         incomeCount: income.length,
         expenseCount: expenses.length,
+        nextScheduledSend,
       });
 
       results.push({ email, totalIncome, totalExpenses, balance, savingsRate: savingsRate.toFixed(1) });
@@ -349,7 +393,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             from: "FinancasPro <onboarding@resend.dev>",
             to: [email],
-            subject: `Resumo Semanal | ${weekLabel}`,
+            subject: `Resumo Mensal | ${weekLabel}`,
             html,
           }),
         });

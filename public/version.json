@@ -1,11 +1,44 @@
 {
-  "version": "1.1.2",
-  "date": "2026-04-11",
-  "changes": [
-    "✅ Categorias agora acessível pelo menu do celular",
-    "✅ Botão para criar primeira categoria quando não há nenhuma",
-    "✅ Sistema de notificação de atualizações",
-    "✅ Correção no envio de teste do relatório mensal",
-    "✅ Retry e tratamento melhorado de erro nos botões de teste"
+  "current": "1.1.3",
+  "versions": [
+    {
+      "version": "1.1.0",
+      "date": "2024-04-01",
+      "changes": [
+        "✅ Sistema de contas bancárias implementado",
+        "✅ Suporte a múltiplas contas (VR, Alelo, etc.)",
+        "✅ Relatório semanal alterado para mensal acumulado",
+        "✅ Insights de IA melhorados com análise mais profunda",
+        "✅ Tela de atualização mostra mudanças acumuladas"
+      ]
+    },
+    {
+      "version": "1.1.1",
+      "date": "2024-04-10",
+      "changes": [
+        "✅ Correção no envio automático de emails mensais",
+        "✅ Cron job configurado para segunda-feira 12:00 UTC"
+      ]
+    },
+    {
+      "version": "1.1.2",
+      "date": "2024-04-15",
+      "changes": [
+        "✅ Melhorias na interface de contas",
+        "✅ Validação de transações por conta"
+      ]
+    },
+    {
+      "version": "1.1.3",
+      "date": "2026-04-12",
+      "changes": [
+        "✅ Categorias agora acessível pelo menu do celular",
+        "✅ Botão para criar primeira categoria quando não há nenhuma",
+        "✅ Sistema de notificação de atualizações",
+        "✅ Correção no envio de teste do relatório mensal",
+        "✅ Retry e tratamento melhorado de erro nos botões de teste",
+        "✅ Configurações agora mostram próximos envios semanal e mensal"
+      ]
+    }
   ]
 }
