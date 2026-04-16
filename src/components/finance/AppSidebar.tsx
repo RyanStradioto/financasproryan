@@ -1,7 +1,8 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, TrendingUp, TrendingDown, Grid3X3, Landmark, CalendarDays, Settings, LogOut, Wallet, Moon, Sun, Upload, Brain, BarChart3, CreditCard, FileText } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, TrendingDown, Grid3X3, Landmark, CalendarDays, Settings, LogOut, Wallet, Moon, Sun, Upload, Brain, BarChart3, CreditCard, FileText, Trash2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
+import { useTrashCount } from '@/hooks/useTrash';
 import { cn } from '@/lib/utils';
 
 const mainLinks = [
@@ -19,6 +20,7 @@ const toolLinks = [
   { to: '/relatorio', icon: FileText, label: 'Relatório' },
   { to: '/insights', icon: Brain, label: 'Insights IA' },
   { to: '/importar', icon: Upload, label: 'Importar' },
+  { to: '/lixeira', icon: Trash2, label: 'Lixeira' },
   { to: '/configuracoes', icon: Settings, label: 'Configurações' },
 ];
 
@@ -26,6 +28,7 @@ export default function AppSidebar() {
   const { signOut, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
+  const trashCount = useTrashCount();
 
   const renderLink = ({ to, icon: Icon, label }: { to: string; icon: typeof LayoutDashboard; label: string }) => (
     <NavLink
@@ -40,6 +43,11 @@ export default function AppSidebar() {
     >
       <Icon className="w-4 h-4" />
       {label}
+      {to === '/lixeira' && trashCount > 0 && (
+        <span className="ml-auto text-[10px] bg-destructive text-destructive-foreground px-1.5 py-0.5 rounded-full font-bold min-w-[18px] text-center">
+          {trashCount}
+        </span>
+      )}
     </NavLink>
   );
 
