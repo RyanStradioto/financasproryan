@@ -1,15 +1,14 @@
 import { useState } from 'react';
-import { useIncome, useDeleteIncomeWithHistory, useUpdateIncome, useAccounts, useRecentDeletions, useRestoreDeletion, type Income } from '@/hooks/useFinanceData';
+import { useIncome, useDeleteIncome, useUpdateIncome, useAccounts, type Income } from '@/hooks/useFinanceData';
 import { getMonthYear, formatCurrency, formatDate, getStatusColor, getStatusLabel } from '@/lib/format';
 import { formatWorkTime } from '@/lib/workTime';
 import { useWorkTimeCalc } from '@/hooks/useProfile';
 import MonthSelector from '@/components/finance/MonthSelector';
 import TransactionDialog from '@/components/finance/TransactionDialog';
 import EditTransactionDialog from '@/components/finance/EditTransactionDialog';
-import { Trash2, Pencil, Paperclip, Clock, TrendingUp, ChevronDown, Search, X, Filter, RotateCcw, ClipboardList, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Trash2, Pencil, Paperclip, Clock, TrendingUp, ChevronDown, Search, X, Filter } from 'lucide-react';
 import { toast } from 'sonner';
-import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 function DatePicker({ date, onChange }: { date: string; onChange: (d: string) => void }) {
   const [editing, setEditing] = useState(false);
@@ -50,25 +49,20 @@ function OptionPicker({ value, options, placeholder, onChange }: {
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-44 p-1 max-h-52 overflow-y-auto" align="start">
-        <PopoverClose asChild>
-          <button
-            type="button"
-            onClick={() => onChange(null)}
-            className={`w-full text-left px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors hover:bg-muted ${!value ? 'opacity-40 cursor-default' : ''}`}
-          >
-            — Nenhum
-          </button>
-        </PopoverClose>
+        <button
+          onClick={() => onChange(null)}
+          className={`w-full text-left px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors hover:bg-muted ${!value ? 'opacity-40 cursor-default' : ''}`}
+        >
+          — Nenhum
+        </button>
         {options.map(o => (
-          <PopoverClose key={o.id} asChild>
-            <button
-              type="button"
-              onClick={() => onChange(o.id)}
-              className={`w-full text-left px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors hover:bg-muted ${o.id === value ? 'opacity-50 cursor-default' : ''}`}
-            >
-              {o.icon} {o.name}
-            </button>
-          </PopoverClose>
+          <button
+            key={o.id}
+            onClick={() => onChange(o.id)}
+            className={`w-full text-left px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors hover:bg-muted ${o.id === value ? 'opacity-50 cursor-default' : ''}`}
+          >
+            {o.icon} {o.name}
+          </button>
         ))}
       </PopoverContent>
     </Popover>
@@ -94,18 +88,16 @@ function StatusPicker({ status, onChange }: { status: string; onChange: (s: stri
       </PopoverTrigger>
       <PopoverContent className="w-36 p-1" align="start">
         {STATUSES.map(s => (
-          <PopoverClose key={s.value} asChild>
-            <button
-              type="button"
-              onClick={() => onChange(s.value)}
-              className={`w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors hover:bg-muted ${
-                s.value === status ? 'opacity-50 cursor-default' : ''
-              }`}
-            >
-              <span className={`inline-block w-2 h-2 rounded-full ${s.value === 'concluido' ? 'bg-success' : s.value === 'pendente' ? 'bg-warning' : 'bg-info'}`} />
-              {s.label}
-            </button>
-          </PopoverClose>
+          <button
+            key={s.value}
+            onClick={() => onChange(s.value)}
+            className={`w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors hover:bg-muted ${
+              s.value === status ? 'opacity-50 cursor-default' : ''
+            }`}
+          >
+            <span className={`inline-block w-2 h-2 rounded-full ${s.value === 'concluido' ? 'bg-success' : s.value === 'pendente' ? 'bg-warning' : 'bg-info'}`} />
+            {s.label}
+          </button>
         ))}
       </PopoverContent>
     </Popover>
@@ -116,12 +108,9 @@ export default function IncomePage() {
   const [month, setMonth] = useState(getMonthYear());
   const { data: income = [], isLoading } = useIncome(month);
   const { data: accounts = [] } = useAccounts();
-  const { data: deletions = [] } = useRecentDeletions();
-  const restoreDeletion = useRestoreDeletion();
-  const deleteIncome = useDeleteIncomeWithHistory();
+  const deleteIncome = useDeleteIncome();
   const updateIncome = useUpdateIncome();
   const [editing, setEditing] = useState<(Income & { type: 'income' }) | null>(null);
-  const [restoringId, setRestoringId] = useState<string | null>(null);
   const { calcWorkTime, hourlyRate } = useWorkTimeCalc();
 
   const handleStatusChange = async (id: string, status: string) => {
@@ -138,19 +127,6 @@ export default function IncomePage() {
   const handleAccountChange = async (id: string, account_id: string | null) => {
     try { await updateIncome.mutateAsync({ id, account_id: account_id ?? undefined }); }
     catch { toast.error('Erro ao atualizar conta'); }
-  };
-
-  const handleRestore = async (id: string) => {
-    setRestoringId(id);
-    try {
-      await restoreDeletion.mutateAsync(id);
-      toast.success('Exclusão restaurada com sucesso.');
-    } catch (err) {
-      const error = err as Error;
-      toast.error('Erro ao restaurar exclusão: ' + (error.message || 'Tente novamente'));
-    } finally {
-      setRestoringId(null);
-    }
   };
 
   // Filters
@@ -176,19 +152,29 @@ export default function IncomePage() {
     return acc ? `${acc.icon} ${acc.name}` : '—';
   };
 
-  const handleDelete = async (item: Income) => {
-    console.log('🗑️ Função handleDelete chamada para receita:', item.id);
+  const handleDelete = async (id: string) => {
+    const item = income.find(i => i.id === id);
     try {
-      console.log('🔄 Chamando deleteIncome.mutateAsync...');
-      const result = await deleteIncome.mutateAsync(item);
-      console.log('✅ Mutation completada:', result);
-      toast.success('Receita removida');
-    } catch (error) {
-      console.error('❌ Erro capturado em handleDelete:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      console.error('📝 Mensagem de erro:', errorMessage);
-      toast.error('Erro ao remover: ' + errorMessage);
-    }
+      await deleteIncome.mutateAsync(id);
+      toast.success('Receita movida para lixeira', {
+        description: item ? `"${item.description || 'Receita'}" pode ser restaurada em até 30 dias` : undefined,
+        action: {
+          label: 'Desfazer',
+          onClick: async () => {
+            try {
+              const { error } = await (await import('@/integrations/supabase/client')).supabase
+                .from('income')
+                .update({ deleted_at: null } as any)
+                .eq('id', id);
+              if (!error) {
+                toast.success('Receita restaurada!');
+                window.location.reload();
+              }
+            } catch { /* silent */ }
+          },
+        },
+      });
+    } catch { toast.error('Erro ao remover'); }
   };
 
   return (
@@ -202,36 +188,6 @@ export default function IncomePage() {
           <MonthSelector month={month} onChange={setMonth} />
           <TransactionDialog type="income" />
         </div>
-      </div>
-
-      <div className="rounded-3xl border bg-muted p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <ClipboardList className="w-4 h-4" />
-              Histórico de exclusões
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">Recuperações disponíveis nos últimos 30 dias.</p>
-          </div>
-          <div className="text-sm text-muted-foreground">
-            {deletions.length === 0 ? 'Nenhuma exclusão recente' : `${deletions.length} registro(s) excluído(s)`}
-          </div>
-        </div>
-        {deletions.length > 0 && (
-          <div className="mt-4 space-y-2">
-            {deletions.map(item => (
-              <div key={item.id} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-border bg-background p-3">
-                <div className="text-sm">
-                  <div className="font-medium text-foreground">{item.table_name === 'income' ? 'Receita' : 'Despesa'} removida</div>
-                  <div className="text-xs text-muted-foreground">Removido em {new Date(item.deleted_at).toLocaleString('pt-BR')}</div>
-                </div>
-                <Button size="sm" variant="secondary" onClick={() => handleRestore(item.id)} disabled={restoringId === item.id}>
-                  {restoringId === item.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />} Desfazer
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Summary bar */}
@@ -353,7 +309,7 @@ export default function IncomePage() {
               </button>
               <div className="w-px h-5 bg-border" />
               <button
-                onClick={() => handleDelete(item)}
+                onClick={() => handleDelete(item.id)}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
               >
                 <Trash2 className="w-3.5 h-3.5" /> Excluir
@@ -422,7 +378,7 @@ export default function IncomePage() {
                         <button onClick={() => setEditing({ ...item, type: 'income' })} className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all p-1.5 rounded-lg">
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
-                        <button onClick={() => handleDelete(item)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all p-1.5 rounded-lg">
+                        <button onClick={() => handleDelete(item.id)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all p-1.5 rounded-lg">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>

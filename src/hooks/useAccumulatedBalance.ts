@@ -20,11 +20,13 @@ export function useAccumulatedBalance(month: string) {
         supabase
           .from('income')
           .select('amount')
+          .is('deleted_at', null)
           .lte('date', endDate)
           .eq('status', 'concluido'),
         supabase
           .from('expenses')
           .select('amount')
+          .is('deleted_at', null)
           .lte('date', endDate)
           .eq('status', 'concluido'),
       ]);

@@ -111,7 +111,7 @@ export function useAddInvestmentTransaction() {
       // 2. Update investment current_value and total_invested
       const { data: inv, error: invError } = await supabase
         .from('investments')
-        .select('current_value, total_invested')
+        .select('current_value, total_invested, name')
         .eq('id', data.investment_id)
         .single();
       if (invError) throw invError;
@@ -136,10 +136,50 @@ export function useAddInvestmentTransaction() {
         .update({ current_value: newCurrent, total_invested: newInvested })
         .eq('id', data.investment_id);
       if (updateError) throw updateError;
+
+      // 3. INTEGRATION: Deduct/add from account balance via expense/income records
+      // This makes investments "talk" to the rest of the financial system
+      if (data.account_id && (data.type === 'aporte' || data.type === 'resgate')) {
+        if (data.type === 'aporte') {
+          // Aporte = money leaves the account -> create an expense marked as investment transfer
+          // We use a special note so it's identifiable as patrimonial transfer
+          const { error: expError } = await supabase
+            .from('expenses')
+            .insert({
+              user_id: user!.id,
+              date: data.date,
+              description: `📊 Aporte: ${inv.name}`,
+              amount: data.amount,
+              account_id: data.account_id,
+              status: 'concluido',
+              notes: `[INVESTIMENTO] Transferência patrimonial para ${inv.name}. Não é um gasto real.`,
+              is_recurring: false,
+            });
+          if (expError) console.warn('Falha ao registrar saída de conta:', expError);
+        } else if (data.type === 'resgate') {
+          // Resgate = money returns to the account -> create an income record
+          const { error: incError } = await supabase
+            .from('income')
+            .insert({
+              user_id: user!.id,
+              date: data.date,
+              description: `📊 Resgate: ${inv.name}`,
+              amount: data.amount,
+              account_id: data.account_id,
+              status: 'concluido',
+              notes: `[INVESTIMENTO] Resgate patrimonial de ${inv.name}.`,
+            });
+          if (incError) console.warn('Falha ao registrar entrada na conta:', incError);
+        }
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['investments'] });
       qc.invalidateQueries({ queryKey: ['investment-transactions'] });
+      qc.invalidateQueries({ queryKey: ['income'] });
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+      qc.invalidateQueries({ queryKey: ['accounts'] });
+      qc.invalidateQueries({ queryKey: ['accumulated-balance'] });
     },
   });
 }

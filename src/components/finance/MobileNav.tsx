@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, TrendingUp, TrendingDown, BarChart3, CreditCard, Grid3X3, FileText, Brain, Settings, Landmark } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, TrendingDown, BarChart3, CreditCard, Grid3X3, FileText, Brain, Settings, Landmark, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const links = [
@@ -12,6 +12,7 @@ const links = [
   { to: '/categorias', icon: Grid3X3, label: 'Categorias' },
   { to: '/relatorio', icon: FileText, label: 'Relatório' },
   { to: '/insights', icon: Brain, label: 'IA' },
+  { to: '/lixeira', icon: Trash2, label: 'Lixeira' },
   { to: '/configuracoes', icon: Settings, label: 'Config' },
 ];
 
