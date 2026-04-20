@@ -135,7 +135,7 @@ export default function InvestmentsPage() {
       </div>
 
       {/* Patrimony Summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="stat-card">
           <p className="text-xs text-muted-foreground mb-1">Patrimônio Total</p>
           <p className="text-xl font-bold text-primary">{formatCurrency(totalPatrimony)}</p>

@@ -272,6 +272,33 @@ export type Database = {
           },
         ]
       }
+      recent_deletions: {
+        Row: {
+          deleted_at: string
+          id: string
+          payload: Json
+          record_id: string
+          table_name: string
+          user_id: string
+        }
+        Insert: {
+          deleted_at?: string
+          id?: string
+          payload: Json
+          record_id: string
+          table_name: string
+          user_id: string
+        }
+        Update: {
+          deleted_at?: string
+          id?: string
+          payload?: Json
+          record_id?: string
+          table_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       income: {
         Row: {
           account_id: string | null

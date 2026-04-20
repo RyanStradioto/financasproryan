@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAccounts, useAddAccount, useIncome, useExpenses } from '@/hooks/useFinanceData';
+import { useInvestmentTransactions } from '@/hooks/useInvestments';
 import { formatCurrency } from '@/lib/format';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,11 +9,19 @@ import { Label } from '@/components/ui/label';
 import { Plus, Landmark, TrendingUp, TrendingDown, Wallet, Info } from 'lucide-react';
 import { toast } from 'sonner';
 
+function getInvestmentAccountImpact(type: string, amount: number) {
+  if (!amount) return 0;
+  if (type === 'aporte' || type === 'taxa' || type === 'ir') return -amount;
+  if (type === 'resgate' || type === 'rendimento') return amount;
+  return 0;
+}
+
 export default function AccountsPage() {
   const { data: accounts = [] } = useAccounts();
   // Busca TODAS as receitas e despesas sem filtro de mês (saldo acumulado total)
   const { data: income = [] } = useIncome();
   const { data: allExpenses = [] } = useExpenses();
+  const { data: allTransactions = [] } = useInvestmentTransactions();
   const addAccount = useAddAccount();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
@@ -46,7 +55,8 @@ export default function AccountsPage() {
   const totalIncomeAll = income.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0);
   const totalExpensesAll = allExpenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0);
   const totalInitialBalance = activeAccounts.reduce((s, a) => s + Number(a.initial_balance), 0);
-  const globalBalance = totalInitialBalance + totalIncomeAll - totalExpensesAll;
+  const totalInvestmentTransfers = allTransactions.reduce((s, t) => s + getInvestmentAccountImpact(t.type, Number(t.amount)), 0);
+  const globalBalance = totalInitialBalance + totalIncomeAll - totalExpensesAll + totalInvestmentTransfers;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -98,7 +108,7 @@ export default function AccountsPage() {
             <Info className="w-3 h-3" /> Todas as transações (com e sem conta vinculada)
           </span>
         </div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="text-center">
             <div className="flex items-center justify-center gap-1 text-income mb-1">
               <TrendingUp className="w-4 h-4" />
@@ -141,7 +151,10 @@ export default function AccountsPage() {
             {activeAccounts.map(acc => {
               const accIncome = income.filter(i => i.account_id === acc.id && i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0);
               const accExpenses = allExpenses.filter(e => e.account_id === acc.id && e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0);
-              const currentBalance = Number(acc.initial_balance) + accIncome - accExpenses;
+              const accTransfers = allTransactions
+                .filter(t => t.account_id === acc.id)
+                .reduce((sum, t) => sum + getInvestmentAccountImpact(t.type, Number(t.amount)), 0);
+              const currentBalance = Number(acc.initial_balance) + accIncome - accExpenses + accTransfers;
 
               return (
                 <div key={acc.id} className="stat-card">

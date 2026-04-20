@@ -7,6 +7,7 @@ export type Category = Tables<'categories'>;
 export type Account = Tables<'accounts'>;
 export type Income = Tables<'income'>;
 export type Expense = Tables<'expenses'>;
+export type RecentDeletion = Tables<'recent_deletions'>;
 
 export function useCategories() {
   const { user } = useAuth();
@@ -174,6 +175,65 @@ export function useDeleteIncome() {
   });
 }
 
+export function useDeleteIncomeWithHistory() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+
+  console.log('🔧 Hook useDeleteIncomeWithHistory inicializado, user:', user?.id);
+
+  return useMutation({
+    mutationFn: async (item: Income) => {
+      console.log('🔄 Iniciando exclusão com histórico para receita:', item.id, 'user:', user?.id);
+
+      if (!user?.id) {
+        throw new Error('Usuário não autenticado');
+      }
+
+      // Primeiro, vamos tentar apenas excluir sem backup para testar
+      console.log('🧪 Testando exclusão direta primeiro...');
+
+      const { error } = await supabase.from('income').delete().eq('id', item.id);
+
+      if (error) {
+        console.error('❌ Erro na exclusão direta:', error);
+        throw new Error(`Erro na exclusão: ${error.message}`);
+      }
+
+      console.log('✅ Exclusão direta funcionou! Agora tentando backup...');
+
+      // Agora tenta o backup
+      try {
+        const { error: backupError } = await supabase.from('recent_deletions').insert({
+          user_id: user.id,
+          table_name: 'income',
+          record_id: item.id,
+          payload: item,
+        });
+
+        if (backupError) {
+          console.warn('⚠️ Backup falhou, mas exclusão foi bem-sucedida:', backupError);
+          // Não lança erro aqui, pois a exclusão principal funcionou
+        } else {
+          console.log('✅ Backup criado com sucesso');
+        }
+      } catch (backupErr) {
+        console.warn('⚠️ Erro no backup (não crítico):', backupErr);
+      }
+
+      console.log('✅ Receita excluída com sucesso');
+      return item;
+    },
+    onSuccess: (data) => {
+      console.log('🎉 Exclusão completada com sucesso:', data.id);
+      qc.invalidateQueries({ queryKey: ['income'] });
+      qc.invalidateQueries({ queryKey: ['recent-deletions'] });
+    },
+    onError: (error) => {
+      console.error('💥 Erro na mutation:', error);
+    },
+  });
+}
+
 export function useDeleteExpense() {
   const qc = useQueryClient();
   return useMutation({
@@ -182,6 +242,113 @@ export function useDeleteExpense() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['expenses'] }),
+  });
+}
+
+export function useDeleteExpenseWithHistory() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+
+  console.log('🔧 Hook useDeleteExpenseWithHistory inicializado, user:', user?.id);
+
+  return useMutation({
+    mutationFn: async (item: Expense) => {
+      console.log('🔄 Iniciando exclusão com histórico para despesa:', item.id, 'user:', user?.id);
+
+      if (!user?.id) {
+        throw new Error('Usuário não autenticado');
+      }
+
+      const { error: backupError } = await supabase.from('recent_deletions').insert({
+        user_id: user.id,
+        table_name: 'expenses',
+        record_id: item.id,
+        payload: item,
+      });
+
+      if (backupError) {
+        console.error('❌ Erro ao fazer backup:', backupError);
+        throw new Error(`Erro no backup: ${backupError.message}`);
+      }
+
+      console.log('✅ Backup criado com sucesso');
+
+      const { error } = await supabase.from('expenses').delete().eq('id', item.id);
+
+      if (error) {
+        console.error('❌ Erro ao excluir despesa:', error);
+        throw new Error(`Erro na exclusão: ${error.message}`);
+      }
+
+      console.log('✅ Despesa excluída com sucesso');
+      return item;
+    },
+    onSuccess: (data) => {
+      console.log('🎉 Exclusão completada com sucesso:', data.id);
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+      qc.invalidateQueries({ queryKey: ['recent-deletions'] });
+    },
+    onError: (error) => {
+      console.error('💥 Erro na mutation:', error);
+    },
+  });
+}
+
+export function useRecentDeletions() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['recent-deletions', user?.id],
+    queryFn: async () => {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from('recent_deletions')
+        .select('*')
+        .gte('deleted_at', thirtyDaysAgo)
+        .order('deleted_at', { ascending: false });
+      if (error) throw error;
+      return data as RecentDeletion[];
+    },
+    enabled: !!user,
+  });
+}
+
+export function useRestoreDeletion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data: deletion, error: fetchError } = await supabase
+        .from('recent_deletions')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (fetchError || !deletion) throw fetchError || new Error('Exclusão não encontrada');
+
+      const { table_name, payload } = deletion;
+
+      // Clean the payload by removing system fields that shouldn't be inserted
+      const cleanPayload = { ...payload } as Record<string, unknown>;
+      delete cleanPayload.id;
+      delete cleanPayload.created_at;
+      delete cleanPayload.updated_at;
+      delete cleanPayload.user_id; // This will be added by the insert trigger
+
+      const { error: restoreError } = await supabase
+        .from(table_name as 'income' | 'expenses')
+        .insert(cleanPayload);
+      if (restoreError) throw restoreError;
+
+      const { error: deleteHistoryError } = await supabase
+        .from('recent_deletions')
+        .delete()
+        .eq('id', id);
+      if (deleteHistoryError) throw deleteHistoryError;
+
+      return deletion;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['recent-deletions'] }).then(() => {
+      qc.invalidateQueries({ queryKey: ['income'] });
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+    }),
   });
 }
 

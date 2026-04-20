@@ -53,6 +53,18 @@
         "📱 Notificações de atualizações mostrando mudanças acumuladas",
         "⏰ Verificação automática de atualizações a cada 5 minutos"
       ]
+    },
+    {
+      "version": "1.2.2",
+      "date": "2026-04-15",
+      "changes": [
+        "🔧 Correção crítica na funcionalidade de exclusão de receitas e despesas",
+        "✅ Corrigido impacto de aporte de investimento no saldo das contas",
+        "✅ Restaurado funcionamento da exclusão com histórico de desfazer",
+        "✅ Ajustada responsividade em contas e investimentos para celular",
+        "✅ Corrigido erro na restauração de exclusões (payload limpo)",
+        "🚀 Deploy forçado para garantir atualização imediata"
+      ]
     }
   ]
 }

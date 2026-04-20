@@ -53,7 +53,13 @@ ${categoryMetrics.map(c => `${c.name}: R$ ${c.spent.toFixed(2)} (${c.pct.toFixed
 ⚡ FORMATO OBRIGATÓRIO: JSON array com 4-5 objetos
 [{"icon":"emoji","title":"título","description":"análise com NÚMEROS específicos","type":"warning|tip|achievement"}]
 
-🚫 ERROS A EVITAR:
+� IMPORTANTE:
+- use apenas um emoji curto no campo "icon"
+- não repita emojis dentro do título
+- mantenha o título limpo e direto
+- ofereça recomendações claras com valores e percentuais
+
+�🚫 ERROS A EVITAR:
 ERRADO: "Reduza gastos com alimentação"
 CORRETO: "Alimentação consumiu R$ 850 (42%). Cortando 15% (R$ 128) cai para 28% - padrão ideal"
 
