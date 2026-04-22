@@ -212,6 +212,7 @@ export type Database = {
           category_id: string | null
           created_at: string
           date: string
+          deleted_at: string | null
           description: string
           id: string
           is_recurring: boolean
@@ -229,6 +230,7 @@ export type Database = {
           category_id?: string | null
           created_at?: string
           date?: string
+          deleted_at?: string | null
           description?: string
           id?: string
           is_recurring?: boolean
@@ -246,6 +248,7 @@ export type Database = {
           category_id?: string | null
           created_at?: string
           date?: string
+          deleted_at?: string | null
           description?: string
           id?: string
           is_recurring?: boolean
@@ -307,6 +310,7 @@ export type Database = {
           attachment_url: string | null
           created_at: string
           date: string
+          deleted_at: string | null
           description: string
           id: string
           notes: string | null
@@ -321,6 +325,7 @@ export type Database = {
           attachment_url?: string | null
           created_at?: string
           date?: string
+          deleted_at?: string | null
           description?: string
           id?: string
           notes?: string | null
@@ -335,6 +340,7 @@ export type Database = {
           attachment_url?: string | null
           created_at?: string
           date?: string
+          deleted_at?: string | null
           description?: string
           id?: string
           notes?: string | null

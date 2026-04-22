@@ -5,6 +5,8 @@ import type { Tables, TablesInsert } from '@/integrations/supabase/types';
 import {
   deleteWithSoftDeleteFallback,
   isMissingRelationError,
+  mutateManyWithOptionalColumnsFallback,
+  mutateWithOptionalColumnsFallback,
   queryWithSoftDeleteFallback,
 } from '@/lib/softDeleteCompat';
 
@@ -13,6 +15,8 @@ export type Account = Tables<'accounts'>;
 export type Income = Tables<'income'>;
 export type Expense = Tables<'expenses'>;
 export type RecentDeletion = Tables<'recent_deletions'>;
+
+const ATTACHMENT_OPTIONAL_COLUMNS = ['attachment_url'];
 
 export function useCategories() {
   const { user } = useAuth();
@@ -133,12 +137,17 @@ export function useAddIncome() {
   const { user } = useAuth();
   return useMutation({
     mutationFn: async (data: Omit<TablesInsert<'income'>, 'user_id'>): Promise<Income> => {
-      const { data: inserted, error } = await supabase
-        .from('income')
-        .insert({ ...data, user_id: user!.id })
-        .select()
-        .single();
-      if (error) throw error;
+      const inserted = await mutateWithOptionalColumnsFallback<Income>(
+        { ...data, user_id: user!.id },
+        ATTACHMENT_OPTIONAL_COLUMNS,
+        (payload) =>
+          supabase
+            .from('income')
+            .insert(payload as TablesInsert<'income'>)
+            .select()
+            .single(),
+      );
+      if (!inserted) throw new Error('Falha ao criar a receita.');
       return inserted as Income;
     },
     onSuccess: (newItem) => {
@@ -157,12 +166,17 @@ export function useAddExpense() {
   const { user } = useAuth();
   return useMutation({
     mutationFn: async (data: Omit<TablesInsert<'expenses'>, 'user_id'>): Promise<Expense> => {
-      const { data: inserted, error } = await supabase
-        .from('expenses')
-        .insert({ ...data, user_id: user!.id })
-        .select()
-        .single();
-      if (error) throw error;
+      const inserted = await mutateWithOptionalColumnsFallback<Expense>(
+        { ...data, user_id: user!.id },
+        ATTACHMENT_OPTIONAL_COLUMNS,
+        (payload) =>
+          supabase
+            .from('expenses')
+            .insert(payload as TablesInsert<'expenses'>)
+            .select()
+            .single(),
+      );
+      if (!inserted) throw new Error('Falha ao criar a despesa.');
       return inserted as Expense;
     },
     onSuccess: (newItem) => {
@@ -182,8 +196,11 @@ export function useAddExpenseBatch() {
   return useMutation({
     mutationFn: async (items: Omit<TablesInsert<'expenses'>, 'user_id'>[]) => {
       const rows = items.map(d => ({ ...d, user_id: user!.id }));
-      const { error } = await supabase.from('expenses').insert(rows);
-      if (error) throw error;
+      await mutateManyWithOptionalColumnsFallback(
+        rows as Record<string, unknown>[],
+        ATTACHMENT_OPTIONAL_COLUMNS,
+        (payloads) => supabase.from('expenses').insert(payloads as TablesInsert<'expenses'>[]),
+      );
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['expenses'] }).then(() => qc.invalidateQueries({ queryKey: ['accumulated-balance'] })),
   });
@@ -460,8 +477,11 @@ export function useUpdateExpense() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...data }: { id: string } & Partial<TablesInsert<'expenses'>>) => {
-      const { error } = await supabase.from('expenses').update(data).eq('id', id);
-      if (error) throw error;
+      await mutateWithOptionalColumnsFallback<null>(
+        data as Record<string, unknown>,
+        ATTACHMENT_OPTIONAL_COLUMNS,
+        (payload) => supabase.from('expenses').update(payload as TablesInsert<'expenses'>).eq('id', id),
+      );
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['expenses'] }),
   });
@@ -471,8 +491,11 @@ export function useUpdateIncome() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...data }: { id: string } & Partial<TablesInsert<'income'>>) => {
-      const { error } = await supabase.from('income').update(data).eq('id', id);
-      if (error) throw error;
+      await mutateWithOptionalColumnsFallback<null>(
+        data as Record<string, unknown>,
+        ATTACHMENT_OPTIONAL_COLUMNS,
+        (payload) => supabase.from('income').update(payload as TablesInsert<'income'>).eq('id', id),
+      );
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['income'] }),
   });
