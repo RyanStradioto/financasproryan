@@ -1,7 +1,35 @@
 import { useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, ReferenceLine, Tooltip } from 'recharts';
 import { useFinanceHistory } from '@/hooks/useFinanceHistory';
+import { formatCurrency } from '@/lib/format';
 import { Calculator } from 'lucide-react';
+
+interface TooltipPayload {
+  value: number;
+  payload?: { forecast?: boolean };
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: TooltipPayload[];
+  label?: string;
+}
+
+const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
+  if (!active || !payload?.length) return null;
+
+  const value = payload[0]?.value || 0;
+  const isForecast = payload[0]?.payload?.forecast;
+
+  return (
+    <div className="bg-popover border border-border rounded-lg shadow-lg p-3 text-xs">
+      <p className="font-semibold">{label} {isForecast ? '(previsao)' : ''}</p>
+      <p className={`currency font-medium mt-1 ${value >= 0 ? 'text-income' : 'text-expense'}`}>
+        {formatCurrency(value)}
+      </p>
+    </div>
+  );
+};
 
 export default function CashFlowForecast() {
   const { data: history = [] } = useFinanceHistory(6);
@@ -47,7 +75,7 @@ export default function CashFlowForecast() {
       </div>
       <div className="h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+          <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }} accessibilityLayer={false}>
             <XAxis
               dataKey="label"
               tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
@@ -61,6 +89,7 @@ export default function CashFlowForecast() {
               tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
               width={40}
             />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
             <ReferenceLine y={0} stroke="hsl(var(--border))" />
             <Bar
               dataKey="balance"

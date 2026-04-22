@@ -52,10 +52,14 @@ export function useAppUpdate() {
 
       const manifest: VersionManifest = await response.json();
       const storedVersion = localStorage.getItem(VERSION_KEY);
+      const latestVersion = manifest.versions.find((entry) => entry.version === manifest.current);
 
       if (!storedVersion) {
-        localStorage.setItem(VERSION_KEY, manifest.current);
-        setUpdateInfo(null);
+        setUpdateInfo({
+          version: manifest.current,
+          date: latestVersion?.date || new Date().toISOString().slice(0, 10),
+          changes: latestVersion?.changes?.slice(0, 8) || GENERIC_CHANGES,
+        });
         return;
       }
 
@@ -68,8 +72,6 @@ export function useAppUpdate() {
 
       const storedNumber = parseFloat(storedVersion);
       const newerVersions = manifest.versions.filter((entry) => parseFloat(entry.version) > storedNumber);
-      const latestVersion = manifest.versions.find((entry) => entry.version === manifest.current);
-
       setUpdateInfo({
         version: manifest.current,
         date: latestVersion?.date || new Date().toISOString().slice(0, 10),
@@ -141,6 +143,7 @@ export function useAppUpdate() {
 
   const dismiss = useCallback(() => {
     if (updateInfo?.version) {
+      localStorage.setItem(VERSION_KEY, updateInfo.version);
       setDismissedVersion(updateInfo.version);
     }
   }, [updateInfo]);

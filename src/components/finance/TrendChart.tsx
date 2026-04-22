@@ -1,7 +1,38 @@
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { useFinanceHistory } from '@/hooks/useFinanceHistory';
 import { formatCurrency } from '@/lib/format';
 import { TrendingUp } from 'lucide-react';
+
+interface TooltipPayload {
+  value: number;
+  name: string;
+  color: string;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: TooltipPayload[];
+  label?: string;
+}
+
+const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
+  if (!active || !payload?.length) return null;
+
+  return (
+    <div className="bg-popover border border-border rounded-lg shadow-lg p-3 text-xs">
+      <p className="font-semibold mb-1.5">{label}</p>
+      {payload.map((item) => (
+        <div key={item.name} className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+            <span className="text-muted-foreground">{item.name}</span>
+          </div>
+          <span className="currency font-medium">{formatCurrency(item.value)}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 export default function TrendChart() {
   const { data: history = [], isLoading } = useFinanceHistory(6);
@@ -41,7 +72,7 @@ export default function TrendChart() {
       </div>
       <div className="h-[280px]">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={history} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+          <AreaChart data={history} margin={{ top: 5, right: 10, left: 0, bottom: 0 }} accessibilityLayer={false}>
             <defs>
               <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0.35} />
@@ -70,6 +101,7 @@ export default function TrendChart() {
               tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
               width={36}
             />
+            <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--border))', strokeDasharray: '3 3' }} />
             <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
             <Area
               type="monotone"

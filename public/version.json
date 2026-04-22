@@ -1,5 +1,5 @@
 {
-  "current": "1.2.3",
+  "current": "1.2.4",
   "versions": [
     {
       "version": "1.1.0",
@@ -69,6 +69,15 @@
         "Fluxo de instalacao melhorado no Android e com orientacao para iPhone e iPad",
         "Tela de atualizacao reconectada ao service worker para avisar sempre que houver nova versao",
         "Suporte de icone dedicado para instalacao em dispositivos Apple"
+      ]
+    },
+    {
+      "version": "1.2.4",
+      "date": "2026-04-22",
+      "changes": [
+        "Tooltips dos graficos restaurados sem o contorno preto ao tocar ou clicar",
+        "Aviso de atualizacao reforcado para aparecer mesmo em aparelhos sem versao anterior salva",
+        "Ajuste para forcar a chegada da nova interface no mobile com a nova versao publicada"
       ]
     }
   ]

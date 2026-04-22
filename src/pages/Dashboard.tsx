@@ -10,7 +10,7 @@ import TrendChart from '@/components/finance/TrendChart';
 import CashFlowForecast from '@/components/finance/CashFlowForecast';
 import SmartAlerts from '@/components/finance/SmartAlerts';
 import Achievements from '@/components/finance/Achievements';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useCategories } from '@/hooks/useFinanceData';
 import { useAccumulatedBalance } from '@/hooks/useAccumulatedBalance';
 import { useWorkTimeCalc } from '@/hooks/useProfile';
@@ -226,12 +226,17 @@ export default function Dashboard() {
             <div className="flex flex-col items-center gap-4">
               <div className="relative w-40 h-40">
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
+                  <PieChart accessibilityLayer={false}>
                     <Pie data={catBreakdown} dataKey="value" cx="50%" cy="50%" innerRadius={42} outerRadius={68} paddingAngle={2} strokeWidth={0} isAnimationActive={false}>
                       {catBreakdown.map((_, i) => (
                         <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                       ))}
                     </Pie>
+                    <Tooltip
+                      cursor={false}
+                      formatter={(value: number, _name, item) => [formatCurrency(value), item?.payload?.name || 'Categoria']}
+                      contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem', fontSize: '12px' }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -283,9 +288,14 @@ export default function Dashboard() {
             <>
               <div className="h-[140px] mb-3">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={statusData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                  <BarChart data={statusData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }} accessibilityLayer={false}>
                     <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                     <YAxis hide />
+                    <Tooltip
+                      cursor={{ fill: 'transparent' }}
+                      formatter={(value: number) => [formatCurrency(value), 'Valor']}
+                      contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem', fontSize: '12px' }}
+                    />
                     <Bar dataKey="value" radius={[6, 6, 0, 0]} isAnimationActive={false}>
                       {statusData.map((s, i) => <Cell key={i} fill={s.fill} />)}
                     </Bar>
@@ -318,10 +328,15 @@ export default function Dashboard() {
             </h3>
             <div className="h-[140px] mb-3">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={accountData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                <BarChart data={accountData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }} accessibilityLayer={false}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                   <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                   <YAxis hide />
+                  <Tooltip
+                    cursor={{ fill: 'transparent' }}
+                    formatter={(value: number, name: string) => [formatCurrency(value), name === 'income' ? 'Receitas' : 'Despesas']}
+                    contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem', fontSize: '12px' }}
+                  />
                   <Bar dataKey="income" name="income" fill="hsl(160,84%,39%)" radius={[4, 4, 0, 0]} opacity={0.85} isAnimationActive={false} />
                   <Bar dataKey="expenses" name="expenses" fill="hsl(0,72%,51%)" radius={[4, 4, 0, 0]} opacity={0.85} isAnimationActive={false} />
                 </BarChart>
