@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { useProfile, useUpsertProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { User, Briefcase, Clock, CalendarDays, Mail, Save, Trash2, AlertTriangle, Send } from 'lucide-react';
+import { User, Briefcase, Clock, CalendarDays, Mail, Save, Trash2, AlertTriangle, Send, Sparkles } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTutorial } from '@/components/finance/AppTutorial';
 
 const formatScheduleDate = (date: Date) => {
   const weekday = new Intl.DateTimeFormat('pt-BR', {
@@ -53,6 +54,7 @@ const getNextMonthlySend = (now = new Date()) => {
 
 export default function SettingsPage() {
   const { user } = useAuth();
+  const { openTutorial } = useTutorial();
   const { data: profile, isLoading } = useProfile();
   const upsert = useUpsertProfile();
 
@@ -413,6 +415,26 @@ export default function SettingsPage() {
         <Save className="w-4 h-4" />
         {upsert.isPending ? 'Salvando...' : 'Salvar Configurações'}
       </button>
+
+      <div className="stat-card space-y-4">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <Sparkles className="w-4 h-4 text-primary" />
+          Tutorial do App
+        </div>
+        <div className="pl-6 space-y-3">
+          <p className="text-sm text-muted-foreground">
+            O passo a passo do aplicativo aparece automaticamente uma unica vez para cada usuario. Se quiser rever depois, e so abrir novamente aqui.
+          </p>
+          <button
+            type="button"
+            onClick={() => openTutorial(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/15 transition-all"
+          >
+            <Sparkles className="w-4 h-4" />
+            Rever tutorial
+          </button>
+        </div>
+      </div>
 
       {/* ── Zona de Perigo ── */}
       <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5 space-y-4">
