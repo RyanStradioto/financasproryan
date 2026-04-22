@@ -14,7 +14,7 @@ export function useInvestments() {
       const { data, error } = await supabase
         .from('investments')
         .select('*')
-        .eq('archived', false)
+        .or('archived.is.null,archived.eq.false')
         .order('name');
       if (error) throw error;
       return data as Investment[];
