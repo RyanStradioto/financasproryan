@@ -60,6 +60,7 @@ export default function SettingsPage() {
   const [hoursPerDay, setHoursPerDay] = useState('');
   const [daysPerWeek, setDaysPerWeek] = useState('');
   const [weeklyEmail, setWeeklyEmail] = useState(true);
+  const [monthlyEmail, setMonthlyEmail] = useState(true);
   const [sendingTest, setSendingTest] = useState(false);
   const [sendingMonthly, setSendingMonthly] = useState(false);
 
@@ -78,6 +79,7 @@ export default function SettingsPage() {
       setHoursPerDay(String(profile.work_hours_per_day || ''));
       setDaysPerWeek(String(profile.work_days_per_week || ''));
       setWeeklyEmail(profile.weekly_summary_enabled);
+      setMonthlyEmail(profile.monthly_summary_enabled);
     }
   }, [profile]);
 
@@ -88,6 +90,7 @@ export default function SettingsPage() {
         work_hours_per_day: Number(hoursPerDay) || 8,
         work_days_per_week: Number(daysPerWeek) || 5,
         weekly_summary_enabled: weeklyEmail,
+        monthly_summary_enabled: monthlyEmail,
       });
       toast.success('Perfil salvo com sucesso!');
     } catch {
@@ -355,6 +358,18 @@ export default function SettingsPage() {
             <div>
               <p className="text-sm font-medium">Resumo Semanal por Email</p>
               <p className="text-xs text-muted-foreground">Receba toda segunda-feira um resumo das suas finanças</p>
+            </div>
+          </label>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <div
+              onClick={() => setMonthlyEmail(!monthlyEmail)}
+              className={`w-10 h-6 rounded-full transition-colors relative cursor-pointer ${monthlyEmail ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+            >
+              <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${monthlyEmail ? 'translate-x-5' : 'translate-x-1'}`} />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Relatório Mensal por Email</p>
+              <p className="text-xs text-muted-foreground">Receba no dia 1 um consolidado completo do mês anterior</p>
             </div>
           </label>
           <div className="grid gap-3 sm:grid-cols-2">

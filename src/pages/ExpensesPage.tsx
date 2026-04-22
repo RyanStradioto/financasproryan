@@ -183,6 +183,7 @@ export default function ExpensesPage() {
       if (result.softDeleted) {
         toast.success('Despesa movida para lixeira', {
           description: item ? `"${item.description || 'Despesa'}" pode ser restaurada em até 30 dias` : undefined,
+          duration: 5000,
           action: {
             label: 'Desfazer',
             onClick: async () => {
@@ -202,6 +203,7 @@ export default function ExpensesPage() {
       } else {
         toast.success('Despesa excluída', {
           description: 'A lixeira ainda não está habilitada neste banco, então a exclusão foi permanente.',
+          duration: 4000,
         });
       }
     } catch { toast.error('Erro ao remover'); }

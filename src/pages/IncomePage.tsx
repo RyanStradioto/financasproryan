@@ -159,6 +159,7 @@ export default function IncomePage() {
       if (result.softDeleted) {
         toast.success('Receita movida para lixeira', {
           description: item ? `"${item.description || 'Receita'}" pode ser restaurada em até 30 dias` : undefined,
+          duration: 5000,
           action: {
             label: 'Desfazer',
             onClick: async () => {
@@ -178,6 +179,7 @@ export default function IncomePage() {
       } else {
         toast.success('Receita excluída', {
           description: 'A lixeira ainda não está habilitada neste banco, então a exclusão foi permanente.',
+          duration: 4000,
         });
       }
     } catch { toast.error('Erro ao remover'); }

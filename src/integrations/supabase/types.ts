@@ -465,6 +465,7 @@ export type Database = {
           created_at: string
           id: string
           monthly_salary: number
+          monthly_summary_enabled: boolean
           updated_at: string
           user_id: string
           weekly_summary_enabled: boolean
@@ -475,6 +476,7 @@ export type Database = {
           created_at?: string
           id?: string
           monthly_salary?: number
+          monthly_summary_enabled?: boolean
           updated_at?: string
           user_id: string
           weekly_summary_enabled?: boolean
@@ -485,6 +487,7 @@ export type Database = {
           created_at?: string
           id?: string
           monthly_salary?: number
+          monthly_summary_enabled?: boolean
           updated_at?: string
           user_id?: string
           weekly_summary_enabled?: boolean

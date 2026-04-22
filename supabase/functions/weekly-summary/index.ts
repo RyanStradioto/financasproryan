@@ -43,6 +43,20 @@ function getNextWeeklySend(now = new Date()): string {
   return formatScheduleDate(next);
 }
 
+function decodeJwtPayload(token: string | null): Record<string, unknown> | null {
+  if (!token) return null;
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const normalized = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    const decoded = atob(padded);
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
 interface CatItem {
   name: string;
   icon: string;
@@ -155,10 +169,10 @@ function buildWeeklyHtml(params: {
               <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td style="font-size:24px;font-weight:700;">FinancasPro</td>
-                  <td align="right" style="font-size:13px;color:#cbd5e1;">Mês ${weekLabel}</td>
+                  <td align="right" style="font-size:13px;color:#cbd5e1;">${weekLabel}</td>
                 </tr>
                 <tr>
-                  <td colspan="2" style="padding-top:6px;font-size:13px;color:#94a3b8;">Resumo mensal das suas finanças</td>
+                  <td colspan="2" style="padding-top:6px;font-size:13px;color:#94a3b8;">Resumo semanal das suas finanças</td>
                 </tr>
                 <tr>
                   <td colspan="2" style="padding-top:8px;font-size:12px;color:#cbd5e1;">Proximo envio automatico: ${nextScheduledSend} (horario de Brasilia)</td>
@@ -240,14 +254,21 @@ Deno.serve(async (req) => {
     const dataUrl = Deno.env.get("DATA_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!;
     const dataAnonKey = Deno.env.get("DATA_SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const dataServiceRole = Deno.env.get("DATA_SUPABASE_SERVICE_ROLE_KEY");
+    const cronSecret = Deno.env.get("CRON_SECRET");
 
     const authHeader = req.headers.get("Authorization");
     const userJwt = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-    const isServiceRoleCall = userJwt === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const jwtPayload = decodeJwtPayload(userJwt);
+    const isServiceRoleToken =
+      userJwt === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ||
+      userJwt === dataServiceRole ||
+      (jwtPayload?.role === "service_role" && jwtPayload?.ref === "gashcjenhwamgxrrmbsa");
+    const isCronSecretCall = cronSecret && req.headers.get("x-cron-secret") === cronSecret;
+    const isServiceRoleCall = Boolean(isServiceRoleToken || isCronSecretCall);
     const browserOrigin = req.headers.get("origin");
 
-    if (!userJwt && browserOrigin) {
-      return new Response(JSON.stringify({ error: "Sessao invalida. Faca login novamente para enviar teste." }), {
+    if (!isServiceRoleCall && !userJwt) {
+      return new Response(JSON.stringify({ error: browserOrigin ? "Sessao invalida. Faca login novamente para enviar teste." : "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -309,12 +330,22 @@ Deno.serve(async (req) => {
     }
 
     const now = new Date();
-    // Get current month data instead of weekly
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startDate = startOfMonth.toISOString().split("T")[0];
-    const endDate = now.toISOString().split("T")[0];
-    const monthNameStr = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(now);
-    const weekLabel = monthNameStr.charAt(0).toUpperCase() + monthNameStr.slice(1);
+    const rangeEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const rangeStart = new Date(rangeEnd);
+    rangeStart.setDate(rangeStart.getDate() - 6);
+    const startDate = rangeStart.toISOString().split("T")[0];
+    const endDate = rangeEnd.toISOString().split("T")[0];
+    const weekLabel = `${new Intl.DateTimeFormat("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      timeZone: "America/Sao_Paulo",
+    }).format(rangeStart)} a ${new Intl.DateTimeFormat("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      timeZone: "America/Sao_Paulo",
+    }).format(rangeEnd)}`;
     const nextScheduledSend = getNextWeeklySend(now);
 
     const results = [];
@@ -393,7 +424,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             from: "FinancasPro <onboarding@resend.dev>",
             to: [email],
-            subject: `Resumo Mensal | ${weekLabel}`,
+            subject: `Resumo Semanal | ${weekLabel}`,
             html,
           }),
         });

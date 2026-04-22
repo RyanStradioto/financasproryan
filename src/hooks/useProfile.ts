@@ -9,6 +9,7 @@ export type Profile = {
   work_hours_per_day: number;
   work_days_per_week: number;
   weekly_summary_enabled: boolean;
+  monthly_summary_enabled: boolean;
   created_at: string;
   updated_at: string;
 };
