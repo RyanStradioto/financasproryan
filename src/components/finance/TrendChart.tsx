@@ -2,6 +2,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Lege
 import { useFinanceHistory } from '@/hooks/useFinanceHistory';
 import { formatCurrency } from '@/lib/format';
 import { TrendingUp } from 'lucide-react';
+import { useSensitiveData } from '@/components/finance/SensitiveData';
 
 interface TooltipPayload {
   value: number;
@@ -16,6 +17,8 @@ interface CustomTooltipProps {
 }
 
 const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
+  const { maskCurrency } = useSensitiveData();
+
   if (!active || !payload?.length) return null;
 
   return (
@@ -27,7 +30,7 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
             <span className="text-muted-foreground">{item.name}</span>
           </div>
-          <span className="currency font-medium">{formatCurrency(item.value)}</span>
+          <span className="currency font-medium">{maskCurrency(formatCurrency(item.value))}</span>
         </div>
       ))}
     </div>
@@ -35,6 +38,7 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
 };
 
 export default function TrendChart() {
+  const { maskCurrency } = useSensitiveData();
   const { data: history = [], isLoading } = useFinanceHistory(6);
 
   if (isLoading) {
@@ -58,13 +62,13 @@ export default function TrendChart() {
             <div className="text-xs">
               <span className="text-muted-foreground">Receitas avg: </span>
               <span className="font-semibold text-income">
-                {formatCurrency(history.reduce((sum, item) => sum + item.income, 0) / history.length)}
+                {maskCurrency(formatCurrency(history.reduce((sum, item) => sum + item.income, 0) / history.length))}
               </span>
             </div>
             <div className="text-xs">
               <span className="text-muted-foreground">Despesas avg: </span>
               <span className="font-semibold text-expense">
-                {formatCurrency(history.reduce((sum, item) => sum + item.expenses, 0) / history.length)}
+                {maskCurrency(formatCurrency(history.reduce((sum, item) => sum + item.expenses, 0) / history.length))}
               </span>
             </div>
           </>
@@ -101,7 +105,11 @@ export default function TrendChart() {
               tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
               width={36}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--border))', strokeDasharray: '3 3' }} />
+            <Tooltip
+              content={<CustomTooltip />}
+              cursor={{ stroke: 'hsl(var(--border))', strokeDasharray: '3 3' }}
+              wrapperStyle={{ outline: 'none', pointerEvents: 'none', zIndex: 20 }}
+            />
             <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
             <Area
               type="monotone"
@@ -111,7 +119,7 @@ export default function TrendChart() {
               fill="url(#incomeGrad)"
               strokeWidth={2.5}
               dot={{ r: 3.5, fill: 'hsl(160, 84%, 39%)', strokeWidth: 0 }}
-              activeDot={false}
+              activeDot={{ r: 5, strokeWidth: 0 }}
               isAnimationActive={false}
             />
             <Area
@@ -122,7 +130,7 @@ export default function TrendChart() {
               fill="url(#expenseGrad)"
               strokeWidth={2.5}
               dot={{ r: 3.5, fill: 'hsl(0, 72%, 51%)', strokeWidth: 0 }}
-              activeDot={false}
+              activeDot={{ r: 5, strokeWidth: 0 }}
               isAnimationActive={false}
             />
             <Area

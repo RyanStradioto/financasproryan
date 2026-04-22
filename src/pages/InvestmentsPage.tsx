@@ -16,6 +16,7 @@ import { useAccounts } from '@/hooks/useFinanceData';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { toast } from 'sonner';
 import { AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { useSensitiveData } from '@/components/finance/SensitiveData';
 
 const INVESTMENT_TYPES = [
   { value: 'cdb', label: 'CDB', icon: '🏦' },
@@ -38,6 +39,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export default function InvestmentsPage() {
+  const { maskCurrency, maskText, isVisible } = useSensitiveData();
   const { data: investments = [] } = useInvestments();
   const { data: accounts = [] } = useAccounts();
   const { data: allTransactions = [] } = useInvestmentTransactions();
@@ -138,22 +140,22 @@ export default function InvestmentsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="stat-card">
           <p className="text-xs text-muted-foreground mb-1">Patrimônio Total</p>
-          <p className="text-xl font-bold text-primary">{formatCurrency(totalPatrimony)}</p>
+          <p className="text-xl font-bold text-primary">{maskCurrency(formatCurrency(totalPatrimony))}</p>
         </div>
         <div className="stat-card">
           <p className="text-xs text-muted-foreground mb-1">Total Investido</p>
-          <p className="text-xl font-bold">{formatCurrency(totalInvested)}</p>
+          <p className="text-xl font-bold">{maskCurrency(formatCurrency(totalInvested))}</p>
         </div>
         <div className="stat-card">
           <p className="text-xs text-muted-foreground mb-1">Rendimento</p>
           <p className={`text-xl font-bold ${totalReturn >= 0 ? 'text-income' : 'text-expense'}`}>
-            {totalReturn >= 0 ? '+' : ''}{formatCurrency(totalReturn)}
+            {totalReturn >= 0 ? '+' : ''}{maskCurrency(formatCurrency(totalReturn))}
           </p>
         </div>
         <div className="stat-card">
           <p className="text-xs text-muted-foreground mb-1">Retorno %</p>
           <p className={`text-xl font-bold ${returnPct >= 0 ? 'text-income' : 'text-expense'}`}>
-            {returnPct >= 0 ? '+' : ''}{returnPct.toFixed(2)}%
+            {isVisible ? `${returnPct >= 0 ? '+' : ''}${returnPct.toFixed(2)}%` : maskText('12,34%')}
           </p>
         </div>
       </div>
@@ -225,16 +227,16 @@ export default function InvestmentsPage() {
                 <div className="space-y-1">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Valor atual</span>
-                    <span className="font-bold">{formatCurrency(Number(inv.current_value))}</span>
+                    <span className="font-bold">{maskCurrency(formatCurrency(Number(inv.current_value)))}</span>
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Investido</span>
-                    <span>{formatCurrency(Number(inv.total_invested))}</span>
+                    <span>{maskCurrency(formatCurrency(Number(inv.total_invested)))}</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Rendimento</span>
                     <span className={returnVal >= 0 ? 'text-income font-medium' : 'text-expense font-medium'}>
-                      {returnVal >= 0 ? '+' : ''}{formatCurrency(returnVal)} ({pct >= 0 ? '+' : ''}{pct.toFixed(2)}%)
+                      {returnVal >= 0 ? '+' : ''}{maskCurrency(formatCurrency(returnVal))} ({isVisible ? `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%` : maskText('12,34%')})
                     </span>
                   </div>
                 </div>
@@ -278,7 +280,7 @@ export default function InvestmentsPage() {
                 <span className={`text-sm font-semibold currency ${
                   t.type === 'aporte' || t.type === 'rendimento' ? 'text-income' : 'text-expense'
                 }`}>
-                  {t.type === 'aporte' || t.type === 'rendimento' ? '+' : '-'}{formatCurrency(Number(t.amount))}
+                  {t.type === 'aporte' || t.type === 'rendimento' ? '+' : '-'}{maskCurrency(formatCurrency(Number(t.amount)))}
                 </span>
               </div>
             ))}

@@ -1,13 +1,15 @@
-import { Wallet, Moon, Sun, Download, Share, PlusSquare, Smartphone } from 'lucide-react';
+import { Wallet, Moon, Sun, Download, Share, PlusSquare, Smartphone, Eye, EyeOff } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { useSensitiveData } from './SensitiveData';
 
 type InstallMode = 'native' | 'ios' | 'unsupported';
 
 export default function MobileHeader() {
   const { theme, toggleTheme } = useTheme();
+  const { isVisible, toggleVisibility } = useSensitiveData();
   const deferredPrompt = useRef<any>(null);
   const [canInstall, setCanInstall] = useState(false);
   const [installOpen, setInstallOpen] = useState(false);
@@ -81,6 +83,13 @@ export default function MobileHeader() {
           <span className="font-bold text-sm tracking-tight truncate">FinancasPro</span>
         </div>
         <div className="flex items-center gap-1">
+          <button
+            onClick={toggleVisibility}
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+            aria-label={isVisible ? 'Ocultar valores' : 'Mostrar valores'}
+          >
+            {isVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
           {showInstallButton && (
             <button
               onClick={handleInstall}

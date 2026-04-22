@@ -1,9 +1,10 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, TrendingUp, TrendingDown, Grid3X3, Landmark, CalendarDays, Settings, LogOut, Wallet, Moon, Sun, Upload, Brain, BarChart3, CreditCard, FileText, Trash2 } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, TrendingDown, Grid3X3, Landmark, CalendarDays, Settings, LogOut, Wallet, Moon, Sun, Upload, Brain, BarChart3, CreditCard, FileText, Trash2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { useTrashCount } from '@/hooks/useTrash';
 import { cn } from '@/lib/utils';
+import { useSensitiveData } from './SensitiveData';
 
 const mainLinks = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -27,6 +28,7 @@ const toolLinks = [
 export default function AppSidebar() {
   const { signOut, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { isVisible, toggleVisibility } = useSensitiveData();
   const location = useLocation();
   const trashCount = useTrashCount();
 
@@ -77,6 +79,13 @@ export default function AppSidebar() {
 
       {/* Footer */}
       <div className="p-3 border-t border-border/50 space-y-0.5">
+        <button
+          onClick={toggleVisibility}
+          className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200 w-full"
+        >
+          {isVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          {isVisible ? 'Ocultar Valores' : 'Mostrar Valores'}
+        </button>
         <button
           onClick={toggleTheme}
           className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200 w-full"

@@ -16,16 +16,19 @@ import { useAccumulatedBalance } from '@/hooks/useAccumulatedBalance';
 import { useWorkTimeCalc } from '@/hooks/useProfile';
 import { formatWorkTime } from '@/lib/workTime';
 import { cn } from '@/lib/utils';
+import { useSensitiveData } from '@/components/finance/SensitiveData';
 
 const CHART_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
 
 // Mini stat card with colored left border accent
 function KpiCard({ label, value, sub, color, icon: Icon, trend }: { label: string; value: string; sub?: string; color: string; icon: React.ElementType; trend?: 'up' | 'down' | 'neutral' }) {
+  const { maskCurrency, maskText } = useSensitiveData();
+  const displayValue = value.startsWith('R$') ? maskCurrency(value) : maskText(value);
   return (
     <div className={cn('stat-card flex items-center gap-2 sm:gap-3 p-3 sm:p-4 border-l-4 animate-slide-up', color)}>
       <div className="flex-1 min-w-0">
         <p className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">{label}</p>
-        <p className="text-sm sm:text-xl font-extrabold currency tracking-tight leading-tight whitespace-nowrap overflow-hidden overflow-ellipsis">{value}</p>
+        <p className="text-sm sm:text-xl font-extrabold currency tracking-tight leading-tight whitespace-nowrap overflow-hidden overflow-ellipsis">{displayValue}</p>
         {sub && <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 leading-tight">{sub}</p>}
       </div>
       <div className={cn('hidden sm:flex w-10 h-10 rounded-xl items-center justify-center shrink-0',
@@ -37,7 +40,33 @@ function KpiCard({ label, value, sub, color, icon: Icon, trend }: { label: strin
   );
 }
 
+function ChartTooltipCard({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: Array<{ label: string; value: string; color?: string }>;
+}) {
+  return (
+    <div className="min-w-[140px] rounded-xl border border-border bg-popover px-3 py-2.5 shadow-lg">
+      <p className="mb-2 text-xs font-semibold">{title}</p>
+      <div className="space-y-1.5">
+        {rows.map((row) => (
+          <div key={`${title}-${row.label}`} className="flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2">
+              {row.color ? <div className="h-2 w-2 rounded-full" style={{ backgroundColor: row.color }} /> : null}
+              <span className="text-muted-foreground">{row.label}</span>
+            </div>
+            <span className="currency font-semibold">{row.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
+  const { maskCurrency } = useSensitiveData();
   const [month, setMonth] = useState(getMonthYear());
   const { data: income = [] } = useIncome(month);
   const { data: expenses = [] } = useExpenses(month);
@@ -165,7 +194,7 @@ export default function Dashboard() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Investimentos</p>
-            <p className="text-base sm:text-lg font-extrabold text-primary currency leading-tight">{formatCurrency(investmentTotal)}</p>
+            <p className="text-base sm:text-lg font-extrabold text-primary currency leading-tight">{maskCurrency(formatCurrency(investmentTotal))}</p>
           </div>
           <a href="/investimentos" className="shrink-0 text-muted-foreground hover:text-primary transition-colors">
             <ChevronRight className="w-4 h-4" />
@@ -179,7 +208,7 @@ export default function Dashboard() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Pendentes</p>
-            <p className="text-base sm:text-lg font-extrabold text-warning currency leading-tight">{formatCurrency(pendingAmount)}</p>
+            <p className="text-base sm:text-lg font-extrabold text-warning currency leading-tight">{maskCurrency(formatCurrency(pendingAmount))}</p>
             <p className="text-[10px] sm:text-xs text-muted-foreground">{expenses.filter(e => e.status !== 'concluido').length} transações</p>
           </div>
         </div>
@@ -203,7 +232,7 @@ export default function Dashboard() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Lançado</p>
-              <p className="text-base sm:text-lg font-extrabold currency leading-tight">{formatCurrency(totalExpensesAll)}</p>
+              <p className="text-base sm:text-lg font-extrabold currency leading-tight">{maskCurrency(formatCurrency(totalExpensesAll))}</p>
               <p className="text-[10px] sm:text-xs text-muted-foreground">{expenses.length} despesas</p>
             </div>
           </div>
@@ -234,14 +263,29 @@ export default function Dashboard() {
                     </Pie>
                     <Tooltip
                       cursor={false}
-                      formatter={(value: number, _name, item) => [formatCurrency(value), item?.payload?.name || 'Categoria']}
-                      contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem', fontSize: '12px' }}
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const item = payload[0]?.payload;
+                        return (
+                          <ChartTooltipCard
+                            title={item?.name || 'Categoria'}
+                            rows={[
+                              {
+                                label: 'Valor',
+                                value: maskCurrency(formatCurrency(Number(item?.value || 0))),
+                                color: payload[0]?.color,
+                              },
+                            ]}
+                          />
+                        );
+                      }}
+                      wrapperStyle={{ outline: 'none', pointerEvents: 'none', zIndex: 20 }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <p className="text-[10px] text-muted-foreground">Total</p>
-                  <p className="text-xs font-bold currency">{formatCurrency(totalExpensesAll)}</p>
+                  <p className="text-xs font-bold currency">{maskCurrency(formatCurrency(totalExpensesAll))}</p>
                 </div>
               </div>
               <div className="w-full space-y-1.5">
@@ -256,7 +300,7 @@ export default function Dashboard() {
                         </div>
                         <div className="flex items-center gap-1.5">
                           <span className="text-[10px] text-muted-foreground">{pct.toFixed(0)}%</span>
-                          <span className="font-semibold currency">{formatCurrency(cat.value)}</span>
+                          <span className="font-semibold currency">{maskCurrency(formatCurrency(cat.value))}</span>
                         </div>
                       </div>
                       <div className="h-1 bg-muted rounded-full overflow-hidden">
@@ -293,8 +337,22 @@ export default function Dashboard() {
                     <YAxis hide />
                     <Tooltip
                       cursor={{ fill: 'transparent' }}
-                      formatter={(value: number) => [formatCurrency(value), 'Valor']}
-                      contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem', fontSize: '12px' }}
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload?.length) return null;
+                        return (
+                          <ChartTooltipCard
+                            title={String(label ?? 'Status')}
+                            rows={[
+                              {
+                                label: 'Valor',
+                                value: maskCurrency(formatCurrency(Number(payload[0]?.value || 0))),
+                                color: payload[0]?.payload?.fill,
+                              },
+                            ]}
+                          />
+                        );
+                      }}
+                      wrapperStyle={{ outline: 'none', pointerEvents: 'none', zIndex: 20 }}
                     />
                     <Bar dataKey="value" radius={[6, 6, 0, 0]} isAnimationActive={false}>
                       {statusData.map((s, i) => <Cell key={i} fill={s.fill} />)}
@@ -309,7 +367,7 @@ export default function Dashboard() {
                       <div className="w-2 h-2 rounded-full" style={{ backgroundColor: s.fill }} />
                       <span className="text-muted-foreground">{s.name}</span>
                     </div>
-                    <span className="font-semibold currency">{formatCurrency(s.value)}</span>
+                    <span className="font-semibold currency">{maskCurrency(formatCurrency(s.value))}</span>
                   </div>
                 ))}
               </div>
@@ -334,8 +392,20 @@ export default function Dashboard() {
                   <YAxis hide />
                   <Tooltip
                     cursor={{ fill: 'transparent' }}
-                    formatter={(value: number, name: string) => [formatCurrency(value), name === 'income' ? 'Receitas' : 'Despesas']}
-                    contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem', fontSize: '12px' }}
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      return (
+                        <ChartTooltipCard
+                          title={String(label ?? 'Conta')}
+                          rows={payload.map((item) => ({
+                            label: item.name === 'income' ? 'Receitas' : 'Despesas',
+                            value: maskCurrency(formatCurrency(Number(item.value || 0))),
+                            color: item.color,
+                          }))}
+                        />
+                      );
+                    }}
+                    wrapperStyle={{ outline: 'none', pointerEvents: 'none', zIndex: 20 }}
                   />
                   <Bar dataKey="income" name="income" fill="hsl(160,84%,39%)" radius={[4, 4, 0, 0]} opacity={0.85} isAnimationActive={false} />
                   <Bar dataKey="expenses" name="expenses" fill="hsl(0,72%,51%)" radius={[4, 4, 0, 0]} opacity={0.85} isAnimationActive={false} />
@@ -371,7 +441,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between text-xs mb-1.5">
                     <span className="font-medium">{cat.icon} {cat.name}</span>
                     <span className={cn('font-semibold tabular-nums', over ? 'text-expense' : cat.pct >= 80 ? 'text-warning' : 'text-income')}>
-                      {formatCurrency(cat.spent)} / {formatCurrency(cat.budget)}
+                      {maskCurrency(formatCurrency(cat.spent))} / {maskCurrency(formatCurrency(cat.budget))}
                     </span>
                   </div>
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -382,8 +452,8 @@ export default function Dashboard() {
                   </div>
                   <p className="text-[10px] text-muted-foreground mt-0.5">
                     {over
-                      ? `Estourou ${formatCurrency(cat.spent - cat.budget)}`
-                      : `Restam ${formatCurrency(cat.budget - cat.spent)} (${(100 - cat.pct).toFixed(0)}%)`}
+                      ? `Estourou ${maskCurrency(formatCurrency(cat.spent - cat.budget))}`
+                      : `Restam ${maskCurrency(formatCurrency(cat.budget - cat.spent))} (${(100 - cat.pct).toFixed(0)}%)`}
                   </p>
                 </div>
               );
@@ -441,7 +511,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-2">
                     <span className={cn('currency text-sm font-bold tabular-nums', t.type === 'income' ? 'text-income' : 'text-expense')}>
-                      {t.type === 'income' ? '+' : '-'}{formatCurrency(Number(t.amount))}
+                      {t.type === 'income' ? '+' : '-'}{maskCurrency(formatCurrency(Number(t.amount)))}
                     </span>
                     <button
                       onClick={() => setEditing(t as any)}

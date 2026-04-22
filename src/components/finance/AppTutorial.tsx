@@ -1,22 +1,22 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
-  LayoutDashboard,
-  TrendingUp,
-  TrendingDown,
-  BarChart3,
-  CreditCard,
+  Settings,
   Grid3X3,
   Landmark,
-  CalendarDays,
-  FileText,
+  CreditCard,
+  BarChart3,
+  TrendingUp,
+  TrendingDown,
+  LayoutDashboard,
   Brain,
-  Trash2,
-  Settings,
+  Sparkles,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
+  CheckCircle2,
+  ArrowRight,
 } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,85 +26,142 @@ type TutorialStep = {
   description: string;
   icon: LucideIcon;
   badge: string;
+  route?: string;
+  actionLabel?: string;
+  checklist?: string[];
 };
 
 type TutorialContextValue = {
   openTutorial: (force?: boolean) => void;
 };
 
-const TUTORIAL_VERSION = 'v1';
+const TUTORIAL_VERSION = 'v2';
 const TutorialContext = createContext<TutorialContextValue | null>(null);
 
 const tutorialSteps: TutorialStep[] = [
   {
-    title: 'Bem-vindo ao FinancasPro',
+    title: 'Vamos configurar seu app do jeito certo',
     description:
-      'Aqui voce acompanha entradas, saidas, investimentos, relatorios e organizacao financeira em um so lugar. Este passo a passo aparece uma unica vez por usuario.',
+      'Esse onboarding agora segue a ordem ideal de preenchimento para o usuario aprender e ja sair com a base pronta.',
     icon: Sparkles,
-    badge: 'Comeco rapido',
+    badge: 'Onboarding',
+    checklist: [
+      'Voce pode pular ou concluir quando quiser.',
+      'O tutorial abre uma unica vez por usuario.',
+      'Em Configuracoes existe um botao para rever depois.',
+    ],
   },
   {
-    title: 'Dashboard',
+    title: '1. Configuracoes e dados profissionais',
     description:
-      'A tela inicial mostra sua visao geral do mes: receitas, despesas, saldo, graficos, alertas e atalhos para lancar novas movimentacoes.',
-    icon: LayoutDashboard,
-    badge: 'Visao geral',
+      'Comece por aqui. Essa etapa define salario, horas de trabalho, dias por semana e preferencias que o app usa nos calculos e relatorios.',
+    icon: Settings,
+    badge: 'Primeiro passo',
+    route: '/configuracoes',
+    actionLabel: 'Abrir Configuracoes',
+    checklist: [
+      'Preencha salario mensal.',
+      'Preencha horas por dia e dias por semana.',
+      'Ajuste emails semanais e mensais se quiser.',
+      'Salve antes de seguir.',
+    ],
   },
   {
-    title: 'Receitas',
+    title: '2. Categorias',
     description:
-      'Na aba de receitas voce cadastra tudo o que entrou, define status, data, conta de destino e ainda pode anexar comprovantes.',
-    icon: TrendingUp,
-    badge: 'Entradas',
-  },
-  {
-    title: 'Despesas',
-    description:
-      'Aqui ficam seus gastos. Voce pode categorizar, parcelar, escolher a conta e, quando for aporte, vincular a despesa a uma caixinha de investimento.',
-    icon: TrendingDown,
-    badge: 'Saidas',
-  },
-  {
-    title: 'Investimentos e Caixinhas',
-    description:
-      'Nesta area voce acompanha caixinhas e outros ativos, registra aportes e resgates e ve o patrimonio separado dos gastos do dia a dia.',
-    icon: BarChart3,
-    badge: 'Patrimonio',
-  },
-  {
-    title: 'Cartoes',
-    description:
-      'A aba de cartoes ajuda a controlar compras no credito, visualizar faturas e acompanhar lancamentos ligados ao cartao.',
-    icon: CreditCard,
-    badge: 'Credito',
-  },
-  {
-    title: 'Categorias e Contas',
-    description:
-      'Categorias organizam seus tipos de gasto. Contas separam onde o dinheiro esta, como Nubank, carteira, bancos e beneficios.',
+      'Depois organize os tipos de gasto que voce usa no dia a dia. Isso faz seus graficos, relatorios e alertas funcionarem melhor.',
     icon: Grid3X3,
     badge: 'Organizacao',
+    route: '/categorias',
+    actionLabel: 'Abrir Categorias',
+    checklist: [
+      'Crie categorias principais como Casa, Alimentacao, Transporte e Lazer.',
+      'Defina orcamento mensal quando fizer sentido.',
+      'Pense nas categorias que voce realmente usa para nao poluir o app.',
+    ],
   },
   {
-    title: 'Calendario e Relatorio',
+    title: '3. Contas',
     description:
-      'No calendario voce enxerga seus lancamentos por data. Nos relatorios, acompanha consolidacoes e exportacoes para entender melhor seu historico.',
-    icon: CalendarDays,
-    badge: 'Analise',
+      'Cadastre onde seu dinheiro fica: banco, carteira, conta digital, beneficios ou saldo inicial. Isso ajuda a separar melhor receitas e despesas.',
+    icon: Landmark,
+    badge: 'Base financeira',
+    route: '/contas',
+    actionLabel: 'Abrir Contas',
+    checklist: [
+      'Cadastre Nubank, carteira, bancos e outras contas que voce usa.',
+      'Se tiver saldo inicial, informe aqui.',
+      'Depois disso os lancamentos vao ter para onde entrar ou sair.',
+    ],
   },
   {
-    title: 'Insights IA',
+    title: '4. Cartoes',
     description:
-      'Os insights mostram recomendacoes e leituras do seu comportamento financeiro. O diagnostico automatico e a consultoria IA ficam ali.',
-    icon: Brain,
-    badge: 'Inteligencia',
+      'Se voce usa cartao de credito, essa e a hora de cadastrar. Isso ajuda a controlar faturas e separar gastos que nao saem da conta no mesmo dia.',
+    icon: CreditCard,
+    badge: 'Credito',
+    route: '/cartoes',
+    actionLabel: 'Abrir Cartoes',
+    checklist: [
+      'Cadastre nome do cartao, limite, fechamento e vencimento.',
+      'Use essa aba para compras parceladas e controle de fatura.',
+    ],
   },
   {
-    title: 'Lixeira e Configuracoes',
+    title: '5. Investimentos e caixinhas',
     description:
-      'A lixeira guarda itens excluidos por 30 dias. Em Configuracoes voce ajusta perfil, emails, limpeza de dados e tambem pode rever este tutorial.',
-    icon: Settings,
-    badge: 'Controle final',
+      'Agora monte suas caixinhas e investimentos. Aqui ficam aportes, resgates e patrimonio, sem misturar com gastos do dia a dia.',
+    icon: BarChart3,
+    badge: 'Patrimonio',
+    route: '/investimentos',
+    actionLabel: 'Abrir Investimentos',
+    checklist: [
+      'Cadastre cada caixinha ou investimento separadamente.',
+      'Se fizer aporte por despesa, selecione a caixinha ao lancar.',
+      'Acompanhe o saldo patrimonial aqui.',
+    ],
+  },
+  {
+    title: '6. Receitas',
+    description:
+      'Com a base pronta, comeca a alimentar o app com entradas de dinheiro. Isso deixa saldo, economia e relatorios coerentes.',
+    icon: TrendingUp,
+    badge: 'Entradas',
+    route: '/receitas',
+    actionLabel: 'Abrir Receitas',
+    checklist: [
+      'Cadastre salario, renda extra, reembolsos ou qualquer entrada.',
+      'Escolha a conta que recebeu o dinheiro.',
+      'Use observacoes e comprovantes quando precisar.',
+    ],
+  },
+  {
+    title: '7. Despesas',
+    description:
+      'Depois registre seus gastos. Aqui voce categoriza, escolhe a conta, define status e faz parcelamentos quando for necessario.',
+    icon: TrendingDown,
+    badge: 'Saidas',
+    route: '/despesas',
+    actionLabel: 'Abrir Despesas',
+    checklist: [
+      'Escolha categoria e conta corretamente.',
+      'Se for aporte de investimento, vincule a caixinha.',
+      'Use parcelas e comprovantes quando fizer sentido.',
+    ],
+  },
+  {
+    title: '8. Dashboard e Insights',
+    description:
+      'Depois de preencher o basico, o Dashboard e os Insights vao comecar a fazer sentido e te mostrar leitura real do seu comportamento financeiro.',
+    icon: LayoutDashboard,
+    badge: 'Leitura final',
+    route: '/',
+    actionLabel: 'Ir para Dashboard',
+    checklist: [
+      'Veja receitas, despesas, saldo e graficos.',
+      'Confira alertas e categorias mais pesadas.',
+      'Abra a aba de Insights IA quando quiser analise adicional.',
+    ],
   },
 ];
 
@@ -112,6 +169,8 @@ const getTutorialKey = (userId: string) => `financaspro:tutorial:${TUTORIAL_VERS
 
 export function TutorialProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
 
@@ -122,18 +181,14 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
 
   const openTutorial = useCallback((force = false) => {
     if (!user?.id) return;
-    if (!force) {
-      const seen = localStorage.getItem(getTutorialKey(user.id));
-      if (seen === 'seen') return;
-    }
+    if (!force && localStorage.getItem(getTutorialKey(user.id)) === 'seen') return;
     setStepIndex(0);
     setOpen(true);
   }, [user?.id]);
 
   useEffect(() => {
     if (!user?.id) return;
-    const seen = localStorage.getItem(getTutorialKey(user.id));
-    if (seen === 'seen') return;
+    if (localStorage.getItem(getTutorialKey(user.id)) === 'seen') return;
 
     const timeout = window.setTimeout(() => {
       setStepIndex(0);
@@ -162,6 +217,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
 
   const step = tutorialSteps[stepIndex];
   const progress = ((stepIndex + 1) / tutorialSteps.length) * 100;
+  const isOnStepRoute = !!step.route && location.pathname === step.route;
 
   const contextValue = useMemo<TutorialContextValue>(() => ({
     openTutorial,
@@ -181,7 +237,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
           }
         }}
       >
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
@@ -201,22 +257,40 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="rounded-2xl border border-border bg-muted/25 p-4">
-            <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:grid-cols-3">
-              {tutorialSteps.slice(1).map((item, index) => {
-                const absoluteIndex = index + 1;
-                return (
-                  <div
-                    key={item.title}
-                    className={`rounded-xl px-3 py-2 transition-colors ${
-                      absoluteIndex === stepIndex ? 'bg-primary/10 text-primary font-semibold' : 'bg-background/70'
-                    }`}
-                  >
-                    {item.title}
-                  </div>
-                );
-              })}
-            </div>
+          <div className="rounded-2xl border border-border bg-muted/20 p-4 space-y-4">
+            {step.route && (
+              <div className="flex flex-col gap-2 rounded-xl border border-primary/15 bg-primary/5 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Etapa pratica</p>
+                  <p className="text-xs text-muted-foreground">
+                    {isOnStepRoute ? 'Voce ja esta na tela certa.' : `A proxima tela desta etapa e ${step.route}.`}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant={isOnStepRoute ? 'outline' : 'default'}
+                  onClick={() => step.route && navigate(step.route)}
+                  className="gap-2"
+                >
+                  <ArrowRight className="w-4 h-4" />
+                  {step.actionLabel || 'Abrir etapa'}
+                </Button>
+              </div>
+            )}
+
+            {step.checklist && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">O que fazer agora</p>
+                <div className="grid gap-2">
+                  {step.checklist.map((item) => (
+                    <div key={item} className="flex items-start gap-2 rounded-xl bg-background/80 px-3 py-2 text-sm">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">

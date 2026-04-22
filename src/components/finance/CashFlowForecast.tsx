@@ -3,6 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, ReferenceLine, Toolti
 import { useFinanceHistory } from '@/hooks/useFinanceHistory';
 import { formatCurrency } from '@/lib/format';
 import { Calculator } from 'lucide-react';
+import { useSensitiveData } from '@/components/finance/SensitiveData';
 
 interface TooltipPayload {
   value: number;
@@ -16,6 +17,8 @@ interface CustomTooltipProps {
 }
 
 const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
+  const { maskCurrency } = useSensitiveData();
+
   if (!active || !payload?.length) return null;
 
   const value = payload[0]?.value || 0;
@@ -25,7 +28,7 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
     <div className="bg-popover border border-border rounded-lg shadow-lg p-3 text-xs">
       <p className="font-semibold">{label} {isForecast ? '(previsao)' : ''}</p>
       <p className={`currency font-medium mt-1 ${value >= 0 ? 'text-income' : 'text-expense'}`}>
-        {formatCurrency(value)}
+        {maskCurrency(formatCurrency(value))}
       </p>
     </div>
   );
@@ -89,7 +92,11 @@ export default function CashFlowForecast() {
               tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
               width={40}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
+            <Tooltip
+              content={<CustomTooltip />}
+              cursor={{ fill: 'transparent' }}
+              wrapperStyle={{ outline: 'none', pointerEvents: 'none', zIndex: 20 }}
+            />
             <ReferenceLine y={0} stroke="hsl(var(--border))" />
             <Bar
               dataKey="balance"
