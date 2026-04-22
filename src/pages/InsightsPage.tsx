@@ -60,20 +60,17 @@ export default function InsightsPage() {
     const insights: Insight[] = [];
     const totalIncome = income.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0);
     const totalExpenses = expenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0);
-    const prevTotalIncome = prevIncome.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0);
     const prevTotalExpenses = prevExpenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0);
     const savings = totalIncome - totalExpenses;
     const savingsRate = totalIncome > 0 ? (savings / totalIncome) * 100 : 0;
     const investmentTotal = investments.reduce((s, i) => s + Number(i.current_value), 0);
 
     if (savingsRate >= 30) {
-      insights.push({ type: 'achievement', icon: '🏆', title: 'Taxa de economia excepcional!', description: `Você está economizando ${savingsRate.toFixed(0)}% da renda. Continue assim.` });
+      insights.push({ type: 'achievement', icon: '🏆', title: 'Taxa de economia excepcional', description: `Você está economizando ${savingsRate.toFixed(0)}% da renda.` });
     } else if (savingsRate >= 15) {
-      insights.push({ type: 'tip', icon: '👍', title: 'Economia saudável', description: `Sua taxa de economia é de ${savingsRate.toFixed(0)}%. Faltam ${formatCurrency(totalIncome * 0.3 - savings)} para chegar a 30%.` });
+      insights.push({ type: 'tip', icon: '👍', title: 'Economia saudável', description: `Sua taxa de economia é de ${savingsRate.toFixed(0)}%.` });
     } else if (savingsRate > 0) {
-      insights.push({ type: 'warning', icon: '⚠️', title: 'Economia abaixo do ideal', description: `Sua taxa de economia está em ${savingsRate.toFixed(0)}%. Tente reduzir gastos variáveis.` });
-    } else if (totalIncome > 0) {
-      insights.push({ type: 'warning', icon: '🚨', title: 'Saldo negativo no mês', description: `Você gastou ${formatCurrency(Math.abs(savings))} a mais do que ganhou.` });
+      insights.push({ type: 'warning', icon: '⚠️', title: 'Economia abaixo do ideal', description: `Sua taxa de economia está em ${savingsRate.toFixed(0)}%.` });
     }
 
     if (prevTotalExpenses > 0 && totalExpenses > 0) {
@@ -106,13 +103,13 @@ export default function InsightsPage() {
     if (catSpending.length > 0) {
       const top = catSpending[0];
       const pctOfTotal = totalExpenses > 0 ? (top.total / totalExpenses * 100).toFixed(0) : '0';
-      insights.push({ type: 'tip', icon: '📊', title: `Maior gasto: ${top.icon} ${top.name}`, description: `Representa ${pctOfTotal}% dos seus gastos totais (${formatCurrency(top.total)}).` });
+      insights.push({ type: 'tip', icon: '📊', title: `Maior gasto: ${top.icon} ${top.name}`, description: `Representa ${pctOfTotal}% dos seus gastos (${formatCurrency(top.total)}).` });
     }
 
     if (investmentTotal > 0) {
       const investedTotal = investments.reduce((s, i) => s + Number(i.total_invested), 0);
       const returnPct = investedTotal > 0 ? ((investmentTotal - investedTotal) / investedTotal * 100).toFixed(2) : '0';
-      insights.push({ type: 'tip', icon: '💰', title: `Patrimônio investido: ${formatCurrency(investmentTotal)}`, description: `Rendimento total de ${returnPct}% sobre o investido.` });
+      insights.push({ type: 'tip', icon: '💰', title: `Patrimônio investido`, description: `Rendimento total de ${returnPct}% sobre o investido.` });
     }
 
     const ccTotal = ccTxns.reduce((s, t) => s + Number(t.amount), 0);
@@ -123,25 +120,15 @@ export default function InsightsPage() {
       }
     }
 
-    const pendingIncome = income.filter(i => i.status === 'pendente').length;
-    const pendingExpenses = expenses.filter(e => e.status === 'pendente').length;
-    if (pendingIncome > 0 || pendingExpenses > 0) {
-      insights.push({ type: 'tip', icon: '⏳', title: 'Transações pendentes', description: `Você tem ${pendingIncome > 0 ? `${pendingIncome} receita(s)` : ''}${pendingIncome && pendingExpenses ? ' e ' : ''}${pendingExpenses > 0 ? `${pendingExpenses} despesa(s)` : ''} pendentes.` });
-    }
-
     if (balance && totalExpenses > 0) {
       const monthsCovered = balance / totalExpenses;
-      if (monthsCovered >= 6) {
-        insights.push({ type: 'achievement', icon: '🛡️', title: 'Reserva de emergência sólida', description: `Seu saldo cobre ${monthsCovered.toFixed(1)} meses de gastos.` });
-      } else if (monthsCovered >= 3) {
-        insights.push({ type: 'tip', icon: '🛡️', title: 'Reserva de emergência razoável', description: `Seu saldo cobre ${monthsCovered.toFixed(1)} meses.` });
-      } else if (monthsCovered > 0) {
+      if (monthsCovered < 3) {
         insights.push({ type: 'warning', icon: '🛡️', title: 'Reserva de emergência insuficiente', description: `Seu saldo cobre apenas ${monthsCovered.toFixed(1)} meses de gastos.` });
       }
     }
 
-    return insights;
-  }, [income, expenses, prevIncome, prevExpenses, categories, investments, ccTxns, balance, profile]);
+    return insights.slice(0, 8);
+  }, [income, expenses, prevExpenses, categories, investments, ccTxns, balance, profile]);
 
   const generateAiInsights = async () => {
     setLoading(true);
@@ -158,14 +145,6 @@ export default function InsightsPage() {
       });
 
       if (error) throw error;
-      if (data?.error === 'rate_limited') {
-        toast.error('Muitas requisições. Tente novamente em alguns segundos.');
-        return;
-      }
-      if (data?.error === 'payment_required') {
-        toast.error('Créditos insuficientes para gerar insights.');
-        return;
-      }
       if (data?.error) throw new Error(data.error);
 
       setAiInsights(data?.insights || []);
@@ -193,7 +172,7 @@ export default function InsightsPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Insights Financeiros</h1>
-          <p className="text-sm text-muted-foreground">Análise inteligente dos seus dados — personalizada e prática</p>
+          <p className="text-sm text-muted-foreground">Análise inteligente dos seus dados</p>
         </div>
         <MonthSelector month={month} onChange={(m) => { setMonth(m); setGenerated(false); setAiInsights([]); }} />
       </div>
@@ -231,42 +210,6 @@ export default function InsightsPage() {
         </div>
       </div>
 
-      {localInsights.length > 0 && (
-        <div className="space-y-3">
-          <button
-            type="button"
-            onClick={() => setShowAutomaticInsights((value) => !value)}
-            className="w-full flex items-center justify-between rounded-xl border border-border bg-muted/20 px-4 py-3 text-left transition-colors hover:bg-muted/40"
-          >
-            <div>
-              <h2 className="text-sm font-semibold">Diagnóstico Automático</h2>
-              <p className="text-xs text-muted-foreground">Baseado nos seus dados reais, sem usar IA generativa.</p>
-            </div>
-            {showAutomaticInsights ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-          </button>
-
-          {showAutomaticInsights && localInsights.map((insight, i) => {
-            const config = typeConfig[insight.type] || typeConfig.tip;
-            return (
-              <div key={i} className={`rounded-xl border p-4 transition-all hover:shadow-sm ${config.bg}`}>
-                <div className="flex items-start gap-3">
-                  <span className="text-lg shrink-0">{insight.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <h4 className="text-sm font-semibold">{insight.title}</h4>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${config.bg} ${config.text}`}>
-                        {config.label}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{insight.description}</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
       <div className="space-y-3">
         <h2 className="text-sm font-semibold flex items-center gap-2">
           <Brain className="w-4 h-4 text-primary" />
@@ -282,15 +225,27 @@ export default function InsightsPage() {
             <div className="text-center">
               <h3 className="font-semibold text-sm">Análise profunda com IA</h3>
               <p className="text-xs text-muted-foreground max-w-sm mt-1">
-                A consultoria só é gerada quando você tocar no botão abaixo.
+                O diagnóstico automático agora só aparece se você pedir. A consultoria IA também.
               </p>
             </div>
-            <Button onClick={generateAiInsights} disabled={loading} className="gap-2">
-              {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Analisando...</> : <><Sparkles className="w-4 h-4" />Gerar Consultoria IA</>}
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button type="button" variant="outline" onClick={() => setShowAutomaticInsights((value) => !value)} className="gap-2">
+                {showAutomaticInsights ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                {showAutomaticInsights ? 'Ocultar diagnóstico automático' : 'Ver diagnóstico automático'}
+              </Button>
+              <Button onClick={generateAiInsights} disabled={loading} className="gap-2">
+                {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Analisando...</> : <><Sparkles className="w-4 h-4" />Gerar Consultoria IA</>}
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-3">
+            <div className="flex justify-end">
+              <Button type="button" variant="outline" onClick={() => setShowAutomaticInsights((value) => !value)} className="gap-2">
+                {showAutomaticInsights ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                {showAutomaticInsights ? 'Ocultar diagnóstico automático' : 'Ver diagnóstico automático'}
+              </Button>
+            </div>
             {aiInsights.map((insight, i) => {
               const config = typeConfig[insight.type] || typeConfig.tip;
               return (
@@ -317,6 +272,31 @@ export default function InsightsPage() {
           </div>
         )}
       </div>
+
+      {showAutomaticInsights && localInsights.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold">Diagnóstico Automático</h2>
+          {localInsights.map((insight, i) => {
+            const config = typeConfig[insight.type] || typeConfig.tip;
+            return (
+              <div key={i} className={`rounded-xl border p-4 transition-all hover:shadow-sm ${config.bg}`}>
+                <div className="flex items-start gap-3">
+                  <span className="text-lg shrink-0">{insight.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <h4 className="text-sm font-semibold">{insight.title}</h4>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${config.bg} ${config.text}`}>
+                        {config.label}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{insight.description}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

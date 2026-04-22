@@ -1,37 +1,7 @@
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { useFinanceHistory, type MonthSummary } from '@/hooks/useFinanceHistory';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend } from 'recharts';
+import { useFinanceHistory } from '@/hooks/useFinanceHistory';
 import { formatCurrency } from '@/lib/format';
 import { TrendingUp } from 'lucide-react';
-
-interface TooltipPayload {
-  value: number;
-  name: string;
-  color: string;
-}
-
-interface CustomTooltipProps {
-  active?: boolean;
-  payload?: TooltipPayload[];
-  label?: string;
-}
-
-const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
-  if (!active || !payload) return null;
-  return (
-    <div className="bg-popover border border-border rounded-lg shadow-lg p-3 text-xs">
-      <p className="font-semibold mb-1.5">{label}</p>
-      {payload.map((p: TooltipPayload) => (
-        <div key={p.name} className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
-            <span className="text-muted-foreground">{p.name}</span>
-          </div>
-          <span className="currency font-medium">{formatCurrency(p.value)}</span>
-        </div>
-      ))}
-    </div>
-  );
-};
 
 export default function TrendChart() {
   const { data: history = [], isLoading } = useFinanceHistory(6);
@@ -44,26 +14,27 @@ export default function TrendChart() {
     );
   }
 
-  const maxBalance = Math.max(...history.map(h => Math.abs(h.balance)), 1);
-
   return (
     <div className="stat-card">
       <div className="flex items-center gap-2 mb-1">
         <TrendingUp className="w-4 h-4 text-primary" />
-        <h3 className="text-sm font-semibold">Evolução Financeira</h3>
-        <span className="text-xs text-muted-foreground ml-auto">Últimos 6 meses</span>
+        <h3 className="text-sm font-semibold">Evolucao Financeira</h3>
+        <span className="text-xs text-muted-foreground ml-auto">Ultimos 6 meses</span>
       </div>
-      {/* Mini summary row */}
       <div className="flex items-center gap-4 mb-4 px-1">
         {history.length > 0 && (
           <>
             <div className="text-xs">
               <span className="text-muted-foreground">Receitas avg: </span>
-              <span className="font-semibold text-income">{formatCurrency(history.reduce((s,h) => s+h.income,0)/history.length)}</span>
+              <span className="font-semibold text-income">
+                {formatCurrency(history.reduce((sum, item) => sum + item.income, 0) / history.length)}
+              </span>
             </div>
             <div className="text-xs">
               <span className="text-muted-foreground">Despesas avg: </span>
-              <span className="font-semibold text-expense">{formatCurrency(history.reduce((s,h) => s+h.expenses,0)/history.length)}</span>
+              <span className="font-semibold text-expense">
+                {formatCurrency(history.reduce((sum, item) => sum + item.expenses, 0) / history.length)}
+              </span>
             </div>
           </>
         )}
@@ -86,13 +57,53 @@ export default function TrendChart() {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
-            <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} width={36} />
-            <Tooltip content={<CustomTooltip />} />
+            <XAxis
+              dataKey="label"
+              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+              width={36}
+            />
             <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-            <Area type="monotone" dataKey="income" name="Receitas" stroke="hsl(160, 84%, 39%)" fill="url(#incomeGrad)" strokeWidth={2.5} dot={{ r: 3.5, fill: 'hsl(160, 84%, 39%)', strokeWidth: 0 }} activeDot={{ r: 5 }} />
-            <Area type="monotone" dataKey="expenses" name="Despesas" stroke="hsl(0, 72%, 51%)" fill="url(#expenseGrad)" strokeWidth={2.5} dot={{ r: 3.5, fill: 'hsl(0, 72%, 51%)', strokeWidth: 0 }} activeDot={{ r: 5 }} />
-            <Area type="monotone" dataKey="balance" name="Saldo" stroke="hsl(217, 91%, 60%)" fill="url(#balanceGrad)" strokeWidth={2} strokeDasharray="4 2" dot={false} />
+            <Area
+              type="monotone"
+              dataKey="income"
+              name="Receitas"
+              stroke="hsl(160, 84%, 39%)"
+              fill="url(#incomeGrad)"
+              strokeWidth={2.5}
+              dot={{ r: 3.5, fill: 'hsl(160, 84%, 39%)', strokeWidth: 0 }}
+              activeDot={false}
+              isAnimationActive={false}
+            />
+            <Area
+              type="monotone"
+              dataKey="expenses"
+              name="Despesas"
+              stroke="hsl(0, 72%, 51%)"
+              fill="url(#expenseGrad)"
+              strokeWidth={2.5}
+              dot={{ r: 3.5, fill: 'hsl(0, 72%, 51%)', strokeWidth: 0 }}
+              activeDot={false}
+              isAnimationActive={false}
+            />
+            <Area
+              type="monotone"
+              dataKey="balance"
+              name="Saldo"
+              stroke="hsl(217, 91%, 60%)"
+              fill="url(#balanceGrad)"
+              strokeWidth={2}
+              strokeDasharray="4 2"
+              dot={false}
+              isAnimationActive={false}
+            />
           </AreaChart>
         </ResponsiveContainer>
       </div>

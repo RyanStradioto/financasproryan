@@ -101,6 +101,7 @@ export function useAddInvestmentTransaction() {
       date: string;
       description?: string;
       notes?: string;
+      skipLedgerSync?: boolean;
     }) => {
       // 1. Insert transaction record
       const { error: txError } = await supabase
@@ -139,7 +140,7 @@ export function useAddInvestmentTransaction() {
 
       // 3. INTEGRATION: Deduct/add from account balance via expense/income records
       // This makes investments "talk" to the rest of the financial system
-      if (data.account_id && (data.type === 'aporte' || data.type === 'resgate')) {
+      if (!data.skipLedgerSync && data.account_id && (data.type === 'aporte' || data.type === 'resgate')) {
         if (data.type === 'aporte') {
           // Aporte = money leaves the account -> create an expense marked as investment transfer
           // We use a special note so it's identifiable as patrimonial transfer

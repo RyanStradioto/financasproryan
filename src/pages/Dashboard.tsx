@@ -10,7 +10,7 @@ import TrendChart from '@/components/finance/TrendChart';
 import CashFlowForecast from '@/components/finance/CashFlowForecast';
 import SmartAlerts from '@/components/finance/SmartAlerts';
 import Achievements from '@/components/finance/Achievements';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useCategories } from '@/hooks/useFinanceData';
 import { useAccumulatedBalance } from '@/hooks/useAccumulatedBalance';
 import { useWorkTimeCalc } from '@/hooks/useProfile';
@@ -227,15 +227,11 @@ export default function Dashboard() {
               <div className="relative w-40 h-40">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={catBreakdown} dataKey="value" cx="50%" cy="50%" innerRadius={42} outerRadius={68} paddingAngle={2} strokeWidth={0}>
+                    <Pie data={catBreakdown} dataKey="value" cx="50%" cy="50%" innerRadius={42} outerRadius={68} paddingAngle={2} strokeWidth={0} isAnimationActive={false}>
                       {catBreakdown.map((_, i) => (
                         <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip
-                      formatter={(v: number) => [formatCurrency(v), '']}
-                      contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem', fontSize: '12px' }}
-                    />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -290,11 +286,7 @@ export default function Dashboard() {
                   <BarChart data={statusData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                     <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                     <YAxis hide />
-                    <Tooltip
-                      formatter={(v: number) => [formatCurrency(v), '']}
-                      contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem', fontSize: '12px' }}
-                    />
-                    <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                    <Bar dataKey="value" radius={[6, 6, 0, 0]} isAnimationActive={false}>
                       {statusData.map((s, i) => <Cell key={i} fill={s.fill} />)}
                     </Bar>
                   </BarChart>
@@ -330,12 +322,8 @@ export default function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                   <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                   <YAxis hide />
-                  <Tooltip
-                    formatter={(v: number, name: string) => [formatCurrency(v), name === 'income' ? 'Receitas' : 'Despesas']}
-                    contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem', fontSize: '12px' }}
-                  />
-                  <Bar dataKey="income" name="income" fill="hsl(160,84%,39%)" radius={[4, 4, 0, 0]} opacity={0.85} />
-                  <Bar dataKey="expenses" name="expenses" fill="hsl(0,72%,51%)" radius={[4, 4, 0, 0]} opacity={0.85} />
+                  <Bar dataKey="income" name="income" fill="hsl(160,84%,39%)" radius={[4, 4, 0, 0]} opacity={0.85} isAnimationActive={false} />
+                  <Bar dataKey="expenses" name="expenses" fill="hsl(0,72%,51%)" radius={[4, 4, 0, 0]} opacity={0.85} isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
