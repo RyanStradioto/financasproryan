@@ -39,6 +39,7 @@ export default function UpdateNotification() {
           <ul className="space-y-2.5">
             {versionInfo.changes.map((change, i) => (
               <li key={i} className="flex items-start gap-2.5 text-sm text-foreground/90">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
                 <span>{change}</span>
               </li>
             ))}

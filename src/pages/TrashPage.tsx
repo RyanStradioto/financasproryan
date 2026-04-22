@@ -15,9 +15,7 @@ export default function TrashPage() {
   const handleRestore = async (item: TrashedItem) => {
     try {
       await restoreItem.mutateAsync({ id: item.id, table: item.table });
-      toast.success(`"${item.description}" restaurado com sucesso!`, {
-        icon: '✅',
-      });
+      toast.success(`"${item.description}" restaurado com sucesso!`);
     } catch {
       toast.error('Erro ao restaurar item');
     }
@@ -26,43 +24,42 @@ export default function TrashPage() {
   const handlePermanentDelete = async (item: TrashedItem) => {
     try {
       await permanentDelete.mutateAsync({ id: item.id, table: item.table });
-      toast.success('Item excluído permanentemente');
+      toast.success('Item excluido permanentemente');
       setConfirmDelete(null);
     } catch {
       toast.error('Erro ao excluir permanentemente');
     }
   };
 
-  const incomeItems = items.filter(i => i.table === 'income');
-  const expenseItems = items.filter(i => i.table === 'expenses');
+  const incomeItems = items.filter((item) => item.table === 'income');
+  const expenseItems = items.filter((item) => item.table === 'expenses');
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-start justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Lixeira</h1>
-          <p className="text-sm text-muted-foreground">
-            Itens excluídos ficam aqui por 30 dias antes da exclusão permanente
+    <div className="space-y-5 md:space-y-6 animate-fade-in">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight">Lixeira</h1>
+          <p className="text-sm text-muted-foreground max-w-xl">
+            Itens excluidos ficam aqui por 30 dias antes da exclusao permanente.
           </p>
         </div>
-        {items.length > 0 && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-lg">
-            <Clock className="w-3.5 h-3.5" />
-            {items.length} {items.length === 1 ? 'item' : 'itens'} na lixeira
-          </div>
-        )}
+        <div className="inline-flex w-fit items-center gap-2 rounded-2xl bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+          <Clock className="w-3.5 h-3.5" />
+          {items.length} {items.length === 1 ? 'item na lixeira' : 'itens na lixeira'}
+        </div>
       </div>
 
-      {/* Info banner */}
-      <div className="rounded-2xl bg-gradient-to-r from-warning/8 to-warning/2 border border-warning/15 p-4 flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-warning/15 flex items-center justify-center shrink-0">
-          <Sparkles className="w-5 h-5 text-warning" />
-        </div>
-        <div>
-          <p className="text-sm font-medium">Recuperação Inteligente</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Excluiu algo sem querer? Restaure aqui! Os itens são mantidos por 30 dias para sua segurança.
-          </p>
+      <div className="rounded-3xl border border-warning/20 bg-gradient-to-br from-warning/10 via-warning/5 to-transparent p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-warning/15">
+            <Sparkles className="w-5 h-5 text-warning" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-semibold">Recuperacao Inteligente</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Excluiu algo sem querer? Restaure aqui. Os itens ficam guardados por 30 dias para sua seguranca.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -71,20 +68,19 @@ export default function TrashPage() {
           <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center">
             <Trash2 className="w-8 h-8 text-muted-foreground/40" />
           </div>
-          <p className="text-sm font-medium text-muted-foreground">A lixeira está vazia</p>
-          <p className="text-xs text-muted-foreground/70">Itens excluídos aparecerão aqui</p>
+          <p className="text-sm font-medium text-muted-foreground">A lixeira esta vazia</p>
+          <p className="text-xs text-muted-foreground/70">Itens excluidos aparecerao aqui</p>
         </div>
       )}
 
-      {/* Income items */}
       {incomeItems.length > 0 && (
-        <div className="space-y-3">
+        <section className="space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-income" />
-            Receitas excluídas ({incomeItems.length})
+            Receitas excluidas ({incomeItems.length})
           </h2>
-          <div className="space-y-2">
-            {incomeItems.map(item => (
+          <div className="space-y-3">
+            {incomeItems.map((item) => (
               <TrashItemCard
                 key={item.id}
                 item={item}
@@ -94,18 +90,17 @@ export default function TrashPage() {
               />
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Expense items */}
       {expenseItems.length > 0 && (
-        <div className="space-y-3">
+        <section className="space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             <TrendingDown className="w-4 h-4 text-expense" />
-            Despesas excluídas ({expenseItems.length})
+            Despesas excluidas ({expenseItems.length})
           </h2>
-          <div className="space-y-2">
-            {expenseItems.map(item => (
+          <div className="space-y-3">
+            {expenseItems.map((item) => (
               <TrashItemCard
                 key={item.id}
                 item={item}
@@ -115,24 +110,25 @@ export default function TrashPage() {
               />
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Confirm permanent delete dialog */}
       <Dialog open={!!confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-destructive" />
-              Excluir Permanentemente?
+              Excluir permanentemente?
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             Tem certeza que deseja excluir <strong>"{confirmDelete?.description}"</strong> permanentemente?
-            Esta ação não pode ser desfeita.
+            Esta acao nao pode ser desfeita.
           </p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmDelete(null)}>Cancelar</Button>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConfirmDelete(null)}>
+              Cancelar
+            </Button>
             <Button
               variant="destructive"
               onClick={() => confirmDelete && handlePermanentDelete(confirmDelete)}
@@ -148,50 +144,68 @@ export default function TrashPage() {
   );
 }
 
-function TrashItemCard({ item, onRestore, onDelete, isPending }: {
+function TrashItemCard({
+  item,
+  onRestore,
+  onDelete,
+  isPending,
+}: {
   item: TrashedItem;
   onRestore: (item: TrashedItem) => void;
   onDelete: () => void;
   isPending: boolean;
 }) {
   const isIncome = item.table === 'income';
-  const urgency = item.days_remaining <= 5 ? 'text-destructive' : item.days_remaining <= 10 ? 'text-warning' : 'text-muted-foreground';
+  const urgencyClass =
+    item.days_remaining <= 5 ? 'text-destructive' : item.days_remaining <= 10 ? 'text-warning' : 'text-muted-foreground';
 
   return (
-    <div className="stat-card p-4 flex items-center gap-4 group hover:shadow-md transition-all">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isIncome ? 'bg-income/10' : 'bg-expense/10'}`}>
-        {isIncome ? <TrendingUp className="w-5 h-5 text-income" /> : <TrendingDown className="w-5 h-5 text-expense" />}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-sm truncate">{item.description}</p>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-          <span>{formatDate(item.date)}</span>
-          <span className="text-border">·</span>
-          <span className={`font-medium ${urgency}`}>
-            <Clock className="w-3 h-3 inline mr-0.5" />
-            {item.days_remaining}d restantes
-          </span>
+    <div className="stat-card p-4 sm:p-5 transition-all hover:shadow-md">
+      <div className="flex items-start gap-3 sm:gap-4">
+        <div className={`mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${isIncome ? 'bg-income/10' : 'bg-expense/10'}`}>
+          {isIncome ? <TrendingUp className="w-5 h-5 text-income" /> : <TrendingDown className="w-5 h-5 text-expense" />}
         </div>
-      </div>
-      <p className={`font-bold text-sm tabular-nums shrink-0 currency ${isIncome ? 'text-income' : 'text-expense'}`}>
-        {formatCurrency(item.amount)}
-      </p>
-      <div className="flex items-center gap-1">
-        <button
-          onClick={() => onRestore(item)}
-          disabled={isPending}
-          className="p-2 rounded-xl text-income hover:bg-income/10 transition-all"
-          title="Restaurar"
-        >
-          <RotateCcw className="w-4 h-4" />
-        </button>
-        <button
-          onClick={onDelete}
-          className="p-2 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
-          title="Excluir permanentemente"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+
+        <div className="min-w-0 flex-1 space-y-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="font-semibold text-base leading-tight break-words">{item.description}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span className="rounded-full bg-muted/60 px-2.5 py-1">{formatDate(item.date)}</span>
+                <span className={`inline-flex items-center gap-1 rounded-full bg-muted/60 px-2.5 py-1 font-medium ${urgencyClass}`}>
+                  <Clock className="w-3 h-3" />
+                  {item.days_remaining} dias restantes
+                </span>
+              </div>
+            </div>
+
+            <div className={`inline-flex w-fit items-center rounded-2xl px-3 py-2 text-base font-bold tabular-nums ${isIncome ? 'bg-income/10 text-income' : 'bg-expense/10 text-expense'}`}>
+              {formatCurrency(item.amount)}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onRestore(item)}
+              disabled={isPending}
+              className="h-11 rounded-2xl border-income/20 text-income hover:bg-income/10 hover:text-income"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Restaurar
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onDelete}
+              className="h-11 rounded-2xl text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Trash2 className="w-4 h-4" />
+              Excluir
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

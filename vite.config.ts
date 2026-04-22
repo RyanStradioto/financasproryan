@@ -4,7 +4,6 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
-// https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
@@ -17,12 +16,18 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
-      registerType: "autoUpdate",
-      includeAssets: ["favicon.ico", "favicon.svg", "pwa-192x192.png", "pwa-512x512.png"],
+      registerType: "prompt",
+      includeAssets: [
+        "favicon.ico",
+        "favicon.svg",
+        "pwa-192x192.png",
+        "pwa-512x512.png",
+        "apple-touch-icon.png",
+      ],
       manifest: {
-        name: "FinançasPro",
-        short_name: "FinançasPro",
-        description: "Gerencie suas finanças pessoais com inteligência",
+        name: "FinancasPro",
+        short_name: "FinancasPro",
+        description: "Gerencie suas financas pessoais com inteligencia",
         theme_color: "#10b981",
         background_color: "#0a0a0a",
         display: "standalone",
@@ -30,8 +35,9 @@ export default defineConfig(({ mode }) => ({
         scope: "/",
         start_url: "/",
         icons: [
-          { src: "pwa-192x192.png", sizes: "192x192", type: "image/png" },
-          { src: "pwa-512x512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" },
+          { src: "pwa-192x192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "pwa-512x512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+          { src: "pwa-512x512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
       },
       workbox: {
@@ -45,7 +51,10 @@ export default defineConfig(({ mode }) => ({
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
             handler: "NetworkFirst",
-            options: { cacheName: "supabase-cache", expiration: { maxEntries: 50, maxAgeSeconds: 300 } },
+            options: {
+              cacheName: "supabase-cache",
+              expiration: { maxEntries: 50, maxAgeSeconds: 300 },
+            },
           },
         ],
       },
@@ -60,9 +69,9 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         manualChunks: {
-          'recharts': ['recharts'],
-          'radix-ui': ['@radix-ui/react-dialog', '@radix-ui/react-select'],
-          'supabase': ['@supabase/supabase-js'],
+          recharts: ["recharts"],
+          "radix-ui": ["@radix-ui/react-dialog", "@radix-ui/react-select"],
+          supabase: ["@supabase/supabase-js"],
         },
       },
     },

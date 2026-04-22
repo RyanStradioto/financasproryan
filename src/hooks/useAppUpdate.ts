@@ -1,96 +1,154 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRegisterSW } from 'virtual:pwa-register/react';
 
-interface VersionInfo {
+interface ReleaseInfo {
+  version: string;
+  date: string;
+  changes: string[];
+}
+
+interface VersionManifest {
   current: string;
-  versions: Array<{
-    version: string;
-    date: string;
-    changes: string[];
-  }>;
+  versions: ReleaseInfo[];
+}
+
+interface UpdateInfo {
+  version: string;
+  date: string;
+  changes: string[];
 }
 
 const VERSION_KEY = 'financaspro_app_version';
-const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutos
+const CHECK_INTERVAL = 5 * 60 * 1000;
+const GENERIC_CHANGES = [
+  'Nova versao disponivel com melhorias de desempenho e estabilidade.',
+  'A atualizacao inclui ajustes visuais e correcoes para o app mobile.',
+];
 
 export function useAppUpdate() {
-  const [updateAvailable, setUpdateAvailable] = useState(false);
-  const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
+
+  const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW({
+    immediate: true,
+    onRegisterError(error) {
+      console.error('Erro ao registrar service worker:', error);
+    },
+    onRegisteredSW(_swUrl, registration) {
+      if (!registration) return;
+
+      registration.update().catch(() => {});
+
+      window.setInterval(() => {
+        registration.update().catch(() => {});
+      }, CHECK_INTERVAL);
+    },
+  });
 
   const checkForUpdate = useCallback(async () => {
     try {
-      const res = await fetch(`/version.json?t=${Date.now()}`, { cache: 'no-store' });
-      if (!res.ok) return;
-      const data: VersionInfo = await res.json();
+      const response = await fetch(`/version.json?t=${Date.now()}`, { cache: 'no-store' });
+      if (!response.ok) return;
+
+      const manifest: VersionManifest = await response.json();
       const storedVersion = localStorage.getItem(VERSION_KEY);
 
-      console.log('📌 Verificando atualizações:', { stored: storedVersion, current: data.current });
-
       if (!storedVersion) {
-        // Primeira vez — salva a versão atual
-        localStorage.setItem(VERSION_KEY, data.current);
-        console.log('✅ Primeira vez - versão armazenada:', data.current);
+        localStorage.setItem(VERSION_KEY, manifest.current);
+        setUpdateInfo(null);
         return;
       }
 
-      if (storedVersion !== data.current) {
-        // Encontra versões mais novas
-        const storedNum = parseFloat(storedVersion);
-        const currentNum = parseFloat(data.current);
-        
-        console.log('🔍 Comparação de versões:', { stored: storedNum, current: currentNum });
-        
-        if (currentNum > storedNum) {
-          const newerVersions = data.versions.filter(v => parseFloat(v.version) > storedNum);
-          const accumulatedChanges = newerVersions.flatMap(v => v.changes);
-          const latestVersion = data.versions.find(v => v.version === data.current);
-
-          if (accumulatedChanges.length > 0) {
-            setVersionInfo({
-              version: data.current,
-              date: latestVersion?.date || data.versions[data.versions.length - 1].date,
-              changes: accumulatedChanges
-            });
-            setUpdateAvailable(true);
-            console.log('🔔 NOVA ATUALIZAÇÃO DETECTADA:', { version: data.current, changes: accumulatedChanges.length });
-          }
+      if (storedVersion === manifest.current) {
+        if (!needRefresh) {
+          setUpdateInfo(null);
         }
+        return;
       }
+
+      const storedNumber = parseFloat(storedVersion);
+      const newerVersions = manifest.versions.filter((entry) => parseFloat(entry.version) > storedNumber);
+      const latestVersion = manifest.versions.find((entry) => entry.version === manifest.current);
+
+      setUpdateInfo({
+        version: manifest.current,
+        date: latestVersion?.date || new Date().toISOString().slice(0, 10),
+        changes: newerVersions.flatMap((entry) => entry.changes).slice(0, 8),
+      });
     } catch (error) {
-      console.error('Erro ao verificar atualizações:', error);
+      console.error('Erro ao verificar atualizacoes:', error);
     }
-  }, []);
+  }, [needRefresh]);
 
   useEffect(() => {
-    // Verifica ao montar
     checkForUpdate();
 
-    // Verifica periodicamente
-    const interval = setInterval(checkForUpdate, CHECK_INTERVAL);
-    return () => clearInterval(interval);
+    const interval = window.setInterval(checkForUpdate, CHECK_INTERVAL);
+    return () => window.clearInterval(interval);
   }, [checkForUpdate]);
 
-  // Também verifica quando o app volta ao foco (usuário voltou pra aba/app)
   useEffect(() => {
-    const onFocus = () => checkForUpdate();
-    window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') checkForUpdate();
-    });
+    const handleFocus = () => checkForUpdate();
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        checkForUpdate();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
-      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [checkForUpdate]);
 
-  const applyUpdate = useCallback(() => {
-    if (versionInfo) {
-      localStorage.setItem(VERSION_KEY, versionInfo.version);
+  useEffect(() => {
+    if (needRefresh && !updateInfo) {
+      setUpdateInfo({
+        version: localStorage.getItem(VERSION_KEY) || 'nova',
+        date: new Date().toISOString().slice(0, 10),
+        changes: GENERIC_CHANGES,
+      });
     }
+  }, [needRefresh, updateInfo]);
+
+  useEffect(() => {
+    if (updateInfo && dismissedVersion !== updateInfo.version) {
+      setDismissedVersion(null);
+    }
+  }, [updateInfo, dismissedVersion]);
+
+  const updateAvailable = useMemo(() => {
+    if (!updateInfo) return false;
+    if (dismissedVersion === updateInfo.version) return false;
+    return needRefresh || updateInfo.changes.length > 0;
+  }, [dismissedVersion, needRefresh, updateInfo]);
+
+  const applyUpdate = useCallback(async () => {
+    if (updateInfo?.version) {
+      localStorage.setItem(VERSION_KEY, updateInfo.version);
+    }
+
+    if (needRefresh) {
+      await updateServiceWorker(true);
+      return;
+    }
+
     window.location.reload();
-  }, [versionInfo]);
+  }, [needRefresh, updateInfo, updateServiceWorker]);
 
   const dismiss = useCallback(() => {
-    setUpdateAvailable(false);
-  }, []);
+    if (updateInfo?.version) {
+      setDismissedVersion(updateInfo.version);
+    }
+  }, [updateInfo]);
 
-  return { updateAvailable, versionInfo, applyUpdate, dismiss };
+  return {
+    updateAvailable,
+    versionInfo: updateInfo,
+    applyUpdate,
+    dismiss,
+  };
 }
