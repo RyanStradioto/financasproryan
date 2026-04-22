@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { isMissingDeletedAtError } from '@/lib/softDeleteCompat';
 
 export type TrashedItem = {
   id: string;
@@ -31,6 +32,11 @@ export function useTrash() {
           .order('deleted_at', { ascending: false }),
       ]);
 
+      const compatError = [incomeRes.error, expensesRes.error].find(isMissingDeletedAtError);
+      if (compatError) {
+        console.warn('[soft-delete] lixeira indisponivel; coluna deleted_at ausente');
+        return [] as TrashedItem[];
+      }
       if (incomeRes.error) throw incomeRes.error;
       if (expensesRes.error) throw expensesRes.error;
 

@@ -1,9 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 
 // Configuração do Supabase
-const supabaseUrl = "https://eohnperxrykjzoofhfqu.supabase.co";
+const supabaseUrl = process.env.VITE_SUPABASE_URL || "https://gashcjenhwamgxrrmbsa.supabase.co";
 const supabaseKey =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvaG5wZXJ4cnlranpvb2ZoZnF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzOTEyMjIsImV4cCI6MjA4ODk2NzIyMn0.LAddtFvyfXA1nWdpgjiJM87hg6oi7z_it58NjVEElwc";
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  "sb_publishable_n1syzIIBeS53RL9KWwhtJQ_BML0xunY";
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 

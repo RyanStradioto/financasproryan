@@ -179,25 +179,31 @@ export default function ExpensesPage() {
   const handleDelete = async (id: string) => {
     const item = expenses.find(e => e.id === id);
     try {
-      await deleteExpense.mutateAsync(id);
-      toast.success('Despesa movida para lixeira', {
-        description: item ? `"${item.description || 'Despesa'}" pode ser restaurada em até 30 dias` : undefined,
-        action: {
-          label: 'Desfazer',
-          onClick: async () => {
-            try {
-              const { error } = await (await import('@/integrations/supabase/client')).supabase
-                .from('expenses')
-                .update({ deleted_at: null } as any)
-                .eq('id', id);
-              if (!error) {
-                toast.success('Despesa restaurada!');
-                window.location.reload();
-              }
-            } catch { /* silent */ }
+      const result = await deleteExpense.mutateAsync(id);
+      if (result.softDeleted) {
+        toast.success('Despesa movida para lixeira', {
+          description: item ? `"${item.description || 'Despesa'}" pode ser restaurada em até 30 dias` : undefined,
+          action: {
+            label: 'Desfazer',
+            onClick: async () => {
+              try {
+                const { error } = await (await import('@/integrations/supabase/client')).supabase
+                  .from('expenses')
+                  .update({ deleted_at: null } as any)
+                  .eq('id', id);
+                if (!error) {
+                  toast.success('Despesa restaurada!');
+                  window.location.reload();
+                }
+              } catch { /* silent */ }
+            },
           },
-        },
-      });
+        });
+      } else {
+        toast.success('Despesa excluída', {
+          description: 'A lixeira ainda não está habilitada neste banco, então a exclusão foi permanente.',
+        });
+      }
     } catch { toast.error('Erro ao remover'); }
   };
 

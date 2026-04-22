@@ -1,48 +1,48 @@
-# 💰 Finanças Pro Ryan
+﻿# ðŸ’° FinanÃ§as Pro Ryan
 
-Uma aplicação moderna e responsiva para gerenciamento de finanças pessoais, construída com React, TypeScript, Vite e Supabase.
+Uma aplicaÃ§Ã£o moderna e responsiva para gerenciamento de finanÃ§as pessoais, construÃ­da com React, TypeScript, Vite e Supabase.
 
-## 🚀 Live Demo
+## ðŸš€ Live Demo
 
-**[Acesse a Aplicação →](https://financasproryan-gmh1q90yz-ryanstradiotos-projects.vercel.app)**
+**[Acesse a AplicaÃ§Ã£o â†’](https://financasproryan-gmh1q90yz-ryanstradiotos-projects.vercel.app)**
 
-## 📚 Documentação
+## ðŸ“š DocumentaÃ§Ã£o
 
-- **[📖 Guia de Recuperação de Dados](DATA_RECOVERY_GUIDE.md)** - Se seus dados desapareceram
-- **[🔧 Troubleshooting](TROUBLESHOOTING.md)** - Problemas comuns e soluções
-- **[✅ Verificação de Deployment](DEPLOYMENT_VERIFICATION.md)** - Status técnico da aplicação
+- **[ðŸ“– Guia de RecuperaÃ§Ã£o de Dados](DATA_RECOVERY_GUIDE.md)** - Se seus dados desapareceram
+- **[ðŸ”§ Troubleshooting](TROUBLESHOOTING.md)** - Problemas comuns e soluÃ§Ãµes
+- **[âœ… VerificaÃ§Ã£o de Deployment](DEPLOYMENT_VERIFICATION.md)** - Status tÃ©cnico da aplicaÃ§Ã£o
 
-## 🎯 Funcionalidades
+## ðŸŽ¯ Funcionalidades
 
-### 💳 Gerenciamento de Transações
-- ✅ Adicionar, editar e deletar despesas
-- ✅ Adicionar, editar e deletar receitas
-- ✅ Organizar por categorias personalizáveis
-- ✅ Múltiplas contas bancárias/carteiras
-- ✅ Status de transação (concluído, pendente, agendado)
+### ðŸ’³ Gerenciamento de TransaÃ§Ãµes
+- âœ… Adicionar, editar e deletar despesas
+- âœ… Adicionar, editar e deletar receitas
+- âœ… Organizar por categorias personalizÃ¡veis
+- âœ… MÃºltiplas contas bancÃ¡rias/carteiras
+- âœ… Status de transaÃ§Ã£o (concluÃ­do, pendente, agendado)
 
-### 📊 Análise Financeira
-- ✅ Dashboard com resumo de gastos
-- ✅ Gráficos de despesas por categoria
-- ✅ Relatórios mensal/anual
-- ✅ Orçamento por categoria
-- ✅ Histórico de transações
+### ðŸ“Š AnÃ¡lise Financeira
+- âœ… Dashboard com resumo de gastos
+- âœ… GrÃ¡ficos de despesas por categoria
+- âœ… RelatÃ³rios mensal/anual
+- âœ… OrÃ§amento por categoria
+- âœ… HistÃ³rico de transaÃ§Ãµes
 
-### 🔐 Segurança
-- ✅ Autenticação segura com Supabase
-- ✅ Row Level Security (RLS) no banco de dados
-- ✅ Dados criptografados
-- ✅ Apenas você pode acessar seus dados
+### ðŸ” SeguranÃ§a
+- âœ… AutenticaÃ§Ã£o segura com Supabase
+- âœ… Row Level Security (RLS) no banco de dados
+- âœ… Dados criptografados
+- âœ… Apenas vocÃª pode acessar seus dados
 
-### 🎨 Interface
-- ✅ Design responsivo (mobile, tablet, desktop)
-- ✅ Tema claro/escuro
-- ✅ Componentes modernos (Shadcn UI + Radix UI)
-- ✅ Gráficos interativos (Recharts)
+### ðŸŽ¨ Interface
+- âœ… Design responsivo (mobile, tablet, desktop)
+- âœ… Tema claro/escuro
+- âœ… Componentes modernos (Shadcn UI + Radix UI)
+- âœ… GrÃ¡ficos interativos (Recharts)
 
-## 🛠️ Stack Tecnológico
+## ðŸ› ï¸ Stack TecnolÃ³gico
 
-| Tecnologia | Versão | Propósito |
+| Tecnologia | VersÃ£o | PropÃ³sito |
 |-----------|--------|----------|
 | **React** | 18.x | UI Framework |
 | **TypeScript** | Latest | Type Safety |
@@ -52,24 +52,24 @@ Uma aplicação moderna e responsiva para gerenciamento de finanças pessoais, c
 | **PostgreSQL** | 15+ | Database |
 | **Vercel** | - | Hosting |
 
-## 🚀 Como Iniciar (Desenvolvimento)
+## ðŸš€ Como Iniciar (Desenvolvimento)
 
-### Pré-requisitos
+### PrÃ©-requisitos
 - Node.js 18.x ou superior
 - npm 10.x ou superior
 - Conta no Supabase
 
-### Instalação
+### InstalaÃ§Ã£o
 
 ```bash
-# 1. Clone o repositório
+# 1. Clone o repositÃ³rio
 git clone https://github.com/RyanStradioto/financasproryan.git
 cd financasproryan
 
-# 2. Instale dependências
+# 2. Instale dependÃªncias
 npm install
 
-# 3. Configure variáveis de ambiente
+# 3. Configure variÃ¡veis de ambiente
 cp .env.example .env.local
 # Edite .env.local com suas credenciais Supabase
 
@@ -77,87 +77,87 @@ cp .env.example .env.local
 npm run dev
 ```
 
-A aplicação estará disponível em `http://localhost:8080`
+A aplicaÃ§Ã£o estarÃ¡ disponÃ­vel em `http://localhost:8080`
 
-## 📋 Scripts Disponíveis
+## ðŸ“‹ Scripts DisponÃ­veis
 
 ```bash
 npm run dev          # Inicia servidor de desenvolvimento
-npm run build        # Build para produção
+npm run build        # Build para produÃ§Ã£o
 npm run preview      # Preview do build
-npm run lint         # Verifica qualidade do código
-npm run test         # Roda testes unitários
+npm run lint         # Verifica qualidade do cÃ³digo
+npm run test         # Roda testes unitÃ¡rios
 npm run test:watch   # Testes em modo watch
 ```
 
-## 🗄️ Banco de Dados
+## ðŸ—„ï¸ Banco de Dados
 
 ### Tabelas
-- `users` - Usuários autenticados (gerenciado por Supabase)
+- `users` - UsuÃ¡rios autenticados (gerenciado por Supabase)
 - `categories` - Categorias de despesas
-- `accounts` - Contas bancárias/carteiras
+- `accounts` - Contas bancÃ¡rias/carteiras
 - `income` - Receitas/Ganhos
 - `expenses` - Despesas/Gastos
-- `credit_cards` - Cartões de crédito
+- `credit_cards` - CartÃµes de crÃ©dito
 - `investments` - Investimentos
 
 ### Row Level Security (RLS)
 Todas as tabelas possuem RLS ativado:
-- Cada usuário vê apenas seus próprios dados
-- Impossível acessar dados de outros usuários
-- Proteção contra SQL injection
+- Cada usuÃ¡rio vÃª apenas seus prÃ³prios dados
+- ImpossÃ­vel acessar dados de outros usuÃ¡rios
+- ProteÃ§Ã£o contra SQL injection
 
-## 🔄 Como Restaurar Dados
+## ðŸ”„ Como Restaurar Dados
 
 Se seus dados foram perdidos, veja: **[DATA_RECOVERY_GUIDE.md](DATA_RECOVERY_GUIDE.md)**
 
-Três opções:
+TrÃªs opÃ§Ãµes:
 1. **SQL Script** (Recomendado)
 2. **Importar CSV**
 3. **Inserir Manualmente**
 
-## 🐛 Problemas?
+## ðŸ› Problemas?
 
 Veja: **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)**
 
-Seções tratadas:
-- ❌ Deployment has Failed
-- ❌ No Production Deployment
-- ❌ Aplicação não carrega
-- ❌ Dados desapareceram
-- ❌ Não consigo fazer login
-- ❌ Outros erros
+SeÃ§Ãµes tratadas:
+- âŒ Deployment has Failed
+- âŒ No Production Deployment
+- âŒ AplicaÃ§Ã£o nÃ£o carrega
+- âŒ Dados desapareceram
+- âŒ NÃ£o consigo fazer login
+- âŒ Outros erros
 
-## 📊 Status de Produção
+## ðŸ“Š Status de ProduÃ§Ã£o
 
 | Componente | Status |
 |-----------|--------|
-| Build | ✅ Sucesso |
-| Testes | ✅ Passan |
-| Deployments | ✅ Ativo |
-| Supabase | ✅ Online |
-| Performance | ✅ Otimizado |
+| Build | âœ… Sucesso |
+| Testes | âœ… Passan |
+| Deployments | âœ… Ativo |
+| Supabase | âœ… Online |
+| Performance | âœ… Otimizado |
 
-## 🔗 Links Úteis
+## ðŸ”— Links Ãšteis
 
 | Recurso | Link |
 |---------|------|
 | **Live App** | https://financasproryan-gmh1q90yz-ryanstradiotos-projects.vercel.app |
 | **GitHub** | https://github.com/RyanStradioto/financasproryan |
-| **Supabase** | https://eohnperxrykjzoofhfqu.supabase.co |
+| **Supabase** | https://gashcjenhwamgxrrmbsa.supabase.co |
 | **Vercel** | https://vercel.com/ryanstradiotos-projects/financasproryan |
 
-## 📝 Licença
+## ðŸ“ LicenÃ§a
 
 MIT - Sinta-se livre para usar e modificar
 
-## 👤 Autor
+## ðŸ‘¤ Autor
 
 Desenvolvido por [Ryan Stradioto](https://github.com/RyanStradioto)
 
 ---
 
-**Última atualização**: 01 Apr 2026 | **Status**: ✅ Production Ready
+**Ãšltima atualizaÃ§Ã£o**: 01 Apr 2026 | **Status**: âœ… Production Ready
 - Edit files directly within the Codespace and commit and push your changes once you're done.
 
 ## What technologies are used for this project?
@@ -181,3 +181,4 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+

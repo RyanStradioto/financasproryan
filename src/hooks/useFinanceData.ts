@@ -2,6 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import type { Tables, TablesInsert } from '@/integrations/supabase/types';
+import {
+  deleteWithSoftDeleteFallback,
+  isMissingRelationError,
+  queryWithSoftDeleteFallback,
+} from '@/lib/softDeleteCompat';
 
 export type Category = Tables<'categories'>;
 export type Account = Tables<'accounts'>;
@@ -47,19 +52,31 @@ function getLastDayOfMonth(yearMonth: string): string {
   return `${yearMonth}-${String(lastDay).padStart(2, '0')}`;
 }
 
+function isSkippedMonth(month?: string) {
+  return month === '__skip__';
+}
+
 export function useIncome(month?: string) {
   const { user } = useAuth();
   return useQuery({
     queryKey: ['income', user?.id, month],
     queryFn: async () => {
-      let query = supabase.from('income').select('*').is('deleted_at', null).order('date', { ascending: false });
-      if (month) {
-        const start = `${month}-01`;
-        const end = getLastDayOfMonth(month);
-        query = query.gte('date', start).lte('date', end);
-      }
-      const { data, error } = await query;
-      if (error) throw error;
+      if (isSkippedMonth(month)) return [] as Income[];
+
+      const data = await queryWithSoftDeleteFallback<Income>((supportsSoftDelete) => {
+        let query = supabase.from('income').select('*');
+        if (supportsSoftDelete) {
+          query = query.is('deleted_at', null);
+        }
+        query = query.order('date', { ascending: false });
+        if (month) {
+          const start = `${month}-01`;
+          const end = getLastDayOfMonth(month);
+          query = query.gte('date', start).lte('date', end);
+        }
+        return query;
+      });
+
       return data as Income[];
     },
     enabled: !!user,
@@ -71,14 +88,22 @@ export function useExpenses(month?: string) {
   return useQuery({
     queryKey: ['expenses', user?.id, month],
     queryFn: async () => {
-      let query = supabase.from('expenses').select('*').is('deleted_at', null).order('date', { ascending: false });
-      if (month) {
-        const start = `${month}-01`;
-        const end = getLastDayOfMonth(month);
-        query = query.gte('date', start).lte('date', end);
-      }
-      const { data, error } = await query;
-      if (error) throw error;
+      if (isSkippedMonth(month)) return [] as Expense[];
+
+      const data = await queryWithSoftDeleteFallback<Expense>((supportsSoftDelete) => {
+        let query = supabase.from('expenses').select('*');
+        if (supportsSoftDelete) {
+          query = query.is('deleted_at', null);
+        }
+        query = query.order('date', { ascending: false });
+        if (month) {
+          const start = `${month}-01`;
+          const end = getLastDayOfMonth(month);
+          query = query.gte('date', start).lte('date', end);
+        }
+        return query;
+      });
+
       return data as Expense[];
     },
     enabled: !!user,
@@ -168,11 +193,19 @@ export function useDeleteIncome() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('income')
-        .update({ deleted_at: new Date().toISOString() } as any)
-        .eq('id', id);
-      if (error) throw error;
+      return deleteWithSoftDeleteFallback((supportsSoftDelete) => {
+        if (supportsSoftDelete) {
+          return supabase
+            .from('income')
+            .update({ deleted_at: new Date().toISOString() } as any)
+            .eq('id', id);
+        }
+
+        return supabase
+          .from('income')
+          .delete()
+          .eq('id', id);
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['income'] });
@@ -245,11 +278,19 @@ export function useDeleteExpense() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('expenses')
-        .update({ deleted_at: new Date().toISOString() } as any)
-        .eq('id', id);
-      if (error) throw error;
+      return deleteWithSoftDeleteFallback((supportsSoftDelete) => {
+        if (supportsSoftDelete) {
+          return supabase
+            .from('expenses')
+            .update({ deleted_at: new Date().toISOString() } as any)
+            .eq('id', id);
+        }
+
+        return supabase
+          .from('expenses')
+          .delete()
+          .eq('id', id);
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['expenses'] });
@@ -319,7 +360,10 @@ export function useRecentDeletions() {
         .select('*')
         .gte('deleted_at', thirtyDaysAgo)
         .order('deleted_at', { ascending: false });
-      if (error) throw error;
+      if (error) {
+        if (isMissingRelationError(error, 'recent_deletions')) return [] as RecentDeletion[];
+        throw error;
+      }
       return data as RecentDeletion[];
     },
     enabled: !!user,

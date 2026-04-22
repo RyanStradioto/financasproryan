@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { getMonthYear } from '@/lib/format';
+import { queryWithSoftDeleteFallback } from '@/lib/softDeleteCompat';
 
 export type MonthSummary = {
   month: string;
@@ -30,24 +31,39 @@ export function useFinanceHistory(monthsBack = 6) {
       const [ly, lm] = lastMonth.split('-').map(Number);
       const endDate = `${lastMonth}-${String(new Date(ly, lm, 0).getDate()).padStart(2, '0')}`;
 
-      const [incomeRes, expenseRes] = await Promise.all([
-        supabase.from('income').select('date, amount, status')
-          .gte('date', startDate).lte('date', endDate),
-        supabase.from('expenses').select('date, amount, status')
-          .gte('date', startDate).lte('date', endDate),
+      const [incomeData, expenseData] = await Promise.all([
+        queryWithSoftDeleteFallback<{ date: string; amount: number; status: string }>((supportsSoftDelete) => {
+          let query = supabase
+            .from('income')
+            .select('date, amount, status')
+            .gte('date', startDate)
+            .lte('date', endDate);
+          if (supportsSoftDelete) {
+            query = query.is('deleted_at', null);
+          }
+          return query;
+        }),
+        queryWithSoftDeleteFallback<{ date: string; amount: number; status: string }>((supportsSoftDelete) => {
+          let query = supabase
+            .from('expenses')
+            .select('date, amount, status')
+            .gte('date', startDate)
+            .lte('date', endDate);
+          if (supportsSoftDelete) {
+            query = query.is('deleted_at', null);
+          }
+          return query;
+        }),
       ]);
-
-      if (incomeRes.error) throw incomeRes.error;
-      if (expenseRes.error) throw expenseRes.error;
 
       const shortMonthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
       return months.map(m => {
         const [y, mo] = m.split('-').map(Number);
-        const monthIncome = (incomeRes.data || [])
+        const monthIncome = incomeData
           .filter(i => i.date?.startsWith(m) && i.status === 'concluido')
           .reduce((s, i) => s + Number(i.amount), 0);
-        const monthExpenses = (expenseRes.data || [])
+        const monthExpenses = expenseData
           .filter(e => e.date?.startsWith(m) && e.status === 'concluido')
           .reduce((s, e) => s + Number(e.amount), 0);
 

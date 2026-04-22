@@ -155,25 +155,31 @@ export default function IncomePage() {
   const handleDelete = async (id: string) => {
     const item = income.find(i => i.id === id);
     try {
-      await deleteIncome.mutateAsync(id);
-      toast.success('Receita movida para lixeira', {
-        description: item ? `"${item.description || 'Receita'}" pode ser restaurada em até 30 dias` : undefined,
-        action: {
-          label: 'Desfazer',
-          onClick: async () => {
-            try {
-              const { error } = await (await import('@/integrations/supabase/client')).supabase
-                .from('income')
-                .update({ deleted_at: null } as any)
-                .eq('id', id);
-              if (!error) {
-                toast.success('Receita restaurada!');
-                window.location.reload();
-              }
-            } catch { /* silent */ }
+      const result = await deleteIncome.mutateAsync(id);
+      if (result.softDeleted) {
+        toast.success('Receita movida para lixeira', {
+          description: item ? `"${item.description || 'Receita'}" pode ser restaurada em até 30 dias` : undefined,
+          action: {
+            label: 'Desfazer',
+            onClick: async () => {
+              try {
+                const { error } = await (await import('@/integrations/supabase/client')).supabase
+                  .from('income')
+                  .update({ deleted_at: null } as any)
+                  .eq('id', id);
+                if (!error) {
+                  toast.success('Receita restaurada!');
+                  window.location.reload();
+                }
+              } catch { /* silent */ }
+            },
           },
-        },
-      });
+        });
+      } else {
+        toast.success('Receita excluída', {
+          description: 'A lixeira ainda não está habilitada neste banco, então a exclusão foi permanente.',
+        });
+      }
     } catch { toast.error('Erro ao remover'); }
   };
 

@@ -16,7 +16,7 @@ SELECT cron.schedule(
   $$
   SELECT net.http_post(
     url := 'https://gashcjenhwamgxrrmbsa.supabase.co/functions/v1/weekly-summary',
-    headers := '{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdhc2hjamVuaHdhbWd4cnJtYnNhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Mzg3ODYzNywiZXhwIjoyMDg5NDU0NjM3fQ.7akyYx2tZfbol2xJHg7X3n5SuyJLbt8CKbl0t1enatI"}'::jsonb,
+    headers := '{"Content-Type":"application/json","Authorization":"Bearer {{SUPABASE_SERVICE_ROLE_KEY}}"}'::jsonb,
     body := '{}'::jsonb
   ) AS request_id;
   $$
@@ -29,7 +29,7 @@ SELECT cron.schedule(
   $$
   SELECT net.http_post(
     url := 'https://gashcjenhwamgxrrmbsa.supabase.co/functions/v1/monthly-summary',
-    headers := '{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdhc2hjamVuaHdhbWd4cnJtYnNhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Mzg3ODYzNywiZXhwIjoyMDg5NDU0NjM3fQ.7akyYx2tZfbol2xJHg7X3n5SuyJLbt8CKbl0t1enatI"}'::jsonb,
+    headers := '{"Content-Type":"application/json","Authorization":"Bearer {{SUPABASE_SERVICE_ROLE_KEY}}"}'::jsonb,
     body := '{}'::jsonb
   ) AS request_id;
   $$

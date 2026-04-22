@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { queryWithSoftDeleteFallback } from '@/lib/softDeleteCompat';
 
 /**
  * Returns the accumulated balance (all income - all expenses)
@@ -16,26 +17,33 @@ export function useAccumulatedBalance(month: string) {
       const lastDay = new Date(y, m, 0).getDate();
       const endDate = `${month}-${String(lastDay).padStart(2, '0')}`;
 
-      const [incomeRes, expenseRes] = await Promise.all([
-        supabase
-          .from('income')
-          .select('amount')
-          .is('deleted_at', null)
-          .lte('date', endDate)
-          .eq('status', 'concluido'),
-        supabase
-          .from('expenses')
-          .select('amount')
-          .is('deleted_at', null)
-          .lte('date', endDate)
-          .eq('status', 'concluido'),
+      const [incomeData, expenseData] = await Promise.all([
+        queryWithSoftDeleteFallback<{ amount: number }>((supportsSoftDelete) => {
+          let query = supabase
+            .from('income')
+            .select('amount')
+            .lte('date', endDate)
+            .eq('status', 'concluido');
+          if (supportsSoftDelete) {
+            query = query.is('deleted_at', null);
+          }
+          return query;
+        }),
+        queryWithSoftDeleteFallback<{ amount: number }>((supportsSoftDelete) => {
+          let query = supabase
+            .from('expenses')
+            .select('amount')
+            .lte('date', endDate)
+            .eq('status', 'concluido');
+          if (supportsSoftDelete) {
+            query = query.is('deleted_at', null);
+          }
+          return query;
+        }),
       ]);
 
-      if (incomeRes.error) throw incomeRes.error;
-      if (expenseRes.error) throw expenseRes.error;
-
-      const totalIncome = (incomeRes.data || []).reduce((s, i) => s + Number(i.amount), 0);
-      const totalExpenses = (expenseRes.data || []).reduce((s, e) => s + Number(e.amount), 0);
+      const totalIncome = incomeData.reduce((s, i) => s + Number(i.amount), 0);
+      const totalExpenses = expenseData.reduce((s, e) => s + Number(e.amount), 0);
 
       return totalIncome - totalExpenses;
     },

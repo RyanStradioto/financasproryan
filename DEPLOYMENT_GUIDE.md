@@ -1,78 +1,79 @@
-# 🚀 Guia de Deploy e Recuperação de Dados
+﻿# ðŸš€ Guia de Deploy e RecuperaÃ§Ã£o de Dados
 
-## Aplicação no Vercel
+## AplicaÃ§Ã£o no Vercel
 **URL:** https://financasproryan-d7yx8jld7-ryanstradiotos-projects.vercel.app
 
 ### Status do Deploy
-- ✅ Projeto criado no Vercel
-- ⚠️ Erro em `npm install` (peer dependencies)
-- 🔄 Solução: Vercel construirá automaticamente na próxima push
+- âœ… Projeto criado no Vercel
+- âš ï¸ Erro em `npm install` (peer dependencies)
+- ðŸ”„ SoluÃ§Ã£o: Vercel construirÃ¡ automaticamente na prÃ³xima push
 
 ---
 
-## 📊 Recuperação de Dados Supabase
+## ðŸ“Š RecuperaÃ§Ã£o de Dados Supabase
 
-Seu projeto Supabase: `eohnperxrykjzoofhfqu`
+Seu projeto Supabase: `gashcjenhwamgxrrmbsa`
 
 ### Passo 1: Acessar Supabase
 1. Acesse https://supabase.com/
-2. Faça login com sua conta
-3. Clique no projeto `financasproryan` (ID: eohnperxrykjzoofhfqu)
+2. FaÃ§a login com sua conta
+3. Clique no projeto `financasproryan` (ID: gashcjenhwamgxrrmbsa)
 
 ### Passo 2: Verificar Dados
 **Verifique as tabelas:**
-- `transactions` - Procure por transações deletadas
+- `transactions` - Procure por transaÃ§Ãµes deletadas
 - `expenses` - Gastos
 - `income` - Receitas
-- `credit_cards` - Cartões de crédito
+- `credit_cards` - CartÃµes de crÃ©dito
 - `categories` - Categorias
 
-### Passo 3: Restaurar de Backup (se disponível)
+### Passo 3: Restaurar de Backup (se disponÃ­vel)
 No Supabase Dashboard:
-1. Vá para **Database** → **Backups**
-2. Se houver backups automáticos, você pode restaurar
+1. VÃ¡ para **Database** â†’ **Backups**
+2. Se houver backups automÃ¡ticos, vocÃª pode restaurar
 3. Selecione a data anterior ao problema
 
 ### Passo 4: Importar dados manualmente
-Se não houver backups, você pode:
-1. Exportar dados de um relatório/export que você tem
+Se nÃ£o houver backups, vocÃª pode:
+1. Exportar dados de um relatÃ³rio/export que vocÃª tem
 2. Usar a API do Supabase para reinserir manualmente
 
 ---
 
-## 🔧 Resolver erro do npm install no Vercel
+## ðŸ”§ Resolver erro do npm install no Vercel
 
-O erro é causado por peer dependencies. Solução:
+O erro Ã© causado por peer dependencies. SoluÃ§Ã£o:
 
-1. **Local** (já feito):
-   - ✅ npm audit fix --force
-   - ✅ Atualizadas todas as dependências
-   - ✅ Mudanças feitas push para GitHub
+1. **Local** (jÃ¡ feito):
+   - âœ… npm audit fix --force
+   - âœ… Atualizadas todas as dependÃªncias
+   - âœ… MudanÃ§as feitas push para GitHub
 
-2. **No Vercel** (automático):
-   - Próximo push ou rebuild fará npm install com as dependências corretas
+2. **No Vercel** (automÃ¡tico):
+   - PrÃ³ximo push ou rebuild farÃ¡ npm install com as dependÃªncias corretas
 
 ---
 
-## 📝 Próximos Passos
+## ðŸ“ PrÃ³ximos Passos
 
-1. **Verificar dados no Supabase** (instruções acima)
-2. **Restaurar backups** se disponível
+1. **Verificar dados no Supabase** (instruÃ§Ãµes acima)
+2. **Restaurar backups** se disponÃ­vel
 3. **Fazer novo push** se precisar de ajustes:
    ```bash
    git add -A
-   git commit -m "fix: atualizar dados/configurações"
+   git commit -m "fix: atualizar dados/configuraÃ§Ãµes"
    git push origin main
    ```
 4. **Acessar app**: https://financasproryan-d7yx8jld7-ryanstradiotos-projects.vercel.app
 
 ---
 
-## 🆘 Dúvidas?
+## ðŸ†˜ DÃºvidas?
 
-- **Dados não aparecem?** → Verifique Supabase Dashboard (Tabelas → Verificar registros)
-- **App não carrega?** → Verifique logs: Vercel Dashboard → Deployments → Logs
-- **Erro de permissão?** → Verifique credenciais Supabase no arquivo `.env`
+- **Dados nÃ£o aparecem?** â†’ Verifique Supabase Dashboard (Tabelas â†’ Verificar registros)
+- **App nÃ£o carrega?** â†’ Verifique logs: Vercel Dashboard â†’ Deployments â†’ Logs
+- **Erro de permissÃ£o?** â†’ Verifique credenciais Supabase no arquivo `.env`
 
 Dashboard Vercel: https://vercel.com/ryanstradiotos-projects/financasproryan
 Dashboard Supabase: https://app.supabase.com/
+
