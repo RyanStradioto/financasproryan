@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 interface ReleaseInfo {
@@ -18,16 +18,15 @@ interface UpdateInfo {
   changes: string[];
 }
 
-const VERSION_KEY = 'financaspro_app_version';
+const SEEN_VERSION_KEY = 'financaspro_seen_update_version';
 const CHECK_INTERVAL = 5 * 60 * 1000;
 const GENERIC_CHANGES = [
   'Nova versao disponivel com melhorias de desempenho e estabilidade.',
-  'A atualizacao inclui ajustes visuais e correcoes para o app mobile.',
+  'A atualizacao inclui ajustes importantes no app mobile e no comportamento do PWA.',
 ];
 
 export function useAppUpdate() {
-  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
-  const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
+  const [versionInfo, setVersionInfo] = useState<UpdateInfo | null>(null);
 
   const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW({
     immediate: true,
@@ -51,31 +50,18 @@ export function useAppUpdate() {
       if (!response.ok) return;
 
       const manifest: VersionManifest = await response.json();
-      const storedVersion = localStorage.getItem(VERSION_KEY);
+      const seenVersion = localStorage.getItem(SEEN_VERSION_KEY);
       const latestVersion = manifest.versions.find((entry) => entry.version === manifest.current);
 
-      if (!storedVersion) {
-        setUpdateInfo({
-          version: manifest.current,
-          date: latestVersion?.date || new Date().toISOString().slice(0, 10),
-          changes: latestVersion?.changes?.slice(0, 8) || GENERIC_CHANGES,
-        });
+      if (seenVersion === manifest.current && !needRefresh) {
+        setVersionInfo(null);
         return;
       }
 
-      if (storedVersion === manifest.current) {
-        if (!needRefresh) {
-          setUpdateInfo(null);
-        }
-        return;
-      }
-
-      const storedNumber = parseFloat(storedVersion);
-      const newerVersions = manifest.versions.filter((entry) => parseFloat(entry.version) > storedNumber);
-      setUpdateInfo({
+      setVersionInfo({
         version: manifest.current,
         date: latestVersion?.date || new Date().toISOString().slice(0, 10),
-        changes: newerVersions.flatMap((entry) => entry.changes).slice(0, 8),
+        changes: latestVersion?.changes?.slice(0, 8) || GENERIC_CHANGES,
       });
     } catch (error) {
       console.error('Erro ao verificar atualizacoes:', error);
@@ -106,31 +92,9 @@ export function useAppUpdate() {
     };
   }, [checkForUpdate]);
 
-  useEffect(() => {
-    if (needRefresh && !updateInfo) {
-      setUpdateInfo({
-        version: localStorage.getItem(VERSION_KEY) || 'nova',
-        date: new Date().toISOString().slice(0, 10),
-        changes: GENERIC_CHANGES,
-      });
-    }
-  }, [needRefresh, updateInfo]);
-
-  useEffect(() => {
-    if (updateInfo && dismissedVersion !== updateInfo.version) {
-      setDismissedVersion(null);
-    }
-  }, [updateInfo, dismissedVersion]);
-
-  const updateAvailable = useMemo(() => {
-    if (!updateInfo) return false;
-    if (dismissedVersion === updateInfo.version) return false;
-    return needRefresh || updateInfo.changes.length > 0;
-  }, [dismissedVersion, needRefresh, updateInfo]);
-
   const applyUpdate = useCallback(async () => {
-    if (updateInfo?.version) {
-      localStorage.setItem(VERSION_KEY, updateInfo.version);
+    if (versionInfo?.version) {
+      localStorage.setItem(SEEN_VERSION_KEY, versionInfo.version);
     }
 
     if (needRefresh) {
@@ -139,18 +103,18 @@ export function useAppUpdate() {
     }
 
     window.location.reload();
-  }, [needRefresh, updateInfo, updateServiceWorker]);
+  }, [needRefresh, updateServiceWorker, versionInfo]);
 
   const dismiss = useCallback(() => {
-    if (updateInfo?.version) {
-      localStorage.setItem(VERSION_KEY, updateInfo.version);
-      setDismissedVersion(updateInfo.version);
+    if (versionInfo?.version) {
+      localStorage.setItem(SEEN_VERSION_KEY, versionInfo.version);
     }
-  }, [updateInfo]);
+    setVersionInfo(null);
+  }, [versionInfo]);
 
   return {
-    updateAvailable,
-    versionInfo: updateInfo,
+    updateAvailable: !!versionInfo,
+    versionInfo,
     applyUpdate,
     dismiss,
   };

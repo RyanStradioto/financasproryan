@@ -11,13 +11,60 @@ export function useInvestments() {
   return useQuery({
     queryKey: ['investments', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('investments')
-        .select('*')
-        .or('archived.is.null,archived.eq.false')
-        .order('name');
-      if (error) throw error;
-      return data as Investment[];
+      const [{ data: investments, error: investmentsError }, { data: transactions, error: transactionsError }] = await Promise.all([
+        supabase
+          .from('investments')
+          .select('*')
+          .or('archived.is.null,archived.eq.false')
+          .order('name'),
+        supabase
+          .from('investment_transactions')
+          .select('investment_id, type, amount'),
+      ]);
+
+      if (investmentsError) throw investmentsError;
+      if (transactionsError) throw transactionsError;
+
+      const transactionsByInvestment = (transactions ?? []).reduce<Record<string, { current: number; invested: number; count: number }>>((acc, item) => {
+        const bucket = acc[item.investment_id] ?? { current: 0, invested: 0, count: 0 };
+        const amount = Number(item.amount) || 0;
+
+        if (item.type === 'aporte') {
+          bucket.current += amount;
+          bucket.invested += amount;
+        } else if (item.type === 'resgate') {
+          bucket.current -= amount;
+          bucket.invested -= amount;
+        } else if (item.type === 'rendimento') {
+          bucket.current += amount;
+        } else if (item.type === 'taxa' || item.type === 'ir') {
+          bucket.current -= amount;
+        }
+
+        bucket.count += 1;
+        acc[item.investment_id] = bucket;
+        return acc;
+      }, {});
+
+      return (investments as Investment[]).map((investment) => {
+        const currentValue = Number(investment.current_value) || 0;
+        const totalInvested = Number(investment.total_invested) || 0;
+        const derived = transactionsByInvestment[investment.id];
+
+        if (!derived || derived.count === 0) {
+          return investment;
+        }
+
+        const shouldHydrateFromTransactions = currentValue === 0 && totalInvested === 0;
+
+        return shouldHydrateFromTransactions
+          ? {
+              ...investment,
+              current_value: derived.current,
+              total_invested: derived.invested,
+            }
+          : investment;
+      });
     },
     enabled: !!user,
   });
