@@ -23,7 +23,7 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 function ProtectedRoutes() {
-  const { user, loading } = useAuth();
+  const { user, loading, isRecoveryMode } = useAuth();
 
   if (loading) {
     return (
@@ -38,7 +38,7 @@ function ProtectedRoutes() {
     );
   }
 
-  if (!user) return <Auth />;
+  if (!user || isRecoveryMode) return <Auth />;
 
   return (
     <AppLayout>
