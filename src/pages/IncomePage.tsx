@@ -32,19 +32,19 @@ function DatePicker({ date, onChange }: { date: string; onChange: (d: string) =>
   );
 }
 
-interface PickerOption { id: string; icon?: string | null; name: string; }
-function OptionPicker({ value, options, placeholder, onChange }: {
+function OptionPicker({ value, options, placeholder, onChange, hideIcon }: {
   value: string | null;
   options: PickerOption[];
   placeholder: string;
   onChange: (id: string | null) => void;
+  hideIcon?: boolean;
 }) {
   const selected = options.find(o => o.id === value);
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 px-1.5 py-0.5 rounded-md transition-colors group/pick whitespace-nowrap">
-          {selected ? `${selected.icon ?? ''} ${selected.name}`.trim() : <span className="opacity-40">—</span>}
+        <button className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 px-1.5 py-0.5 rounded-md transition-colors group/pick whitespace-nowrap">
+          {selected ? (hideIcon ? selected.name : `${selected.icon ?? ''} ${selected.name}`.trim()) : <span className="opacity-40">{placeholder}</span>}
           <ChevronDown className="w-3 h-3 opacity-0 group-hover/pick:opacity-40 shrink-0" />
         </button>
       </PopoverTrigger>
@@ -146,10 +146,10 @@ export default function IncomePage() {
 
   const total = filtered.reduce((s, i) => s + Number(i.amount), 0);
 
-  const getAccountName = (id: string | null) => {
+  const getAccountName = (id: string | null, hideIcon = false) => {
     if (!id) return '—';
     const acc = accounts.find(a => a.id === id);
-    return acc ? `${acc.icon} ${acc.name}` : '—';
+    return acc ? (hideIcon ? acc.name : `${acc.icon} ${acc.name}`) : '—';
   };
 
   const handleDelete = async (id: string) => {
@@ -205,15 +205,15 @@ export default function IncomePage() {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 relative z-10">
-          <div className="flex flex-col items-start sm:items-end mr-4 mb-2 sm:mb-0">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 relative z-10 w-full sm:w-auto mt-2 sm:mt-0">
+          <div className="flex flex-col items-start sm:items-end mb-2 sm:mb-0">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Total Mensal</p>
-            <p className="text-2xl sm:text-3xl font-extrabold text-income currency drop-shadow-sm leading-none">{formatCurrency(total)}</p>
+            <p className="text-3xl sm:text-4xl font-extrabold text-income currency drop-shadow-sm leading-none">{formatCurrency(total)}</p>
           </div>
-          <div className="w-px h-10 bg-border/50 hidden sm:block mx-2" />
-          <div className="flex items-center gap-2">
-            <MonthSelector month={month} onChange={setMonth} />
-            <TransactionDialog type="income" />
+          <div className="w-full h-px sm:w-px sm:h-12 bg-border/50 block sm:mx-2 my-2 sm:my-0" />
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-none w-full sm:w-auto">
+            <div className="shrink-0"><MonthSelector month={month} onChange={setMonth} /></div>
+            <div className="shrink-0"><TransactionDialog type="income" /></div>
           </div>
         </div>
       </div>
@@ -269,37 +269,37 @@ export default function IncomePage() {
         </div>
       </div>
 
-      {/* Mobile card list */}
-      <div className="sm:hidden space-y-3">
+      {/* Mobile card list - Premium Flat Design */}
+      <div className="sm:hidden stat-card p-0 overflow-hidden divide-y divide-border/40">
         {income.length === 0 && !isLoading && (
-          <div className="stat-card flex flex-col items-center py-16 gap-4 bg-muted/10 border-dashed border-2">
-            <div className="w-16 h-16 rounded-3xl bg-muted flex items-center justify-center -rotate-12 shadow-sm">
-              <PiggyBank className="w-8 h-8 text-muted-foreground/60" />
+          <div className="flex flex-col items-center py-16 gap-4 bg-muted/5">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center shadow-sm border border-border/50">
+              <PiggyBank className="w-8 h-8 text-muted-foreground/50" />
             </div>
             <div className="text-center">
-              <p className="text-base font-semibold text-foreground mb-1">Nenhuma receita registrada</p>
-              <p className="text-sm text-muted-foreground">Clique em "Nova Transação" para começar a ganhar</p>
+              <p className="text-base font-bold text-foreground mb-1">Nenhuma receita</p>
+              <p className="text-xs text-muted-foreground">Clique em "Nova Receita" para começar</p>
             </div>
           </div>
         )}
         {income.length > 0 && filtered.length === 0 && (
-          <div className="stat-card flex flex-col items-center py-12 gap-3">
+          <div className="flex flex-col items-center py-12 gap-3">
             <Filter className="w-8 h-8 text-muted-foreground opacity-40" />
-            <p className="text-sm font-medium text-muted-foreground">Nenhuma receita encontrada com esses filtros</p>
-            <button onClick={clearFilters} className="text-xs text-primary underline">Limpar filtros</button>
+            <p className="text-sm font-medium text-muted-foreground">Nenhuma receita encontrada</p>
+            <button onClick={clearFilters} className="text-xs text-primary font-bold">Limpar filtros</button>
           </div>
         )}
         {filtered.map((item) => (
-          <div key={item.id} className="stat-card p-4 flex flex-col gap-3 group relative overflow-hidden">
-            <div className={`absolute top-0 left-0 w-1 h-full ${item.status === 'concluido' ? 'bg-success' : item.status === 'pendente' ? 'bg-warning' : 'bg-info'}`} />
-            <div className="flex items-center justify-between gap-3 pl-1">
+          <div key={item.id} className="p-4 flex flex-col gap-3 relative hover:bg-muted/10 transition-colors">
+            <div className={`absolute top-0 left-0 w-1 h-full ${item.status === 'concluido' ? 'bg-success/80' : item.status === 'pendente' ? 'bg-warning/80' : 'bg-info/80'}`} />
+            <div className="flex items-center justify-between gap-3 pl-2">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-income/10 flex items-center justify-center text-income shrink-0 shadow-sm border border-income/20">
+                <div className="w-11 h-11 rounded-full bg-income/10 flex items-center justify-center text-income text-xl shrink-0 shadow-sm border border-income/30">
                   <TrendingUp className="w-5 h-5" />
                 </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <p className="font-bold text-sm leading-tight truncate text-foreground/90">{item.description || 'Receita'}</p>
+                <div className="min-w-0 flex flex-col justify-center">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <p className="font-bold text-[15px] leading-tight truncate text-foreground/95">{item.description || 'Receita'}</p>
                     {item.attachment_url && (
                       <a href={item.attachment_url} target="_blank" rel="noopener noreferrer" className="text-primary shrink-0 hover:scale-110 transition-transform">
                         <Paperclip className="w-3.5 h-3.5" />
@@ -312,37 +312,37 @@ export default function IncomePage() {
                 </div>
               </div>
               <div className="shrink-0 flex flex-col items-end gap-1.5">
-                <p className="font-extrabold text-income text-base tabular-nums leading-none currency tracking-tight">+{formatCurrency(Number(item.amount))}</p>
+                <p className="font-extrabold text-income text-lg tabular-nums leading-none tracking-tight">+{formatCurrency(Number(item.amount))}</p>
                 <StatusPicker status={item.status} onChange={s => handleStatusChange(item.id, s)} />
               </div>
             </div>
             
             {/* Quick Actions Footer */}
-            <div className="flex items-center justify-between pt-3 border-t border-border/30 pl-1 mt-1">
+            <div className="flex items-center justify-between pt-2.5 pl-2 mt-1">
               <div className="flex items-center gap-2">
                 {hourlyRate > 0 && (
-                  <span className="text-[10px] text-muted-foreground flex items-center gap-1 bg-muted/30 px-2 py-1 rounded-md font-medium">
-                    <Clock className="w-3 h-3 text-accent-foreground/70" />{formatWorkTime(calcWorkTime(Number(item.amount)))}
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium bg-muted/20 px-2 py-1 rounded-full border border-border/40">
+                    <Clock className="w-3 h-3 text-accent-foreground/60" />{formatWorkTime(calcWorkTime(Number(item.amount)))}
                   </span>
                 )}
                 {item.account_id && (
-                  <span className="text-[10px] text-muted-foreground flex items-center gap-1 bg-muted/30 px-2 py-1 rounded-md font-medium">
-                    {getAccountName(item.account_id)}
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium bg-muted/20 px-2 py-1 rounded-full border border-border/40">
+                    {getAccountName(item.account_id, true)}
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => setEditing({ ...item, type: 'income' })}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                  className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors bg-muted/20"
                 >
-                  <Pencil className="w-4 h-4" />
+                  <Pencil className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => handleDelete(item.id)}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                  className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors bg-muted/20"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
