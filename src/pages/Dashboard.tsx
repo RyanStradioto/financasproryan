@@ -213,7 +213,7 @@ export default function Dashboard() {
         <div>
           <div className="flex items-center gap-2 mb-1 opacity-80">
             <Sparkles className="w-4 h-4 text-primary animate-pulse" />
-            <p className="text-sm font-medium">{greeting}, {profile?.first_name || 'Ryan'}!</p>
+            <p className="text-sm font-medium">{greeting}{profile?.first_name ? `, ${profile.first_name}` : ''}!</p>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/70">
             Seu Panorama

@@ -330,13 +330,36 @@ export default function SettingsPage() {
           </div>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Nome</label>
-            <input
-              type="text"
-              value={firstName}
-              onChange={e => setFirstName(e.target.value)}
-              placeholder="Como quer ser chamado?"
-              className="flex h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={firstName}
+                onChange={e => setFirstName(e.target.value)}
+                placeholder="Como quer ser chamado?"
+                className="flex h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <button
+                onClick={async () => {
+                  try {
+                    await upsert.mutateAsync({
+                      first_name: firstName.trim() || undefined,
+                      monthly_salary: Number(salary) || 0,
+                      work_hours_per_day: Number(hoursPerDay) || 8,
+                      work_days_per_week: Number(daysPerWeek) || 5,
+                      weekly_summary_enabled: weeklyEmail,
+                      monthly_summary_enabled: monthlyEmail,
+                    });
+                    toast.success('Nome salvo!');
+                  } catch {
+                    toast.error('Erro ao salvar nome');
+                  }
+                }}
+                disabled={upsert.isPending}
+                className="shrink-0 h-10 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all disabled:opacity-50"
+              >
+                Salvar
+              </button>
+            </div>
           </div>
         </div>
       </div>
