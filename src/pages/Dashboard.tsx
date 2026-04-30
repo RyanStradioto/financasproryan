@@ -76,7 +76,7 @@ function KpiCard({ label, value, sub, color, icon: Icon, trend, sparklineData }:
           {sub && <p className="text-[10px] sm:text-xs text-muted-foreground mt-1.5 leading-tight">{sub}</p>}
         </div>
         {sparklineData && sparklineData.length > 1 && (
-          <div className="hidden sm:block shrink-0 -mr-2">
+          <div className="shrink-0 -mr-2 opacity-50 group-hover:opacity-100 transition-opacity">
             <SparklineChart 
               data={sparklineData} 
               color={trend === 'up' ? 'hsl(160, 84%, 39%)' : trend === 'down' ? 'hsl(0, 72%, 51%)' : 'hsl(217, 91%, 60%)'} 

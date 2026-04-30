@@ -4,7 +4,7 @@ import { CheckCircle2, Clock, CalendarDays, X } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { Expense } from '@/hooks/useFinanceData';
-import { useFinanceMutations } from '@/hooks/useFinanceData';
+import { useUpdateExpense } from '@/hooks/useFinanceData';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { toast } from 'sonner';
 
@@ -16,7 +16,7 @@ interface PendingExpensesDialogProps {
 
 export default function PendingExpensesDialog({ open, onOpenChange, expenses }: PendingExpensesDialogProps) {
   const { maskCurrency } = useSensitiveData();
-  const { updateExpense } = useFinanceMutations();
+  const updateExpense = useUpdateExpense();
   const [loading, setLoading] = useState<string | null>(null);
 
   const pendingExpenses = expenses.filter(e => e.status !== 'concluido').sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
