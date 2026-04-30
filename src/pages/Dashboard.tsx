@@ -506,50 +506,52 @@ export default function Dashboard() {
 
         {/* Status breakdown */}
         <div className="stat-card">
-          <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+          <h3 className="text-sm font-semibold mb-6 flex items-center gap-2">
             <div className="w-1.5 h-4 rounded-full bg-primary" />
             Despesas por Status
           </h3>
           {statusData.length > 0 ? (
-            <div className="flex flex-col h-full justify-between pb-2">
-              <div className="h-[140px] mb-3">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={statusData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }} accessibilityLayer={false}>
-                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                    <YAxis hide />
-                    <RechartsTooltip
-                      cursor={{ fill: 'hsl(var(--muted) / 0.5)' }}
-                      content={({ active, payload, label }) => {
-                        if (!active || !payload?.length) return null;
-                        return (
-                          <ChartTooltipCard
-                            title={String(label ?? 'Status')}
-                            rows={[{ label: 'Valor', value: maskCurrency(formatCurrency(Number(payload[0]?.value || 0))), color: payload[0]?.payload?.fill }]}
-                          />
-                        );
-                      }}
-                      wrapperStyle={{ outline: 'none', pointerEvents: 'none', zIndex: 20 }}
+            <div className="flex flex-col gap-4">
+              {/* Stacked Progress Bar */}
+              <div className="w-full h-3 rounded-full flex overflow-hidden bg-muted mb-2 shadow-inner">
+                {statusData.map(s => {
+                  const pct = totalExpensesAll > 0 ? (s.value / totalExpensesAll) * 100 : 0;
+                  return (
+                    <div 
+                      key={`stack-${s.name}`} 
+                      className="h-full transition-all duration-1000 ease-out" 
+                      style={{ width: `${pct}%`, backgroundColor: s.fill }} 
                     />
-                    <Bar dataKey="value" radius={[6, 6, 0, 0]} isAnimationActive={false}>
-                      {statusData.map((s, i) => <Cell key={i} fill={s.fill} />)}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                  );
+                })}
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                {statusData.map(s => (
-                  <div key={s.name} className="flex flex-col items-center p-2 rounded-xl bg-muted/30">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: s.fill, boxShadow: `0 0 6px ${s.fill}` }} />
-                      <span className="text-[10px] text-muted-foreground uppercase">{s.name}</span>
+
+              {/* Status List */}
+              <div className="space-y-3">
+                {statusData.map(s => {
+                  const pct = totalExpensesAll > 0 ? (s.value / totalExpensesAll) * 100 : 0;
+                  return (
+                    <div key={s.name} className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/50 hover:bg-muted/40 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: s.fill, boxShadow: `0 0 8px ${s.fill}` }} />
+                        <span className="text-sm font-semibold text-foreground/90">{s.name}</span>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <span className="font-bold currency text-sm">{maskCurrency(formatCurrency(s.value))}</span>
+                        <span className="text-[10px] text-muted-foreground font-medium">{pct.toFixed(0)}%</span>
+                      </div>
                     </div>
-                    <span className="font-semibold currency text-sm">{maskCurrency(formatCurrency(s.value))}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ) : (
-            <div className="text-center py-8 text-sm text-muted-foreground">Sem despesas</div>
+            <div className="text-center py-10">
+              <div className="w-8 h-8 rounded-full bg-muted/50 mx-auto flex items-center justify-center mb-2">
+                <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+              </div>
+              <p className="text-sm text-muted-foreground">Sem despesas registradas</p>
+            </div>
           )}
         </div>
       </div>
