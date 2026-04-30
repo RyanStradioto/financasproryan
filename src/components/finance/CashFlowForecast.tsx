@@ -56,12 +56,11 @@ const renderCustomBarLabel = (props: any) => {
     <text 
       x={x + width / 2} 
       y={y - 8} 
-      fill={fill} 
+      fill="hsl(var(--foreground))" 
       textAnchor="middle" 
       fontSize={10} 
-      fontWeight={700} 
-      className="currency drop-shadow-sm"
-      style={{ filter: 'brightness(1.2)' }}
+      fontWeight={800} 
+      className="currency drop-shadow-md"
     >
       {formatted}
     </text>
@@ -91,25 +90,35 @@ export default function CashFlowForecast() {
       </div>
       <div className="h-[240px]">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} margin={{ top: 20, right: 10, left: 0, bottom: 0 }} accessibilityLayer={false}>
+          <BarChart data={chartData} margin={{ top: 25, right: 10, left: 0, bottom: 0 }} accessibilityLayer={false}>
+            <defs>
+              <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="hsl(160, 84%, 39%)" stopOpacity={1}/>
+                <stop offset="100%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0.2}/>
+              </linearGradient>
+              <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="hsl(0, 72%, 51%)" stopOpacity={1}/>
+                <stop offset="100%" stopColor="hsl(0, 72%, 51%)" stopOpacity={0.2}/>
+              </linearGradient>
+            </defs>
             <XAxis
               dataKey="label"
-              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))', fontWeight: 500 }}
+              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))', fontWeight: 600 }}
               axisLine={false}
               tickLine={false}
               dy={10}
             />
             <Tooltip
               content={<CustomTooltip />}
-              cursor={{ fill: 'hsl(var(--muted) / 0.3)', radius: 8 }}
+              cursor={{ fill: 'hsl(var(--muted) / 0.2)', radius: 8 }}
               wrapperStyle={{ outline: 'none', pointerEvents: 'none', zIndex: 20 }}
             />
             <Bar
               dataKey="income"
               name="Receita"
               radius={[6, 6, 0, 0]}
-              fill="hsl(160, 84%, 39%)"
-              maxBarSize={40}
+              fill="url(#colorIncome)"
+              maxBarSize={35}
               isAnimationActive={true}
               animationDuration={1500}
             >
@@ -119,8 +128,8 @@ export default function CashFlowForecast() {
               dataKey="expenses"
               name="Despesa"
               radius={[6, 6, 0, 0]}
-              fill="hsl(0, 72%, 51%)"
-              maxBarSize={40}
+              fill="url(#colorExpense)"
+              maxBarSize={35}
               isAnimationActive={true}
               animationDuration={1500}
             >
