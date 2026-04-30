@@ -387,7 +387,7 @@ export default function Dashboard() {
                 const wt = hourlyRate > 0 && t.type === 'expense' ? calcWorkTime(Number(t.amount)) : null;
                 return (
                   <div key={t.id} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-muted/50 transition-all group -mx-2">
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className={cn('w-8 h-8 rounded-full flex items-center justify-center shrink-0 border',
                         t.type === 'income' ? 'bg-income/5 text-income border-income/10' : 'bg-expense/5 text-expense border-expense/10'
                       )}>
@@ -395,11 +395,11 @@ export default function Dashboard() {
                           ? <ArrowUpRight className="w-3.5 h-3.5" />
                           : <ArrowDownRight className="w-3.5 h-3.5" />}
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1 pr-2">
                         <p className="text-xs font-medium truncate">{t.description || (t.type === 'income' ? 'Receita' : 'Despesa')}</p>
                         <div className="flex items-center gap-1.5">
-                          <p className="text-[10px] text-muted-foreground">{formatDate(t.date)}</p>
-                          <div className={cn('w-1.5 h-1.5 rounded-full', t.status === 'concluido' ? 'bg-success' : t.status === 'pendente' ? 'bg-warning' : 'bg-info')} />
+                          <p className="text-[10px] text-muted-foreground truncate">{formatDate(t.date)}</p>
+                          <div className={cn('w-1.5 h-1.5 shrink-0 rounded-full', t.status === 'concluido' ? 'bg-success' : t.status === 'pendente' ? 'bg-warning' : 'bg-info')} />
                         </div>
                       </div>
                     </div>

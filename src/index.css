@@ -137,6 +137,7 @@
 }
 
 @layer utilities {
+
   /* ── Premium Glass Card ──────────────────────────── */
   .glass-card {
     @apply bg-card/80 backdrop-blur-xl border border-border/50 shadow-sm;
@@ -179,9 +180,11 @@
   .glow-income {
     box-shadow: var(--glow-income);
   }
+
   .glow-expense {
     box-shadow: var(--glow-expense);
   }
+
   .glow-primary {
     box-shadow: var(--glow-primary);
   }
@@ -213,6 +216,7 @@
     position: relative;
     overflow: hidden;
   }
+
   .badge-glow::after {
     content: '';
     position: absolute;
@@ -230,72 +234,177 @@
    ══════════════════════════════════════════════════════ */
 
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes slide-in {
-  from { opacity: 0; transform: translateX(-12px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes slide-up {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes scale-in {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 @keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 8px hsl(var(--primary) / 0.15); }
-  50% { box-shadow: 0 0 20px hsl(var(--primary) / 0.25); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 8px hsl(var(--primary) / 0.15);
+  }
+
+  50% {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.25);
+  }
 }
 
 @keyframes draw-ring {
-  from { stroke-dashoffset: var(--ring-circumference, 283); }
-  to { stroke-dashoffset: var(--ring-target, 0); }
+  from {
+    stroke-dashoffset: var(--ring-circumference, 283);
+  }
+
+  to {
+    stroke-dashoffset: var(--ring-target, 0);
+  }
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
 }
 
 @keyframes count-up {
-  from { opacity: 0; transform: translateY(6px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* ── Animation classes ─────────────────────────────── */
-.animate-fade-in { animation: fade-in 0.4s ease-out both; }
-.animate-slide-up { animation: slide-up 0.45s ease-out both; }
-.animate-slide-in { animation: slide-in 0.35s ease-out both; }
-.animate-scale-in { animation: scale-in 0.3s ease-out both; }
-.animate-count-up { animation: count-up 0.5s ease-out both; }
-.animate-glow-pulse { animation: glow-pulse 3s ease-in-out infinite; }
-.animate-float { animation: float 3s ease-in-out infinite; }
-.animate-draw-ring { animation: draw-ring 1.2s ease-out both; }
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out both;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.45s ease-out both;
+}
+
+.animate-slide-in {
+  animation: slide-in 0.35s ease-out both;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out both;
+}
+
+.animate-count-up {
+  animation: count-up 0.5s ease-out both;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-draw-ring {
+  animation: draw-ring 1.2s ease-out both;
+}
 
 /* ── Stagger delays ────────────────────────────────── */
-.stagger-1 { animation-delay: 0.04s; }
-.stagger-2 { animation-delay: 0.08s; }
-.stagger-3 { animation-delay: 0.12s; }
-.stagger-4 { animation-delay: 0.16s; }
-.stagger-5 { animation-delay: 0.20s; }
-.stagger-6 { animation-delay: 0.24s; }
-.stagger-7 { animation-delay: 0.28s; }
-.stagger-8 { animation-delay: 0.32s; }
+.stagger-1 {
+  animation-delay: 0.04s;
+}
+
+.stagger-2 {
+  animation-delay: 0.08s;
+}
+
+.stagger-3 {
+  animation-delay: 0.12s;
+}
+
+.stagger-4 {
+  animation-delay: 0.16s;
+}
+
+.stagger-5 {
+  animation-delay: 0.20s;
+}
+
+.stagger-6 {
+  animation-delay: 0.24s;
+}
+
+.stagger-7 {
+  animation-delay: 0.28s;
+}
+
+.stagger-8 {
+  animation-delay: 0.32s;
+}
 
 /* ── Page entrance stagger ─────────────────────────── */
-.animate-fade-in > * {
+.animate-fade-in>* {
   animation: fade-in 0.3s ease-out both;
 }
 
@@ -306,13 +415,16 @@
   width: 6px;
   height: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--border));
   border-radius: 3px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.3);
 }
@@ -320,6 +432,7 @@
 .dark ::-webkit-scrollbar-thumb {
   background: hsl(var(--muted-foreground) / 0.2);
 }
+
 .dark ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.35);
 }
@@ -358,14 +471,18 @@
 .data-table tbody tr {
   transition: all 0.15s ease;
 }
+
 .data-table tbody tr:hover {
   background: hsl(var(--muted) / 0.5);
 }
+
 .data-table tbody tr:hover td:first-child {
   border-left: 2px solid hsl(var(--primary) / 0.4);
 }
 
-td.currency, span.currency, p.currency {
+td.currency,
+span.currency,
+p.currency {
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }
@@ -391,7 +508,9 @@ td.currency, span.currency, p.currency {
 }
 
 /* No iOS zoom on inputs */
-input, select, textarea {
+input,
+select,
+textarea {
   -webkit-text-size-adjust: 100%;
 }
 
@@ -406,6 +525,7 @@ input, select, textarea {
 [data-radix-dialog-overlay] {
   cursor: pointer;
 }
+
 [data-radix-dialog-content] {
   overscroll-behavior: contain;
 }
@@ -423,6 +543,7 @@ input, select, textarea {
 button {
   transition: background-color 0.15s ease, color 0.15s ease, transform 0.08s ease, opacity 0.15s ease, box-shadow 0.15s ease;
 }
+
 button:active:not(:disabled) {
   transform: scale(0.97);
   transition: transform 0.08s ease;
