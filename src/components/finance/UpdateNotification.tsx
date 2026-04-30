@@ -7,8 +7,8 @@ export default function UpdateNotification() {
   if (!updateAvailable || !versionInfo) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-md bg-card border border-border/50 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden animate-slide-up">
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm pointer-events-none">
+      <div className="pointer-events-auto w-full max-w-md bg-card border border-border/50 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="relative bg-gradient-to-r from-primary/10 to-primary/5 px-5 pt-5 pb-4">
           <button
