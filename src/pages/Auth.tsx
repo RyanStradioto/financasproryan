@@ -91,7 +91,9 @@ export default function Auth() {
   };
 
   const handleForgotPassword = async () => {
-    const redirectTo = `${window.location.origin}${window.location.pathname}`;
+    const redirectTo = import.meta.env.VITE_APP_URL
+      ? `${import.meta.env.VITE_APP_URL}/`
+      : `${window.location.origin}${window.location.pathname}`;
     const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
     if (error) throw error;
     toast.success('Link de recuperação enviado. Confira seu email.');
