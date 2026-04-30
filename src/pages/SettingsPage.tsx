@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useProfile, useUpsertProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { User, Briefcase, Clock, CalendarDays, Mail, Save, Trash2, AlertTriangle, Send, Sparkles } from 'lucide-react';
+import { User, Briefcase, Clock, CalendarDays, Mail, Save, Trash2, AlertTriangle, Send, Sparkles, Lock, Eye, EyeOff } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -58,6 +58,7 @@ export default function SettingsPage() {
   const { data: profile, isLoading } = useProfile();
   const upsert = useUpsertProfile();
 
+  const [firstName, setFirstName] = useState('');
   const [salary, setSalary] = useState('');
   const [hoursPerDay, setHoursPerDay] = useState('');
   const [daysPerWeek, setDaysPerWeek] = useState('');
@@ -65,6 +66,12 @@ export default function SettingsPage() {
   const [monthlyEmail, setMonthlyEmail] = useState(true);
   const [sendingTest, setSendingTest] = useState(false);
   const [sendingMonthly, setSendingMonthly] = useState(false);
+
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
 
   // Delete by month state
   const [deleteMonthsOpen, setDeleteMonthsOpen] = useState(false);
@@ -77,6 +84,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (profile) {
+      setFirstName(profile.first_name || '');
       setSalary(String(profile.monthly_salary || ''));
       setHoursPerDay(String(profile.work_hours_per_day || ''));
       setDaysPerWeek(String(profile.work_days_per_week || ''));
@@ -88,6 +96,7 @@ export default function SettingsPage() {
   const handleSave = async () => {
     try {
       await upsert.mutateAsync({
+        first_name: firstName.trim() || undefined,
         monthly_salary: Number(salary) || 0,
         work_hours_per_day: Number(hoursPerDay) || 8,
         work_days_per_week: Number(daysPerWeek) || 5,
@@ -97,6 +106,30 @@ export default function SettingsPage() {
       toast.success('Perfil salvo com sucesso!');
     } catch {
       toast.error('Erro ao salvar perfil');
+    }
+  };
+
+  const handleSavePassword = async () => {
+    if (newPassword.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('As senhas não coincidem');
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      toast.success('Senha alterada com sucesso!');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (e) {
+      const err = e as Error;
+      toast.error(`Erro: ${err.message}`);
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -280,6 +313,71 @@ export default function SettingsPage() {
             <label className="text-xs text-muted-foreground">Email</label>
             <p className="text-sm font-medium">{user?.email}</p>
           </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Nome</label>
+            <input
+              type="text"
+              value={firstName}
+              onChange={e => setFirstName(e.target.value)}
+              placeholder="Como quer ser chamado?"
+              className="flex h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="stat-card space-y-6">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <Lock className="w-4 h-4 text-primary" />
+          Alterar Senha
+        </div>
+        <div className="grid gap-4 pl-6">
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Nova Senha</label>
+            <div className="relative">
+              <input
+                type={showNewPassword ? 'text' : 'password'}
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+                className="flex h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Confirmar Nova Senha</label>
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                placeholder="Repita a nova senha"
+                className="flex h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+          <button
+            onClick={handleSavePassword}
+            disabled={savingPassword || !newPassword || !confirmPassword}
+            className="flex items-center justify-center gap-2 h-10 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all disabled:opacity-50"
+          >
+            <Lock className="w-4 h-4" />
+            {savingPassword ? 'Salvando...' : 'Alterar Senha'}
+          </button>
         </div>
       </div>
 

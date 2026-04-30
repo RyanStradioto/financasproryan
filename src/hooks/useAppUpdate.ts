@@ -53,7 +53,7 @@ export function useAppUpdate() {
       const seenVersion = localStorage.getItem(SEEN_VERSION_KEY);
       const latestVersion = manifest.versions.find((entry) => entry.version === manifest.current);
 
-      if (seenVersion === manifest.current && !needRefresh) {
+      if (seenVersion === manifest.current) {
         setVersionInfo(null);
         return;
       }

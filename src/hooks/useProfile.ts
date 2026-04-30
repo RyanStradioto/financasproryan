@@ -5,6 +5,7 @@ import { useAuth } from './useAuth';
 export type Profile = {
   id: string;
   user_id: string;
+  first_name?: string;
   monthly_salary: number;
   work_hours_per_day: number;
   work_days_per_week: number;
