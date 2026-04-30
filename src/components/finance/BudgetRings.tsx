@@ -42,7 +42,7 @@ export default function BudgetRings({ budgets, size = 140 }: BudgetRingsProps) {
   if (rings.length === 0) return null;
 
   return (
-    <div className="flex flex-col xl:flex-row items-center xl:items-start gap-6 w-full">
+    <div className="flex flex-col items-center w-full gap-5">
       <div className="relative shrink-0" style={{ width: size, height: size }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
           {rings.map((ring, i) => (
@@ -81,27 +81,27 @@ export default function BudgetRings({ budgets, size = 140 }: BudgetRingsProps) {
           ))}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-xl font-extrabold">{rings.length}</span>
+          <span className="text-2xl font-extrabold">{rings.length}</span>
           <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">metas</span>
         </div>
       </div>
-      <div className="w-full flex-1 flex flex-col gap-2.5">
+      <div className="w-full flex flex-col gap-3">
         {rings.map((ring, i) => (
-          <div key={ring.name} className="flex flex-col gap-1">
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: ring.color, boxShadow: `0 0 8px ${ring.color}` }} />
-                <span className={cn('truncate font-medium max-w-[120px]', ring.over ? 'text-expense' : 'text-foreground')}>
+          <div key={ring.name} className="flex flex-col gap-1.5 w-full">
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2 overflow-hidden mr-2">
+                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: ring.color, boxShadow: `0 0 8px ${ring.color}` }} />
+                <span className={cn('truncate font-semibold', ring.over ? 'text-expense' : 'text-foreground')}>
                   {ring.icon} {ring.name}
                 </span>
               </div>
-              <span className={cn("currency font-semibold", ring.over ? 'text-expense' : 'text-foreground')}>
+              <span className={cn("currency font-bold shrink-0", ring.over ? 'text-expense' : 'text-foreground')}>
                 {maskCurrency(formatCurrency(ring.spent))}
               </span>
             </div>
-            <div className="flex items-center justify-between text-[10px]">
+            <div className="flex items-center justify-between text-[11px]">
               <span className="text-muted-foreground">Orçamento: <span className="currency">{maskCurrency(formatCurrency(ring.budget))}</span></span>
-              <span className={cn("font-semibold", ring.over ? 'text-expense' : 'text-muted-foreground')}>
+              <span className={cn("font-bold", ring.over ? 'text-expense' : 'text-muted-foreground')}>
                 {Math.round(ring.pct * 100)}%
               </span>
             </div>

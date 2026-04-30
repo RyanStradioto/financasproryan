@@ -239,7 +239,7 @@ export default function Dashboard() {
       <SmartAlerts expenses={expenses} income={income} categories={categories} />
 
       {/* ── KPI Cards Premium ──────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 stagger-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 stagger-1">
         <KpiCard 
           label="Receitas" 
           value={formatCurrency(totalIncome)} 
@@ -340,17 +340,17 @@ export default function Dashboard() {
               Ver todos <ChevronRight className="w-3 h-3" />
             </a>
           </h3>
-          {budgetsWithData.length > 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center">
-              <BudgetRings budgets={budgetsWithData} size={160} />
-            </div>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
-              <Target className="w-10 h-10 mb-3 opacity-20" />
-              <p className="text-sm">Nenhum orçamento definido</p>
-              <p className="text-xs mt-1">Configure limites nas suas categorias para acompanhar aqui.</p>
-            </div>
-          )}
+          <div className="flex-1 flex flex-col items-center justify-center">
+            {budgetsWithData.length > 0 ? (
+              <BudgetRings budgets={budgetsWithData} size={150} />
+            ) : (
+              <div className="flex flex-col items-center justify-center text-center py-8 text-muted-foreground">
+                <Target className="w-10 h-10 mb-3 opacity-20" />
+                <p className="text-sm">Nenhum orçamento definido</p>
+                <p className="text-xs mt-1">Configure limites nas suas categorias para acompanhar aqui.</p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Weekly Heatmap */}
@@ -358,17 +358,19 @@ export default function Dashboard() {
           <h3 className="text-sm font-semibold mb-6 flex items-center gap-2">
             <BellRing className="w-4 h-4 text-primary" /> Intensidade de Gastos
           </h3>
-          <div className="flex-1 flex flex-col justify-center">
-            {expenses.length > 0 ? (
-              <WeeklyHeatmap 
-                month={currentMonthDate} 
-                data={expenses.filter(e => e.status === 'concluido').map(e => ({ date: e.date, amount: Number(e.amount) }))} 
-              />
-            ) : (
-              <div className="text-center p-6 text-muted-foreground">
-                <p className="text-sm">Sem gastos neste mês</p>
-              </div>
-            )}
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <div className="w-full max-w-[280px]">
+              {expenses.length > 0 ? (
+                <WeeklyHeatmap 
+                  month={currentMonthDate} 
+                  data={expenses.filter(e => e.status === 'concluido').map(e => ({ date: e.date, amount: Number(e.amount) }))} 
+                />
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p className="text-sm">Sem gastos neste mês</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
         
