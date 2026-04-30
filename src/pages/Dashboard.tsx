@@ -93,7 +93,7 @@ function KpiCard({ label, value, sub, color, icon: Icon, trend, sparklineData }:
 export default function Dashboard() {
   const { maskCurrency } = useSensitiveData();
   const [month, setMonth] = useState(getMonthYear());
-  const { profile } = useProfile();
+  const { data: profile } = useProfile();
   
   const { data: income = [] } = useIncome(month);
   const { data: expenses = [] } = useExpenses(month);
@@ -196,9 +196,9 @@ export default function Dashboard() {
   // Greeting based on time
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Bom dia';
-    if (hour < 18) return 'Boa tarde';
-    return 'Boa noite';
+    if (hour < 12) return { text: 'Bom dia', icon: '☀️' };
+    if (hour < 18) return { text: 'Boa tarde', icon: '🌤️' };
+    return { text: 'Boa noite', icon: '🌙' };
   }, []);
 
   const currentMonthDate = useMemo(() => {
@@ -213,7 +213,7 @@ export default function Dashboard() {
         <div>
           <div className="flex items-center gap-2 mb-1 opacity-80">
             <Sparkles className="w-4 h-4 text-primary animate-pulse" />
-            <p className="text-sm font-medium">{greeting}{profile?.first_name ? `, ${profile.first_name}` : ''}!</p>
+            <p className="text-sm font-medium">{greeting.icon} {greeting.text}{profile?.first_name ? `, ${profile.first_name}` : ''}!</p>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/70">
             Seu Panorama
