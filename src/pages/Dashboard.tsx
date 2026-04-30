@@ -21,6 +21,7 @@ import { useWorkTimeCalc, useProfile } from '@/hooks/useProfile';
 import { formatWorkTime } from '@/lib/workTime';
 import { cn } from '@/lib/utils';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
+import PendingExpensesDialog from '@/components/finance/PendingExpensesDialog';
 
 const CHART_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
 
@@ -103,6 +104,7 @@ export default function Dashboard() {
   const { calcWorkTime, hourlyRate } = useWorkTimeCalc();
 
   const [editing, setEditing] = useState<((Income & { type: 'income' }) | (Expense & { type: 'expense' })) | null>(null);
+  const [pendingModalOpen, setPendingModalOpen] = useState(false);
 
   // ── Core numbers ─────────────────────────────────────────────
   const totalIncome = useMemo(() =>
@@ -322,9 +324,9 @@ export default function Dashboard() {
                   <p className="text-lg font-extrabold currency text-warning">{maskCurrency(formatCurrency(pendingAmount))}</p>
                 </div>
               </div>
-              <a href="/despesas" className="p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+              <button onClick={() => setPendingModalOpen(true)} className="p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
                 <ChevronRight className="w-4 h-4" />
-              </a>
+              </button>
             </div>
           )}
         </div>
@@ -569,6 +571,12 @@ export default function Dashboard() {
           transaction={editing}
         />
       )}
+
+      <PendingExpensesDialog 
+        open={pendingModalOpen} 
+        onOpenChange={setPendingModalOpen} 
+        expenses={expenses} 
+      />
     </div>
   );
 }

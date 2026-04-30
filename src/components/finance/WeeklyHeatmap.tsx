@@ -40,11 +40,11 @@ export default function WeeklyHeatmap({ month, data }: WeeklyHeatmapProps) {
   }, [month, data]);
 
   const getIntensityColor = (intensity: number) => {
-    if (intensity === 0) return 'bg-muted/30';
-    if (intensity < 0.25) return 'bg-expense/20';
-    if (intensity < 0.5) return 'bg-expense/40';
-    if (intensity < 0.75) return 'bg-expense/60';
-    return 'bg-expense/80';
+    if (intensity === 0) return 'bg-muted/20 border border-border/30';
+    if (intensity < 0.25) return 'bg-orange-500/30 border border-orange-500/20';
+    if (intensity < 0.5) return 'bg-orange-500/60 border border-orange-500/40';
+    if (intensity < 0.75) return 'bg-expense/80 border border-expense/50 shadow-[0_0_8px_hsl(var(--expense)/0.2)]';
+    return 'bg-expense border border-expense shadow-[0_0_12px_hsl(var(--expense)/0.4)]';
   };
 
   const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
@@ -59,7 +59,7 @@ export default function WeeklyHeatmap({ month, data }: WeeklyHeatmapProps) {
         ))}
         {days.map((day, i) => {
           if (!day) {
-            return <div key={`empty-${i}`} className="aspect-square rounded-sm" />;
+            return <div key={`empty-${i}`} className="aspect-square rounded-[4px] sm:rounded-md opacity-20" />;
           }
 
           const { dateStr, amount, intensity, date } = day;
@@ -70,9 +70,9 @@ export default function WeeklyHeatmap({ month, data }: WeeklyHeatmapProps) {
             >
               <div
                 className={cn(
-                  'w-full h-full rounded-sm transition-colors duration-300',
+                  'w-full h-full rounded-[4px] sm:rounded-md transition-all duration-300',
                   getIntensityColor(intensity),
-                  isToday(date) && 'ring-1 ring-primary ring-offset-1 ring-offset-card'
+                  isToday(date) && 'ring-2 ring-primary ring-offset-2 ring-offset-card'
                 )}
               />
               {/* Tooltip */}
@@ -88,14 +88,14 @@ export default function WeeklyHeatmap({ month, data }: WeeklyHeatmapProps) {
           );
         })}
       </div>
-      <div className="flex items-center justify-end gap-1.5 text-[9px] text-muted-foreground mt-1">
+      <div className="flex items-center justify-end gap-1.5 text-[9px] text-muted-foreground mt-2 font-medium uppercase tracking-wider">
         <span>Menos</span>
-        <div className="flex gap-0.5">
-          <div className="w-2.5 h-2.5 rounded-[1px] bg-muted/30" />
-          <div className="w-2.5 h-2.5 rounded-[1px] bg-expense/20" />
-          <div className="w-2.5 h-2.5 rounded-[1px] bg-expense/40" />
-          <div className="w-2.5 h-2.5 rounded-[1px] bg-expense/60" />
-          <div className="w-2.5 h-2.5 rounded-[1px] bg-expense/80" />
+        <div className="flex gap-1">
+          <div className="w-3 h-3 rounded-[3px] bg-muted/20 border border-border/30" />
+          <div className="w-3 h-3 rounded-[3px] bg-orange-500/30 border border-orange-500/20" />
+          <div className="w-3 h-3 rounded-[3px] bg-orange-500/60 border border-orange-500/40" />
+          <div className="w-3 h-3 rounded-[3px] bg-expense/80 border border-expense/50" />
+          <div className="w-3 h-3 rounded-[3px] bg-expense border border-expense shadow-[0_0_8px_hsl(var(--expense)/0.4)]" />
         </div>
         <span>Mais</span>
       </div>

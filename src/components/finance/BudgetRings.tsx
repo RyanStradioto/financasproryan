@@ -31,11 +31,12 @@ export default function BudgetRings({ budgets, size = 140 }: BudgetRingsProps) {
     return budgets.slice(0, maxRings).map((b, i) => {
       const radius = baseRadius - i * gap;
       const circumference = 2 * Math.PI * radius;
-      const pct = Math.min(b.spent / b.budget, 1);
+      const visualPct = Math.min(b.spent / b.budget, 1);
+      const realPct = b.spent / b.budget;
       const over = b.spent > b.budget;
       const color = over ? 'hsl(0, 72%, 51%)' : RING_COLORS[i % RING_COLORS.length];
 
-      return { ...b, radius, circumference, pct, color, over };
+      return { ...b, radius, circumference, pct: visualPct, realPct, color, over };
     });
   }, [budgets, size]);
 
@@ -102,7 +103,7 @@ export default function BudgetRings({ budgets, size = 140 }: BudgetRingsProps) {
             <div className="flex items-center justify-between text-[11px]">
               <span className="text-muted-foreground">Orçamento: <span className="currency">{maskCurrency(formatCurrency(ring.budget))}</span></span>
               <span className={cn("font-bold", ring.over ? 'text-expense' : 'text-muted-foreground')}>
-                {Math.round(ring.pct * 100)}%
+                {Math.round(ring.realPct * 100)}%
               </span>
             </div>
           </div>
