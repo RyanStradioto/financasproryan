@@ -294,7 +294,7 @@ export default function ExpensesPage() {
           {activeFilters && (
             <button
               onClick={clearFilters}
-              className="h-9 flex items-center gap-1.5 px-3 rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 text-xs font-medium transition-colors"
+              className="h-10 flex items-center gap-1.5 px-4 rounded-xl border border-destructive/30 text-destructive hover:bg-destructive/10 text-xs font-medium transition-colors shadow-sm bg-card/50 backdrop-blur-sm shrink-0"
             >
               <X className="w-3.5 h-3.5" /> Limpar
             </button>

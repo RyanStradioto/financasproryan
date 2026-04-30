@@ -258,6 +258,16 @@ export default function IncomePage() {
               {accounts.map(a => <option key={a.id} value={a.id}>{a.icon} {a.name}</option>)}
             </select>
           )}
+          {activeFilters && (
+            <button
+              onClick={clearFilters}
+              className="h-10 flex items-center gap-1.5 px-4 rounded-xl border border-destructive/30 text-destructive hover:bg-destructive/10 text-xs font-medium transition-colors shadow-sm bg-card/50 backdrop-blur-sm shrink-0"
+            >
+              <X className="w-3.5 h-3.5" /> Limpar
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Mobile card list */}
       <div className="sm:hidden space-y-3">
