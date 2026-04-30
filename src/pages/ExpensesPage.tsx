@@ -6,7 +6,7 @@ import { useWorkTimeCalc } from '@/hooks/useProfile';
 import MonthSelector from '@/components/finance/MonthSelector';
 import TransactionDialog from '@/components/finance/TransactionDialog';
 import EditTransactionDialog from '@/components/finance/EditTransactionDialog';
-import { Trash2, Pencil, Paperclip, Clock, ChevronDown, Filter, Search, X, TrendingDown, Receipt } from 'lucide-react';
+import { Trash2, Pencil, Paperclip, Clock, ChevronDown, Filter, Search, X, TrendingDown, Receipt, SlidersHorizontal, Check, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
@@ -70,9 +70,9 @@ function OptionPicker({ value, options, placeholder, onChange, hideIcon }: {
 }
 
 const STATUSES = [
-  { value: 'concluido', label: 'Concluído' },
-  { value: 'pendente',  label: 'Pendente'  },
-  { value: 'agendado',  label: 'Agendado'  },
+  { value: 'concluido', label: 'Concluído', color: 'bg-success' },
+  { value: 'pendente',  label: 'Pendente',  color: 'bg-warning' },
+  { value: 'agendado',  label: 'Agendado',  color: 'bg-info'    },
 ];
 
 function StatusPicker({ status, onChange }: { status: string; onChange: (s: string) => void }) {
@@ -95,7 +95,7 @@ function StatusPicker({ status, onChange }: { status: string; onChange: (s: stri
               s.value === status ? 'opacity-50 cursor-default' : ''
             }`}
           >
-            <span className={`inline-block w-2 h-2 rounded-full ${s.value === 'concluido' ? 'bg-success' : s.value === 'pendente' ? 'bg-warning' : 'bg-info'}`} />
+            <span className={`inline-block w-2 h-2 rounded-full ${s.color}`} />
             {s.label}
           </button>
         ))}
@@ -115,9 +115,8 @@ export default function ExpensesPage() {
   const { calcWorkTime, hourlyRate } = useWorkTimeCalc();
 
   const handleStatusChange = async (id: string, status: string) => {
-    try {
-      await updateExpense.mutateAsync({ id, status });
-    } catch { toast.error('Erro ao atualizar status'); }
+    try { await updateExpense.mutateAsync({ id, status }); }
+    catch { toast.error('Erro ao atualizar status'); }
   };
 
   const handleDateChange = async (id: string, date: string) => {
@@ -137,29 +136,51 @@ export default function ExpensesPage() {
 
   // Filters
   const [filterSearch, setFilterSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterCategory, setFilterCategory] = useState('');
-  const [filterAccount, setFilterAccount] = useState('');
+  const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
+  const [filterCategories, setFilterCategories] = useState<string[]>([]);
+  const [filterAccounts, setFilterAccounts] = useState<string[]>([]);
+  const [filterAmountMin, setFilterAmountMin] = useState('');
+  const [filterAmountMax, setFilterAmountMax] = useState('');
+  const [sortBy, setSortBy] = useState<'date' | 'amount' | 'description' | 'status' | 'category'>('date');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [catSearch, setCatSearch] = useState('');
 
-  const activeFilters = !!(filterSearch || filterStatus || filterCategory || filterAccount);
-  const clearFilters = () => { setFilterSearch(''); setFilterStatus(''); setFilterCategory(''); setFilterAccount(''); };
+  const toggleStatus   = (v: string) => setFilterStatuses(p => p.includes(v) ? p.filter(x => x !== v) : [...p, v]);
+  const toggleCategory = (v: string) => setFilterCategories(p => p.includes(v) ? p.filter(x => x !== v) : [...p, v]);
+  const toggleAccount  = (v: string) => setFilterAccounts(p => p.includes(v) ? p.filter(x => x !== v) : [...p, v]);
+
+  const activeFilterCount = filterStatuses.length + filterCategories.length + filterAccounts.length +
+    (filterAmountMin !== '' ? 1 : 0) + (filterAmountMax !== '' ? 1 : 0);
+  const hasActiveFilters = !!(filterSearch || activeFilterCount > 0);
+
+  const clearFilters = () => {
+    setFilterSearch(''); setFilterStatuses([]); setFilterCategories([]);
+    setFilterAccounts([]); setFilterAmountMin(''); setFilterAmountMax('');
+  };
 
   const STATUS_ORDER: Record<string, number> = { concluido: 0, pendente: 1, agendado: 2 };
 
   const filtered = expenses.filter(e => {
-    if (filterStatus && e.status !== filterStatus) return false;
-    if (filterCategory && e.category_id !== filterCategory) return false;
-    if (filterAccount && e.account_id !== filterAccount) return false;
+    if (filterStatuses.length > 0 && !filterStatuses.includes(e.status)) return false;
+    if (filterCategories.length > 0 && !filterCategories.includes(e.category_id ?? '')) return false;
+    if (filterAccounts.length > 0 && !filterAccounts.includes(e.account_id ?? '')) return false;
+    if (filterAmountMin !== '' && Number(e.amount) < Number(filterAmountMin)) return false;
+    if (filterAmountMax !== '' && Number(e.amount) > Number(filterAmountMax)) return false;
     if (filterSearch && !e.description?.toLowerCase().includes(filterSearch.toLowerCase())) return false;
     return true;
   }).sort((a, b) => {
-    const sa = STATUS_ORDER[a.status] ?? 99;
-    const sb = STATUS_ORDER[b.status] ?? 99;
-    if (sa !== sb) return sa - sb;
-    const catA = categories.find(c => c.id === a.category_id)?.name ?? '';
-    const catB = categories.find(c => c.id === b.category_id)?.name ?? '';
-    if (catA !== catB) return catA.localeCompare(catB);
-    return new Date(b.date).getTime() - new Date(a.date).getTime();
+    let cmp = 0;
+    if (sortBy === 'date')        cmp = new Date(b.date).getTime() - new Date(a.date).getTime();
+    if (sortBy === 'amount')      cmp = Number(b.amount) - Number(a.amount);
+    if (sortBy === 'description') cmp = (a.description ?? '').localeCompare(b.description ?? '');
+    if (sortBy === 'status')      cmp = (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99);
+    if (sortBy === 'category') {
+      const catA = categories.find(c => c.id === a.category_id)?.name ?? '';
+      const catB = categories.find(c => c.id === b.category_id)?.name ?? '';
+      cmp = catA.localeCompare(catB);
+    }
+    return sortDir === 'asc' ? -cmp : cmp;
   });
 
   const total = filtered.reduce((s, e) => s + Number(e.amount), 0);
@@ -192,10 +213,7 @@ export default function ExpensesPage() {
                   .from('expenses')
                   .update({ deleted_at: null } as any)
                   .eq('id', id);
-                if (!error) {
-                  toast.success('Despesa restaurada!');
-                  window.location.reload();
-                }
+                if (!error) { toast.success('Despesa restaurada!'); window.location.reload(); }
               } catch { /* silent */ }
             },
           },
@@ -209,13 +227,15 @@ export default function ExpensesPage() {
     } catch { toast.error('Erro ao remover'); }
   };
 
+  const filteredCats = categories.filter(c =>
+    !catSearch || c.name.toLowerCase().includes(catSearch.toLowerCase())
+  );
+
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Premium Hero Header */}
+      {/* Hero Header */}
       <div className="hero-card flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
-        {/* Glow effect */}
         <div className="absolute -top-20 -right-20 w-64 h-64 bg-expense/20 blur-3xl rounded-full pointer-events-none" />
-        
         <div className="flex items-center gap-4 relative z-10">
           <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-expense/30 to-expense/10 flex items-center justify-center shadow-inner border border-expense/20">
             <TrendingDown className="w-7 h-7 sm:w-8 sm:h-8 text-expense drop-shadow-md" />
@@ -224,11 +244,10 @@ export default function ExpensesPage() {
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-1">Despesas</h1>
             <p className="text-sm text-muted-foreground flex items-center gap-2">
               <span className="inline-block w-2 h-2 rounded-full bg-expense animate-pulse" />
-              {activeFilters ? `${filtered.length} de ` : ''}{expenses.length} lançamentos neste mês
+              {hasActiveFilters ? `${filtered.length} de ` : ''}{expenses.length} lançamentos neste mês
             </p>
           </div>
         </div>
-
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 relative z-10 w-full sm:w-auto mt-2 sm:mt-0">
           <div className="flex flex-col items-start sm:items-end mb-2 sm:mb-0">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Total Mensal</p>
@@ -242,67 +261,239 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      {/* Modern Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-1">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Buscar por descrição..."
-            value={filterSearch}
-            onChange={e => setFilterSearch(e.target.value)}
-            className="h-10 w-full rounded-xl border border-border/60 bg-card/50 backdrop-blur-sm pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all shadow-sm"
-          />
-          {filterSearch && (
-            <button onClick={() => setFilterSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-          <select
-            value={filterStatus}
-            onChange={e => setFilterStatus(e.target.value)}
-            className="h-10 rounded-xl border border-border/60 bg-card/50 backdrop-blur-sm px-3 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer shadow-sm appearance-none pr-8 relative bg-no-repeat bg-[position:right_0.75rem_center] bg-[length:16px_12px]"
-            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")` }}
-          >
-            <option value="">Todos Status</option>
-            <option value="concluido">Concluído</option>
-            <option value="pendente">Pendente</option>
-            <option value="agendado">Agendado</option>
-          </select>
-          <select
-            value={filterCategory}
-            onChange={e => setFilterCategory(e.target.value)}
-            className="h-10 rounded-xl border border-border/60 bg-card/50 backdrop-blur-sm px-3 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer shadow-sm appearance-none pr-8 relative bg-no-repeat bg-[position:right_0.75rem_center] bg-[length:16px_12px]"
-            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")` }}
-          >
-            <option value="">Todas Categorias</option>
-            {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
-          </select>
-          {accounts.length > 0 && (
-            <select
-              value={filterAccount}
-              onChange={e => setFilterAccount(e.target.value)}
-              className="h-10 rounded-xl border border-border/60 bg-card/50 backdrop-blur-sm px-3 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer shadow-sm appearance-none pr-8 relative bg-no-repeat bg-[position:right_0.75rem_center] bg-[length:16px_12px] max-w-[150px]"
-              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")` }}
-            >
-              <option value="">Todas Contas</option>
-              {accounts.map(a => <option key={a.id} value={a.id}>{a.icon} {a.name}</option>)}
-            </select>
-          )}
-          {activeFilters && (
+      {/* Filter Bar */}
+      <div className="space-y-2 p-1">
+        <div className="flex items-center gap-2">
+          {/* Search */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Buscar por descrição..."
+              value={filterSearch}
+              onChange={e => setFilterSearch(e.target.value)}
+              className="h-10 w-full rounded-xl border border-border/60 bg-card/50 backdrop-blur-sm pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all shadow-sm"
+            />
+            {filterSearch && (
+              <button onClick={() => setFilterSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Filter panel button */}
+          <Popover open={filterOpen} onOpenChange={(o) => { setFilterOpen(o); if (!o) setCatSearch(''); }}>
+            <PopoverTrigger asChild>
+              <button className={`h-10 flex items-center gap-2 px-3.5 rounded-xl border text-sm font-medium transition-colors shadow-sm shrink-0 ${activeFilterCount > 0 ? 'border-primary/50 bg-primary/10 text-primary' : 'border-border/60 bg-card/50 text-foreground hover:bg-muted/50'}`}>
+                <SlidersHorizontal className="w-4 h-4" />
+                <span className="hidden sm:inline">Filtros</span>
+                {activeFilterCount > 0 && (
+                  <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center font-bold">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-0 shadow-xl" align="end">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
+                <span className="text-sm font-bold">Filtros</span>
+                {activeFilterCount > 0 && (
+                  <button onClick={clearFilters} className="text-xs text-destructive font-medium hover:underline">
+                    Limpar tudo
+                  </button>
+                )}
+              </div>
+              <div className="p-4 space-y-5 max-h-[460px] overflow-y-auto">
+
+                {/* Status */}
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Status</p>
+                  <div className="space-y-0.5">
+                    {STATUSES.map(s => (
+                      <button
+                        key={s.value}
+                        onClick={() => toggleStatus(s.value)}
+                        className="flex items-center gap-2.5 w-full py-1.5 px-2 rounded-lg hover:bg-muted/60 transition-colors text-sm"
+                      >
+                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${filterStatuses.includes(s.value) ? 'bg-primary border-primary' : 'border-border'}`}>
+                          {filterStatuses.includes(s.value) && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                        </div>
+                        <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${s.color}`} />
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Categories */}
+                {categories.length > 0 && (
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Categoria</p>
+                    {categories.length > 5 && (
+                      <div className="relative mb-2">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Buscar categoria..."
+                          value={catSearch}
+                          onChange={e => setCatSearch(e.target.value)}
+                          className="h-7 w-full rounded-lg border border-border/60 bg-muted/30 pl-7 pr-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/40"
+                        />
+                      </div>
+                    )}
+                    <div className="space-y-0.5 max-h-36 overflow-y-auto">
+                      {filteredCats.map(c => (
+                        <button
+                          key={c.id}
+                          onClick={() => toggleCategory(c.id)}
+                          className="flex items-center gap-2.5 w-full py-1.5 px-2 rounded-lg hover:bg-muted/60 transition-colors text-sm"
+                        >
+                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${filterCategories.includes(c.id) ? 'bg-primary border-primary' : 'border-border'}`}>
+                            {filterCategories.includes(c.id) && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                          </div>
+                          <span className="shrink-0">{c.icon}</span>
+                          <span className="truncate">{c.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Accounts */}
+                {accounts.length > 0 && (
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Conta</p>
+                    <div className="space-y-0.5">
+                      {accounts.map(a => (
+                        <button
+                          key={a.id}
+                          onClick={() => toggleAccount(a.id)}
+                          className="flex items-center gap-2.5 w-full py-1.5 px-2 rounded-lg hover:bg-muted/60 transition-colors text-sm"
+                        >
+                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${filterAccounts.includes(a.id) ? 'bg-primary border-primary' : 'border-border'}`}>
+                            {filterAccounts.includes(a.id) && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                          </div>
+                          <span className="shrink-0">{a.icon}</span>
+                          <span className="truncate">{a.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Amount range */}
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Valor (R$)</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      placeholder="Mínimo"
+                      value={filterAmountMin}
+                      onChange={e => setFilterAmountMin(e.target.value)}
+                      className="h-8 w-full rounded-lg border border-border/60 bg-muted/30 px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <span className="text-muted-foreground text-sm shrink-0">—</span>
+                    <input
+                      type="number"
+                      min={0}
+                      placeholder="Máximo"
+                      value={filterAmountMax}
+                      onChange={e => setFilterAmountMax(e.target.value)}
+                      className="h-8 w-full rounded-lg border border-border/60 bg-muted/30 px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                  </div>
+                </div>
+
+                {/* Sort */}
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Ordenar por</p>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={sortBy}
+                      onChange={e => setSortBy(e.target.value as typeof sortBy)}
+                      className="flex-1 h-8 rounded-lg border border-border/60 bg-muted/30 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    >
+                      <option value="date">Data</option>
+                      <option value="amount">Valor</option>
+                      <option value="description">Descrição</option>
+                      <option value="category">Categoria</option>
+                      <option value="status">Status</option>
+                    </select>
+                    <button
+                      onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}
+                      title={sortDir === 'asc' ? 'Crescente' : 'Decrescente'}
+                      className="h-8 w-8 flex items-center justify-center rounded-lg border border-border/60 bg-muted/30 hover:bg-muted transition-colors shrink-0"
+                    >
+                      {sortDir === 'asc' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {hasActiveFilters && (
             <button
               onClick={clearFilters}
-              className="h-10 flex items-center gap-1.5 px-4 rounded-xl border border-destructive/30 text-destructive hover:bg-destructive/10 text-xs font-medium transition-colors shadow-sm bg-card/50 backdrop-blur-sm shrink-0"
+              className="h-10 flex items-center gap-1.5 px-3 rounded-xl border border-destructive/30 text-destructive hover:bg-destructive/10 text-xs font-medium transition-colors shadow-sm bg-card/50 shrink-0"
             >
-              <X className="w-3.5 h-3.5" /> Limpar
+              <X className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Limpar</span>
             </button>
           )}
         </div>
+
+        {/* Active filter chips */}
+        {activeFilterCount > 0 && (
+          <div className="flex items-center gap-2 flex-wrap px-1">
+            {filterStatuses.map(s => {
+              const st = STATUSES.find(x => x.value === s);
+              return (
+                <span key={s} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted border border-border/60 text-xs font-medium">
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full ${st?.color}`} />
+                  {st?.label}
+                  <button onClick={() => toggleStatus(s)} className="text-muted-foreground hover:text-foreground ml-0.5 transition-colors">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              );
+            })}
+            {filterCategories.map(id => {
+              const cat = categories.find(c => c.id === id);
+              return cat ? (
+                <span key={id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted border border-border/60 text-xs font-medium">
+                  {cat.icon} {cat.name}
+                  <button onClick={() => toggleCategory(id)} className="text-muted-foreground hover:text-foreground ml-0.5 transition-colors">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ) : null;
+            })}
+            {filterAccounts.map(id => {
+              const acc = accounts.find(a => a.id === id);
+              return acc ? (
+                <span key={id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted border border-border/60 text-xs font-medium">
+                  {acc.icon} {acc.name}
+                  <button onClick={() => toggleAccount(id)} className="text-muted-foreground hover:text-foreground ml-0.5 transition-colors">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ) : null;
+            })}
+            {(filterAmountMin !== '' || filterAmountMax !== '') && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted border border-border/60 text-xs font-medium">
+                R$ {filterAmountMin || '0'} — {filterAmountMax ? `R$ ${filterAmountMax}` : '∞'}
+                <button onClick={() => { setFilterAmountMin(''); setFilterAmountMax(''); }} className="text-muted-foreground hover:text-foreground ml-0.5 transition-colors">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Mobile card list - Premium Flat Design */}
+      {/* Mobile card list */}
       <div className="sm:hidden stat-card p-0 overflow-hidden divide-y divide-border/40">
         {expenses.length === 0 && !isLoading && (
           <div className="flex flex-col items-center py-16 gap-4 bg-muted/5">
@@ -325,65 +516,58 @@ export default function ExpensesPage() {
         {filtered.map((item) => {
           const cat = categories.find(c => c.id === item.category_id);
           return (
-          <div key={item.id} className="p-4 flex flex-col gap-3 relative hover:bg-muted/10 transition-colors">
-            <div className={`absolute top-0 left-0 w-1 h-full ${item.status === 'concluido' ? 'bg-success/80' : item.status === 'pendente' ? 'bg-warning/80' : 'bg-info/80'}`} />
-            <div className="flex items-center justify-between gap-3 pl-2">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-11 h-11 rounded-full bg-muted/40 flex items-center justify-center text-xl shrink-0 shadow-sm border border-border/60">
-                  {cat?.icon || '🛒'}
+            <div key={item.id} className="p-4 flex flex-col gap-3 relative hover:bg-muted/10 transition-colors">
+              <div className={`absolute top-0 left-0 w-1 h-full ${item.status === 'concluido' ? 'bg-success/80' : item.status === 'pendente' ? 'bg-warning/80' : 'bg-info/80'}`} />
+              <div className="flex items-center justify-between gap-3 pl-2">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-11 h-11 rounded-full bg-muted/40 flex items-center justify-center text-xl shrink-0 shadow-sm border border-border/60">
+                    {cat?.icon || '🛒'}
+                  </div>
+                  <div className="min-w-0 flex flex-col justify-center">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <p className="font-bold text-[15px] leading-tight truncate text-foreground/95">{item.description || 'Despesa'}</p>
+                      {item.attachment_url && (
+                        <a href={item.attachment_url} target="_blank" rel="noopener noreferrer" className="text-primary shrink-0 hover:scale-110 transition-transform">
+                          <Paperclip className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <DatePicker date={item.date} onChange={d => handleDateChange(item.id, d)} />
+                      <OptionPicker value={item.category_id} options={categories} placeholder="Categoria" onChange={v => handleCategoryChange(item.id, v)} hideIcon />
+                    </div>
+                  </div>
                 </div>
-                <div className="min-w-0 flex flex-col justify-center">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <p className="font-bold text-[15px] leading-tight truncate text-foreground/95">{item.description || 'Despesa'}</p>
-                    {item.attachment_url && (
-                      <a href={item.attachment_url} target="_blank" rel="noopener noreferrer" className="text-primary shrink-0 hover:scale-110 transition-transform">
-                        <Paperclip className="w-3.5 h-3.5" />
-                      </a>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <DatePicker date={item.date} onChange={d => handleDateChange(item.id, d)} />
-                    <OptionPicker value={item.category_id} options={categories} placeholder="Categoria" onChange={v => handleCategoryChange(item.id, v)} hideIcon />
-                  </div>
+                <div className="shrink-0 flex flex-col items-end gap-1.5">
+                  <p className="font-extrabold text-expense text-lg tabular-nums leading-none tracking-tight">{formatCurrency(Number(item.amount))}</p>
+                  <StatusPicker status={item.status} onChange={s => handleStatusChange(item.id, s)} />
                 </div>
               </div>
-              <div className="shrink-0 flex flex-col items-end gap-1.5">
-                <p className="font-extrabold text-expense text-lg tabular-nums leading-none tracking-tight">{formatCurrency(Number(item.amount))}</p>
-                <StatusPicker status={item.status} onChange={s => handleStatusChange(item.id, s)} />
+              <div className="flex items-center justify-between pt-2.5 pl-2 mt-1">
+                <div className="flex items-center gap-2">
+                  {hourlyRate > 0 && (
+                    <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium bg-muted/20 px-2 py-1 rounded-full border border-border/40">
+                      <Clock className="w-3 h-3 text-accent-foreground/60" />{formatWorkTime(calcWorkTime(Number(item.amount)))}
+                    </span>
+                  )}
+                  {item.account_id && (
+                    <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium bg-muted/20 px-2 py-1 rounded-full border border-border/40">
+                      {getAccountName(item.account_id, true)}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setEditing({ ...item, type: 'expense' })} className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors bg-muted/20">
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={() => handleDelete(item.id)} className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors bg-muted/20">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
-            
-            {/* Quick Actions Footer */}
-            <div className="flex items-center justify-between pt-2.5 pl-2 mt-1">
-              <div className="flex items-center gap-2">
-                {hourlyRate > 0 && (
-                  <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium bg-muted/20 px-2 py-1 rounded-full border border-border/40">
-                    <Clock className="w-3 h-3 text-accent-foreground/60" />{formatWorkTime(calcWorkTime(Number(item.amount)))}
-                  </span>
-                )}
-                {item.account_id && (
-                  <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium bg-muted/20 px-2 py-1 rounded-full border border-border/40">
-                    {getAccountName(item.account_id, true)}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setEditing({ ...item, type: 'expense' })}
-                  className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors bg-muted/20"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => handleDelete(item.id)}
-                  className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors bg-muted/20"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )})}
+          );
+        })}
         {filtered.length > 0 && (
           <div className="flex items-center justify-between px-4 py-3 rounded-2xl bg-expense/8 border border-expense/15">
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total</span>
@@ -436,8 +620,7 @@ export default function ExpensesPage() {
                     {hourlyRate && (
                       <td className="py-3.5 px-4 text-center">
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent/50 text-xs font-semibold text-accent-foreground">
-                          <Clock className="w-3 h-3" />
-                          {formatWorkTime(wt)}
+                          <Clock className="w-3 h-3" />{formatWorkTime(wt)}
                         </span>
                       </td>
                     )}
@@ -490,8 +673,7 @@ export default function ExpensesPage() {
                   {hourlyRate && (
                     <td className="py-3.5 px-4 text-center">
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent/50 text-xs font-bold text-accent-foreground">
-                        <Clock className="w-3 h-3" />
-                        {formatWorkTime(calcWorkTime(total))}
+                        <Clock className="w-3 h-3" />{formatWorkTime(calcWorkTime(total))}
                       </span>
                     </td>
                   )}
