@@ -432,10 +432,19 @@ export function useAddCategory() {
   const { user } = useAuth();
   return useMutation({
     mutationFn: async (data: Omit<TablesInsert<'categories'>, 'user_id'>) => {
-      const { error } = await supabase.from('categories').insert({ ...data, user_id: user!.id });
+      const { data: inserted, error } = await supabase
+        .from('categories')
+        .insert({ ...data, user_id: user!.id })
+        .select()
+        .single();
       if (error) throw error;
+      return inserted as Category;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['categories'] }),
+    onSuccess: (newCategory) => {
+      qc.setQueryData<Category[]>(['categories', user?.id], (old = []) =>
+        [...old, newCategory].sort((a, b) => a.name.localeCompare(b.name))
+      );
+    },
   });
 }
 

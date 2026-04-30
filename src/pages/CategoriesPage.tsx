@@ -122,7 +122,7 @@ export default function CategoriesPage() {
           <MonthSelector month={month} onChange={setMonth} />
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="ml-auto shrink-0">
+              <Button size="sm" className="ml-auto shrink-0" data-tutorial-target="new-category">
                 <Plus className="w-4 h-4" />
                 <span className="hidden sm:inline ml-1">Nova Categoria</span>
               </Button>

@@ -67,7 +67,7 @@ export default function AccountsPage() {
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button size="sm"><Plus className="w-4 h-4 mr-1" />Nova Conta</Button>
+            <Button size="sm" data-tutorial-target="new-account"><Plus className="w-4 h-4 mr-1" />Nova Conta</Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader><DialogTitle>Nova Conta</DialogTitle></DialogHeader>

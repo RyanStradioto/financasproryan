@@ -18,6 +18,7 @@ type TutorialStep = {
   badge: string;
   route?: string;
   checklist?: ChecklistItem[];
+  highlightTarget?: string;
 };
 
 type TutorialContextValue = { openTutorial: (force?: boolean) => void };
@@ -40,6 +41,7 @@ const tutorialSteps: TutorialStep[] = [
     badge: 'Passo 1 de 7',
     color: 'from-blue-500 to-cyan-500',
     route: '/configuracoes',
+    highlightTarget: 'salary-input',
     checklist: [
       { label: 'Preenchi meu salário mensal', required: true },
       { label: 'Preenchi horas por dia e dias por semana' },
@@ -48,11 +50,12 @@ const tutorialSteps: TutorialStep[] = [
   },
   {
     title: 'Categorias',
-    description: 'Organize seus gastos por tipo. Isso faz os gráficos e alertas funcionarem de verdade.',
+    description: 'Clique em "Nova Categoria" e crie suas primeiras categorias de gasto (ex: Alimentação, Casa, Lazer).',
     icon: Grid3X3,
     badge: 'Passo 2 de 7',
     color: 'from-emerald-500 to-teal-500',
     route: '/categorias',
+    highlightTarget: 'new-category',
     checklist: [
       { label: 'Criei pelo menos uma categoria (ex: Alimentação)', required: true },
       { label: 'Defini orçamento em pelo menos uma categoria' },
@@ -60,11 +63,12 @@ const tutorialSteps: TutorialStep[] = [
   },
   {
     title: 'Contas',
-    description: 'Cadastre onde seu dinheiro fica: banco, carteira ou conta digital.',
+    description: 'Clique em "Nova Conta" e cadastre onde seu dinheiro fica: banco, carteira ou conta digital.',
     icon: Landmark,
     badge: 'Passo 3 de 7',
     color: 'from-orange-500 to-amber-500',
     route: '/contas',
+    highlightTarget: 'new-account',
     checklist: [
       { label: 'Cadastrei pelo menos uma conta', required: true },
       { label: 'Informei o saldo inicial' },
@@ -72,11 +76,12 @@ const tutorialSteps: TutorialStep[] = [
   },
   {
     title: 'Cartões de crédito',
-    description: 'Cadastre seus cartões para controlar faturas separadamente.',
+    description: 'Clique em "Novo Cartão" para cadastrar seus cartões e controlar faturas separadamente.',
     icon: CreditCard,
     badge: 'Passo 4 de 7',
     color: 'from-pink-500 to-rose-500',
     route: '/cartoes',
+    highlightTarget: 'new-card',
     checklist: [
       { label: 'Não uso cartão de crédito (pode avançar)' },
       { label: 'Cadastrei meu cartão com limite e vencimento' },
@@ -84,11 +89,12 @@ const tutorialSteps: TutorialStep[] = [
   },
   {
     title: 'Investimentos',
-    description: 'Registre suas metas e investimentos separados dos gastos do dia a dia.',
+    description: 'Clique em "Novo Ativo" para registrar metas e investimentos separados dos gastos do dia a dia.',
     icon: BarChart3,
     badge: 'Passo 5 de 7',
     color: 'from-purple-500 to-indigo-500',
     route: '/investimentos',
+    highlightTarget: 'new-investment',
     checklist: [
       { label: 'Não tenho investimentos ainda (pode avançar)' },
       { label: 'Cadastrei pelo menos um investimento ou meta' },
@@ -96,11 +102,12 @@ const tutorialSteps: TutorialStep[] = [
   },
   {
     title: 'Receitas',
-    description: 'Registre suas entradas de dinheiro para o saldo e relatórios ficarem corretos.',
+    description: 'Clique em "Nova Receita" e registre suas entradas de dinheiro para os relatórios ficarem corretos.',
     icon: TrendingUp,
     badge: 'Passo 6 de 7',
     color: 'from-green-500 to-emerald-500',
     route: '/receitas',
+    highlightTarget: 'new-income',
     checklist: [
       { label: 'Registrei meu salário ou renda deste mês', required: true },
       { label: 'Escolhi a conta que recebeu o dinheiro' },
@@ -108,11 +115,12 @@ const tutorialSteps: TutorialStep[] = [
   },
   {
     title: 'Despesas',
-    description: 'Registre seus gastos com categoria, conta e status.',
+    description: 'Clique em "Nova Despesa" e registre seus gastos com categoria, conta e status.',
     icon: TrendingDown,
     badge: 'Passo 7 de 7',
     color: 'from-red-500 to-orange-500',
     route: '/despesas',
+    highlightTarget: 'new-expense',
     checklist: [
       { label: 'Registrei pelo menos uma despesa', required: true },
       { label: 'Escolhi categoria e conta corretamente' },
@@ -122,6 +130,27 @@ const tutorialSteps: TutorialStep[] = [
 
 const getTutorialKey = (userId: string) => `financaspro:tutorial:${TUTORIAL_VERSION}:${userId}`;
 const getChecksKey  = (userId: string) => `financaspro:tutorial:checks:${TUTORIAL_VERSION}:${userId}`;
+
+function applyHighlight(target: string | undefined) {
+  clearHighlight();
+  if (!target) return;
+  const tryApply = (attempts = 0) => {
+    const el = document.querySelector(`[data-tutorial-target="${target}"]`);
+    if (el) {
+      el.classList.add('tutorial-highlight');
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else if (attempts < 6) {
+      setTimeout(() => tryApply(attempts + 1), 250);
+    }
+  };
+  tryApply();
+}
+
+function clearHighlight() {
+  document.querySelectorAll('.tutorial-highlight').forEach(el =>
+    el.classList.remove('tutorial-highlight')
+  );
+}
 
 export function TutorialProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -162,7 +191,20 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     return () => window.clearTimeout(t);
   }, [user?.id]);
 
-  const closeTutorial = useCallback(() => { markSeen(); setOpen(false); }, [markSeen]);
+  const closeTutorial = useCallback(() => {
+    clearHighlight();
+    markSeen();
+    setOpen(false);
+  }, [markSeen]);
+
+  // Apply highlight when step changes
+  useEffect(() => {
+    if (!open) { clearHighlight(); return; }
+    const step = tutorialSteps[stepIndex];
+    if (!step || stepIndex === 0) { clearHighlight(); return; }
+    applyHighlight(step.highlightTarget);
+    return () => clearHighlight();
+  }, [open, stepIndex]);
 
   const step       = tutorialSteps[stepIndex];
   const isWelcome  = stepIndex === 0;
@@ -191,6 +233,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     setStepIndex(prev);
     const route = tutorialSteps[prev]?.route;
     if (route) navigate(route);
+    else navigate('/');
   }, [navigate, stepIndex]);
 
   const contextValue = useMemo<TutorialContextValue>(() => ({ openTutorial }), [openTutorial]);
@@ -201,17 +244,12 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     <TutorialContext.Provider value={contextValue}>
       {children}
 
-      {/* ── BACKDROP ── */}
-      <div className="fixed inset-0 z-[290] bg-black/40 backdrop-blur-[2px] pointer-events-none" />
-
       {/* ── WELCOME SCREEN ── */}
       {isWelcome && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="relative w-full max-w-lg rounded-3xl bg-card border border-border/60 shadow-2xl shadow-black/40 overflow-hidden animate-slide-up">
-            {/* top gradient strip */}
             <div className={`h-1.5 w-full bg-gradient-to-r ${step.color}`} />
 
-            {/* close */}
             <button
               onClick={closeTutorial}
               className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
@@ -220,7 +258,6 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
             </button>
 
             <div className="p-8 text-center space-y-6">
-              {/* icon */}
               <div className="mx-auto w-20 h-20 rounded-3xl bg-gradient-to-br from-primary to-violet-600 flex items-center justify-center shadow-xl shadow-primary/30">
                 <Rocket className="w-9 h-9 text-white" />
               </div>
@@ -229,16 +266,15 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
                 <p className="text-xs font-bold uppercase tracking-widest text-primary">Configuração guiada</p>
                 <h2 className="text-2xl font-extrabold tracking-tight">Configure seu app agora</h2>
                 <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
-                  Vamos te guiar em <strong className="text-foreground">7 passos rápidos</strong>. Cada passo te leva direto para a tela certa e mostra exatamente o que preencher.
+                  Vamos te guiar em <strong className="text-foreground">7 passos rápidos</strong>. Cada passo te leva direto para a tela certa e destaca exatamente o botão que você precisa clicar.
                 </p>
               </div>
 
-              {/* steps preview */}
               <div className="grid grid-cols-4 gap-2">
                 {tutorialSteps.slice(1).map((s, i) => (
                   <div key={i} className="flex flex-col items-center gap-1.5">
                     <div className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${s.color} flex items-center justify-center shadow-sm`}>
-                      <s.icon className="w-4.5 h-4.5 text-white w-[18px] h-[18px]" />
+                      <s.icon className="w-[18px] h-[18px] text-white" />
                     </div>
                     <span className="text-[10px] text-muted-foreground text-center leading-tight">{s.title}</span>
                   </div>
@@ -262,17 +298,16 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {/* ── STEP PANEL (steps 1-7) ── */}
+      {/* ── STEP PANEL (steps 1-7) — sem backdrop para o usuário interagir ── */}
       {!isWelcome && (
-        <div className="fixed bottom-0 left-0 right-0 z-[300] flex justify-center pb-4 px-4 pointer-events-none">
-          <div className="pointer-events-auto w-full max-w-xl rounded-2xl border border-border/60 bg-card shadow-2xl shadow-black/40 overflow-hidden animate-slide-up">
-            {/* gradient top */}
+        <div className="fixed bottom-0 left-0 right-0 z-[300] flex justify-center pb-3 px-3 pointer-events-none">
+          <div className="pointer-events-auto w-full max-w-xl rounded-2xl border border-border/60 bg-card/95 backdrop-blur-md shadow-2xl shadow-black/50 overflow-hidden animate-slide-up">
             <div className={`h-1.5 w-full bg-gradient-to-r ${step.color}`} />
 
             {/* header */}
-            <div className="flex items-center justify-between px-5 pt-4 pb-2 gap-3">
-              <div className="flex items-center gap-3">
-                <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${step.color} flex items-center justify-center shadow-sm shrink-0`}>
+            <div className="flex items-center justify-between px-4 pt-3 pb-1 gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${step.color} flex items-center justify-center shadow-sm shrink-0`}>
                   <step.icon className="w-4 h-4 text-white" />
                 </div>
                 <div>
@@ -288,10 +323,10 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
               </button>
             </div>
 
-            {/* progress */}
-            <div className="px-5 pb-3">
+            {/* progress bar */}
+            <div className="px-4 pb-2">
               <div className="flex items-center gap-2">
-                <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
                   <div
                     className={`h-full rounded-full bg-gradient-to-r ${step.color} transition-all duration-500`}
                     style={{ width: `${progress}%` }}
@@ -304,51 +339,48 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
             </div>
 
             {/* body */}
-            <div className="px-5 pb-4 flex flex-col sm:flex-row gap-4">
-              {/* description + checklist */}
-              <div className="flex-1 space-y-3">
-                <p className="text-xs text-muted-foreground leading-relaxed">{step.description}</p>
+            <div className="px-4 pb-3">
+              <p className="text-xs text-muted-foreground leading-relaxed mb-2">{step.description}</p>
 
-                {step.checklist && (
-                  <div className="space-y-1.5">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      Marque ao concluir
-                    </p>
-                    {step.checklist.map((item, idx) => {
-                      const checked = stepChecks.includes(idx);
-                      return (
-                        <button
-                          key={idx}
-                          onClick={() => toggleCheck(idx)}
-                          className={`w-full flex items-start gap-2.5 rounded-xl border px-3 py-2 text-left text-xs transition-all group ${
-                            checked
-                              ? 'border-primary/30 bg-primary/8 text-foreground'
-                              : 'border-border bg-muted/20 text-muted-foreground hover:border-primary/20 hover:bg-muted/40'
-                          }`}
-                        >
-                          <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-all ${
-                            checked ? 'border-primary bg-primary' : 'border-muted-foreground/30 group-hover:border-primary/50'
-                          }`}>
-                            {checked && <Check className="w-2.5 h-2.5 text-white" />}
-                          </span>
-                          <span className={`flex-1 leading-relaxed ${checked ? 'line-through opacity-50' : ''}`}>
-                            {item.label}
-                            {item.required && !checked && (
-                              <span className="ml-1.5 text-[9px] font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-full">
-                                obrigatório
-                              </span>
-                            )}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              {step.checklist && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    Marque ao concluir
+                  </p>
+                  {step.checklist.map((item, idx) => {
+                    const checked = stepChecks.includes(idx);
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => toggleCheck(idx)}
+                        className={`w-full flex items-start gap-2.5 rounded-xl border px-3 py-2 text-left text-xs transition-all group ${
+                          checked
+                            ? 'border-primary/30 bg-primary/8 text-foreground'
+                            : 'border-border bg-muted/20 text-muted-foreground hover:border-primary/20 hover:bg-muted/40'
+                        }`}
+                      >
+                        <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-all ${
+                          checked ? 'border-primary bg-primary' : 'border-muted-foreground/30 group-hover:border-primary/50'
+                        }`}>
+                          {checked && <Check className="w-2.5 h-2.5 text-white" />}
+                        </span>
+                        <span className={`flex-1 leading-relaxed ${checked ? 'line-through opacity-50' : ''}`}>
+                          {item.label}
+                          {item.required && !checked && (
+                            <span className="ml-1.5 text-[9px] font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-full">
+                              obrigatório
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* footer */}
-            <div className={`flex items-center justify-between px-5 py-3 border-t border-border/50 bg-muted/10`}>
+            <div className="flex items-center justify-between px-4 py-2.5 border-t border-border/50 bg-muted/10">
               <button
                 onClick={closeTutorial}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -357,8 +389,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
               </button>
 
               <div className="flex gap-2 items-center">
-                {/* step dots */}
-                <div className="hidden sm:flex gap-1 mr-2">
+                <div className="hidden sm:flex gap-1 mr-1">
                   {tutorialSteps.slice(1).map((_, i) => (
                     <div
                       key={i}
@@ -374,7 +405,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
                 <button
                   onClick={handleBack}
                   disabled={stepIndex <= 1}
-                  className="h-9 px-3 rounded-xl border border-border text-xs font-medium hover:bg-muted transition-all disabled:opacity-30"
+                  className="h-8 px-3 rounded-xl border border-border text-xs font-medium hover:bg-muted transition-all disabled:opacity-30"
                 >
                   Voltar
                 </button>
@@ -382,7 +413,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
                 <button
                   onClick={handleNext}
                   disabled={!canAdvance}
-                  className={`h-9 px-5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 disabled:opacity-40 ${
+                  className={`h-8 px-4 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 disabled:opacity-40 ${
                     canAdvance
                       ? `bg-gradient-to-r ${step.color} text-white shadow-sm hover:opacity-90 active:scale-[0.98]`
                       : 'bg-muted text-muted-foreground cursor-not-allowed'

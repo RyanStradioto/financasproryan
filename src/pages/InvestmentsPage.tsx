@@ -131,7 +131,7 @@ export default function InvestmentsPage() {
           <h1 className="text-2xl font-bold tracking-tight">Investimentos</h1>
           <p className="text-sm text-muted-foreground">Gestão patrimonial — investimentos não são despesas</p>
         </div>
-        <Button onClick={() => setShowNewInvestment(true)}>
+        <Button onClick={() => setShowNewInvestment(true)} data-tutorial-target="new-investment">
           <Plus className="w-4 h-4 mr-1" /> Novo Ativo
         </Button>
       </div>

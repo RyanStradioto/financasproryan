@@ -553,3 +553,22 @@ button:active:not(:disabled) {
   transform: scale(0.97);
   transition: transform 0.08s ease;
 }
+
+/* ══════════════════════════════════════════════════════
+   TUTORIAL HIGHLIGHT
+   ══════════════════════════════════════════════════════ */
+.tutorial-highlight {
+  position: relative;
+  z-index: 400 !important;
+  animation: tutorial-ring 1.4s ease-in-out infinite;
+  border-radius: 10px;
+}
+
+@keyframes tutorial-ring {
+  0%, 100% {
+    box-shadow: 0 0 0 3px hsl(160 84% 39% / 0.85), 0 0 0 7px hsl(160 84% 39% / 0.25), 0 0 20px hsl(160 84% 39% / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 4px hsl(160 84% 39% / 1), 0 0 0 12px hsl(160 84% 39% / 0.1), 0 0 30px hsl(160 84% 39% / 0.45);
+  }
+}

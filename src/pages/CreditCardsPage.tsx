@@ -126,7 +126,7 @@ export default function CreditCardsPage() {
           <h1 className="text-2xl font-bold tracking-tight">Cartões de Crédito</h1>
           <p className="text-sm text-muted-foreground">Controle de fatura e parcelamentos</p>
         </div>
-        <Button onClick={() => setShowNewCard(true)}>
+        <Button onClick={() => setShowNewCard(true)} data-tutorial-target="new-card">
           <Plus className="w-4 h-4 mr-1" /> Novo Cartão
         </Button>
       </div>
