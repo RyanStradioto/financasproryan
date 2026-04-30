@@ -207,7 +207,7 @@ export default function Dashboard() {
   }, [month]);
 
   return (
-    <div className="space-y-6 sm:space-y-8 animate-fade-in pb-10">
+    <div className="space-y-6 sm:space-y-8 animate-fade-in pb-10 w-full max-w-full overflow-x-hidden sm:overflow-visible">
       {/* ── Premium Header ───────────────────────────────────── */}
       <div className="hero-card flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
