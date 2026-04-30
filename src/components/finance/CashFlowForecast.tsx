@@ -26,12 +26,12 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
       <p className="font-bold text-xs mb-2 pb-2 border-b border-border/50">{label}</p>
       <div className="space-y-1.5">
         {payload.map((entry: any, index: number) => (
-          <div key={index} className="flex justify-between items-center text-xs">
+          <div key={index} className="flex justify-between items-center gap-4 text-xs">
             <span className="flex items-center gap-1.5 text-muted-foreground">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+              <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
               {entry.name}
             </span>
-            <span className="font-bold currency" style={{ color: entry.color }}>
+            <span className="font-bold currency whitespace-nowrap" style={{ color: entry.color }}>
               {maskCurrency(formatCurrency(entry.value))}
             </span>
           </div>
@@ -44,13 +44,25 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
 // Custom label renderer to avoid overlap and format nicely
 const renderCustomBarLabel = (props: any) => {
   const { x, y, width, value, fill } = props;
-  if (!value || value < 100) return null; // Don't show labels for tiny bars to avoid clutter
+  if (!value || value < 10) return null; 
   
-  // Format as 1.2k, etc.
-  const formatted = value >= 1000 ? `${(value / 1000).toFixed(1).replace('.0', '')}k` : String(value);
+  // Format to full value without cents (e.g. 4.606)
+  const formatted = new Intl.NumberFormat('pt-BR', { 
+    minimumFractionDigits: 0, 
+    maximumFractionDigits: 0 
+  }).format(value);
   
   return (
-    <text x={x + width / 2} y={y - 8} fill={fill} textAnchor="middle" fontSize={10} fontWeight={600} className="currency">
+    <text 
+      x={x + width / 2} 
+      y={y - 8} 
+      fill={fill} 
+      textAnchor="middle" 
+      fontSize={10} 
+      fontWeight={700} 
+      className="currency drop-shadow-sm"
+      style={{ filter: 'brightness(1.2)' }}
+    >
       {formatted}
     </text>
   );
