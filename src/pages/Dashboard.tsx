@@ -14,12 +14,40 @@ import SparklineChart from '@/components/finance/SparklineChart';
 import EconomyGauge from '@/components/finance/EconomyGauge';
 import BudgetRings from '@/components/finance/BudgetRings';
 import WeeklyHeatmap from '@/components/finance/WeeklyHeatmap';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip } from 'recharts';
 import { useCategories } from '@/hooks/useFinanceData';
 import { useAccumulatedBalance } from '@/hooks/useAccumulatedBalance';
 import { useWorkTimeCalc, useProfile } from '@/hooks/useProfile';
 import { formatWorkTime } from '@/lib/workTime';
 import { cn } from '@/lib/utils';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
+
+const CHART_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
+
+function ChartTooltipCard({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: Array<{ label: string; value: string; color?: string }>;
+}) {
+  return (
+    <div className="min-w-[140px] rounded-xl border border-border bg-popover px-3 py-2.5 shadow-lg">
+      <p className="mb-2 text-xs font-semibold">{title}</p>
+      <div className="space-y-1.5">
+        {rows.map((row) => (
+          <div key={`${title}-${row.label}`} className="flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2">
+              {row.color ? <div className="h-2 w-2 rounded-full" style={{ backgroundColor: row.color }} /> : null}
+              <span className="text-muted-foreground">{row.label}</span>
+            </div>
+            <span className="currency font-semibold">{row.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // Mini stat card with colored left border accent
 function KpiCard({ label, value, sub, color, icon: Icon, trend, sparklineData }: { label: string; value: string; sub?: string; color: string; icon: React.ElementType; trend?: 'up' | 'down' | 'neutral', sparklineData?: number[] }) {
@@ -96,6 +124,26 @@ export default function Dashboard() {
   const balance = accumulatedBalance;
   const savings = totalIncome > 0 ? ((totalIncome - totalExpensesPaid) / totalIncome) * 100 : 0;
 
+  // ── Category breakdown ────────────────────────────────────────
+  const catBreakdown = useMemo(() =>
+    categories
+      .map(cat => ({
+        name: cat.name,
+        icon: cat.icon,
+        value: expenses.filter(e => e.category_id === cat.id).reduce((s, e) => s + Number(e.amount), 0),
+        budget: Number(cat.monthly_budget) || 0,
+      }))
+      .filter(c => c.value > 0)
+      .sort((a, b) => b.value - a.value)
+  , [expenses, categories]);
+
+  // ── Status breakdown bar data ────────────────────────────────
+  const statusData = useMemo(() => [
+    { name: 'Concluído', value: expenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0), fill: 'hsl(160, 84%, 39%)' },
+    { name: 'Pendente', value: expenses.filter(e => e.status === 'pendente').reduce((s, e) => s + Number(e.amount), 0), fill: 'hsl(38, 92%, 50%)' },
+    { name: 'Agendado', value: expenses.filter(e => e.status === 'agendado').reduce((s, e) => s + Number(e.amount), 0), fill: 'hsl(217, 91%, 60%)' },
+  ].filter(s => s.value > 0), [expenses]);
+
   // ── Sparkline data (Last 30 days of the selected month) ─────
   const getDailyTrend = (data: any[], dateField = 'date') => {
     // Basic grouping for the visual sparkline
@@ -170,17 +218,17 @@ export default function Dashboard() {
           </h1>
         </div>
         
-        <div className="flex flex-wrap items-center gap-2 mt-2 sm:mt-0">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-2 sm:mt-0 w-full sm:w-auto">
           <MonthSelector month={month} onChange={setMonth} />
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto">
             <TransactionDialog type="income">
-              <button className="h-10 px-4 rounded-xl bg-income text-income-foreground font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-income/90 hover:shadow-lg hover:shadow-income/20 active:scale-[0.97] transition-all">
-                <ArrowUpRight className="w-4 h-4 shrink-0" /> <span className="hidden sm:inline">Receita</span>
+              <button className="h-10 w-full sm:w-auto px-4 rounded-xl bg-income text-income-foreground font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-income/90 hover:shadow-lg hover:shadow-income/20 active:scale-[0.97] transition-all">
+                <ArrowUpRight className="w-4 h-4 shrink-0" /> <span>Receita</span>
               </button>
             </TransactionDialog>
             <TransactionDialog type="expense">
-              <button className="h-10 px-4 rounded-xl bg-expense text-expense-foreground font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-expense/90 hover:shadow-lg hover:shadow-expense/20 active:scale-[0.97] transition-all">
-                <ArrowDownRight className="w-4 h-4 shrink-0" /> <span className="hidden sm:inline">Despesa</span>
+              <button className="h-10 w-full sm:w-auto px-4 rounded-xl bg-expense text-expense-foreground font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-expense/90 hover:shadow-lg hover:shadow-expense/20 active:scale-[0.97] transition-all">
+                <ArrowDownRight className="w-4 h-4 shrink-0" /> <span>Despesa</span>
               </button>
             </TransactionDialog>
           </div>
@@ -382,13 +430,133 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* ── Category & Status Breakdown (Added Back) ────────── */}
+      <div className="grid lg:grid-cols-2 gap-6 stagger-4">
+        {/* Category Donut */}
+        <div className="stat-card">
+          <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+            <div className="w-1.5 h-4 rounded-full bg-expense" />
+            Por Categoria
+          </h3>
+          {catBreakdown.length > 0 ? (
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              <div className="relative w-40 h-40 shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart accessibilityLayer={false}>
+                    <Pie data={catBreakdown} dataKey="value" cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={2} strokeWidth={0} isAnimationActive={false}>
+                      {catBreakdown.map((_, i) => (
+                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip
+                      cursor={false}
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const item = payload[0]?.payload;
+                        return (
+                          <ChartTooltipCard
+                            title={item?.name || 'Categoria'}
+                            rows={[{ label: 'Valor', value: maskCurrency(formatCurrency(Number(item?.value || 0))), color: payload[0]?.color }]}
+                          />
+                        );
+                      }}
+                      wrapperStyle={{ outline: 'none', pointerEvents: 'none', zIndex: 20 }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <p className="text-[10px] text-muted-foreground">Total</p>
+                  <p className="text-xs font-bold currency">{maskCurrency(formatCurrency(totalExpensesAll))}</p>
+                </div>
+              </div>
+              <div className="w-full space-y-2">
+                {catBreakdown.slice(0, 5).map((cat, i) => {
+                  const pct = totalExpensesAll > 0 ? ((cat.value / totalExpensesAll) * 100) : 0;
+                  return (
+                    <div key={cat.name}>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
+                          <span className="text-muted-foreground truncate max-w-[100px]">{cat.icon} {cat.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-muted-foreground font-medium w-6 text-right">{pct.toFixed(0)}%</span>
+                          <span className="font-semibold currency w-16 text-right">{maskCurrency(formatCurrency(cat.value))}</span>
+                        </div>
+                      </div>
+                      <div className="h-1 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-10">
+              <TrendingDown className="w-8 h-8 text-muted-foreground opacity-30 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Sem categorias</p>
+            </div>
+          )}
+        </div>
+
+        {/* Status breakdown */}
+        <div className="stat-card">
+          <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+            <div className="w-1.5 h-4 rounded-full bg-primary" />
+            Despesas por Status
+          </h3>
+          {statusData.length > 0 ? (
+            <div className="flex flex-col h-full justify-between pb-2">
+              <div className="h-[140px] mb-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={statusData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }} accessibilityLayer={false}>
+                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                    <YAxis hide />
+                    <RechartsTooltip
+                      cursor={{ fill: 'hsl(var(--muted) / 0.5)' }}
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload?.length) return null;
+                        return (
+                          <ChartTooltipCard
+                            title={String(label ?? 'Status')}
+                            rows={[{ label: 'Valor', value: maskCurrency(formatCurrency(Number(payload[0]?.value || 0))), color: payload[0]?.payload?.fill }]}
+                          />
+                        );
+                      }}
+                      wrapperStyle={{ outline: 'none', pointerEvents: 'none', zIndex: 20 }}
+                    />
+                    <Bar dataKey="value" radius={[6, 6, 0, 0]} isAnimationActive={false}>
+                      {statusData.map((s, i) => <Cell key={i} fill={s.fill} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {statusData.map(s => (
+                  <div key={s.name} className="flex flex-col items-center p-2 rounded-xl bg-muted/30">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: s.fill, boxShadow: `0 0 6px ${s.fill}` }} />
+                      <span className="text-[10px] text-muted-foreground uppercase">{s.name}</span>
+                    </div>
+                    <span className="font-semibold currency text-sm">{maskCurrency(formatCurrency(s.value))}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-sm text-muted-foreground">Sem despesas</div>
+          )}
+        </div>
+      </div>
+
       {/* ── Cash Flow Projection ────────────────────────────── */}
-      <div className="stagger-4">
+      <div className="stagger-5">
         <CashFlowForecast />
       </div>
 
       {/* ── Achievements ───────────────────────────────────── */}
-      <div className="stagger-5">
+      <div className="stagger-6">
         <Achievements expenses={expenses} income={income} categories={categories} />
       </div>
 

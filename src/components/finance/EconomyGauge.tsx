@@ -24,7 +24,7 @@ export default function EconomyGauge({ percentage, size = 120, label = 'Economia
 
   return (
     <div className="flex flex-col items-center gap-1">
-      <div className="relative" style={{ width: size, height: size * 0.8 }}>
+      <div className="relative flex justify-center mb-2" style={{ width: size, height: size * 0.85 }}>
         <svg
           width={size}
           height={size}
@@ -65,7 +65,7 @@ export default function EconomyGauge({ percentage, size = 120, label = 'Economia
           </span>
         </div>
       </div>
-      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
+      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-center">{label}</span>
     </div>
   );
 }
