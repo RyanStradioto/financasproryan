@@ -348,8 +348,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const resendApiKey     = Deno.env.get("RESEND_API_KEY");
-    const fromEmail        = Deno.env.get("RESEND_FROM_EMAIL") || "FinancasPro <onboarding@resend.dev>";
+    const brevoApiKey      = Deno.env.get("BREVO_API_KEY");
     const dataUrl          = Deno.env.get("DATA_SUPABASE_URL")          || Deno.env.get("SUPABASE_URL")!;
     const dataAnonKey      = Deno.env.get("DATA_SUPABASE_ANON_KEY")      || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const dataServiceRole  = Deno.env.get("DATA_SUPABASE_SERVICE_ROLE_KEY");
@@ -504,19 +503,19 @@ Deno.serve(async (req) => {
 
       results.push({ email: profile.email, totalIncome, totalExpenses, balance });
 
-      if (resendApiKey) {
-        const res = await fetch("https://api.resend.com/emails", {
+      if (brevoApiKey) {
+        const res = await fetch("https://api.brevo.com/v3/smtp/email", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${resendApiKey}` },
+          headers: { "Content-Type": "application/json", "api-key": brevoApiKey },
           body: JSON.stringify({
-            from: fromEmail,
-            to: [profile.email],
+            sender: { name: "FinancasPro", email: "amaralstradiotoryan@gmail.com" },
+            to: [{ email: profile.email }],
             subject: `📊 Resumo da Semana | ${weekLabel}`,
-            html,
+            htmlContent: html,
           }),
         });
         const resData = await res.json();
-        if (!res.ok) console.error(`Resend error for ${profile.email}:`, JSON.stringify(resData));
+        if (!res.ok) console.error(`Brevo error for ${profile.email}:`, JSON.stringify(resData));
       }
     }
 
