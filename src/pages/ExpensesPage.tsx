@@ -6,7 +6,7 @@ import { useWorkTimeCalc } from '@/hooks/useProfile';
 import MonthSelector from '@/components/finance/MonthSelector';
 import TransactionDialog from '@/components/finance/TransactionDialog';
 import EditTransactionDialog from '@/components/finance/EditTransactionDialog';
-import { Trash2, Pencil, Paperclip, Clock, ChevronDown, Filter, Search, X } from 'lucide-react';
+import { Trash2, Pencil, Paperclip, Clock, ChevronDown, Filter, Search, X, TrendingDown, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
@@ -211,57 +211,62 @@ export default function ExpensesPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-start justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Despesas</h1>
-          <p className="text-sm text-muted-foreground">Acompanhe seus gastos</p>
+      {/* Premium Hero Header */}
+      <div className="hero-card flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+        {/* Glow effect */}
+        <div className="absolute -top-20 -right-20 w-64 h-64 bg-expense/20 blur-3xl rounded-full pointer-events-none" />
+        
+        <div className="flex items-center gap-4 relative z-10">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-expense/30 to-expense/10 flex items-center justify-center shadow-inner border border-expense/20">
+            <TrendingDown className="w-7 h-7 sm:w-8 sm:h-8 text-expense drop-shadow-md" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-1">Despesas</h1>
+            <p className="text-sm text-muted-foreground flex items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-expense animate-pulse" />
+              {activeFilters ? `${filtered.length} de ` : ''}{expenses.length} lançamentos neste mês
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <MonthSelector month={month} onChange={setMonth} />
-          <TransactionDialog type="expense" />
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 relative z-10">
+          <div className="flex flex-col items-start sm:items-end mr-4 mb-2 sm:mb-0">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Total Mensal</p>
+            <p className="text-2xl sm:text-3xl font-extrabold text-expense currency drop-shadow-sm leading-none">{formatCurrency(total)}</p>
+          </div>
+          <div className="w-px h-10 bg-border/50 hidden sm:block mx-2" />
+          <div className="flex items-center gap-2">
+            <MonthSelector month={month} onChange={setMonth} />
+            <TransactionDialog type="expense" />
+          </div>
         </div>
       </div>
 
-      {/* Summary bar */}
-      <div className="flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-expense/8 to-expense/2 border border-expense/15 shadow-sm">
-        <div className="w-10 h-10 rounded-xl bg-expense/15 flex items-center justify-center">
-          <Trash2 className="w-5 h-5 text-expense" />
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total do Mês</p>
-          <p className="text-xl font-extrabold text-expense currency">{formatCurrency(total)}</p>
-        </div>
-        <div className="ml-auto text-right">
-          <p className="text-xs text-muted-foreground">
-            {activeFilters ? `${filtered.length} de ` : ''}{expenses.length} transação(ões)
-          </p>
-        </div>
-      </div>
-
-      {/* Filter bar */}
-      <div className="space-y-2">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+      {/* Modern Filter Bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-1">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <input
             type="text"
-            placeholder="Buscar despesa..."
+            placeholder="Buscar por descrição..."
             value={filterSearch}
             onChange={e => setFilterSearch(e.target.value)}
-            className="h-9 w-full rounded-lg border border-border bg-muted/50 pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="h-10 w-full rounded-xl border border-border/60 bg-card/50 backdrop-blur-sm pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all shadow-sm"
           />
           {filterSearch && (
-            <button onClick={() => setFilterSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-              <X className="w-3.5 h-3.5" />
+            <button onClick={() => setFilterSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X className="w-4 h-4" />
             </button>
           )}
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
           <select
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
-            className="h-9 rounded-lg border border-border bg-muted/50 px-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
+            className="h-10 rounded-xl border border-border/60 bg-card/50 backdrop-blur-sm px-3 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer shadow-sm appearance-none pr-8 relative bg-no-repeat bg-[position:right_0.75rem_center] bg-[length:16px_12px]"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")` }}
           >
-            <option value="">Status</option>
+            <option value="">Todos Status</option>
             <option value="concluido">Concluído</option>
             <option value="pendente">Pendente</option>
             <option value="agendado">Agendado</option>
@@ -269,18 +274,20 @@ export default function ExpensesPage() {
           <select
             value={filterCategory}
             onChange={e => setFilterCategory(e.target.value)}
-            className="h-9 rounded-lg border border-border bg-muted/50 px-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
+            className="h-10 rounded-xl border border-border/60 bg-card/50 backdrop-blur-sm px-3 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer shadow-sm appearance-none pr-8 relative bg-no-repeat bg-[position:right_0.75rem_center] bg-[length:16px_12px]"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")` }}
           >
-            <option value="">Categoria</option>
+            <option value="">Todas Categorias</option>
             {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
           </select>
           {accounts.length > 0 && (
             <select
               value={filterAccount}
               onChange={e => setFilterAccount(e.target.value)}
-              className="h-9 rounded-lg border border-border bg-muted/50 px-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer max-w-[140px]"
+              className="h-10 rounded-xl border border-border/60 bg-card/50 backdrop-blur-sm px-3 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer shadow-sm appearance-none pr-8 relative bg-no-repeat bg-[position:right_0.75rem_center] bg-[length:16px_12px] max-w-[150px]"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")` }}
             >
-              <option value="">Conta</option>
+              <option value="">Todas Contas</option>
               {accounts.map(a => <option key={a.id} value={a.id}>{a.icon} {a.name}</option>)}
             </select>
           )}
@@ -298,11 +305,14 @@ export default function ExpensesPage() {
       {/* Mobile card list */}
       <div className="sm:hidden space-y-3">
         {expenses.length === 0 && !isLoading && (
-          <div className="stat-card flex flex-col items-center py-12 gap-3">
-            <div className="w-14 h-14 rounded-2xl bg-muted/50 flex items-center justify-center">
-              <Trash2 className="w-6 h-6 text-muted-foreground" />
+          <div className="stat-card flex flex-col items-center py-16 gap-4 bg-muted/10 border-dashed border-2">
+            <div className="w-16 h-16 rounded-3xl bg-muted flex items-center justify-center rotate-12 shadow-sm">
+              <Receipt className="w-8 h-8 text-muted-foreground/60" />
             </div>
-            <p className="text-sm font-medium text-muted-foreground">Nenhuma despesa neste mês</p>
+            <div className="text-center">
+              <p className="text-base font-semibold text-foreground mb-1">Nenhuma despesa registrada</p>
+              <p className="text-sm text-muted-foreground">Clique em "Nova Transação" para começar</p>
+            </div>
           </div>
         )}
         {expenses.length > 0 && filtered.length === 0 && (
@@ -312,53 +322,69 @@ export default function ExpensesPage() {
             <button onClick={clearFilters} className="text-xs text-primary underline">Limpar filtros</button>
           </div>
         )}
-        {filtered.map((item) => (
-          <div key={item.id} className="stat-card p-3.5">
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <p className="font-bold text-sm leading-snug">{item.description || 'Despesa'}</p>
-                  {item.attachment_url && (
-                    <a href={item.attachment_url} target="_blank" rel="noopener noreferrer" className="text-primary shrink-0">
-                      <Paperclip className="w-3 h-3" />
-                    </a>
-                  )}
+        {filtered.map((item) => {
+          const cat = categories.find(c => c.id === item.category_id);
+          return (
+          <div key={item.id} className="stat-card p-4 flex flex-col gap-3 group relative overflow-hidden">
+            <div className={`absolute top-0 left-0 w-1 h-full ${item.status === 'concluido' ? 'bg-success' : item.status === 'pendente' ? 'bg-warning' : 'bg-info'}`} />
+            <div className="flex items-center justify-between gap-3 pl-1">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center text-lg shrink-0 shadow-sm border border-border/40">
+                  {cat?.icon || '🛒'}
                 </div>
-                <div className="flex items-center gap-1 flex-wrap">
-                  <DatePicker date={item.date} onChange={d => handleDateChange(item.id, d)} />
-                  <span className="text-border/80 text-xs">·</span>
-                  <OptionPicker value={item.category_id} options={categories} placeholder="Categoria" onChange={v => handleCategoryChange(item.id, v)} />
-                  <span className="text-border/80 text-xs">·</span>
-                  <OptionPicker value={item.account_id} options={accounts} placeholder="Conta" onChange={v => handleAccountChange(item.id, v)} />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <p className="font-bold text-sm leading-tight truncate text-foreground/90">{item.description || 'Despesa'}</p>
+                    {item.attachment_url && (
+                      <a href={item.attachment_url} target="_blank" rel="noopener noreferrer" className="text-primary shrink-0 hover:scale-110 transition-transform">
+                        <Paperclip className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                    <DatePicker date={item.date} onChange={d => handleDateChange(item.id, d)} />
+                    <span className="text-muted-foreground/40">•</span>
+                    <OptionPicker value={item.category_id} options={categories} placeholder="Categoria" onChange={v => handleCategoryChange(item.id, v)} />
+                  </div>
                 </div>
               </div>
               <div className="shrink-0 flex flex-col items-end gap-1.5">
-                <p className="font-extrabold text-expense text-lg tabular-nums leading-none currency">{formatCurrency(Number(item.amount))}</p>
+                <p className="font-extrabold text-expense text-base tabular-nums leading-none currency tracking-tight">{formatCurrency(Number(item.amount))}</p>
                 <StatusPicker status={item.status} onChange={s => handleStatusChange(item.id, s)} />
+              </div>
+            </div>
+            
+            {/* Quick Actions Footer */}
+            <div className="flex items-center justify-between pt-3 border-t border-border/30 pl-1 mt-1">
+              <div className="flex items-center gap-2">
                 {hourlyRate > 0 && (
-                  <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                    <Clock className="w-2.5 h-2.5" />{formatWorkTime(calcWorkTime(Number(item.amount)))}
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-1 bg-muted/30 px-2 py-1 rounded-md font-medium">
+                    <Clock className="w-3 h-3 text-accent-foreground/70" />{formatWorkTime(calcWorkTime(Number(item.amount)))}
+                  </span>
+                )}
+                {item.account_id && (
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-1 bg-muted/30 px-2 py-1 rounded-md font-medium">
+                    {getAccountName(item.account_id)}
                   </span>
                 )}
               </div>
-            </div>
-            <div className="flex items-center gap-2 pt-2.5 border-t border-border/40">
-              <button
-                onClick={() => setEditing({ ...item, type: 'expense' })}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
-              >
-                <Pencil className="w-3.5 h-3.5" /> Editar
-              </button>
-              <div className="w-px h-5 bg-border" />
-              <button
-                onClick={() => handleDelete(item.id)}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
-              >
-                <Trash2 className="w-3.5 h-3.5" /> Excluir
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setEditing({ ...item, type: 'expense' })}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDelete(item.id)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
-        ))}
+        )})}
         {filtered.length > 0 && (
           <div className="flex items-center justify-between px-4 py-3 rounded-2xl bg-expense/8 border border-expense/15">
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total</span>
