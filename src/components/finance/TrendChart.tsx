@@ -50,11 +50,15 @@ export default function TrendChart() {
   }
 
   return (
-    <div className="stat-card">
-      <div className="flex items-center gap-2 mb-1">
-        <TrendingUp className="w-4 h-4 text-primary" />
-        <h3 className="text-sm font-semibold">Evolucao Financeira</h3>
-        <span className="text-xs text-muted-foreground ml-auto">Ultimos 6 meses</span>
+    <div className="stat-card h-full min-h-[380px] flex flex-col group">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+            <TrendingUp className="w-4 h-4" />
+          </div>
+          <h3 className="text-sm font-semibold tracking-tight">Evolução Financeira</h3>
+        </div>
+        <span className="text-[10px] font-medium text-muted-foreground bg-muted/50 px-2 py-1 rounded-full uppercase tracking-wider">Últimos 6 meses</span>
       </div>
       <div className="flex items-center gap-4 mb-4 px-1">
         {history.length > 0 && (

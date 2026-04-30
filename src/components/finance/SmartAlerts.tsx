@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { AlertTriangle, Clock, TrendingDown, CheckCircle, Bell, ChevronDown } from 'lucide-react';
+import { AlertTriangle, Clock, TrendingDown, CheckCircle, Bell, ChevronDown, Flame } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import type { Category, Expense, Income } from '@/hooks/useFinanceData';
+import { cn } from '@/lib/utils';
 
 type Alert = {
   id: string;
@@ -32,17 +33,17 @@ export default function SmartAlerts({ expenses, income, categories }: Props) {
     if (pct > 100) {
       alerts.push({
         id: `over-${cat.id}`,
-        icon: <AlertTriangle className="w-4 h-4" />,
-        title: `${cat.icon} ${cat.name} estourou o orçamento`,
+        icon: <AlertTriangle className="w-4 h-4 animate-pulse" />,
+        title: `${cat.name} estourou`,
         description: `Gasto ${formatCurrency(spent)} de ${formatCurrency(budget)} (${Math.round(pct)}%)`,
         type: 'danger',
       });
-    } else if (pct >= 80) {
+    } else if (pct >= 85) {
       alerts.push({
         id: `near-${cat.id}`,
         icon: <TrendingDown className="w-4 h-4" />,
-        title: `${cat.icon} ${cat.name} quase no limite`,
-        description: `${Math.round(pct)}% do orçamento utilizado. Restam ${formatCurrency(budget - spent)}`,
+        title: `${cat.name} no limite`,
+        description: `${Math.round(pct)}% do orçamento. Restam ${formatCurrency(budget - spent)}`,
         type: 'warning',
       });
     }
@@ -55,8 +56,8 @@ export default function SmartAlerts({ expenses, income, categories }: Props) {
     alerts.push({
       id: 'pending-bills',
       icon: <Clock className="w-4 h-4" />,
-      title: `${upcoming.length} despesa${upcoming.length > 1 ? 's' : ''} pendente${upcoming.length > 1 ? 's' : ''}`,
-      description: `Total de ${formatCurrency(totalPending)} em contas a pagar/agendadas`,
+      title: `${upcoming.length} contas pendentes`,
+      description: `Total de ${formatCurrency(totalPending)} a pagar ou agendadas`,
       type: 'info',
     });
   }
@@ -69,13 +70,14 @@ export default function SmartAlerts({ expenses, income, categories }: Props) {
   const avgDaily = Object.values(daySpending).length > 0
     ? Object.values(daySpending).reduce((a, b) => a + b, 0) / Object.values(daySpending).length
     : 0;
+  
   Object.entries(daySpending).forEach(([date, amount]) => {
     if (avgDaily > 0 && amount > avgDaily * 3) {
       alerts.push({
         id: `spike-${date}`,
-        icon: <AlertTriangle className="w-4 h-4" />,
-        title: 'Gasto atípico detectado',
-        description: `${formatCurrency(amount)} em um único dia (${new Date(date + 'T00:00:00').toLocaleDateString('pt-BR')}) — ${Math.round(amount / avgDaily)}x a média diária`,
+        icon: <Flame className="w-4 h-4 text-orange-500" />,
+        title: 'Gasto atípico',
+        description: `${formatCurrency(amount)} em ${new Date(date + 'T00:00:00').toLocaleDateString('pt-BR', {day:'numeric', month:'short'})} (${Math.round(amount / avgDaily)}x a média)`,
         type: 'warning',
       });
     }
@@ -90,7 +92,7 @@ export default function SmartAlerts({ expenses, income, categories }: Props) {
       id: 'savings-great',
       icon: <CheckCircle className="w-4 h-4" />,
       title: 'Ótima economia!',
-      description: `Você está economizando ${savingsRate.toFixed(0)}% da sua renda este mês. Continue assim!`,
+      description: `Poupando ${savingsRate.toFixed(0)}% da renda este mês. Continue assim!`,
       type: 'success',
     });
   }
@@ -98,34 +100,50 @@ export default function SmartAlerts({ expenses, income, categories }: Props) {
   if (alerts.length === 0) return null;
 
   const typeStyles = {
-    danger: 'bg-expense/5 border-expense/20 text-expense',
-    warning: 'bg-warning/5 border-warning/20 text-warning',
-    info: 'bg-info/5 border-info/20 text-info',
-    success: 'bg-income/5 border-income/20 text-income',
+    danger: 'bg-gradient-to-r from-expense/10 to-transparent border-l-expense text-expense-foreground',
+    warning: 'bg-gradient-to-r from-warning/10 to-transparent border-l-warning text-warning-foreground',
+    info: 'bg-gradient-to-r from-info/10 to-transparent border-l-info text-info-foreground',
+    success: 'bg-gradient-to-r from-income/10 to-transparent border-l-income text-income-foreground',
+  };
+
+  const iconColors = {
+    danger: 'text-expense',
+    warning: 'text-warning',
+    info: 'text-info',
+    success: 'text-income',
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3 mb-6 animate-slide-up">
       <button
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-2 w-full group"
+        className="flex items-center gap-2 w-full group py-1"
       >
-        <Bell className="w-4 h-4 text-primary shrink-0" />
-        <h3 className="text-sm font-semibold">Alertas Inteligentes</h3>
-        <span className="text-xs text-muted-foreground ml-1">({alerts.length})</span>
-        <ChevronDown className={`w-4 h-4 text-muted-foreground ml-auto transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        <div className="relative flex h-3 w-3 mr-1">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-40"></span>
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+        </div>
+        <h3 className="text-sm font-semibold tracking-tight">Alertas Inteligentes</h3>
+        <span className="text-[10px] font-bold bg-primary/10 text-primary px-1.5 py-0.5 rounded-full ml-1">{alerts.length}</span>
+        <ChevronDown className={cn('w-4 h-4 text-muted-foreground ml-auto transition-transform duration-200', open ? 'rotate-180' : '')} />
       </button>
+      
       {open && (
-        <div className="space-y-2 pt-1">
-          {alerts.slice(0, 5).map(alert => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {alerts.slice(0, 6).map((alert, i) => (
             <div
               key={alert.id}
-              className={`flex items-start gap-3 rounded-lg border px-4 py-3 text-sm transition-all ${typeStyles[alert.type]}`}
+              className={cn(
+                'flex items-start gap-3 rounded-xl border-y border-r border-l-[3px] p-3.5 text-sm transition-all shadow-sm',
+                typeStyles[alert.type],
+                'animate-fade-in'
+              )}
+              style={{ animationDelay: `${i * 0.05}s` }}
             >
-              <div className="mt-0.5 shrink-0">{alert.icon}</div>
-              <div>
-                <p className="font-medium">{alert.title}</p>
-                <p className="text-xs opacity-80 mt-0.5">{alert.description}</p>
+              <div className={cn('mt-0.5 shrink-0', iconColors[alert.type])}>{alert.icon}</div>
+              <div className="min-w-0">
+                <p className="font-bold tracking-tight text-foreground truncate">{alert.title}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">{alert.description}</p>
               </div>
             </div>
           ))}

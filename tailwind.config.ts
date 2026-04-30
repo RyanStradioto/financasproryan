@@ -105,12 +105,24 @@ export default {
           to: { opacity: "1" },
         },
         "count-up": {
-          from: { opacity: "0", transform: "translateY(4px)" },
-          to: { opacity: "1", transform: "translateY(0)" },
+          from: { opacity: "0", transform: "translateY(6px) scale(0.95)" },
+          to: { opacity: "1", transform: "translateY(0) scale(1)" },
         },
         "slide-up": {
           from: { opacity: "0", transform: "translateY(100%)" },
           to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "glow-pulse": {
+          "0%, 100%": { boxShadow: "0 0 8px hsl(160 84% 39% / 0.15)" },
+          "50%": { boxShadow: "0 0 20px hsl(160 84% 39% / 0.25)" },
+        },
+        "float": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-4px)" },
+        },
+        "draw-ring": {
+          from: { strokeDashoffset: "283" },
+          to: { strokeDashoffset: "0" },
         },
       },
       animation: {
@@ -118,8 +130,11 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
         "slide-in": "slide-in 0.3s ease-out",
         "fade-in": "fade-in 0.2s ease-out",
-        "count-up": "count-up 0.4s ease-out",
+        "count-up": "count-up 0.5s ease-out",
         "slide-up": "slide-up 0.35s ease-out",
+        "glow-pulse": "glow-pulse 3s ease-in-out infinite",
+        "float": "float 3s ease-in-out infinite",
+        "draw-ring": "draw-ring 1.2s ease-out both",
       },
     },
   },

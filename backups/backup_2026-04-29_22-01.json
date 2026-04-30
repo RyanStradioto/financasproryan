@@ -1,0 +1,59 @@
+﻿{
+    "created_at":  "2026-04-29T22:01:26.6932142-03:00",
+    "tables":  {
+                   "credit_card_transactions":  {
+                                                    "value":  [
+
+                                                              ],
+                                                    "Count":  0
+                                                },
+                   "investments":  {
+                                       "value":  [
+
+                                                 ],
+                                       "Count":  0
+                                   },
+                   "credit_cards":  {
+                                        "value":  [
+
+                                                  ],
+                                        "Count":  0
+                                    },
+                   "expenses":  {
+                                    "value":  [
+
+                                              ],
+                                    "Count":  0
+                                },
+                   "investment_transactions":  {
+                                                   "value":  [
+
+                                                             ],
+                                                   "Count":  0
+                                               },
+                   "accounts":  {
+                                    "value":  [
+
+                                              ],
+                                    "Count":  0
+                                },
+                   "categories":  {
+                                      "value":  [
+
+                                                ],
+                                      "Count":  0
+                                  },
+                   "income":  {
+                                  "value":  [
+
+                                            ],
+                                  "Count":  0
+                              },
+                   "profiles":  {
+                                    "value":  [
+
+                                              ],
+                                    "Count":  0
+                                }
+               }
+}
