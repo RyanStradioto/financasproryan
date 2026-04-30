@@ -235,9 +235,9 @@ export default function ExpensesPage() {
             <p className="text-3xl sm:text-4xl font-extrabold text-expense currency drop-shadow-sm leading-none">{formatCurrency(total)}</p>
           </div>
           <div className="w-full h-px sm:w-px sm:h-12 bg-border/50 block sm:mx-2 my-2 sm:my-0" />
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-none w-full sm:w-auto">
-            <div className="shrink-0"><MonthSelector month={month} onChange={setMonth} /></div>
-            <div className="shrink-0"><TransactionDialog type="expense" /></div>
+          <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
+            <div className="w-full sm:w-auto"><MonthSelector month={month} onChange={setMonth} /></div>
+            <div className="w-full sm:w-auto"><TransactionDialog type="expense" /></div>
           </div>
         </div>
       </div>
@@ -341,9 +341,8 @@ export default function ExpensesPage() {
                       </a>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
                     <DatePicker date={item.date} onChange={d => handleDateChange(item.id, d)} />
-                    <span className="text-muted-foreground/30">•</span>
                     <OptionPicker value={item.category_id} options={categories} placeholder="Categoria" onChange={v => handleCategoryChange(item.id, v)} hideIcon />
                   </div>
                 </div>
