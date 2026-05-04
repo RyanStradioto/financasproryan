@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react';
-import { Plus, CreditCard, Trash2, Check, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, CreditCard, Trash2, Check, X, ChevronLeft, ChevronRight, CircleDollarSign, CalendarClock, Layers3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -196,15 +196,24 @@ export default function CreditCardsPage() {
       category: activeCategories.find((c) => c.id === id),
     }))
     .sort((a, b) => b.total - a.total);
+  const totalLimit = cards.reduce((sum, c) => sum + Number(c.credit_limit || 0), 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="hero-card flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Cartoes de Credito</h1>
-          <p className="text-sm text-muted-foreground">Controle de fatura e parcelamentos</p>
+          <p className="text-sm text-muted-foreground">Controle de fatura, categorias e parcelamentos</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/80 px-2.5 py-1 text-xs text-muted-foreground">
+              <Layers3 className="h-3 w-3" /> {cards.length} cartoes
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/80 px-2.5 py-1 text-xs text-muted-foreground">
+              <CircleDollarSign className="h-3 w-3" /> Limite total {formatCurrency(totalLimit)}
+            </span>
+          </div>
         </div>
-        <Button onClick={() => setShowNewCard(true)} data-tutorial-target="new-card">
+        <Button className="w-full sm:w-auto" onClick={() => setShowNewCard(true)} data-tutorial-target="new-card">
           <Plus className="w-4 h-4 mr-1" /> Novo Cartao
         </Button>
       </div>
@@ -223,7 +232,7 @@ export default function CreditCardsPage() {
               <div
                 key={card.id}
                 onClick={() => setSelectedCard(isSelected ? null : card.id)}
-                className={`relative rounded-2xl p-5 cursor-pointer transition-all text-white overflow-hidden ${isSelected ? 'ring-2 ring-white/80 scale-[1.02]' : 'hover:scale-[1.01]'}`}
+                className={`relative rounded-2xl p-5 cursor-pointer transition-all text-white overflow-hidden min-h-[172px] ${isSelected ? 'ring-2 ring-white/80 scale-[1.02] shadow-2xl' : 'hover:scale-[1.01]'}`}
                 style={{ background: `linear-gradient(135deg, ${card.color}, ${card.color}aa)` }}
               >
                 <div className="flex justify-between items-start mb-8">
@@ -256,7 +265,7 @@ export default function CreditCardsPage() {
       )}
 
       {selectedCard && currentCard && (
-        <div className="stat-card space-y-4">
+        <div className="stat-card space-y-4 border-primary/20">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <h3 className="font-semibold">{currentCard.name} - Fatura</h3>
@@ -273,14 +282,16 @@ export default function CreditCardsPage() {
               <button onClick={() => setBillMonth(prevMonth(billMonth))} className="p-1.5 hover:bg-muted rounded-lg transition-colors">
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="text-sm font-medium capitalize">{monthLabel()}</span>
+              <span className="rounded-lg bg-muted px-2 py-1 text-sm font-medium capitalize inline-flex items-center gap-1">
+                <CalendarClock className="h-3.5 w-3.5" /> {monthLabel()}
+              </span>
               <button onClick={() => setBillMonth(nextMonth(billMonth))} className="p-1.5 hover:bg-muted rounded-lg transition-colors">
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="rounded-xl bg-expense/5 border border-expense/20 p-3">
               <p className="text-xs text-muted-foreground">Total fatura</p>
               <p className="font-bold text-expense">{formatCurrency(billTotal)}</p>
@@ -332,7 +343,7 @@ export default function CreditCardsPage() {
                   ))}
                 </div>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 max-h-[460px] overflow-y-auto pr-1">
               {transactions.map(t => (
                 <div key={t.id} className={`flex items-center justify-between py-2.5 px-3 rounded-lg transition-colors ${t.paid ? 'bg-income/5' : 'hover:bg-muted/50'}`}>
                   <div className="flex items-center gap-3">

@@ -124,6 +124,9 @@ export default function Dashboard() {
   const pendingAmount = useMemo(() =>
     expenses.filter(e => e.status !== 'concluido').reduce((s, e) => s + Number(e.amount), 0)
   , [expenses]);
+  const cardExpenses = useMemo(() =>
+    expenses.filter(e => isCreditCardExpense(e.notes)).reduce((s, e) => s + Number(e.amount), 0)
+  , [expenses]);
 
   const balance = accumulatedBalance;
   const savings = totalIncome > 0 ? ((totalIncome - totalExpensesPaid) / totalIncome) * 100 : 0;
@@ -236,6 +239,20 @@ export default function Dashboard() {
               </button>
             </TransactionDialog>
           </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="rounded-2xl border border-border/60 bg-card/70 px-4 py-3">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">No cartao</p>
+          <p className="text-lg font-extrabold currency text-primary mt-1">{maskCurrency(formatCurrency(cardExpenses))}</p>
+        </div>
+        <div className="rounded-2xl border border-border/60 bg-card/70 px-4 py-3">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Pendencias</p>
+          <p className="text-lg font-extrabold currency text-warning mt-1">{maskCurrency(formatCurrency(pendingAmount))}</p>
+        </div>
+        <div className="rounded-2xl border border-border/60 bg-card/70 px-4 py-3">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Taxa economia</p>
+          <p className="text-lg font-extrabold mt-1">{savings.toFixed(1)}%</p>
         </div>
       </div>
 
