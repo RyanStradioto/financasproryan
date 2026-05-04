@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useExpenses, useDeleteExpense, useUpdateExpense, useCategories, useAccounts, type Expense } from '@/hooks/useFinanceData';
+import { useCreditCards } from '@/hooks/useCreditCards';
 import { getMonthYear, formatCurrency, formatDate, getStatusColor, getStatusLabel } from '@/lib/format';
 import { formatWorkTime } from '@/lib/workTime';
 import { useWorkTimeCalc } from '@/hooks/useProfile';
@@ -109,6 +110,7 @@ export default function ExpensesPage() {
   const { data: expenses = [], isLoading } = useExpenses(month);
   const { data: categories = [] } = useCategories();
   const { data: accounts = [] } = useAccounts();
+  const { data: creditCards = [] } = useCreditCards();
   const deleteExpense = useDeleteExpense();
   const updateExpense = useUpdateExpense();
   const [editing, setEditing] = useState<(Expense & { type: 'expense' }) | null>(null);
@@ -195,6 +197,19 @@ export default function ExpensesPage() {
     if (!id) return '—';
     const acc = accounts.find(a => a.id === id);
     return acc ? (hideIcon ? acc.name : `${acc.icon} ${acc.name}`) : '—';
+  };
+
+  const getCardMeta = (notes?: string | null) => {
+    if (!notes) return null;
+    const match = notes.match(/\[Cartao de credito\|card:([^|\]]+)\|bill:([0-9]{4}-[0-9]{2})\]/i);
+    if (!match) return null;
+    const [, cardId, billMonth] = match;
+    return { cardId, billMonth };
+  };
+
+  const getCardName = (cardId?: string | null) => {
+    if (!cardId) return 'Cartao de credito';
+    return creditCards.find((c) => c.id === cardId)?.name ?? 'Cartao de credito';
   };
 
   const handleDelete = async (id: string) => {
@@ -515,6 +530,7 @@ export default function ExpensesPage() {
         )}
         {filtered.map((item) => {
           const cat = categories.find(c => c.id === item.category_id);
+          const cardMeta = getCardMeta(item.notes);
           return (
             <div key={item.id} className="p-4 flex flex-col gap-3 relative hover:bg-muted/10 transition-colors">
               <div className={`absolute top-0 left-0 w-1 h-full ${item.status === 'concluido' ? 'bg-success/80' : item.status === 'pendente' ? 'bg-warning/80' : 'bg-info/80'}`} />
@@ -553,6 +569,11 @@ export default function ExpensesPage() {
                   {item.account_id && (
                     <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium bg-muted/20 px-2 py-1 rounded-full border border-border/40">
                       {getAccountName(item.account_id, true)}
+                    </span>
+                  )}
+                  {cardMeta && (
+                    <span className="text-[10px] text-primary flex items-center gap-1 font-medium bg-primary/10 px-2 py-1 rounded-full border border-primary/30">
+                      {getCardName(cardMeta.cardId)}
                     </span>
                   )}
                 </div>
@@ -595,6 +616,7 @@ export default function ExpensesPage() {
             <tbody>
               {filtered.map((item) => {
                 const wt = calcWorkTime(Number(item.amount));
+                const cardMeta = getCardMeta(item.notes);
                 return (
                   <tr key={item.id} className="border-b border-border/30 hover:bg-muted/40 transition-all group">
                     <td className="py-3.5 px-4">
@@ -625,7 +647,13 @@ export default function ExpensesPage() {
                       </td>
                     )}
                     <td className="py-3.5 px-4">
-                      <OptionPicker value={item.account_id} options={accounts} placeholder="Conta" onChange={v => handleAccountChange(item.id, v)} />
+                      {cardMeta ? (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary border border-primary/30">
+                          {getCardName(cardMeta.cardId)}
+                        </span>
+                      ) : (
+                        <OptionPicker value={item.account_id} options={accounts} placeholder="Conta" onChange={v => handleAccountChange(item.id, v)} />
+                      )}
                     </td>
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">

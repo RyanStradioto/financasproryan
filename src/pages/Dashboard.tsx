@@ -105,6 +105,8 @@ export default function Dashboard() {
 
   const [editing, setEditing] = useState<((Income & { type: 'income' }) | (Expense & { type: 'expense' })) | null>(null);
   const [pendingModalOpen, setPendingModalOpen] = useState(false);
+  const isCreditCardExpense = (notes?: string | null) =>
+    !!notes && /\[Cartao de credito\|card:[^|\]]+\|bill:[0-9]{4}-[0-9]{2}\]/i.test(notes);
 
   // ── Core numbers ─────────────────────────────────────────────
   const totalIncome = useMemo(() =>
@@ -387,6 +389,7 @@ export default function Dashboard() {
             <div className="space-y-1 flex-1">
               {recentTransactions.map((t) => {
                 const wt = hourlyRate > 0 && t.type === 'expense' ? calcWorkTime(Number(t.amount)) : null;
+                const cardExpense = t.type === 'expense' && isCreditCardExpense((t as Expense).notes);
                 return (
                   <div key={t.id} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-muted/50 transition-all group -mx-2">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -402,6 +405,11 @@ export default function Dashboard() {
                         <div className="flex items-center gap-1.5">
                           <p className="text-[10px] text-muted-foreground truncate">{formatDate(t.date)}</p>
                           <div className={cn('w-1.5 h-1.5 shrink-0 rounded-full', t.status === 'concluido' ? 'bg-success' : t.status === 'pendente' ? 'bg-warning' : 'bg-info')} />
+                          {cardExpense && (
+                            <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold text-primary">
+                              Cartao
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -141,6 +141,11 @@ export function useAddCreditCardTransaction() {
         const d = new Date(baseDate);
         d.setMonth(d.getMonth() + i);
         const expenseDate = d.toISOString().split('T')[0];
+        const baseNote = data.notes?.trim();
+        const [y, m] = data.bill_month.split('-').map(Number);
+        const billD = new Date(y, m - 1 + i, 1);
+        const futureBill = `${billD.getFullYear()}-${String(billD.getMonth() + 1).padStart(2, '0')}`;
+        const cardMarker = `[Cartao de credito|card:${data.credit_card_id}|bill:${futureBill}]`;
         return {
           user_id: user!.id,
           date: expenseDate,
@@ -149,7 +154,7 @@ export function useAddCreditCardTransaction() {
           category_id: data.category_id ?? null,
           account_id: null,
           status: i === 0 ? (data.paid ? 'concluido' : 'pendente') : 'agendado',
-          notes: data.notes ? `[Cartao de credito] ${data.notes}` : '[Cartao de credito]',
+          notes: baseNote ? `${cardMarker} ${baseNote}` : cardMarker,
           is_recurring: data.is_recurring ?? false,
         };
       });

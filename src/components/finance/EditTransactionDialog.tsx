@@ -40,6 +40,12 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
   const deleteExpense = useDeleteExpense();
   const addCreditCardTransaction = useAddCreditCardTransaction();
   const { upload, uploading } = useFileUpload();
+  const parseCardMarker = (raw?: string | null) => {
+    if (!raw) return null;
+    const match = raw.match(/^\[Cartao de credito\|card:([^|\]]+)\|bill:([0-9]{4}-[0-9]{2})\]\s*/i);
+    if (!match) return null;
+    return { cardId: match[1], cleanNotes: raw.replace(match[0], '') };
+  };
 
   useEffect(() => {
     if (transaction) {
@@ -53,9 +59,11 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
       setAttachmentUrl(transaction.attachment_url || null);
       setAttachmentName(transaction.attachment_name || null);
       if (transaction.type === 'expense') {
+        const cardMeta = parseCardMarker(transaction.notes);
         setCategoryId(transaction.category_id || '');
-        setPaymentMethod('account');
-        setCreditCardId('');
+        setPaymentMethod(cardMeta ? 'credit_card' : 'account');
+        setCreditCardId(cardMeta?.cardId || '');
+        setNotes(cardMeta?.cleanNotes || transaction.notes || '');
         setInstallments('1');
       }
     }
@@ -128,9 +136,11 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
 
         await deleteExpense.mutateAsync(transaction.id);
       } else {
+        const cleanNotes = notes || null;
         await updateExpense.mutateAsync({
           ...baseData,
           category_id: categoryId || null,
+          notes: cleanNotes,
         });
       }
 

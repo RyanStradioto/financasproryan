@@ -184,6 +184,18 @@ export default function CreditCardsPage() {
 
   const billDates = getBillDates();
   const activeCategories = categories.filter(c => !c.archived);
+  const byCategory = transactions.reduce<Record<string, number>>((acc, tx) => {
+    const key = tx.category_id ?? '__none__';
+    acc[key] = (acc[key] ?? 0) + Number(tx.amount);
+    return acc;
+  }, {});
+  const categoryRows = Object.entries(byCategory)
+    .map(([id, total]) => ({
+      id,
+      total,
+      category: activeCategories.find((c) => c.id === id),
+    }))
+    .sort((a, b) => b.total - a.total);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -306,7 +318,21 @@ export default function CreditCardsPage() {
           {transactions.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">Nenhuma compra nesta fatura</p>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-3">
+              <div className="rounded-xl border border-border/60 p-3 bg-muted/20">
+                <p className="text-xs font-semibold mb-2">Fatura por categoria</p>
+                <div className="space-y-1.5">
+                  {categoryRows.map((row) => (
+                    <div key={row.id} className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">
+                        {row.category ? `${row.category.icon} ${row.category.name}` : 'Sem categoria'}
+                      </span>
+                      <span className="font-semibold currency">{formatCurrency(row.total)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-1">
               {transactions.map(t => (
                 <div key={t.id} className={`flex items-center justify-between py-2.5 px-3 rounded-lg transition-colors ${t.paid ? 'bg-income/5' : 'hover:bg-muted/50'}`}>
                   <div className="flex items-center gap-3">
@@ -339,6 +365,7 @@ export default function CreditCardsPage() {
                   </div>
                 </div>
               ))}
+              </div>
             </div>
           )}
         </div>
