@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useCategories, useAccounts, useAddIncome, useAddExpense, useAddExpenseBatch, useRecentDescriptions } from '@/hooks/useFinanceData';
 import { useAddInvestmentTransaction, useInvestments } from '@/hooks/useInvestments';
+import { useAddCreditCardTransaction, useCreditCards } from '@/hooks/useCreditCards';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -34,16 +35,20 @@ export default function TransactionDialog({ type, children }: Props) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [aiSuggesting, setAiSuggesting] = useState(false);
   const [investmentId, setInvestmentId] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'account' | 'credit_card'>('account');
+  const [creditCardId, setCreditCardId] = useState('');
   const aiDebounce = useRef<ReturnType<typeof setTimeout>>();
 
   const { data: categories } = useCategories();
   const { data: accounts } = useAccounts();
   const { data: investments } = useInvestments();
+  const { data: creditCards } = useCreditCards();
   const { data: recentDescs = [] } = useRecentDescriptions(type === 'income' ? 'income' : 'expenses');
   const addIncome = useAddIncome();
   const addExpense = useAddExpense();
   const addExpenseBatch = useAddExpenseBatch();
   const addInvestmentTransaction = useAddInvestmentTransaction();
+  const addCreditCardTransaction = useAddCreditCardTransaction();
   const { upload, uploading } = useFileUpload();
 
   const filteredSuggestions = useMemo(() => {
@@ -96,6 +101,14 @@ export default function TransactionDialog({ type, children }: Props) {
     setInstallments('1');
     setStartInstallment('1');
     setInvestmentId('');
+    setPaymentMethod('account');
+    setCreditCardId('');
+  };
+
+  const getCreditCardBillMonth = (purchaseDate: string, closingDay: number) => {
+    const [year, month, day] = purchaseDate.split('-').map(Number);
+    const billDate = day > closingDay ? new Date(year, month, 1) : new Date(year, month - 1, 1);
+    return `${billDate.getFullYear()}-${String(billDate.getMonth() + 1).padStart(2, '0')}`;
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -117,6 +130,7 @@ export default function TransactionDialog({ type, children }: Props) {
     }
 
     const numInstallments = parseInt(installments) || 1;
+    const selectedCreditCard = creditCards?.find((cc) => cc.id === creditCardId);
 
     try {
       if (type === 'income') {
@@ -129,6 +143,22 @@ export default function TransactionDialog({ type, children }: Props) {
           notes: notes || null,
           attachment_url: attachmentUrl,
           attachment_name: attachmentName,
+        });
+      } else if (paymentMethod === 'credit_card') {
+        if (!selectedCreditCard) {
+          toast.error('Selecione um cartão de crédito');
+          return;
+        }
+
+        await addCreditCardTransaction.mutateAsync({
+          credit_card_id: selectedCreditCard.id,
+          category_id: categoryId || null,
+          description,
+          amount: numAmount,
+          date,
+          bill_month: getCreditCardBillMonth(date, selectedCreditCard.closing_day),
+          installments: numInstallments,
+          notes: notes || undefined,
         });
       } else if (investmentId) {
         if (numInstallments > 1) {
@@ -336,6 +366,24 @@ export default function TransactionDialog({ type, children }: Props) {
                 </Select>
               </div>
 
+              <div className="space-y-1">
+                <Label className="text-xs font-medium text-muted-foreground">Forma de pagamento</Label>
+                <Select
+                  value={paymentMethod}
+                  onValueChange={(v) => {
+                    const method = v as 'account' | 'credit_card';
+                    setPaymentMethod(method);
+                    if (method === 'credit_card') setInvestmentId('');
+                  }}
+                >
+                  <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="account">Conta / Débito / PIX</SelectItem>
+                    <SelectItem value="credit_card">Cartão de crédito</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label className="text-xs font-medium text-muted-foreground">Parcelas</Label>
@@ -348,38 +396,54 @@ export default function TransactionDialog({ type, children }: Props) {
                     </SelectContent>
                   </Select>
                 </div>
+                {paymentMethod === 'account' ? (
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium text-muted-foreground">Conta</Label>
+                    <Select value={accountId} onValueChange={setAccountId}>
+                      <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue placeholder="Conta..." /></SelectTrigger>
+                      <SelectContent>
+                        {accounts?.filter(a => !a.archived).map(a => (
+                          <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium text-muted-foreground">Cartão</Label>
+                    <Select value={creditCardId} onValueChange={setCreditCardId}>
+                      <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue placeholder="Cartão..." /></SelectTrigger>
+                      <SelectContent>
+                        {creditCards?.filter(c => !c.archived).map(c => (
+                          <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              {paymentMethod === 'account' && (
                 <div className="space-y-1">
-                  <Label className="text-xs font-medium text-muted-foreground">Conta</Label>
-                  <Select value={accountId} onValueChange={setAccountId}>
-                    <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue placeholder="Conta..." /></SelectTrigger>
+                  <Label className="text-xs font-medium text-muted-foreground">Vincular a investimento (opcional)</Label>
+                  <Select value={investmentId || '__none__'} onValueChange={(v) => setInvestmentId(v === '__none__' ? '' : v)}>
+                    <SelectTrigger className="h-11" style={{ fontSize: '14px' }}>
+                      <SelectValue placeholder="Escolha a caixinha/ativo para aportar..." />
+                    </SelectTrigger>
                     <SelectContent>
-                      {accounts?.filter(a => !a.archived).map(a => (
-                        <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                      <SelectItem value="__none__">Não vincular</SelectItem>
+                      {investments?.filter(inv => !inv.archived).map(inv => (
+                        <SelectItem key={inv.id} value={inv.id}>{inv.icon} {inv.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {investmentId && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Ao salvar, essa despesa também será lançada como aporte no investimento selecionado.
+                    </p>
+                  )}
                 </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs font-medium text-muted-foreground">Vincular a investimento (opcional)</Label>
-                <Select value={investmentId || '__none__'} onValueChange={(v) => setInvestmentId(v === '__none__' ? '' : v)}>
-                  <SelectTrigger className="h-11" style={{ fontSize: '14px' }}>
-                    <SelectValue placeholder="Escolha a caixinha/ativo para aportar..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Não vincular</SelectItem>
-                    {investments?.filter(inv => !inv.archived).map(inv => (
-                      <SelectItem key={inv.id} value={inv.id}>{inv.icon} {inv.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {investmentId && (
-                  <p className="text-[11px] text-muted-foreground">
-                    Ao salvar, essa despesa também será lançada como aporte no investimento selecionado.
-                  </p>
-                )}
-              </div>
+              )}
 
               {parseInt(installments) > 1 && (
                 <>
@@ -402,6 +466,11 @@ export default function TransactionDialog({ type, children }: Props) {
                     {' '}({startInstallment}/{installments} até {installments}/{installments})
                   </div>
                 </>
+              )}
+              {paymentMethod === 'credit_card' && creditCardId && (
+                <div className="rounded-xl bg-muted/50 border border-border/60 p-3 text-xs text-muted-foreground">
+                  A compra vai para a fatura automaticamente com base no fechamento do cartão selecionado.
+                </div>
               )}
             </>
           )}
@@ -455,9 +524,9 @@ export default function TransactionDialog({ type, children }: Props) {
           <Button
             type="submit"
             className={`w-full h-12 text-[15px] font-semibold ${type === 'income' ? 'bg-income hover:bg-income/90' : 'bg-expense hover:bg-expense/90'} text-white`}
-            disabled={addIncome.isPending || addExpense.isPending || addExpenseBatch.isPending || addInvestmentTransaction.isPending}
+            disabled={addIncome.isPending || addExpense.isPending || addExpenseBatch.isPending || addInvestmentTransaction.isPending || addCreditCardTransaction.isPending}
           >
-            {(addIncome.isPending || addExpense.isPending || addExpenseBatch.isPending || addInvestmentTransaction.isPending)
+            {(addIncome.isPending || addExpense.isPending || addExpenseBatch.isPending || addInvestmentTransaction.isPending || addCreditCardTransaction.isPending)
               ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
               : <Plus className="w-4 h-4 mr-2" />}
             {type === 'income' ? 'Adicionar Receita' : 'Adicionar Despesa'}
