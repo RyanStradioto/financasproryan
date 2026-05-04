@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+﻿import { useState, useMemo, useCallback, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -111,6 +111,12 @@ export default function TransactionDialog({ type, children }: Props) {
     return `${billDate.getFullYear()}-${String(billDate.getMonth() + 1).padStart(2, '0')}`;
   };
 
+  const addMonthsToDate = (baseDate: string, monthsToAdd: number) => {
+    const d = new Date(baseDate + 'T00:00:00');
+    d.setMonth(d.getMonth() + monthsToAdd);
+    return d.toISOString().split('T')[0];
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -125,7 +131,7 @@ export default function TransactionDialog({ type, children }: Props) {
     e.preventDefault();
     const numAmount = parseFloat(amount.replace(/\./g, '').replace(',', '.'));
     if (isNaN(numAmount) || numAmount <= 0) {
-      toast.error('Valor inválido');
+      toast.error('Valor invÃ¡lido');
       return;
     }
 
@@ -146,7 +152,7 @@ export default function TransactionDialog({ type, children }: Props) {
         });
       } else if (paymentMethod === 'credit_card') {
         if (!selectedCreditCard) {
-          toast.error('Selecione um cartão de crédito');
+          toast.error('Selecione um cartao de credito');
           return;
         }
 
@@ -160,9 +166,37 @@ export default function TransactionDialog({ type, children }: Props) {
           installments: numInstallments,
           notes: notes || undefined,
         });
+
+        if (numInstallments > 1) {
+          const perInstallmentAmount = Number((numAmount / numInstallments).toFixed(2));
+          const ccExpenseItems = Array.from({ length: numInstallments }, (_, i) => ({
+            date: addMonthsToDate(date, i),
+            description: `${description || 'Despesa'} (${i + 1}/${numInstallments})`,
+            amount: perInstallmentAmount,
+            category_id: categoryId || null,
+            account_id: null,
+            status: i === 0 ? status : 'agendado',
+            notes: notes ? `[Cartao de credito] ${notes}` : '[Cartao de credito]',
+            attachment_url: i === 0 ? attachmentUrl : null,
+            attachment_name: i === 0 ? attachmentName : null,
+          }));
+          await addExpenseBatch.mutateAsync(ccExpenseItems);
+        } else {
+          await addExpense.mutateAsync({
+            date,
+            description,
+            amount: numAmount,
+            category_id: categoryId || null,
+            account_id: null,
+            status,
+            notes: notes ? `[Cartao de credito] ${notes}` : '[Cartao de credito]',
+            attachment_url: attachmentUrl,
+            attachment_name: attachmentName,
+          });
+        }
       } else if (investmentId) {
         if (numInstallments > 1) {
-          toast.error('Para enviar para investimento, lance em parcela única ou faça aportes separados.');
+          toast.error('Para enviar para investimento, lance em parcela Ãºnica ou faÃ§a aportes separados.');
           return;
         }
 
@@ -231,7 +265,7 @@ export default function TransactionDialog({ type, children }: Props) {
       reset();
       setOpen(false);
     } catch (err) {
-      console.error('Erro ao adicionar transação:', err);
+      console.error('Erro ao adicionar transaÃ§Ã£o:', err);
       const msg = err instanceof Error
         ? err.message
         : (typeof err === 'object' && err !== null && 'message' in err
@@ -255,7 +289,7 @@ export default function TransactionDialog({ type, children }: Props) {
         <DialogHeader className="mb-3">
           <DialogTitle className="text-base font-bold flex items-center gap-2">
             <span className={`w-7 h-7 rounded-xl flex items-center justify-center text-white text-sm font-bold ${type === 'income' ? 'bg-income' : 'bg-expense'}`}>
-              {type === 'income' ? '↑' : '↓'}
+              {type === 'income' ? 'â†‘' : 'â†“'}
             </span>
             {type === 'income' ? 'Nova Receita' : 'Nova Despesa'}
           </DialogTitle>
@@ -263,7 +297,7 @@ export default function TransactionDialog({ type, children }: Props) {
 
         <form onSubmit={handleSubmit} className="space-y-3 pb-2">
 
-          {/* Amount — currency masked */}
+          {/* Amount â€” currency masked */}
           <div
             onClick={() => document.getElementById('amount-input-' + type)?.focus()}
             className={`rounded-2xl p-4 cursor-text transition-all ${
@@ -310,9 +344,9 @@ export default function TransactionDialog({ type, children }: Props) {
               <Select value={status} onValueChange={setStatus}>
                 <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="concluido">{type === 'income' ? '✓ Recebido' : '✓ Pago'}</SelectItem>
-                  <SelectItem value="pendente">⏳ Pendente</SelectItem>
-                  <SelectItem value="agendado">📅 Agendado</SelectItem>
+                  <SelectItem value="concluido">{type === 'income' ? 'âœ“ Recebido' : 'âœ“ Pago'}</SelectItem>
+                  <SelectItem value="pendente">â³ Pendente</SelectItem>
+                  <SelectItem value="agendado">ðŸ“… Agendado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -320,9 +354,9 @@ export default function TransactionDialog({ type, children }: Props) {
 
           {/* Description */}
           <div className="space-y-1 relative">
-            <Label className="text-xs font-medium text-muted-foreground">Descrição</Label>
+            <Label className="text-xs font-medium text-muted-foreground">DescriÃ§Ã£o</Label>
             <Input
-              placeholder="Descreva a transação..."
+              placeholder="Descreva a transaÃ§Ã£o..."
               value={description}
               onChange={(e) => { setDescription(e.target.value); setShowSuggestions(true); suggestCategory(e.target.value); }}
               onFocus={() => setShowSuggestions(true)}
@@ -378,8 +412,8 @@ export default function TransactionDialog({ type, children }: Props) {
                 >
                   <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="account">Conta / Débito / PIX</SelectItem>
-                    <SelectItem value="credit_card">Cartão de crédito</SelectItem>
+                    <SelectItem value="account">Conta / DÃ©bito / PIX</SelectItem>
+                    <SelectItem value="credit_card">CartÃ£o de crÃ©dito</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -391,7 +425,7 @@ export default function TransactionDialog({ type, children }: Props) {
                     <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {[1,2,3,4,5,6,7,8,9,10,11,12,18,24,36,48].map(n => (
-                        <SelectItem key={n} value={String(n)}>{n === 1 ? 'À vista' : `${n}x`}</SelectItem>
+                        <SelectItem key={n} value={String(n)}>{n === 1 ? 'Ã€ vista' : `${n}x`}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -410,9 +444,9 @@ export default function TransactionDialog({ type, children }: Props) {
                   </div>
                 ) : (
                   <div className="space-y-1">
-                    <Label className="text-xs font-medium text-muted-foreground">Cartão</Label>
+                    <Label className="text-xs font-medium text-muted-foreground">CartÃ£o</Label>
                     <Select value={creditCardId} onValueChange={setCreditCardId}>
-                      <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue placeholder="Cartão..." /></SelectTrigger>
+                      <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue placeholder="CartÃ£o..." /></SelectTrigger>
                       <SelectContent>
                         {creditCards?.filter(c => !c.archived).map(c => (
                           <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>
@@ -431,7 +465,7 @@ export default function TransactionDialog({ type, children }: Props) {
                       <SelectValue placeholder="Escolha a caixinha/ativo para aportar..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__none__">Não vincular</SelectItem>
+                      <SelectItem value="__none__">NÃ£o vincular</SelectItem>
                       {investments?.filter(inv => !inv.archived).map(inv => (
                         <SelectItem key={inv.id} value={inv.id}>{inv.icon} {inv.name}</SelectItem>
                       ))}
@@ -439,7 +473,7 @@ export default function TransactionDialog({ type, children }: Props) {
                   </Select>
                   {investmentId && (
                     <p className="text-[11px] text-muted-foreground">
-                      Ao salvar, essa despesa também será lançada como aporte no investimento selecionado.
+                      Ao salvar, essa despesa tambÃ©m serÃ¡ lanÃ§ada como aporte no investimento selecionado.
                     </p>
                   )}
                 </div>
@@ -454,22 +488,22 @@ export default function TransactionDialog({ type, children }: Props) {
                       <SelectContent>
                         {Array.from({ length: parseInt(installments) }, (_, i) => i + 1).map(n => (
                           <SelectItem key={n} value={String(n)}>
-                            {n === 1 ? '1ª (nenhuma paga)' : `${n}ª (${n - 1} já paga${n - 1 > 1 ? 's' : ''})`}
+                            {n === 1 ? '1Âª (nenhuma paga)' : `${n}Âª (${n - 1} jÃ¡ paga${n - 1 > 1 ? 's' : ''})`}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="rounded-xl bg-primary/5 border border-primary/15 p-3 text-xs text-muted-foreground">
-                    💳 <span className="font-semibold text-foreground">{parseInt(installments) - parseInt(startInstallment) + 1} parcelas</span> de{' '}
+                    ðŸ’³ <span className="font-semibold text-foreground">{parseInt(installments) - parseInt(startInstallment) + 1} parcelas</span> de{' '}
                     <span className="font-semibold text-foreground currency">R$ {amount || '0,00'}</span>
-                    {' '}({startInstallment}/{installments} até {installments}/{installments})
+                    {' '}({startInstallment}/{installments} atÃ© {installments}/{installments})
                   </div>
                 </>
               )}
               {paymentMethod === 'credit_card' && creditCardId && (
                 <div className="rounded-xl bg-muted/50 border border-border/60 p-3 text-xs text-muted-foreground">
-                  A compra vai para a fatura automaticamente com base no fechamento do cartão selecionado.
+                  A compra vai para a fatura automaticamente com base no fechamento do cartÃ£o selecionado.
                 </div>
               )}
             </>
@@ -490,7 +524,7 @@ export default function TransactionDialog({ type, children }: Props) {
           )}
 
           <div className="space-y-1">
-            <Label className="text-xs font-medium text-muted-foreground">Observações (opcional)</Label>
+            <Label className="text-xs font-medium text-muted-foreground">ObservaÃ§Ãµes (opcional)</Label>
             <Textarea
               placeholder="Notas adicionais..."
               value={notes}
@@ -536,3 +570,5 @@ export default function TransactionDialog({ type, children }: Props) {
     </Dialog>
   );
 }
+
+
