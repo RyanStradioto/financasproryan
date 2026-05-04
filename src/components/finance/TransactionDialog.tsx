@@ -111,12 +111,6 @@ export default function TransactionDialog({ type, children }: Props) {
     return `${billDate.getFullYear()}-${String(billDate.getMonth() + 1).padStart(2, '0')}`;
   };
 
-  const addMonthsToDate = (baseDate: string, monthsToAdd: number) => {
-    const d = new Date(baseDate + 'T00:00:00');
-    d.setMonth(d.getMonth() + monthsToAdd);
-    return d.toISOString().split('T')[0];
-  };
-
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -167,33 +161,6 @@ export default function TransactionDialog({ type, children }: Props) {
           notes: notes || undefined,
         });
 
-        if (numInstallments > 1) {
-          const perInstallmentAmount = Number((numAmount / numInstallments).toFixed(2));
-          const ccExpenseItems = Array.from({ length: numInstallments }, (_, i) => ({
-            date: addMonthsToDate(date, i),
-            description: `${description || 'Despesa'} (${i + 1}/${numInstallments})`,
-            amount: perInstallmentAmount,
-            category_id: categoryId || null,
-            account_id: null,
-            status: i === 0 ? status : 'agendado',
-            notes: notes ? `[Cartao de credito] ${notes}` : '[Cartao de credito]',
-            attachment_url: i === 0 ? attachmentUrl : null,
-            attachment_name: i === 0 ? attachmentName : null,
-          }));
-          await addExpenseBatch.mutateAsync(ccExpenseItems);
-        } else {
-          await addExpense.mutateAsync({
-            date,
-            description,
-            amount: numAmount,
-            category_id: categoryId || null,
-            account_id: null,
-            status,
-            notes: notes ? `[Cartao de credito] ${notes}` : '[Cartao de credito]',
-            attachment_url: attachmentUrl,
-            attachment_name: attachmentName,
-          });
-        }
       } else if (investmentId) {
         if (numInstallments > 1) {
           toast.error('Para enviar para investimento, lance em parcela Ãºnica ou faÃ§a aportes separados.');
