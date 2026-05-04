@@ -67,6 +67,23 @@ export function useDeleteCreditCard() {
   });
 }
 
+export function useUpdateCreditCard() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<Omit<TablesInsert<'credit_cards'>, 'user_id'>>;
+    }) => {
+      const { error } = await supabase.from('credit_cards').update(data).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['credit-cards'] }),
+  });
+}
+
 /** 
  * Adds a credit card purchase and auto-generates installment records.
  * E.g. R$300 in 3x → creates 3 records of R$100 for 3 consecutive bill months.

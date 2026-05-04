@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, CreditCard, Trash2, Check, X, ChevronLeft, ChevronRight, Info } from 'lucide-react';
+﻿import { useState } from 'react';
+import { Plus, CreditCard, Trash2, Check, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import {
   useCreditCards,
   useAddCreditCard,
   useDeleteCreditCard,
+  useUpdateCreditCard,
   useCreditCardTransactions,
   useAddCreditCardTransaction,
   useToggleCCTransactionPaid,
@@ -17,10 +18,6 @@ import {
 import { useCategories } from '@/hooks/useFinanceData';
 import { getMonthYear, formatCurrency, formatDate } from '@/lib/format';
 import { toast } from 'sonner';
-
-function getBillMonth(month: string) {
-  return month; // already YYYY-MM
-}
 
 function prevMonth(m: string) {
   const [y, mo] = m.split('-').map(Number);
@@ -40,18 +37,24 @@ export default function CreditCardsPage() {
   const [billMonth, setBillMonth] = useState(getMonthYear());
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [showNewCard, setShowNewCard] = useState(false);
+  const [showEditCard, setShowEditCard] = useState(false);
   const [showNewTx, setShowNewTx] = useState(false);
 
   const { data: cards = [] } = useCreditCards();
   const { data: categories = [] } = useCategories();
   const { data: transactions = [] } = useCreditCardTransactions(selectedCard ?? undefined, billMonth);
   const addCard = useAddCreditCard();
+  const updateCard = useUpdateCreditCard();
   const deleteCard = useDeleteCreditCard();
   const addTx = useAddCreditCardTransaction();
   const togglePaid = useToggleCCTransactionPaid();
   const deleteTx = useDeleteCCTransaction();
 
   const [newCard, setNewCard] = useState({
+    name: '', color: CARD_COLORS[0], credit_limit: '', closing_day: '10', due_day: '17'
+  });
+
+  const [editCard, setEditCard] = useState({
     name: '', color: CARD_COLORS[0], credit_limit: '', closing_day: '10', due_day: '17'
   });
 
@@ -63,14 +66,15 @@ export default function CreditCardsPage() {
   const currentCard = cards.find(c => c.id === selectedCard);
   const billTotal = transactions.reduce((s, t) => s + Number(t.amount), 0);
   const paidTotal = transactions.filter(t => t.paid).reduce((s, t) => s + Number(t.amount), 0);
+  const unpaidTotal = Math.max(0, billTotal - paidTotal);
   const limitUsagePercent = currentCard
     ? Math.min(100, (billTotal / Number(currentCard.credit_limit)) * 100)
     : 0;
 
   const handleAddCard = async () => {
-    if (!newCard.name) return toast.error('Informe o nome do cartão');
+    if (!newCard.name) return toast.error('Informe o nome do cartao');
     try {
-      const created = await addCard.mutateAsync({
+      await addCard.mutateAsync({
         name: newCard.name,
         color: newCard.color,
         credit_limit: parseFloat(newCard.credit_limit) || 0,
@@ -78,7 +82,7 @@ export default function CreditCardsPage() {
         due_day: parseInt(newCard.due_day),
         icon: '💳',
       });
-      toast.success('Cartão adicionado!');
+      toast.success('Cartao adicionado!');
       setShowNewCard(false);
       setNewCard({ name: '', color: CARD_COLORS[0], credit_limit: '', closing_day: '10', due_day: '17' });
     } catch (e) {
@@ -87,9 +91,57 @@ export default function CreditCardsPage() {
     }
   };
 
+  const openEditCard = () => {
+    if (!currentCard) return;
+    setEditCard({
+      name: currentCard.name,
+      color: currentCard.color,
+      credit_limit: String(currentCard.credit_limit ?? ''),
+      closing_day: String(currentCard.closing_day ?? 1),
+      due_day: String(currentCard.due_day ?? 10),
+    });
+    setShowEditCard(true);
+  };
+
+  const handleUpdateCard = async () => {
+    if (!currentCard) return;
+    try {
+      await updateCard.mutateAsync({
+        id: currentCard.id,
+        data: {
+          name: editCard.name,
+          color: editCard.color,
+          credit_limit: parseFloat(editCard.credit_limit) || 0,
+          closing_day: Math.min(31, Math.max(1, parseInt(editCard.closing_day) || 1)),
+          due_day: Math.min(31, Math.max(1, parseInt(editCard.due_day) || 1)),
+        },
+      });
+      toast.success('Cartao atualizado!');
+      setShowEditCard(false);
+    } catch (e) {
+      const error = e as Error;
+      toast.error(error.message);
+    }
+  };
+
+  const handlePayBill = async () => {
+    const unpaid = transactions.filter(t => !t.paid);
+    if (unpaid.length === 0) {
+      toast.info('Nao ha compras pendentes nesta fatura.');
+      return;
+    }
+    try {
+      await Promise.all(unpaid.map(t => togglePaid.mutateAsync({ id: t.id, paid: true })));
+      toast.success(`Fatura paga (${unpaid.length} compra${unpaid.length > 1 ? 's' : ''}).`);
+    } catch (e) {
+      const error = e as Error;
+      toast.error(error.message);
+    }
+  };
+
   const handleAddTx = async () => {
     if (!selectedCard || !newTx.description || !newTx.amount) {
-      return toast.error('Preencha descrição e valor');
+      return toast.error('Preencha descricao e valor');
     }
     try {
       await addTx.mutateAsync({
@@ -103,7 +155,7 @@ export default function CreditCardsPage() {
         notes: newTx.notes || undefined,
       });
       const n = parseInt(newTx.installments);
-      toast.success(n > 1 ? `Compra lançada em ${n}x nas próximas faturas!` : 'Compra lançada!');
+      toast.success(n > 1 ? `Compra lancada em ${n}x nas proximas faturas!` : 'Compra lancada!');
       setShowNewTx(false);
       setNewTx({ description: '', amount: '', date: new Date().toISOString().split('T')[0], category_id: '', installments: '1', notes: '' });
     } catch (e) {
@@ -117,26 +169,39 @@ export default function CreditCardsPage() {
     return new Date(y, m - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   };
 
+  const getBillDates = () => {
+    if (!currentCard) return null;
+    const [year, month] = billMonth.split('-').map(Number);
+    const closingDate = new Date(year, month - 1, currentCard.closing_day);
+    const dueDate = new Date(year, month - 1, currentCard.due_day);
+    const now = new Date();
+    return {
+      closingDate: closingDate.toLocaleDateString('pt-BR'),
+      dueDate: dueDate.toLocaleDateString('pt-BR'),
+      status: now > closingDate ? 'Fechada' : 'Aberta',
+    };
+  };
+
+  const billDates = getBillDates();
   const activeCategories = categories.filter(c => !c.archived);
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Cartões de Crédito</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Cartoes de Credito</h1>
           <p className="text-sm text-muted-foreground">Controle de fatura e parcelamentos</p>
         </div>
         <Button onClick={() => setShowNewCard(true)} data-tutorial-target="new-card">
-          <Plus className="w-4 h-4 mr-1" /> Novo Cartão
+          <Plus className="w-4 h-4 mr-1" /> Novo Cartao
         </Button>
       </div>
 
-      {/* Card List */}
       {cards.length === 0 ? (
         <div className="stat-card py-16 text-center">
           <CreditCard className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-          <p className="font-medium text-muted-foreground">Nenhum cartão cadastrado</p>
-          <p className="text-sm text-muted-foreground mt-1">Adicione seus cartões de crédito</p>
+          <p className="font-medium text-muted-foreground">Nenhum cartao cadastrado</p>
+          <p className="text-sm text-muted-foreground mt-1">Adicione seus cartoes de credito</p>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -151,7 +216,7 @@ export default function CreditCardsPage() {
               >
                 <div className="flex justify-between items-start mb-8">
                   <div>
-                    <p className="text-white/70 text-xs">Cartão</p>
+                    <p className="text-white/70 text-xs">Cartao</p>
                     <p className="font-bold text-lg">{card.name}</p>
                   </div>
                   <button
@@ -178,16 +243,21 @@ export default function CreditCardsPage() {
         </div>
       )}
 
-      {/* Bill Details */}
       {selectedCard && currentCard && (
         <div className="stat-card space-y-4">
-          {/* Bill Header */}
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <h3 className="font-semibold">{currentCard.name} — Fatura</h3>
+              <h3 className="font-semibold">{currentCard.name} - Fatura</h3>
               <p className="text-xs text-muted-foreground">Vencimento dia {currentCard.due_day}</p>
+              {billDates && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {billDates.status} - Fecha em {billDates.closingDate} - Vence em {billDates.dueDate}
+                </p>
+              )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              <Button size="sm" variant="outline" onClick={openEditCard}>Editar cartao</Button>
+              <Button size="sm" variant="outline" onClick={handlePayBill} disabled={unpaidTotal <= 0 || togglePaid.isPending}>Pagar fatura</Button>
               <button onClick={() => setBillMonth(prevMonth(billMonth))} className="p-1.5 hover:bg-muted rounded-lg transition-colors">
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -198,7 +268,6 @@ export default function CreditCardsPage() {
             </div>
           </div>
 
-          {/* Bill Stats */}
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-xl bg-expense/5 border border-expense/20 p-3">
               <p className="text-xs text-muted-foreground">Total fatura</p>
@@ -209,12 +278,11 @@ export default function CreditCardsPage() {
               <p className="font-bold text-income">{formatCurrency(paidTotal)}</p>
             </div>
             <div className="rounded-xl bg-muted p-3">
-              <p className="text-xs text-muted-foreground">Disponível</p>
+              <p className="text-xs text-muted-foreground">Disponivel</p>
               <p className="font-bold">{formatCurrency(Number(currentCard.credit_limit) - billTotal)}</p>
             </div>
           </div>
 
-          {/* Limit Usage Bar */}
           <div>
             <div className="flex justify-between text-xs text-muted-foreground mb-1">
               <span>Uso do limite</span>
@@ -235,7 +303,6 @@ export default function CreditCardsPage() {
             </Button>
           </div>
 
-          {/* Transactions */}
           {transactions.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">Nenhuma compra nesta fatura</p>
           ) : (
@@ -277,12 +344,11 @@ export default function CreditCardsPage() {
         </div>
       )}
 
-      {/* Add Card Dialog */}
       <Dialog open={showNewCard} onOpenChange={setShowNewCard}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Novo Cartão de Crédito</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Novo Cartao de Credito</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label>Nome do cartão</Label><Input placeholder="Ex: Nubank Roxinho" value={newCard.name} onChange={e => setNewCard(p => ({ ...p, name: e.target.value }))} /></div>
+            <div><Label>Nome do cartao</Label><Input placeholder="Ex: Nubank Roxinho" value={newCard.name} onChange={e => setNewCard(p => ({ ...p, name: e.target.value }))} /></div>
             <div>
               <Label>Cor</Label>
               <div className="flex gap-2 mt-2">
@@ -306,12 +372,39 @@ export default function CreditCardsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Add Transaction Dialog */}
+      <Dialog open={showEditCard} onOpenChange={setShowEditCard}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Editar Cartao de Credito</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>Nome do cartao</Label><Input value={editCard.name} onChange={e => setEditCard(p => ({ ...p, name: e.target.value }))} /></div>
+            <div>
+              <Label>Cor</Label>
+              <div className="flex gap-2 mt-2">
+                {CARD_COLORS.map(c => (
+                  <button key={c} onClick={() => setEditCard(p => ({ ...p, color: c }))}
+                    className={`w-7 h-7 rounded-full transition-all ${editCard.color === c ? 'ring-2 ring-offset-2 ring-primary scale-110' : ''}`}
+                    style={{ backgroundColor: c }} />
+                ))}
+              </div>
+            </div>
+            <div><Label>Limite (R$)</Label><Input type="number" value={editCard.credit_limit} onChange={e => setEditCard(p => ({ ...p, credit_limit: e.target.value }))} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Dia de fechamento</Label><Input type="number" min={1} max={31} value={editCard.closing_day} onChange={e => setEditCard(p => ({ ...p, closing_day: e.target.value }))} /></div>
+              <div><Label>Dia de vencimento</Label><Input type="number" min={1} max={31} value={editCard.due_day} onChange={e => setEditCard(p => ({ ...p, due_day: e.target.value }))} /></div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditCard(false)}>Cancelar</Button>
+            <Button onClick={handleUpdateCard} disabled={updateCard.isPending}>Salvar alteracoes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showNewTx} onOpenChange={setShowNewTx}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Nova Compra — {currentCard?.name}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Nova Compra - {currentCard?.name}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label>Descrição</Label><Input placeholder="Ex: iFood, Netflix..." value={newTx.description} onChange={e => setNewTx(p => ({ ...p, description: e.target.value }))} /></div>
+            <div><Label>Descricao</Label><Input placeholder="Ex: iFood, Netflix..." value={newTx.description} onChange={e => setNewTx(p => ({ ...p, description: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Valor total (R$)</Label><Input type="number" placeholder="0,00" value={newTx.amount} onChange={e => setNewTx(p => ({ ...p, amount: e.target.value }))} /></div>
               <div>
@@ -321,7 +414,7 @@ export default function CreditCardsPage() {
             </div>
             {parseInt(newTx.installments) > 1 && (
               <div className="rounded-lg bg-primary/5 border border-primary/20 px-3 py-2 text-xs text-muted-foreground">
-                📅 Serão geradas {newTx.installments} parcelas de {newTx.amount ? formatCurrency(parseFloat(newTx.amount) / parseInt(newTx.installments)) : 'R$ -'} nas próximas faturas.
+                Serao geradas {newTx.installments} parcelas de {newTx.amount ? formatCurrency(parseFloat(newTx.amount) / parseInt(newTx.installments)) : 'R$ -'} nas proximas faturas.
               </div>
             )}
             <div><Label>Data da compra</Label><Input type="date" value={newTx.date} onChange={e => setNewTx(p => ({ ...p, date: e.target.value }))} /></div>
