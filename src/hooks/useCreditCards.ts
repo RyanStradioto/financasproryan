@@ -102,6 +102,7 @@ export function useAddCreditCardTransaction() {
       installments?: number; // defaults to 1 (no installment)
       is_recurring?: boolean;
       notes?: string;
+      paid?: boolean;
     }) => {
       const total = data.installments ?? 1;
       const groupId = total > 1 ? crypto.randomUUID() : null;
@@ -126,7 +127,7 @@ export function useAddCreditCardTransaction() {
           installment_group_id: groupId,
           is_recurring: data.is_recurring ?? false,
           notes: data.notes ?? null,
-          paid: false,
+          paid: data.paid ?? false,
         };
       });
 
