@@ -231,6 +231,27 @@ export function useUpcomingInstallments(monthsAhead = 3) {
   });
 }
 
+/** ALL future installments + transactions from current month onwards — used by CreditCardsPage */
+export function useAllFutureCCTransactions() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['cc-all-future', user?.id],
+    queryFn: async () => {
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const { data, error } = await supabase
+        .from('credit_card_transactions')
+        .select('*')
+        .gte('bill_month', currentMonth)
+        .order('bill_month', { ascending: true })
+        .order('date', { ascending: false });
+      if (error) throw error;
+      return data as CreditCardTransaction[];
+    },
+    enabled: !!user,
+  });
+}
+
 /** All CC transactions for a given bill month (all cards) — used by Dashboard */
 export function useCCTransactionsForMonth(billMonth: string) {
   const { user } = useAuth();

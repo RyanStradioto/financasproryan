@@ -281,73 +281,71 @@ export default function ExpensesPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Hero Header */}
-      <div className="hero-card flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
-        <div className="absolute -top-20 -right-20 w-64 h-64 bg-expense/20 blur-3xl rounded-full pointer-events-none" />
-        <div className="flex items-center gap-4 relative z-10">
-          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-expense/30 to-expense/10 flex items-center justify-center shadow-inner border border-expense/20">
-            <TrendingDown className="w-7 h-7 sm:w-8 sm:h-8 text-expense drop-shadow-md" />
-          </div>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-1">Despesas</h1>
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-expense animate-pulse" />
-              {hasActiveFilters ? `${filtered.length} de ` : ''}{totalItems} lançamentos neste mês
-              {ccTransactions.length > 0 && (
-                <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-md bg-[#6366f1]/10 text-[#6366f1] border border-[#6366f1]/20 font-medium">
-                  <CreditCard className="w-3 h-3" />{ccTransactions.length} no cartão
-                </span>
-              )}
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 relative z-10 w-full sm:w-auto mt-2 sm:mt-0">
-          {/* Summary mini chips */}
-          {ccTransactions.length > 0 && (
-            <div className="hidden md:flex flex-col items-end gap-1">
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] text-muted-foreground">Débito/Espécie</span>
-                <span className="text-sm font-bold text-expense">{formatCurrency(totalExpenses)}</span>
+      {/* ─── Hero Header ─── */}
+      <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-expense/[0.04] p-5 sm:p-7 shadow-sm">
+        <div className="absolute -top-24 -right-24 w-72 h-72 bg-expense/15 blur-3xl rounded-full pointer-events-none" />
+        <div className="absolute -bottom-32 -left-20 w-64 h-64 bg-expense/[0.06] blur-3xl rounded-full pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col gap-5">
+          {/* Title row */}
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-expense/25 to-expense/5 flex items-center justify-center shadow-inner border border-expense/15 shrink-0">
+                <TrendingDown className="w-6 h-6 sm:w-7 sm:h-7 text-expense" />
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] text-muted-foreground">Cartão de Crédito</span>
-                <span className="text-sm font-bold text-[#6366f1]">{formatCurrency(totalCC)}</span>
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-none">Despesas</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 flex items-center gap-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-expense animate-pulse" />
+                    {hasActiveFilters ? `${filtered.length} de ${totalItems}` : totalItems} {totalItems === 1 ? 'lançamento' : 'lançamentos'}
+                  </span>
+                  {ccTransactions.length > 0 && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#6366f1]/10 text-[#6366f1] border border-[#6366f1]/20 font-semibold text-[10px] uppercase tracking-wide">
+                      <CreditCard className="w-3 h-3" />{ccTransactions.length} cartão
+                    </span>
+                  )}
+                </p>
               </div>
             </div>
-          )}
-          <div className="flex flex-col items-start sm:items-end mb-2 sm:mb-0">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Total Mensal</p>
-            <p className="text-3xl sm:text-4xl font-extrabold text-expense currency drop-shadow-sm leading-none">{formatCurrency(totalExpenses + totalCC)}</p>
+            <div className="flex items-center gap-2 shrink-0">
+              <MonthSelector month={month} onChange={setMonth} />
+              <TransactionDialog type="expense" />
+            </div>
           </div>
-          <div className="w-full h-px sm:w-px sm:h-12 bg-border/50 block sm:mx-2 my-2 sm:my-0" />
-          <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
-            <div className="w-full sm:w-auto"><MonthSelector month={month} onChange={setMonth} /></div>
-            <div className="w-full sm:w-auto"><TransactionDialog type="expense" /></div>
-          </div>
-        </div>
-      </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cartao</p>
-            <CreditCard className="h-4 w-4 text-primary" />
+          {/* Total + breakdown */}
+          <div className="flex flex-col md:flex-row items-stretch md:items-end justify-between gap-5 pt-1">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80 mb-1.5">Total no mês</p>
+              <p className="text-4xl sm:text-5xl font-black text-expense currency leading-none tracking-tight">{formatCurrency(totalExpenses + totalCC)}</p>
+            </div>
+
+            {/* Inline split chips: Débito | Crédito | Em aberto */}
+            <div className="grid grid-cols-3 gap-2 md:gap-3 md:max-w-md w-full">
+              <div className="rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm px-3 py-2.5">
+                <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
+                  <Landmark className="h-3 w-3" />
+                  <p className="text-[9px] font-bold uppercase tracking-wider">Débito/PIX</p>
+                </div>
+                <p className="text-sm sm:text-base font-extrabold currency truncate">{formatCurrency(accountTotal)}</p>
+              </div>
+              <div className="rounded-xl border border-[#6366f1]/25 bg-[#6366f1]/[0.06] px-3 py-2.5">
+                <div className="flex items-center gap-1.5 text-[#6366f1] mb-0.5">
+                  <CreditCard className="h-3 w-3" />
+                  <p className="text-[9px] font-bold uppercase tracking-wider">Cartão</p>
+                </div>
+                <p className="text-sm sm:text-base font-extrabold currency text-[#6366f1] truncate">{formatCurrency(creditTotal)}</p>
+              </div>
+              <div className="rounded-xl border border-warning/25 bg-warning/[0.06] px-3 py-2.5">
+                <div className="flex items-center gap-1.5 text-warning mb-0.5">
+                  <Clock className="h-3 w-3" />
+                  <p className="text-[9px] font-bold uppercase tracking-wider">Em aberto</p>
+                </div>
+                <p className="text-sm sm:text-base font-extrabold currency text-warning truncate">{formatCurrency(scheduledTotal)}</p>
+              </div>
+            </div>
           </div>
-          <p className="mt-2 text-xl font-extrabold text-primary currency">{formatCurrency(creditTotal)}</p>
-        </div>
-        <div className="rounded-2xl border border-border/70 bg-card/70 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Debito / PIX</p>
-            <Landmark className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <p className="mt-2 text-xl font-extrabold currency">{formatCurrency(accountTotal)}</p>
-        </div>
-        <div className="rounded-2xl border border-warning/25 bg-warning/5 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Em aberto</p>
-            <Clock className="h-4 w-4 text-warning" />
-          </div>
-          <p className="mt-2 text-xl font-extrabold text-warning currency">{formatCurrency(scheduledTotal)}</p>
         </div>
       </div>
 
@@ -721,23 +719,22 @@ export default function ExpensesPage() {
         )}
       </div>
 
-      {/* Desktop table */}
-      <div className="hidden sm:block rounded-2xl border border-border/70 bg-card/70 p-3 shadow-sm">
+      {/* ─── Desktop table ─── */}
+      <div className="hidden sm:block rounded-2xl border border-border/60 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full border-separate border-spacing-y-2 text-sm">
+          <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-muted/30">
-                <th className="text-left py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Data</th>
-                <th className="text-left py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Descrição</th>
-                <th className="text-left py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Categoria</th>
-                <th className="text-left py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Status / Cartão</th>
-                <th className="text-right py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Valor</th>
-                {hourlyRate && <th className="text-center py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Trabalho</th>}
-                <th className="text-left py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Conta</th>
-                <th className="py-3.5 px-4 w-20"></th>
+              <tr className="bg-muted/30 border-b border-border/60">
+                <th className="text-left py-3 px-5 font-semibold text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80 w-[110px]">Data</th>
+                <th className="text-left py-3 px-3 font-semibold text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80">Descrição</th>
+                <th className="text-left py-3 px-3 font-semibold text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80 w-[150px]">Categoria</th>
+                <th className="text-left py-3 px-3 font-semibold text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80 w-[140px]">Pagamento</th>
+                <th className="text-right py-3 px-3 font-semibold text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80 w-[120px]">Valor</th>
+                {hourlyRate && <th className="text-center py-3 px-3 font-semibold text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80 w-[100px]">Trabalho</th>}
+                <th className="py-3 px-3 w-[80px]"></th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-border/40">
               {filtered.map((item) => {
                 const isCC = item._type === 'cc';
                 const wt = calcWorkTime(Number(item.amount));
@@ -746,39 +743,41 @@ export default function ExpensesPage() {
                 if (isCC) {
                   const cc = item as CCRow;
                   return (
-                    <tr key={`cc-${cc.id}`} className="border-b border-border/30 hover:bg-[#6366f1]/[0.03] transition-all" style={{ borderLeftColor: cardColor, borderLeftWidth: 3 }}>
-                      <td className="py-3.5 px-4 text-muted-foreground text-sm">{formatDate(cc.date)}</td>
-                      <td className="py-3.5 px-4 font-medium">
+                    <tr key={`cc-${cc.id}`} className="hover:bg-[#6366f1]/[0.04] transition-colors group relative">
+                      <td className="py-3 pl-5 pr-3 relative">
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full" style={{ backgroundColor: cardColor }} />
+                        <span className="text-muted-foreground text-[13px]">{formatDate(cc.date)}</span>
+                      </td>
+                      <td className="py-3 px-3">
                         <div className="flex items-center gap-2">
-                          {cc.description || 'Compra'}
+                          <span className="font-semibold text-foreground">{cc.description || 'Compra'}</span>
                           {cc.is_installment && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold border" style={{ color: cardColor, borderColor: `${cardColor}40`, backgroundColor: `${cardColor}15` }}>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-md font-bold" style={{ color: cardColor, backgroundColor: `${cardColor}15`, border: `1px solid ${cardColor}30` }}>
                               {cc.installment_number}/{cc.total_installments}x
                             </span>
                           )}
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 text-muted-foreground text-xs">{getCategoryName(cc.category_id)}</td>
-                      <td className="py-3.5 px-4">
+                      <td className="py-3 px-3 text-muted-foreground text-xs">{getCategoryName(cc.category_id)}</td>
+                      <td className="py-3 px-3">
                         <span
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border"
-                          style={{ color: cardColor, borderColor: `${cardColor}40`, backgroundColor: `${cardColor}15` }}
+                          className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-semibold"
+                          style={{ color: cardColor, backgroundColor: `${cardColor}12`, border: `1px solid ${cardColor}30` }}
                         >
-                          <CreditCard className="w-3.5 h-3.5" />
+                          <CreditCard className="w-3 h-3" />
                           {getCardName(cc.credit_card_id)}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-right currency font-bold text-expense">{formatCurrency(Number(cc.amount))}</td>
+                      <td className="py-3 px-3 text-right currency font-bold text-expense tabular-nums">{formatCurrency(Number(cc.amount))}</td>
                       {hourlyRate && (
-                        <td className="py-3.5 px-4 text-center">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent/50 text-xs font-semibold text-accent-foreground">
+                        <td className="py-3 px-3 text-center">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-accent/40 text-[11px] font-semibold text-accent-foreground/90">
                             <Clock className="w-3 h-3" />{formatWorkTime(wt)}
                           </span>
                         </td>
                       )}
-                      <td className="py-3.5 px-4 text-xs text-muted-foreground">—</td>
-                      <td className="py-3.5 px-4">
-                        <a href="/cartoes" className="text-[10px] text-muted-foreground hover:text-[#6366f1] transition-colors flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                      <td className="py-3 px-3">
+                        <a href="/cartoes" className="text-[10px] text-muted-foreground hover:text-[#6366f1] transition-colors flex items-center gap-1 opacity-0 group-hover:opacity-100 whitespace-nowrap font-medium">
                           Ver fatura →
                         </a>
                       </td>
@@ -787,44 +786,54 @@ export default function ExpensesPage() {
                 }
 
                 const exp = item as ExpenseRow;
+                const statusColor =
+                  exp.status === 'concluido' ? 'rgb(16 185 129)' :
+                  exp.status === 'pendente' ? 'rgb(245 158 11)' :
+                  'rgb(59 130 246)';
                 return (
-                  <tr key={`exp-${exp.id}`} className="border-b border-border/30 hover:bg-muted/40 transition-all group">
-                    <td className="py-3.5 px-4">
+                  <tr key={`exp-${exp.id}`} className="hover:bg-muted/30 transition-colors group relative">
+                    <td className="py-3 pl-5 pr-3 relative">
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full opacity-70" style={{ backgroundColor: statusColor }} />
                       <DatePicker date={exp.date} onChange={d => handleDateChange(exp.id, d)} />
                     </td>
-                    <td className="border-y border-border/50 bg-background/45 py-3.5 px-4 font-semibold group-hover:bg-muted/30 transition-colors">
+                    <td className="py-3 px-3">
                       <div className="flex items-center gap-1.5">
-                        {exp.description || 'Despesa'}
+                        <span className="font-semibold text-foreground">{exp.description || 'Despesa'}</span>
                         {exp.attachment_url && (
-                          <a href={exp.attachment_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
+                          <a href={exp.attachment_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 shrink-0">
                             <Paperclip className="w-3 h-3" />
                           </a>
                         )}
                       </div>
                     </td>
-                    <td className="py-3.5 px-4">
-                      <OptionPicker value={exp.category_id} options={categories} placeholder="Categoria" onChange={v => handleCategoryChange(exp.id, v)} />
+                    <td className="py-3 px-3">
+                      <OptionPicker value={exp.category_id} options={categories} placeholder="—" onChange={v => handleCategoryChange(exp.id, v)} />
                     </td>
-                    <td className="py-3.5 px-4">
-                      <StatusPicker status={exp.status} onChange={s => handleStatusChange(exp.id, s)} />
+                    <td className="py-3 px-3">
+                      <div className="flex flex-col gap-1 items-start">
+                        <StatusPicker status={exp.status} onChange={s => handleStatusChange(exp.id, s)} />
+                        {exp.account_id && (
+                          <OptionPicker value={exp.account_id} options={accounts} placeholder="—" onChange={v => handleAccountChange(exp.id, v)} />
+                        )}
+                        {!exp.account_id && (
+                          <OptionPicker value={exp.account_id} options={accounts} placeholder="conta…" onChange={v => handleAccountChange(exp.id, v)} />
+                        )}
+                      </div>
                     </td>
-                    <td className="py-3.5 px-4 text-right currency font-bold text-expense">{formatCurrency(Number(exp.amount))}</td>
+                    <td className="py-3 px-3 text-right currency font-bold text-expense tabular-nums">{formatCurrency(Number(exp.amount))}</td>
                     {hourlyRate && (
-                      <td className="border-y border-border/50 bg-background/45 py-3.5 px-4 text-center group-hover:bg-muted/30 transition-colors">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent/50 text-xs font-semibold text-accent-foreground">
+                      <td className="py-3 px-3 text-center">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-accent/40 text-[11px] font-semibold text-accent-foreground/90">
                           <Clock className="w-3 h-3" />{formatWorkTime(wt)}
                         </span>
                       </td>
                     )}
-                    <td className="py-3.5 px-4">
-                      <OptionPicker value={exp.account_id} options={accounts} placeholder="Conta" onChange={v => handleAccountChange(exp.id, v)} />
-                    </td>
-                    <td className="rounded-r-xl border-y border-r border-border/50 bg-background/45 py-3.5 px-4 group-hover:bg-muted/30 transition-colors">
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                        <button onClick={() => setEditing({ ...exp, type: 'expense' })} className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all p-1.5 rounded-lg">
+                    <td className="py-3 px-3">
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => setEditing({ ...exp, type: 'expense' })} className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all">
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
-                        <button onClick={() => handleDelete(exp.id)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all p-1.5 rounded-lg">
+                        <button onClick={() => handleDelete(exp.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -833,7 +842,7 @@ export default function ExpensesPage() {
                 );
               })}
               {totalItems === 0 && !isLoading && (
-                <tr><td colSpan={hourlyRate ? 8 : 7} className="py-16 text-center">
+                <tr><td colSpan={hourlyRate ? 7 : 6} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-14 h-14 rounded-2xl bg-muted/50 flex items-center justify-center">
                       <Receipt className="w-6 h-6 text-muted-foreground" />
@@ -846,7 +855,7 @@ export default function ExpensesPage() {
                 </td></tr>
               )}
               {totalItems > 0 && filtered.length === 0 && (
-                <tr><td colSpan={hourlyRate ? 8 : 7} className="py-16 text-center">
+                <tr><td colSpan={hourlyRate ? 7 : 6} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <Filter className="w-8 h-8 text-muted-foreground opacity-40" />
                     <div>
@@ -859,24 +868,24 @@ export default function ExpensesPage() {
             </tbody>
             {filtered.length > 0 && (
               <tfoot>
-                <tr className="border-t-2 border-border bg-muted/20">
-                  <td colSpan={3} className="py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-muted-foreground">TOTAL FILTRADO</td>
-                  <td className="py-3.5 px-4 text-xs text-muted-foreground">
+                <tr className="border-t border-border/60 bg-gradient-to-r from-muted/30 via-expense/[0.04] to-muted/30">
+                  <td colSpan={hourlyRate ? 4 : 4} className="py-3.5 pl-5 pr-3 font-bold text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+                    Total filtrado
                     {ccTransactions.length > 0 && (
-                      <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-[#6366f1]/10 text-[#6366f1] font-medium">
-                        <CreditCard className="w-3 h-3" /> CC: {formatCurrency(totalCC)}
+                      <span className="ml-2 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-[#6366f1]/10 text-[#6366f1] font-semibold">
+                        <CreditCard className="w-2.5 h-2.5" /> {formatCurrency(totalCC)}
                       </span>
                     )}
                   </td>
-                  <td className="py-3.5 px-4 text-right currency font-extrabold text-expense">{formatCurrency(total)}</td>
+                  <td className="py-3.5 px-3 text-right currency font-black text-expense text-base tabular-nums">{formatCurrency(total)}</td>
                   {hourlyRate && (
-                    <td className="py-3.5 px-4 text-center">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent/50 text-xs font-bold text-accent-foreground">
+                    <td className="py-3.5 px-3 text-center">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-accent/50 text-[11px] font-bold text-accent-foreground">
                         <Clock className="w-3 h-3" />{formatWorkTime(calcWorkTime(total))}
                       </span>
                     </td>
                   )}
-                  <td colSpan={3}></td>
+                  <td className="py-3.5 px-3"></td>
                 </tr>
               </tfoot>
             )}

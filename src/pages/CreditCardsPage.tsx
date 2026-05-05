@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, CreditCard, Trash2, Check, X, ChevronLeft, ChevronRight, ChevronDown, Wallet, CalendarDays, Zap, Receipt } from 'lucide-react';
+import { Plus, CreditCard, Trash2, Check, X, ChevronLeft, ChevronRight, ChevronDown, Wallet, CalendarDays, Zap, Receipt, TrendingUp, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,7 @@ import {
   useAddCreditCardTransaction,
   useToggleCCTransactionPaid,
   useDeleteCCTransaction,
-  useUpcomingInstallments,
+  useAllFutureCCTransactions,
 } from '@/hooks/useCreditCards';
 import { useCategories, useAccounts, useAddExpense } from '@/hooks/useFinanceData';
 import { getMonthYear, formatCurrency, formatDate, calcBillMonth } from '@/lib/format';
@@ -56,7 +56,7 @@ export default function CreditCardsPage() {
   const { data: categories = [] } = useCategories();
   const { data: accounts = [] } = useAccounts();
   const { data: transactions = [] } = useCreditCardTransactions(selectedCard ?? undefined, billMonth);
-  const { data: upcomingTxns = [] } = useUpcomingInstallments(3);
+  const { data: futureTxns = [] } = useAllFutureCCTransactions();
   const addCard = useAddCreditCard();
   const updateCard = useUpdateCreditCard();
   const deleteCard = useDeleteCreditCard();
@@ -122,15 +122,19 @@ export default function CreditCardsPage() {
   const newTxBillLabel = useMemo(() => monthLabel(newTxBillMonth), [newTxBillMonth]);
 
   const upcomingByMonth = useMemo(() => {
-    const groups: Record<string, typeof upcomingTxns> = {};
-    for (const t of upcomingTxns) {
+    const groups: Record<string, typeof futureTxns> = {};
+    for (const t of futureTxns) {
       if (!groups[t.bill_month]) groups[t.bill_month] = [];
       groups[t.bill_month].push(t);
     }
     return groups;
-  }, [upcomingTxns]);
+  }, [futureTxns]);
 
   const upcomingMonths = useMemo(() => Object.keys(upcomingByMonth).sort(), [upcomingByMonth]);
+
+  // Total commitment across all future bills
+  const futureTotal = useMemo(() => futureTxns.reduce((s, t) => s + Number(t.amount), 0), [futureTxns]);
+  const futureInstallmentCount = useMemo(() => futureTxns.filter(t => t.is_installment).length, [futureTxns]);
 
   // Category breakdown for current bill
   const catBreakdown = useMemo(() => {
@@ -225,95 +229,202 @@ export default function CreditCardsPage() {
   return (
     <div className="space-y-6 animate-fade-in">
 
-      {/* ── Hero Header ─────────────────────────────────────────── */}
-      <div className="hero-card flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
-        <div className="absolute -top-16 -right-16 w-56 h-56 bg-[#6366f1]/15 blur-3xl rounded-full pointer-events-none" />
-        <div className="flex items-center gap-4 relative z-10">
-          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-[#6366f1]/30 to-[#6366f1]/10 flex items-center justify-center shadow-inner border border-[#6366f1]/20">
-            <CreditCard className="w-7 h-7 sm:w-8 sm:h-8 text-[#6366f1] drop-shadow-md" />
+      {/* ─── Hero Header ─── */}
+      <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-[#6366f1]/[0.05] p-5 sm:p-7 shadow-sm">
+        <div className="absolute -top-20 -right-20 w-72 h-72 bg-[#6366f1]/15 blur-3xl rounded-full pointer-events-none" />
+        <div className="absolute -bottom-32 -left-24 w-72 h-72 bg-[#8b5cf6]/[0.08] blur-3xl rounded-full pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col gap-5">
+          {/* Title row */}
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-[#6366f1]/25 to-[#6366f1]/5 flex items-center justify-center shadow-inner border border-[#6366f1]/15 shrink-0">
+                <CreditCard className="w-6 h-6 sm:w-7 sm:h-7 text-[#6366f1]" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-none">Cartões de Crédito</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 flex items-center gap-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#6366f1] animate-pulse" />
+                    {cards.length} {cards.length === 1 ? 'cartão' : 'cartões'}
+                  </span>
+                  {futureInstallmentCount > 0 && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#6366f1]/10 text-[#6366f1] border border-[#6366f1]/20 font-semibold text-[10px] uppercase tracking-wide">
+                      <CalendarDays className="w-3 h-3" />{futureInstallmentCount} parcelas futuras
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button variant="outline" size="sm" onClick={() => setShowNewCard(true)} className="gap-1.5 h-9">
+                <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Novo Cartão</span>
+              </Button>
+              {selectedCard && (
+                <Button size="sm" onClick={() => setShowNewTx(true)} className="gap-1.5 h-9 bg-[#6366f1] hover:bg-[#6366f1]/90 text-white shadow-sm shadow-[#6366f1]/20">
+                  <Plus className="w-4 h-4" /> Nova Compra
+                </Button>
+              )}
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-1">Cartões de Crédito</h1>
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-[#6366f1] animate-pulse" />
-              {cards.length} cartão{cards.length !== 1 ? 'ões' : ''} · {upcomingTxns.length} parcelas futuras
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 relative z-10">
-          <Button variant="outline" size="sm" onClick={() => setShowNewCard(true)} className="gap-1.5">
-            <Plus className="w-4 h-4" /> Novo Cartão
-          </Button>
-          {selectedCard && (
-            <Button size="sm" onClick={() => setShowNewTx(true)} className="gap-1.5 bg-[#6366f1] hover:bg-[#6366f1]/90 text-white">
-              <Plus className="w-4 h-4" /> Nova Compra
-            </Button>
+
+          {/* Stats row */}
+          {cards.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
+              <div className="rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm px-3 py-2.5">
+                <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
+                  <Wallet className="h-3 w-3" />
+                  <p className="text-[9px] font-bold uppercase tracking-wider">Limite total</p>
+                </div>
+                <p className="text-sm sm:text-base font-extrabold currency truncate">
+                  {formatCurrency(cards.reduce((s, c) => s + Number(c.credit_limit), 0))}
+                </p>
+              </div>
+              <div className="rounded-xl border border-[#6366f1]/25 bg-[#6366f1]/[0.06] px-3 py-2.5">
+                <div className="flex items-center gap-1.5 text-[#6366f1] mb-0.5">
+                  <TrendingUp className="h-3 w-3" />
+                  <p className="text-[9px] font-bold uppercase tracking-wider">Compromisso futuro</p>
+                </div>
+                <p className="text-sm sm:text-base font-extrabold currency text-[#6366f1] truncate">{formatCurrency(futureTotal)}</p>
+              </div>
+              <div className="col-span-2 md:col-span-1 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm px-3 py-2.5">
+                <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
+                  <Sparkles className="h-3 w-3" />
+                  <p className="text-[9px] font-bold uppercase tracking-wider">Próximas faturas</p>
+                </div>
+                <p className="text-sm sm:text-base font-extrabold truncate">{upcomingMonths.length} {upcomingMonths.length === 1 ? 'mês' : 'meses'}</p>
+              </div>
+            </div>
           )}
         </div>
       </div>
 
-      {/* ── Próximas Parcelas ─────────────────────────────────────── */}
-      {upcomingTxns.length > 0 && (
-        <div className="stat-card space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-7 h-7 rounded-lg bg-[#6366f1]/10 flex items-center justify-center">
-              <CalendarDays className="w-4 h-4 text-[#6366f1]" />
+      {/* ─── Calendário de Faturas Futuras ─── */}
+      {futureTxns.length > 0 && (
+        <div className="rounded-3xl border border-border/60 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden">
+          {/* Section header */}
+          <div className="flex items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#6366f1]/5 via-transparent to-transparent border-b border-border/50">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#6366f1]/20 to-[#6366f1]/5 flex items-center justify-center border border-[#6366f1]/15 shrink-0">
+                <CalendarDays className="w-4.5 h-4.5 text-[#6366f1]" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-bold text-sm sm:text-base leading-tight">Calendário de Faturas</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{upcomingMonths.length} {upcomingMonths.length === 1 ? 'mês com lançamentos' : 'meses com lançamentos'} · todas as parcelas futuras</p>
+              </div>
             </div>
-            <h3 className="font-semibold">Calendário de Parcelas</h3>
-            <span className="text-xs text-muted-foreground ml-1">próximos 3 meses</span>
+            <div className="text-right shrink-0">
+              <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/80">Total</p>
+              <p className="text-sm sm:text-base font-extrabold currency text-[#6366f1] tabular-nums">{formatCurrency(futureTotal)}</p>
+            </div>
           </div>
-          <div className="space-y-2">
-            {upcomingMonths.map(mo => {
+
+          {/* Months list */}
+          <div className="divide-y divide-border/40">
+            {upcomingMonths.map((mo, idx) => {
               const monthTxns = upcomingByMonth[mo];
               const monthTotal = monthTxns.reduce((s, t) => s + Number(t.amount), 0);
               const isExpanded = expandedUpcomingMonth === mo;
               const label = monthLabel(mo);
+              const isCurrentMonth = mo === getMonthYear();
+
+              // Per-card breakdown for this month
+              const cardSplit = monthTxns.reduce<Record<string, number>>((acc, t) => {
+                acc[t.credit_card_id] = (acc[t.credit_card_id] ?? 0) + Number(t.amount);
+                return acc;
+              }, {});
 
               return (
-                <div key={mo} className="rounded-xl border border-border overflow-hidden">
+                <div key={mo} className={isExpanded ? 'bg-muted/20' : ''}>
                   <button
                     type="button"
                     onClick={() => setExpandedUpcomingMonth(isExpanded ? null : mo)}
-                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors"
+                    className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors group/month"
                   >
-                    <div className="flex items-center gap-3">
-                      <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
-                      <span className="text-sm font-semibold capitalize">{label}</span>
-                      <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                        {monthTxns.length} item{monthTxns.length !== 1 ? 'ns' : ''}
-                      </span>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={cn(
+                        'w-9 h-9 rounded-xl flex flex-col items-center justify-center font-extrabold text-[10px] uppercase tracking-wider shrink-0 transition-colors',
+                        isCurrentMonth
+                          ? 'bg-[#6366f1] text-white shadow-sm shadow-[#6366f1]/30'
+                          : isExpanded
+                            ? 'bg-[#6366f1]/15 text-[#6366f1] border border-[#6366f1]/20'
+                            : 'bg-muted text-muted-foreground border border-border/60',
+                      )}>
+                        <span className="text-[8px] opacity-70 leading-none">{label.split(' ')[1]?.slice(0, 4) ?? ''}</span>
+                        <span className="text-[11px] leading-none mt-0.5">{label.split(' ')[0].slice(0, 3)}</span>
+                      </div>
+                      <div className="min-w-0 text-left">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-bold capitalize">{label}</span>
+                          {isCurrentMonth && (
+                            <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-[#6366f1] text-white font-bold">Atual</span>
+                          )}
+                          {idx === 0 && !isCurrentMonth && (
+                            <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-warning/15 text-warning font-bold border border-warning/20">Próxima</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          <span className="text-[10px] text-muted-foreground">
+                            {monthTxns.length} {monthTxns.length === 1 ? 'item' : 'itens'}
+                          </span>
+                          {Object.entries(cardSplit).map(([cardId]) => {
+                            const card = cards.find(c => c.id === cardId);
+                            if (!card) return null;
+                            return (
+                              <span key={cardId} className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md font-semibold border" style={{ color: card.color ?? '#6366f1', backgroundColor: `${card.color ?? '#6366f1'}10`, borderColor: `${card.color ?? '#6366f1'}25` }}>
+                                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: card.color ?? '#6366f1' }} />
+                                {card.name}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
-                    <span className="text-sm font-bold currency text-expense">{formatCurrency(monthTotal)}</span>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-sm sm:text-base font-extrabold currency text-expense tabular-nums">{formatCurrency(monthTotal)}</span>
+                      <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', isExpanded ? 'rotate-0' : '-rotate-90')} />
+                    </div>
                   </button>
 
                   {isExpanded && (
-                    <div className="border-t border-border divide-y divide-border/40">
-                      {monthTxns.map(t => {
-                        const card = cards.find(c => c.id === t.credit_card_id);
-                        const cat = categories.find(c => c.id === t.category_id);
-                        return (
-                          <div key={t.id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition-colors">
-                            <div className="flex items-center gap-3 min-w-0">
-                              {card && (
-                                <div className="w-3 h-3 rounded-full shrink-0 ring-1 ring-border" style={{ backgroundColor: card.color ?? '#6366f1' }} />
-                              )}
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium truncate">{t.description}</p>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  {card && <p className="text-[10px] text-muted-foreground font-medium">{card.name}</p>}
-                                  {cat && <p className="text-[10px] text-muted-foreground">{cat.icon} {cat.name}</p>}
-                                  {t.is_installment && (
-                                    <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-bold">
-                                      {t.installment_number}/{t.total_installments}x
-                                    </span>
-                                  )}
+                    <div className="px-3 pb-3">
+                      <div className="rounded-2xl border border-border/50 bg-card/80 overflow-hidden divide-y divide-border/30">
+                        {monthTxns.map(t => {
+                          const card = cards.find(c => c.id === t.credit_card_id);
+                          const cat = categories.find(c => c.id === t.category_id);
+                          const cardColor = card?.color ?? '#6366f1';
+                          return (
+                            <div key={t.id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors group/tx">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-1 h-10 rounded-full shrink-0" style={{ backgroundColor: cardColor }} />
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className={cn('text-sm font-semibold truncate', t.paid && 'line-through text-muted-foreground')}>{t.description}</p>
+                                    {t.is_installment && (
+                                      <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold shrink-0" style={{ color: cardColor, backgroundColor: `${cardColor}15`, border: `1px solid ${cardColor}30` }}>
+                                        {t.installment_number}/{t.total_installments}x
+                                      </span>
+                                    )}
+                                    {t.paid && (
+                                      <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold bg-income/10 text-income border border-income/20">PAGA</span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                    {card && (
+                                      <span className="text-[10px] font-semibold" style={{ color: cardColor }}>{card.name}</span>
+                                    )}
+                                    {cat && (
+                                      <span className="text-[10px] text-muted-foreground">· {cat.icon} {cat.name}</span>
+                                    )}
+                                    <span className="text-[10px] text-muted-foreground">· {formatDate(t.date)}</span>
+                                  </div>
                                 </div>
                               </div>
+                              <span className={cn('text-sm font-bold currency shrink-0 ml-3 tabular-nums', t.paid ? 'text-muted-foreground' : 'text-expense')}>{formatCurrency(Number(t.amount))}</span>
                             </div>
-                            <span className="text-sm font-bold currency shrink-0 ml-3">{formatCurrency(Number(t.amount))}</span>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -323,69 +434,98 @@ export default function CreditCardsPage() {
         </div>
       )}
 
-      {/* ── Card Grid ────────────────────────────────────────────── */}
+      {/* ─── Card Grid ─── */}
       {cards.length === 0 ? (
-        <div className="stat-card py-20 text-center">
-          <div className="w-20 h-20 rounded-2xl bg-[#6366f1]/10 flex items-center justify-center mx-auto mb-4 border border-[#6366f1]/20">
-            <CreditCard className="w-10 h-10 text-[#6366f1]/50" />
+        <div className="rounded-3xl border border-dashed border-[#6366f1]/30 bg-[#6366f1]/[0.03] py-16 px-6 text-center">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#6366f1]/20 to-[#6366f1]/5 flex items-center justify-center mx-auto mb-4 border border-[#6366f1]/20 shadow-inner">
+            <CreditCard className="w-10 h-10 text-[#6366f1]/60" />
           </div>
-          <p className="font-bold text-lg mb-1">Nenhum cartão cadastrado</p>
-          <p className="text-sm text-muted-foreground mb-5">Adicione seus cartões para controlar faturas e parcelamentos</p>
-          <Button onClick={() => setShowNewCard(true)} className="bg-[#6366f1] hover:bg-[#6366f1]/90 text-white">
+          <p className="font-extrabold text-lg mb-1">Nenhum cartão cadastrado</p>
+          <p className="text-sm text-muted-foreground mb-5 max-w-sm mx-auto">Adicione seus cartões para controlar faturas e parcelamentos</p>
+          <Button onClick={() => setShowNewCard(true)} className="bg-[#6366f1] hover:bg-[#6366f1]/90 text-white shadow-sm shadow-[#6366f1]/20">
             <Plus className="w-4 h-4 mr-1.5" /> Adicionar primeiro cartão
           </Button>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {cards.map((card) => {
             const isSelected = selectedCard === card.id;
+            // Future commitment for THIS card across all months
+            const cardFutureTotal = futureTxns
+              .filter(t => t.credit_card_id === card.id)
+              .reduce((s, t) => s + Number(t.amount), 0);
+            const cardLimitUsage = Math.min(100, (cardFutureTotal / Math.max(Number(card.credit_limit), 1)) * 100);
+
             return (
               <button
                 key={card.id}
-                onClick={() => setSelectedCard(isSelected ? null : card.id)}
-                className={`relative rounded-2xl p-5 cursor-pointer transition-all text-white overflow-hidden select-none ${isSelected ? 'ring-2 ring-white/60 shadow-xl scale-[1.02]' : 'hover:scale-[1.01] hover:shadow-lg'}`}
-                style={{ background: `linear-gradient(135deg, ${card.color}ee, ${card.color}99)` }}
+                onClick={() => setSelectedCard(card.id)}
+                className={cn(
+                  'group/card relative rounded-2xl p-5 cursor-pointer transition-all text-white overflow-hidden select-none text-left',
+                  'shadow-md hover:shadow-xl',
+                  isSelected ? 'ring-2 ring-offset-2 ring-offset-background scale-[1.015]' : 'hover:scale-[1.015]',
+                )}
+                style={{
+                  background: `linear-gradient(135deg, ${card.color}ff 0%, ${card.color}dd 50%, ${card.color}99 100%)`,
+                  boxShadow: isSelected ? `0 0 0 2px ${card.color}, 0 12px 24px -8px ${card.color}50` : undefined,
+                }}
               >
-                {/* Decorative circles */}
-                <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10" />
-                <div className="absolute -right-2 -bottom-8 w-32 h-32 rounded-full bg-white/5" />
+                {/* Decorative wave overlay */}
+                <div className="absolute inset-0 opacity-20 pointer-events-none">
+                  <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/30" />
+                  <div className="absolute -right-12 top-12 w-40 h-40 rounded-full bg-white/15" />
+                  <div className="absolute -left-8 -bottom-8 w-28 h-28 rounded-full bg-black/20" />
+                </div>
 
-                <div className="relative z-10">
-                  <div className="flex justify-between items-start mb-6">
-                    <div>
-                      <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest mb-0.5">Cartão</p>
-                      <p className="font-extrabold text-xl leading-tight">{card.name}</p>
+                <div className="relative z-10 space-y-5">
+                  {/* Top: name + delete */}
+                  <div className="flex justify-between items-start">
+                    <div className="min-w-0">
+                      <p className="text-white/70 text-[9px] font-bold uppercase tracking-[0.2em] mb-1">Cartão</p>
+                      <p className="font-extrabold text-lg leading-tight tracking-tight truncate">{card.name}</p>
                     </div>
                     <button
                       onClick={e => { e.stopPropagation(); deleteCard.mutate(card.id); }}
-                      className="p-1.5 rounded-lg bg-white/10 hover:bg-white/25 transition-colors"
+                      className="p-1.5 rounded-lg bg-black/15 hover:bg-black/30 backdrop-blur-sm transition-colors opacity-0 group-hover/card:opacity-100 shrink-0"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
-                  {/* Card chip visual */}
-                  <div className="w-10 h-7 rounded-md bg-white/20 mb-5 border border-white/30" />
+                  {/* Chip + brand mark */}
+                  <div className="flex items-center justify-between">
+                    <div className="w-11 h-8 rounded-md bg-gradient-to-br from-yellow-100/80 to-yellow-300/40 border border-white/20 shadow-inner" />
+                    <CreditCard className="w-7 h-7 text-white/40" />
+                  </div>
 
-                  <div className="flex justify-between items-end">
-                    <div>
-                      <p className="text-white/60 text-[10px] font-bold uppercase tracking-wider mb-0.5">Limite</p>
-                      <p className="font-bold text-base">{formatCurrency(Number(card.credit_limit))}</p>
+                  {/* Bottom: limit usage bar */}
+                  <div className="space-y-2">
+                    <div className="flex items-end justify-between gap-2">
+                      <div>
+                        <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider mb-0.5">Comprometido</p>
+                        <p className="font-extrabold text-base tracking-tight tabular-nums">{formatCurrency(cardFutureTotal)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider mb-0.5">Fecha · Vence</p>
+                        <p className="font-bold text-sm tabular-nums">{String(card.closing_day).padStart(2,'0')} · {String(card.due_day).padStart(2,'0')}</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-white/60 text-[10px] font-bold uppercase tracking-wider mb-0.5">Fecha · Vence</p>
-                      <p className="font-bold text-base">Dia {card.closing_day} · {card.due_day}</p>
+                    <div className="space-y-1">
+                      <div className="h-1.5 bg-black/25 rounded-full overflow-hidden">
+                        <div className="h-full bg-white/80 rounded-full transition-all" style={{ width: `${cardLimitUsage}%` }} />
+                      </div>
+                      <div className="flex items-center justify-between text-[9px] font-semibold">
+                        <span className="text-white/60 uppercase tracking-wider">Limite {formatCurrency(Number(card.credit_limit))}</span>
+                        <span className="text-white/90">{cardLimitUsage.toFixed(0)}%</span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <CreditCard className="absolute right-3 bottom-3 w-8 h-8 text-white/20" />
-
+                {/* Selected indicator */}
                 {isSelected && (
-                  <div className="absolute top-2 left-1/2 -translate-x-1/2">
-                    <span className="text-[10px] bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded-full font-medium">
-                      ▲ Ver fatura
-                    </span>
+                  <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-white/95 flex items-center justify-center shadow-md">
+                    <Check className="w-3.5 h-3.5" style={{ color: card.color }} strokeWidth={3} />
                   </div>
                 )}
               </button>
