@@ -8,13 +8,14 @@ import { useWorkTimeCalc } from '@/hooks/useProfile';
 import MonthSelector from '@/components/finance/MonthSelector';
 import TransactionDialog from '@/components/finance/TransactionDialog';
 import EditTransactionDialog from '@/components/finance/EditTransactionDialog';
-import { Trash2, Pencil, Paperclip, Clock, ChevronDown, Filter, Search, X, TrendingDown, Receipt, SlidersHorizontal, Check, ArrowUp, ArrowDown, CreditCard } from 'lucide-react';
+import { Trash2, Pencil, Paperclip, Clock, ChevronDown, Filter, Search, X, TrendingDown, Receipt, SlidersHorizontal, Check, ArrowUp, ArrowDown, CreditCard, Landmark } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 type ExpenseRow = Expense & { _type: 'expense' };
 type CCRow = CreditCardTransaction & { _type: 'cc' };
 type Row = ExpenseRow | CCRow;
+type PickerOption = { id: string; name: string; icon?: string | null };
 
 function DatePicker({ date, onChange }: { date: string; onChange: (d: string) => void }) {
   const [editing, setEditing] = useState(false);
@@ -211,6 +212,11 @@ export default function ExpensesPage() {
   const totalCC = useMemo(() => ccTransactions.reduce((s, t) => s + Number(t.amount), 0), [ccTransactions]);
   const total = filtered.reduce((s, r) => s + Number(r.amount), 0);
   const totalItems = expenses.length + ccTransactions.length;
+
+  // Aliases used in summary cards
+  const creditTotal = totalCC;
+  const accountTotal = totalExpenses;
+  const scheduledTotal = useMemo(() => expenses.filter(e => e.status !== 'concluido').reduce((s, e) => s + Number(e.amount), 0), [expenses]);
 
   const getCategoryName = (id: string | null) => {
     if (!id) return '—';
@@ -673,11 +679,6 @@ export default function ExpensesPage() {
                   ) : (
                     <StatusPicker status={(item as ExpenseRow).status} onChange={s => handleStatusChange(item.id, s)} />
                   )}
-                  {payment.type === 'credit' && (
-                    <span className="text-[10px] text-primary flex items-center gap-1 font-medium bg-primary/10 px-2 py-1 rounded-full border border-primary/30">
-                      {payment.label}
-                    </span>
-                  )}
                 </div>
               </div>
               {!isCC && (
@@ -812,15 +813,6 @@ export default function ExpensesPage() {
                     )}
                     <td className="py-3.5 px-4">
                       <OptionPicker value={exp.account_id} options={accounts} placeholder="Conta" onChange={v => handleAccountChange(exp.id, v)} />
-                    </td>
-                    <td className="border-y border-border/50 bg-background/45 py-3.5 px-4 group-hover:bg-muted/30 transition-colors">
-                      {payment.type === 'credit' ? (
-                        <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary border border-primary/30">
-                          {payment.label}
-                        </span>
-                      ) : (
-                        <OptionPicker value={item.account_id} options={accounts} placeholder="Conta" onChange={v => handleAccountChange(item.id, v)} />
-                      )}
                     </td>
                     <td className="rounded-r-xl border-y border-r border-border/50 bg-background/45 py-3.5 px-4 group-hover:bg-muted/30 transition-colors">
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">

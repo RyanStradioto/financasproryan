@@ -58,7 +58,7 @@ export default function CategoriesPage() {
     const byKey = new Map<string, string>();
     const byLooseKey = new Map<string, string>();
 
-    creditTransactions.forEach((tx) => {
+    ccTransactions.forEach((tx) => {
       if (!tx.category_id) return;
       byTxId.set(tx.id, tx.category_id);
       byKey.set(buildExpenseMatchKey(tx.description || '', tx.date, Number(tx.amount) || 0), tx.category_id);
@@ -66,7 +66,7 @@ export default function CategoriesPage() {
     });
 
     return { categoryByTxId: byTxId, categoryByMatchKey: byKey, categoryByLooseKey: byLooseKey };
-  }, [creditTransactions]);
+  }, [ccTransactions]);
 
   const resolveCategoryId = (expense: { category_id: string | null; notes: string | null; description: string; date: string; amount: number }) => {
     if (expense.category_id) return expense.category_id;
