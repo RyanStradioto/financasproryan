@@ -172,11 +172,16 @@ export default function ExpensesPage() {
 
   const STATUS_ORDER: Record<string, number> = { concluido: 0, pendente: 1, agendado: 2 };
 
-  // Merge regular expenses + CC transactions
+  // Filter out CC-mirror expenses so they don't double-count with ccTransactions
+  const nonCCExpenses = useMemo(() =>
+    expenses.filter(e => !detectCreditCardExpense(e, creditCards, accounts).isCreditCard)
+  , [expenses, creditCards, accounts]);
+
+  // Merge real expenses (no CC mirrors) + CC transactions
   const allRows: Row[] = useMemo(() => [
-    ...expenses.map(e => ({ ...e, _type: 'expense' as const })),
+    ...nonCCExpenses.map(e => ({ ...e, _type: 'expense' as const })),
     ...ccTransactions.map(t => ({ ...t, _type: 'cc' as const })),
-  ], [expenses, ccTransactions]);
+  ], [nonCCExpenses, ccTransactions]);
 
   const filtered: Row[] = useMemo(() => allRows.filter(item => {
     if (showCCOnly && item._type !== 'cc') return false;
@@ -208,15 +213,15 @@ export default function ExpensesPage() {
     return sortDir === 'asc' ? -cmp : cmp;
   }), [allRows, filterSearch, filterCategories, filterAmountMin, filterAmountMax, filterStatuses, filterAccounts, showCCOnly, sortBy, sortDir, categories]);
 
-  const totalExpenses = useMemo(() => expenses.reduce((s, e) => s + Number(e.amount), 0), [expenses]);
+  const totalExpenses = useMemo(() => nonCCExpenses.reduce((s, e) => s + Number(e.amount), 0), [nonCCExpenses]);
   const totalCC = useMemo(() => ccTransactions.reduce((s, t) => s + Number(t.amount), 0), [ccTransactions]);
   const total = filtered.reduce((s, r) => s + Number(r.amount), 0);
-  const totalItems = expenses.length + ccTransactions.length;
+  const totalItems = nonCCExpenses.length + ccTransactions.length;
 
   // Aliases used in summary cards
   const creditTotal = totalCC;
   const accountTotal = totalExpenses;
-  const scheduledTotal = useMemo(() => expenses.filter(e => e.status !== 'concluido').reduce((s, e) => s + Number(e.amount), 0), [expenses]);
+  const scheduledTotal = useMemo(() => nonCCExpenses.filter(e => e.status !== 'concluido').reduce((s, e) => s + Number(e.amount), 0), [nonCCExpenses]);
 
   const getCategoryName = (id: string | null) => {
     if (!id) return '—';
