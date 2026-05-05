@@ -6,7 +6,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useCategories, useAccounts, useAddIncome, useAddExpense, useAddExpenseBatch, useRecentDescriptions } from '@/hooks/useFinanceData';
-import { useAddInvestmentTransaction, useInvestments } from '@/hooks/useInvestments';
 import { useCreditCards, useAddCreditCardTransaction } from '@/hooks/useCreditCards';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,20 +34,17 @@ export default function TransactionDialog({ type, children }: Props) {
   const [startInstallment, setStartInstallment] = useState('1');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [aiSuggesting, setAiSuggesting] = useState(false);
-  const [investmentId, setInvestmentId] = useState('');
   const [payWithCard, setPayWithCard] = useState(false);
   const [selectedCardId, setSelectedCardId] = useState('');
   const aiDebounce = useRef<ReturnType<typeof setTimeout>>();
 
   const { data: categories } = useCategories();
   const { data: accounts } = useAccounts();
-  const { data: investments } = useInvestments();
   const { data: cards } = useCreditCards();
   const { data: recentDescs = [] } = useRecentDescriptions(type === 'income' ? 'income' : 'expenses');
   const addIncome = useAddIncome();
   const addExpense = useAddExpense();
   const addExpenseBatch = useAddExpenseBatch();
-  const addInvestmentTransaction = useAddInvestmentTransaction();
   const addCCTx = useAddCreditCardTransaction();
   const { upload, uploading } = useFileUpload();
 
@@ -101,7 +97,6 @@ export default function TransactionDialog({ type, children }: Props) {
     setAttachmentName(null);
     setInstallments('1');
     setStartInstallment('1');
-    setInvestmentId('');
     setPayWithCard(false);
     setSelectedCardId('');
   };
@@ -162,34 +157,6 @@ export default function TransactionDialog({ type, children }: Props) {
           attachment_url: attachmentUrl,
           attachment_name: attachmentName,
         });
-      } else if (investmentId) {
-        if (numInstallments > 1) {
-          toast.error('Para enviar para investimento, lance em parcela única ou faça aportes separados.');
-          return;
-        }
-
-        await addExpense.mutateAsync({
-          date,
-          description,
-          amount: numAmount,
-          category_id: categoryId || null,
-          account_id: accountId || null,
-          status,
-          notes: notes || null,
-          attachment_url: attachmentUrl,
-          attachment_name: attachmentName,
-        });
-
-        await addInvestmentTransaction.mutateAsync({
-          investment_id: investmentId,
-          type: 'aporte',
-          amount: numAmount,
-          date,
-          account_id: accountId || null,
-          description: description || 'Aporte via despesa',
-          notes: notes || undefined,
-          skipLedgerSync: true,
-        });
       } else if (numInstallments > 1) {
         // Create installment records
         const baseDate = new Date(date + 'T00:00:00');
@@ -247,7 +214,7 @@ export default function TransactionDialog({ type, children }: Props) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {children || (
-          <Button size="sm" variant={type === 'income' ? 'default' : 'destructive'} className="w-full" data-tutorial-target={type === 'income' ? 'new-income' : 'new-expense'}>
+          <Button size="sm" variant={type === 'income' ? 'default' : 'destructive'} className="w-full min-[430px]:w-auto sm:min-w-[170px]" data-tutorial-target={type === 'income' ? 'new-income' : 'new-expense'}>
             <Plus className="w-4 h-4 mr-1" />
             {type === 'income' ? 'Nova Receita' : 'Nova Despesa'}
           </Button>
@@ -458,29 +425,6 @@ export default function TransactionDialog({ type, children }: Props) {
                 )}
               </div>
 
-              {/* Investment link — only when NOT paying with CC */}
-              {!payWithCard && (
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium text-muted-foreground">Vincular a investimento (opcional)</Label>
-                  <Select value={investmentId || '__none__'} onValueChange={(v) => setInvestmentId(v === '__none__' ? '' : v)}>
-                    <SelectTrigger className="h-11" style={{ fontSize: '14px' }}>
-                      <SelectValue placeholder="Escolha a caixinha/ativo para aportar..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Não vincular</SelectItem>
-                      {investments?.filter(inv => !inv.archived).map(inv => (
-                        <SelectItem key={inv.id} value={inv.id}>{inv.icon} {inv.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {investmentId && (
-                    <p className="text-[11px] text-muted-foreground">
-                      Ao salvar, essa despesa também será lançada como aporte no investimento selecionado.
-                    </p>
-                  )}
-                </div>
-              )}
-
               {/* Installment info — only when NOT paying with CC (CC handles its own installments) */}
               {!payWithCard && parseInt(installments) > 1 && (
                 <>
@@ -567,9 +511,9 @@ export default function TransactionDialog({ type, children }: Props) {
           <Button
             type="submit"
             className={`w-full h-12 text-[15px] font-semibold ${type === 'income' ? 'bg-income hover:bg-income/90' : payWithCard ? 'bg-primary hover:bg-primary/90' : 'bg-expense hover:bg-expense/90'} text-white`}
-            disabled={addIncome.isPending || addExpense.isPending || addExpenseBatch.isPending || addInvestmentTransaction.isPending || addCCTx.isPending}
+            disabled={addIncome.isPending || addExpense.isPending || addExpenseBatch.isPending || addCCTx.isPending}
           >
-            {(addIncome.isPending || addExpense.isPending || addExpenseBatch.isPending || addInvestmentTransaction.isPending || addCCTx.isPending)
+            {(addIncome.isPending || addExpense.isPending || addExpenseBatch.isPending || addCCTx.isPending)
               ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
               : payWithCard ? <CreditCard className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
             {type === 'income' ? 'Adicionar Receita' : payWithCard ? 'Lançar na Fatura' : 'Adicionar Despesa'}

@@ -260,7 +260,7 @@ export default function IncomePage() {
                 </p>
               </div>
             </div>
-            <div className="grid w-full grid-cols-1 gap-2 min-[430px]:grid-cols-[minmax(0,1fr)_auto] sm:w-auto sm:flex sm:shrink-0">
+            <div className="flex w-full min-w-0 flex-col gap-2 min-[430px]:flex-row sm:w-auto sm:items-center sm:gap-3 sm:shrink-0 sm:flex-nowrap">
               <MonthSelector month={month} onChange={setMonth} />
               <TransactionDialog type="income" />
             </div>
