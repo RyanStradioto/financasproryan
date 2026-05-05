@@ -40,3 +40,14 @@ export function getStatusLabel(status: string) {
     default: return status;
   }
 }
+
+/**
+ * Calculates the credit card bill month (YYYY-MM) for a given purchase date and card closing day.
+ * If the purchase day is AFTER the closing day, it falls into the NEXT bill month.
+ */
+export function calcBillMonth(purchaseDate: string, closingDay: number): string {
+  const d = new Date(purchaseDate + 'T00:00:00');
+  const month = d.getDate() > closingDay ? d.getMonth() + 1 : d.getMonth();
+  const adjusted = new Date(d.getFullYear(), month, 1);
+  return `${adjusted.getFullYear()}-${String(adjusted.getMonth() + 1).padStart(2, '0')}`;
+}

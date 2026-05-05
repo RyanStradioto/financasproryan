@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useCategories, useAddCategory, useUpdateCategory, useDeleteCategory, useExpenses } from '@/hooks/useFinanceData';
+import { useCCTransactionsForMonth } from '@/hooks/useCreditCards';
 import { formatCurrency, getMonthYear } from '@/lib/format';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,7 @@ export default function CategoriesPage() {
   const [month, setMonth] = useState(getMonthYear());
   const { data: categories = [] } = useCategories();
   const { data: expenses = [] } = useExpenses(month);
+  const { data: ccTransactions = [] } = useCCTransactionsForMonth(month);
   const addCategory = useAddCategory();
   const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
@@ -160,9 +162,13 @@ export default function CategoriesPage() {
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         {activeCategories.map(cat => {
-          const spent = expenses
+          const spentExpenses = expenses
             .filter(e => e.category_id === cat.id)
             .reduce((s, e) => s + Number(e.amount), 0);
+          const spentCC = ccTransactions
+            .filter(t => t.category_id === cat.id)
+            .reduce((s, t) => s + Number(t.amount), 0);
+          const spent = spentExpenses + spentCC;
           const budgetNum = Number(cat.monthly_budget);
           const pct = budgetNum > 0 ? Math.min((spent / budgetNum) * 100, 100) : 0;
           const overBudget = budgetNum > 0 && spent > budgetNum;

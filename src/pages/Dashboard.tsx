@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
-import { TrendingUp, TrendingDown, Wallet, PiggyBank, Pencil, BarChart3, ArrowUpRight, ArrowDownRight, Target, Clock, Zap, ChevronRight, BellRing, Sparkles } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, PiggyBank, Pencil, BarChart3, ArrowUpRight, ArrowDownRight, Target, Clock, Zap, ChevronRight, BellRing, Sparkles, CreditCard } from 'lucide-react';
 import { useIncome, useExpenses, useAccounts, type Income, type Expense } from '@/hooks/useFinanceData';
 import { useNetWorth } from '@/hooks/useInvestments';
+import { useCCTransactionsForMonth } from '@/hooks/useCreditCards';
 import { getMonthYear, formatCurrency, formatDate, getStatusColor, getStatusLabel } from '@/lib/format';
 import MonthSelector from '@/components/finance/MonthSelector';
 import TransactionDialog from '@/components/finance/TransactionDialog';
@@ -101,6 +102,7 @@ export default function Dashboard() {
   const { data: accounts = [] } = useAccounts();
   const { investmentTotal } = useNetWorth();
   const { data: accumulatedBalance = 0 } = useAccumulatedBalance(month);
+  const { data: ccTransactions = [] } = useCCTransactionsForMonth(month);
   const { calcWorkTime, hourlyRate } = useWorkTimeCalc();
 
   const [editing, setEditing] = useState<((Income & { type: 'income' }) | (Expense & { type: 'expense' })) | null>(null);
@@ -124,27 +126,39 @@ export default function Dashboard() {
   , [expenses]);
 
   const balance = accumulatedBalance;
+  const netWorth = accumulatedBalance + investmentTotal;
+
+  // CC totals for the current bill month
+  const totalCCThisMonth = useMemo(() =>
+    ccTransactions.reduce((s, t) => s + Number(t.amount), 0)
+  , [ccTransactions]);
+
   const savings = totalIncome > 0 ? ((totalIncome - totalExpensesPaid) / totalIncome) * 100 : 0;
 
-  // ── Category breakdown ────────────────────────────────────────
-  const catBreakdown = useMemo(() =>
-    categories
+  // ── Category breakdown (includes CC transactions) ─────────────
+  const catBreakdown = useMemo(() => {
+    const allItems = [
+      ...expenses.map(e => ({ category_id: e.category_id, amount: Number(e.amount) })),
+      ...ccTransactions.map(t => ({ category_id: t.category_id, amount: Number(t.amount) })),
+    ];
+    return categories
       .map(cat => ({
         name: cat.name,
         icon: cat.icon,
-        value: expenses.filter(e => e.category_id === cat.id).reduce((s, e) => s + Number(e.amount), 0),
+        value: allItems.filter(i => i.category_id === cat.id).reduce((s, i) => s + i.amount, 0),
         budget: Number(cat.monthly_budget) || 0,
       }))
       .filter(c => c.value > 0)
-      .sort((a, b) => b.value - a.value)
-  , [expenses, categories]);
+      .sort((a, b) => b.value - a.value);
+  }, [expenses, ccTransactions, categories]);
 
   // ── Status breakdown bar data ────────────────────────────────
   const statusData = useMemo(() => [
     { name: 'Concluído', value: expenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0), fill: 'hsl(160, 84%, 39%)' },
     { name: 'Pendente', value: expenses.filter(e => e.status === 'pendente').reduce((s, e) => s + Number(e.amount), 0), fill: 'hsl(38, 92%, 50%)' },
     { name: 'Agendado', value: expenses.filter(e => e.status === 'agendado').reduce((s, e) => s + Number(e.amount), 0), fill: 'hsl(217, 91%, 60%)' },
-  ].filter(s => s.value > 0), [expenses]);
+    ...(totalCCThisMonth > 0 ? [{ name: 'Fatura CC', value: totalCCThisMonth, fill: '#6366f1' }] : []),
+  ].filter(s => s.value > 0), [expenses, totalCCThisMonth]);
 
   // ── Sparkline data (Last 30 days of the selected month) ─────
   const getDailyTrend = (data: any[], dateField = 'date') => {
@@ -241,43 +255,43 @@ export default function Dashboard() {
       <SmartAlerts expenses={expenses} income={income} categories={categories} />
 
       {/* ── KPI Cards Premium ──────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 stagger-1">
-        <KpiCard 
-          label="Receitas" 
-          value={formatCurrency(totalIncome)} 
-          sub="concluídas neste mês" 
-          color="border-l-income" 
-          icon={TrendingUp} 
-          trend="up" 
+      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 stagger-1 ${totalCCThisMonth > 0 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
+        <KpiCard
+          label="Receitas"
+          value={formatCurrency(totalIncome)}
+          sub="concluídas neste mês"
+          color="border-l-income"
+          icon={TrendingUp}
+          trend="up"
           sparklineData={incomeSparkline}
         />
-        <KpiCard 
-          label="Despesas" 
-          value={formatCurrency(totalExpensesPaid)} 
-          sub="pagas neste mês" 
-          color="border-l-expense" 
-          icon={TrendingDown} 
-          trend="down" 
+        <KpiCard
+          label="Despesas"
+          value={formatCurrency(totalExpensesPaid)}
+          sub="pagas neste mês"
+          color="border-l-expense"
+          icon={TrendingDown}
+          trend="down"
           sparklineData={expenseSparkline}
         />
-        <KpiCard 
-          label="Saldo Acumulado" 
-          value={formatCurrency(balance)} 
-          sub="disponível em contas" 
-          color={balance >= 0 ? 'border-l-primary' : 'border-l-expense'} 
-          icon={Wallet} 
-          trend={balance >= 0 ? 'up' : 'down'} 
+        <KpiCard
+          label="Saldo Acumulado"
+          value={formatCurrency(balance)}
+          sub="disponível em contas"
+          color={balance >= 0 ? 'border-l-primary' : 'border-l-expense'}
+          icon={Wallet}
+          trend={balance >= 0 ? 'up' : 'down'}
           sparklineData={balanceSparkline}
         />
-        
-        {/* Patrimônio / Net Worth */}
+
+        {/* Patrimônio Líquido = Saldo + Investimentos */}
         <div className="stat-card flex flex-col justify-between gap-3 p-4 sm:p-5 border-l-[3px] border-l-info animate-slide-up group overflow-hidden relative">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg items-center justify-center flex shrink-0 bg-info/10 text-info">
                 <BarChart3 className="w-4 h-4" />
               </div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Investimentos</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Patrimônio</p>
             </div>
             <a href="/investimentos" className="text-muted-foreground hover:text-info transition-colors">
               <ChevronRight className="w-4 h-4" />
@@ -285,11 +299,38 @@ export default function Dashboard() {
           </div>
           <div className="mt-1">
             <p className="text-xl sm:text-2xl font-extrabold currency tracking-tight leading-none text-info group-hover:-translate-y-0.5 transition-transform duration-300">
-              {maskCurrency(formatCurrency(investmentTotal))}
+              {maskCurrency(formatCurrency(netWorth))}
             </p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-1.5 leading-tight">Total acumulado</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-1.5 leading-tight">
+              Contas {maskCurrency(formatCurrency(balance))} · Invest. {maskCurrency(formatCurrency(investmentTotal))}
+            </p>
           </div>
         </div>
+
+        {/* Fatura CC — só aparece quando há transações de cartão no mês */}
+        {totalCCThisMonth > 0 && (
+          <div className="stat-card flex flex-col justify-between gap-3 p-4 sm:p-5 border-l-[3px] border-l-[#6366f1] animate-slide-up group overflow-hidden relative">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg items-center justify-center flex shrink-0 bg-[#6366f1]/10 text-[#6366f1]">
+                  <CreditCard className="w-4 h-4" />
+                </div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fatura CC</p>
+              </div>
+              <a href="/cartoes" className="text-muted-foreground hover:text-[#6366f1] transition-colors">
+                <ChevronRight className="w-4 h-4" />
+              </a>
+            </div>
+            <div className="mt-1">
+              <p className="text-xl sm:text-2xl font-extrabold currency tracking-tight leading-none text-[#6366f1] group-hover:-translate-y-0.5 transition-transform duration-300">
+                {maskCurrency(formatCurrency(totalCCThisMonth))}
+              </p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-1.5 leading-tight">
+                {ccTransactions.filter(t => t.paid).length}/{ccTransactions.length} itens pagos
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Main Charts Grid ───────────────────────────────── */}
@@ -470,12 +511,13 @@ export default function Dashboard() {
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <p className="text-[10px] text-muted-foreground">Total</p>
-                  <p className="text-xs font-bold currency">{maskCurrency(formatCurrency(totalExpensesAll))}</p>
+                  <p className="text-xs font-bold currency">{maskCurrency(formatCurrency(totalExpensesAll + totalCCThisMonth))}</p>
                 </div>
               </div>
               <div className="w-full space-y-2">
                 {catBreakdown.slice(0, 5).map((cat, i) => {
-                  const pct = totalExpensesAll > 0 ? ((cat.value / totalExpensesAll) * 100) : 0;
+                  const combinedTotal = totalExpensesAll + totalCCThisMonth;
+                  const pct = combinedTotal > 0 ? ((cat.value / combinedTotal) * 100) : 0;
                   return (
                     <div key={cat.name}>
                       <div className="flex items-center justify-between text-xs mb-1">
@@ -515,12 +557,13 @@ export default function Dashboard() {
               {/* Stacked Progress Bar */}
               <div className="w-full h-3 rounded-full flex overflow-hidden bg-muted mb-2 shadow-inner">
                 {statusData.map(s => {
-                  const pct = totalExpensesAll > 0 ? (s.value / totalExpensesAll) * 100 : 0;
+                  const statusTotal = statusData.reduce((acc, d) => acc + d.value, 0);
+                  const pct = statusTotal > 0 ? (s.value / statusTotal) * 100 : 0;
                   return (
-                    <div 
-                      key={`stack-${s.name}`} 
-                      className="h-full transition-all duration-1000 ease-out" 
-                      style={{ width: `${pct}%`, backgroundColor: s.fill }} 
+                    <div
+                      key={`stack-${s.name}`}
+                      className="h-full transition-all duration-1000 ease-out"
+                      style={{ width: `${pct}%`, backgroundColor: s.fill }}
                     />
                   );
                 })}

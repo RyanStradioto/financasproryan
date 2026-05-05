@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useCategories, useAccounts, useUpdateIncome, useUpdateExpense, type Income, type Expense } from '@/hooks/useFinanceData';
+import { useCategories, useAccounts, useUpdateIncome, useUpdateExpense, useDeleteExpense, type Income, type Expense } from '@/hooks/useFinanceData';
+import { useAddCreditCardTransaction, useCreditCards } from '@/hooks/useCreditCards';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { toast } from 'sonner';
 import { Paperclip, X, FileText, ExternalLink } from 'lucide-react';
@@ -25,20 +26,26 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
   const [accountId, setAccountId] = useState('');
   const [status, setStatus] = useState('');
   const [notes, setNotes] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'account' | 'credit_card'>('account');
+  const [creditCardId, setCreditCardId] = useState('');
+  const [installments, setInstallments] = useState('1');
+  const [startInstallment, setStartInstallment] = useState('1');
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
   const [attachmentName, setAttachmentName] = useState<string | null>(null);
 
   const { data: categories } = useCategories();
   const { data: accounts } = useAccounts();
+  const { data: creditCards } = useCreditCards();
   const updateIncome = useUpdateIncome();
   const updateExpense = useUpdateExpense();
+  const deleteExpense = useDeleteExpense();
+  const addCreditCardTransaction = useAddCreditCardTransaction();
   const { upload, uploading } = useFileUpload();
 
   useEffect(() => {
     if (transaction) {
       setDate(transaction.date);
       setDescription(transaction.description || '');
-      // Pre-format the existing amount as BRL
       const num = Number(transaction.amount);
       setAmount(num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
       setAccountId(transaction.account_id || '');
@@ -48,9 +55,33 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
       setAttachmentName(transaction.attachment_name || null);
       if (transaction.type === 'expense') {
         setCategoryId(transaction.category_id || '');
+        setPaymentMethod('account');
+        setCreditCardId('');
+        setInstallments('1');
+        setStartInstallment('1');
       }
     }
   }, [transaction]);
+
+  const handlePaymentMethodChange = (v: string) => {
+    setPaymentMethod(v as 'account' | 'credit_card');
+    if (v === 'credit_card') {
+      // Auto-detect installment info from description: "AIRBNB - PARCELA 3/6" or "AIRBNB (3/6)"
+      const match =
+        description.match(/[-–—]\s*PARCELA\s+(\d+)\s*\/\s*(\d+)/i) ||
+        description.match(/\((\d+)\s*\/\s*(\d+)\)/);
+      if (match) {
+        setStartInstallment(match[1]);
+        setInstallments(match[2]);
+      }
+    }
+  };
+
+  const getCreditCardBillMonth = (purchaseDate: string, closingDay: number) => {
+    const [year, month, day] = purchaseDate.split('-').map(Number);
+    const billDate = day > closingDay ? new Date(year, month, 1) : new Date(year, month - 1, 1);
+    return `${billDate.getFullYear()}-${String(billDate.getMonth() + 1).padStart(2, '0')}`;
+  };
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const digits = e.target.value.replace(/\D/g, '');
@@ -73,7 +104,7 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
     e.preventDefault();
     const numAmount = parseFloat(amount.replace(/\./g, '').replace(',', '.'));
     if (isNaN(numAmount) || numAmount <= 0) {
-      toast.error('Valor inválido');
+      toast.error('Valor invalido');
       return;
     }
 
@@ -92,13 +123,35 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
 
       if (transaction.type === 'income') {
         await updateIncome.mutateAsync(baseData);
+      } else if (paymentMethod === 'credit_card') {
+        const selectedCard = creditCards?.find(cc => cc.id === creditCardId);
+        if (!selectedCard) {
+          toast.error('Selecione um cartao de credito');
+          return;
+        }
+
+        await addCreditCardTransaction.mutateAsync({
+          credit_card_id: selectedCard.id,
+          category_id: categoryId || null,
+          description,
+          amount: numAmount,
+          date,
+          bill_month: getCreditCardBillMonth(date, selectedCard.closing_day),
+          installments: parseInt(installments) || 1,
+          start_installment: parseInt(startInstallment) || 1,
+          notes: notes || undefined,
+          paid: status === 'concluido',
+        });
+
+        await deleteExpense.mutateAsync(transaction.id);
       } else {
         await updateExpense.mutateAsync({
           ...baseData,
           category_id: categoryId || null,
         });
       }
-      toast.success('Transação atualizada!');
+
+      toast.success('Transacao atualizada!');
       onOpenChange(false);
     } catch (err) {
       const error = err as Error;
@@ -120,8 +173,6 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3 pb-2">
-
-          {/* Amount — currency masked */}
           <div
             onClick={() => document.getElementById('edit-amount-input')?.focus()}
             className={`rounded-2xl p-4 cursor-text transition-all ${
@@ -152,7 +203,6 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
             </div>
           </div>
 
-          {/* Date + Status row */}
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <Label className="text-xs font-medium text-muted-foreground">Data</Label>
@@ -163,18 +213,18 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
               <Select value={status} onValueChange={setStatus}>
                 <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="concluido">✓ Concluído</SelectItem>
-                  <SelectItem value="pendente">⏳ Pendente</SelectItem>
-                  <SelectItem value="agendado">📅 Agendado</SelectItem>
+                  <SelectItem value="concluido">Concluido</SelectItem>
+                  <SelectItem value="pendente">Pendente</SelectItem>
+                  <SelectItem value="agendado">Agendado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <div className="space-y-1">
-            <Label className="text-xs font-medium text-muted-foreground">Descrição</Label>
+            <Label className="text-xs font-medium text-muted-foreground">Descricao</Label>
             <Input
-              placeholder="Descreva a transação..."
+              placeholder="Descreva a transacao..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               style={{ fontSize: '16px' }}
@@ -183,14 +233,118 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
           </div>
 
           {transaction.type === 'expense' && (
+            <>
+              <div className="space-y-1">
+                <Label className="text-xs font-medium text-muted-foreground">Categoria</Label>
+                <Select value={categoryId || '__none__'} onValueChange={(v) => setCategoryId(v === '__none__' ? '' : v)}>
+                  <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sem categoria</SelectItem>
+                    {categories?.filter(c => !c.archived).map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-medium text-muted-foreground">Forma de pagamento</Label>
+                <Select value={paymentMethod} onValueChange={handlePaymentMethodChange}>
+                  <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="account">Conta / Debito / PIX</SelectItem>
+                    <SelectItem value="credit_card">Cartao de credito</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
+
+          {transaction.type === 'expense' ? (
+            paymentMethod === 'account' ? (
+              <div className="space-y-1">
+                <Label className="text-xs font-medium text-muted-foreground">Conta</Label>
+                <Select value={accountId} onValueChange={setAccountId}>
+                  <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue placeholder="Selecionar conta..." /></SelectTrigger>
+                  <SelectContent>
+                    {accounts?.filter(a => !a.archived).map(a => (
+                      <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium text-muted-foreground">Cartão</Label>
+                    <Select value={creditCardId} onValueChange={setCreditCardId}>
+                      <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                      <SelectContent>
+                        {creditCards?.filter(c => !c.archived).map(c => (
+                          <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium text-muted-foreground">Total de parcelas</Label>
+                    <Input
+                      type="number" min={1} max={48}
+                      value={installments}
+                      onChange={(e) => {
+                        setInstallments(e.target.value);
+                        const total = parseInt(e.target.value) || 1;
+                        const cur = parseInt(startInstallment) || 1;
+                        if (cur > total) setStartInstallment(String(total));
+                      }}
+                      className="h-11"
+                    />
+                  </div>
+                </div>
+
+                {/* Qual parcela é essa? */}
+                <div className="rounded-xl border border-border/60 bg-muted/30 p-3 space-y-2">
+                  <Label className="text-xs font-medium text-muted-foreground">Qual parcela é essa?</Label>
+                  <Select value={startInstallment} onValueChange={setStartInstallment}>
+                    <SelectTrigger className="h-11 bg-background" style={{ fontSize: '14px' }}><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: parseInt(installments) || 1 }, (_, i) => i + 1).map(n => {
+                        const total = parseInt(installments) || 1;
+                        const remaining = total - n + 1;
+                        return (
+                          <SelectItem key={n} value={String(n)}>
+                            {n}ª de {total}
+                            {n > 1 ? ` — ${n - 1} já ${n - 1 === 1 ? 'paga' : 'pagas'}` : ' — início'}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  {(() => {
+                    const total = parseInt(installments) || 1;
+                    const start = parseInt(startInstallment) || 1;
+                    const remaining = total - start + 1;
+                    return remaining > 0 ? (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary/15 text-primary text-[10px] font-bold shrink-0">↓</span>
+                        {remaining === 1
+                          ? 'Será criado 1 lançamento no cartão'
+                          : `Serão criados ${remaining} lançamentos (parcelas ${start} a ${total})`}
+                      </p>
+                    ) : null;
+                  })()}
+                </div>
+              </div>
+            )
+          ) : (
             <div className="space-y-1">
-              <Label className="text-xs font-medium text-muted-foreground">Categoria</Label>
-              <Select value={categoryId || '__none__'} onValueChange={(v) => setCategoryId(v === '__none__' ? '' : v)}>
-                <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+              <Label className="text-xs font-medium text-muted-foreground">Conta</Label>
+              <Select value={accountId} onValueChange={setAccountId}>
+                <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue placeholder="Selecionar conta..." /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">Sem categoria</SelectItem>
-                  {categories?.filter(c => !c.archived).map(c => (
-                    <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>
+                  {accounts?.filter(a => !a.archived).map(a => (
+                    <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -198,19 +352,7 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
           )}
 
           <div className="space-y-1">
-            <Label className="text-xs font-medium text-muted-foreground">Conta</Label>
-            <Select value={accountId} onValueChange={setAccountId}>
-              <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue placeholder="Selecionar conta..." /></SelectTrigger>
-              <SelectContent>
-                {accounts?.filter(a => !a.archived).map(a => (
-                  <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs font-medium text-muted-foreground">Observações</Label>
+            <Label className="text-xs font-medium text-muted-foreground">Observacoes</Label>
             <Textarea
               placeholder="Notas adicionais..."
               value={notes}
@@ -221,7 +363,6 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
             />
           </div>
 
-          {/* Attachment */}
           <div className="space-y-1">
             <Label className="text-xs font-medium text-muted-foreground">Comprovante</Label>
             {attachmentUrl ? (
@@ -244,11 +385,12 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
             )}
           </div>
 
-          <Button type="submit" className="w-full h-12 text-[15px] font-semibold" disabled={updateIncome.isPending || updateExpense.isPending}>
-            Salvar Alterações
+          <Button type="submit" className="w-full h-12 text-[15px] font-semibold" disabled={updateIncome.isPending || updateExpense.isPending || deleteExpense.isPending || addCreditCardTransaction.isPending}>
+            Salvar Alteracoes
           </Button>
         </form>
       </DialogContent>
     </Dialog>
   );
 }
+

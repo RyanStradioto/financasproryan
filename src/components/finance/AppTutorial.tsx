@@ -7,6 +7,7 @@ import {
   Settings, Grid3X3, Landmark, CreditCard, BarChart3,
   TrendingUp, TrendingDown, ChevronRight, ChevronDown,
   ChevronUp, Check, X, ArrowRight, Rocket, GripHorizontal,
+  BookOpen,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -176,52 +177,70 @@ function clearHighlight() {
   );
 }
 
+function hasOpenDialog() {
+  return !!(
+    document.querySelector('[role="dialog"]') ||
+    document.querySelector('[data-radix-dialog-overlay]') ||
+    document.querySelector('[data-state="open"][role="dialog"]')
+  );
+}
+
 export function TutorialProvider({ children }: { children: React.ReactNode }) {
   const { user }   = useAuth();
   const navigate   = useNavigate();
   const month      = getMonthYear();
 
-  // Finance data for auto-detection (React Query deduplicates — no extra requests)
   const { data: profile }     = useProfile();
   const { data: categories = [] } = useCategories();
   const { data: accounts   = [] } = useAccounts();
   const { data: income     = [] } = useIncome(month);
   const { data: expenses   = [] } = useExpenses(month);
 
-  // Tutorial state
   const [open,       setOpen]       = useState(false);
   const [stepIndex,  setStepIndex]  = useState(0);
   const [manualChecks, setManualChecks] = useState<Record<number, number[]>>({});
 
-  // Widget state
-  const [expanded,   setExpanded]   = useState(true);
-  const [pos,        setPos]        = useState<{ x: number; y: number } | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const dragRef = useRef({ startX: 0, startY: 0, origX: 0, origY: 0 });
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
+  const [expanded,       setExpanded]       = useState(true);
+  const [pos,            setPos]            = useState<{ x: number; y: number } | null>(null);
+  const [isDragging,     setIsDragging]     = useState(false);
+  const [isMobile,       setIsMobile]       = useState(() => window.innerWidth < 640);
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
 
-  // Mobile detection
+  const dragRef = useRef({ startX: 0, startY: 0, origX: 0, origY: 0 });
+
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 640);
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);
   }, []);
 
-  // Clamp position on resize
   useEffect(() => {
     const handler = () => setPos(p => p ? clampPos(p) : p);
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);
   }, []);
 
-  // Init position
   useEffect(() => {
     if (pos !== null || isMobile) return;
     const saved = loadPos();
     setPos(saved ? clampPos(saved) : defaultPos());
   }, [pos, isMobile]);
 
-  // Load saved manual checks
+  // Auto-close mobile sheet when a dialog opens
+  useEffect(() => {
+    if (!isMobile) return;
+    const obs = new MutationObserver(() => {
+      if (hasOpenDialog()) setMobileSheetOpen(false);
+    });
+    obs.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['data-state', 'role'],
+    });
+    return () => obs.disconnect();
+  }, [isMobile]);
+
   useEffect(() => {
     if (!user?.id) return;
     try {
@@ -236,27 +255,26 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(getChecksKey(user.id), JSON.stringify(next));
   }, [user?.id]);
 
-  // Auto-detection per step
   const autoChecks = useMemo((): Set<number> => {
     const s = new Set<number>();
     switch (stepIndex) {
-      case 1: // Settings
+      case 1:
         if ((profile?.monthly_salary ?? 0) > 0) s.add(0);
         if ((profile?.work_hours_per_day ?? 0) > 0 && (profile?.work_days_per_week ?? 0) > 0) s.add(1);
         break;
-      case 2: // Categories
+      case 2:
         if (categories.length > 0) s.add(0);
         if (categories.some(c => Number(c.monthly_budget) > 0)) s.add(1);
         break;
-      case 3: // Accounts
+      case 3:
         if (accounts.length > 0) s.add(0);
         if (accounts.some(a => Number(a.initial_balance) > 0)) s.add(1);
         break;
-      case 6: // Income
+      case 6:
         if (income.length > 0) s.add(0);
         if (income.some(i => !!i.account_id)) s.add(1);
         break;
-      case 7: // Expenses
+      case 7:
         if (expenses.length > 0) s.add(0);
         if (expenses.some(e => !!e.category_id && !!e.account_id)) s.add(1);
         break;
@@ -264,7 +282,6 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     return s;
   }, [stepIndex, profile, categories, accounts, income, expenses]);
 
-  // Effective checks = manual ∪ auto
   const effectiveChecks = useMemo(() => {
     const manual = manualChecks[stepIndex] ?? [];
     return Array.from(new Set([...manual, ...autoChecks]));
@@ -276,9 +293,11 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
   const required   = (step.checklist ?? []).map((c, i) => ({ ...c, i })).filter(c => c.required);
   const canAdvance = required.length === 0 || required.every(r => effectiveChecks.includes(r.i));
   const progress   = (stepIndex / (tutorialSteps.length - 1)) * 100;
+  const doneCount  = effectiveChecks.length;
+  const totalCount = step.checklist?.length ?? 0;
 
   const markSeen    = useCallback(() => { if (user?.id) localStorage.setItem(getTutorialKey(user.id), 'seen'); }, [user?.id]);
-  const closeTutorial = useCallback(() => { clearHighlight(); markSeen(); setOpen(false); }, [markSeen]);
+  const closeTutorial = useCallback(() => { clearHighlight(); markSeen(); setOpen(false); setMobileSheetOpen(false); }, [markSeen]);
 
   const openTutorial = useCallback((force = false) => {
     if (!user?.id) return;
@@ -287,7 +306,6 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     setOpen(true);
   }, [user?.id]);
 
-  // Auto-open for new users
   useEffect(() => {
     if (!user?.id) return;
     if (localStorage.getItem(getTutorialKey(user.id)) === 'seen') return;
@@ -295,7 +313,6 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(t);
   }, [user?.id]);
 
-  // Apply highlight when step changes
   useEffect(() => {
     if (!open || stepIndex === 0) { clearHighlight(); return; }
     applyHighlight(tutorialSteps[stepIndex]?.highlightTarget);
@@ -303,7 +320,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
   }, [open, stepIndex]);
 
   const toggleCheck = (idx: number) => {
-    if (autoChecks.has(idx)) return; // auto-detected — não altera manualmente
+    if (autoChecks.has(idx)) return;
     const cur  = manualChecks[stepIndex] ?? [];
     const next = cur.includes(idx) ? cur.filter(i => i !== idx) : [...cur, idx];
     saveManualChecks({ ...manualChecks, [stepIndex]: next });
@@ -315,16 +332,18 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     setStepIndex(next);
     const route = tutorialSteps[next]?.route;
     if (route) navigate(route);
-  }, [closeTutorial, isLast, navigate, stepIndex]);
+    if (isMobile) setMobileSheetOpen(false);
+  }, [closeTutorial, isLast, navigate, stepIndex, isMobile]);
 
   const handleBack = useCallback(() => {
     const prev = Math.max(0, stepIndex - 1);
     setStepIndex(prev);
     const route = tutorialSteps[prev]?.route;
     if (route) navigate(route); else navigate('/');
-  }, [navigate, stepIndex]);
+    if (isMobile) setMobileSheetOpen(false);
+  }, [navigate, stepIndex, isMobile]);
 
-  // ── Drag handlers ──────────────────────────────────────────────────────────
+  // ── Drag handlers (desktop only) ────────────────────────────────────────────
   const startDrag = useCallback((clientX: number, clientY: number) => {
     setIsDragging(true);
     dragRef.current = { startX: clientX, startY: clientY, origX: pos?.x ?? 0, origY: pos?.y ?? 0 };
@@ -422,32 +441,199 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // ── Floating step widget (steps 1-7) ───────────────────────────────────────
-  const widgetStyle = isMobile
-    ? { bottom: 0, left: 0, right: 0, position: 'fixed' as const }
-    : { position: 'fixed' as const, left: pos?.x ?? 0, top: pos?.y ?? 0, width: WIDGET_W };
+  // ── Checklist content (shared between mobile sheet and desktop widget) ──────
+  const ChecklistContent = () => (
+    <>
+      {/* Progress bar */}
+      <div className="flex items-center gap-3 px-4 pb-3">
+        <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+          <div
+            className={`h-full rounded-full bg-gradient-to-r ${step.color} transition-all duration-500`}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <span className="text-xs font-semibold text-muted-foreground shrink-0 tabular-nums">
+          {stepIndex}/{tutorialSteps.length - 1}
+        </span>
+      </div>
+
+      {/* Description */}
+      {step.description && (
+        <div className="px-4 pb-3">
+          <p className="text-sm text-muted-foreground leading-relaxed">{step.description}</p>
+        </div>
+      )}
+
+      {/* Checklist */}
+      {step.checklist && (
+        <div className="px-4 pb-3 space-y-2">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Progresso</p>
+          {step.checklist.map((item, idx) => {
+            const isAuto = autoChecks.has(idx);
+            const isDone = effectiveChecks.includes(idx);
+            return (
+              <button
+                key={idx}
+                onClick={() => !isAuto && !isDone && toggleCheck(idx)}
+                disabled={isDone && isAuto}
+                className={`w-full flex items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition-all ${
+                  isDone
+                    ? 'border-primary/30 bg-primary/8 cursor-default'
+                    : 'border-border bg-muted/20 text-muted-foreground hover:border-primary/20 hover:bg-muted/40 active:scale-[0.98]'
+                }`}
+              >
+                <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-all ${
+                  isDone ? 'border-primary bg-primary' : 'border-muted-foreground/30'
+                }`}>
+                  {isDone && <Check className="w-2.5 h-2.5 text-white" />}
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className={`block text-sm leading-snug ${isDone ? 'line-through opacity-50' : ''}`}>
+                    {item.label}
+                  </span>
+                  {!isDone && item.required && (
+                    <span className="mt-1 inline-flex items-center text-[10px] font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-full">
+                      obrigatório
+                    </span>
+                  )}
+                  {isDone && isAuto && (
+                    <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-primary/70 bg-primary/10 px-1.5 py-0.5 rounded-full">
+                      <Check className="w-2.5 h-2.5" /> detectado automaticamente
+                    </span>
+                  )}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Footer nav */}
+      <div className="flex items-center justify-between px-4 py-3 border-t border-border/50 bg-muted/10">
+        <button onClick={closeTutorial} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+          Pular tutorial
+        </button>
+        <div className="flex gap-2 items-center">
+          <button
+            onClick={handleBack}
+            disabled={stepIndex <= 1}
+            className="h-8 px-3 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-all disabled:opacity-30"
+          >
+            ←
+          </button>
+          <button
+            onClick={handleNext}
+            disabled={!canAdvance}
+            className={`h-8 px-4 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 disabled:opacity-40 ${
+              canAdvance
+                ? `bg-gradient-to-r ${step.color} text-white hover:opacity-90 active:scale-[0.97]`
+                : 'bg-muted text-muted-foreground cursor-not-allowed'
+            }`}
+          >
+            {isLast ? '🎉 Concluir' : 'Próximo'}{!isLast && <ChevronRight className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+
+  // ── MOBILE: FAB pill + bottom sheet ────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <TutorialContext.Provider value={contextValue}>
+        {children}
+
+        {/* Floating pill button */}
+        <button
+          onClick={() => !hasOpenDialog() && setMobileSheetOpen(v => !v)}
+          style={{ zIndex: 290 }}
+          className={`fixed bottom-20 right-4 flex items-center gap-2 rounded-full shadow-2xl shadow-black/30 border border-white/10 backdrop-blur-md transition-all active:scale-95 bg-gradient-to-r ${step.color} text-white px-4 py-2.5`}
+        >
+          <step.icon className="w-4 h-4 shrink-0" />
+          <span className="text-xs font-bold leading-none">{step.badge}</span>
+          {totalCount > 0 && (
+            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-white/20 text-[10px] font-extrabold shrink-0">
+              {doneCount}/{totalCount}
+            </span>
+          )}
+          <BookOpen className="w-3.5 h-3.5 shrink-0 opacity-80" />
+        </button>
+
+        {/* Bottom sheet */}
+        {mobileSheetOpen && (
+          <>
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 bg-black/40 backdrop-blur-[2px]"
+              style={{ zIndex: 295 }}
+              onClick={() => setMobileSheetOpen(false)}
+            />
+
+            {/* Sheet */}
+            <div
+              className="fixed inset-x-0 bottom-0 rounded-t-3xl bg-card border-t border-border/60 shadow-2xl shadow-black/50 overflow-hidden animate-slide-up"
+              style={{ zIndex: 296 }}
+            >
+              {/* Gradient stripe */}
+              <div className={`h-1 w-full bg-gradient-to-r ${step.color}`} />
+
+              {/* Drag handle + header */}
+              <div className="flex items-center justify-between px-4 pt-3 pb-2">
+                {/* Pill handle (visual) */}
+                <div className="absolute left-1/2 -translate-x-1/2 top-2 w-10 h-1 rounded-full bg-muted-foreground/20" />
+
+                <div className="flex items-center gap-3 mt-2">
+                  <div className={`w-9 h-9 rounded-2xl bg-gradient-to-br ${step.color} flex items-center justify-center shadow-md shrink-0`}>
+                    <step.icon className="w-4.5 h-4.5 text-white" style={{ width: 18, height: 18 }} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{step.badge}</p>
+                    <p className="font-bold text-sm leading-tight">{step.title}</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setMobileSheetOpen(false)}
+                  className="mt-2 w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              </div>
+
+              <ChecklistContent />
+            </div>
+          </>
+        )}
+      </TutorialContext.Provider>
+    );
+  }
+
+  // ── DESKTOP: draggable floating widget ─────────────────────────────────────
+  const widgetStyle = {
+    position: 'fixed' as const,
+    left: pos?.x ?? 0,
+    top: pos?.y ?? 0,
+    width: WIDGET_W,
+    zIndex: 300,
+  };
 
   return (
     <TutorialContext.Provider value={contextValue}>
       {children}
-      <div style={{ ...widgetStyle, zIndex: 300 }} className={isMobile ? 'px-2 pb-2' : ''}>
+      <div style={widgetStyle}>
         <div
           className={`rounded-2xl border border-border/70 bg-card/95 backdrop-blur-md shadow-2xl shadow-black/40 overflow-hidden ${isDragging ? 'select-none' : ''}`}
-          style={isMobile ? {} : { width: WIDGET_W }}
         >
-          {/* Gradient top stripe */}
           <div className={`h-1 w-full bg-gradient-to-r ${step.color}`} />
 
-          {/* Drag handle (desktop only) */}
-          {!isMobile && (
-            <div
-              onMouseDown={handleMouseDown}
-              onTouchStart={handleTouchStart}
-              className="flex items-center justify-center h-5 bg-muted/30 hover:bg-muted/60 transition-colors cursor-grab active:cursor-grabbing"
-            >
-              <GripHorizontal className="w-4 h-4 text-muted-foreground/50" />
-            </div>
-          )}
+          {/* Drag handle */}
+          <div
+            onMouseDown={handleMouseDown}
+            onTouchStart={handleTouchStart}
+            className="flex items-center justify-center h-5 bg-muted/30 hover:bg-muted/60 transition-colors cursor-grab active:cursor-grabbing"
+          >
+            <GripHorizontal className="w-4 h-4 text-muted-foreground/50" />
+          </div>
 
           {/* Header row */}
           <div className="flex items-center justify-between px-3 pt-2 pb-1 gap-2">
@@ -498,13 +684,12 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
                 <div className="px-3 pb-2 space-y-1">
                   <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Progresso</p>
                   {step.checklist.map((item, idx) => {
-                    const isAuto   = autoChecks.has(idx);
-                    const isDone   = effectiveChecks.includes(idx);
-                    const isManual = !isAuto;
+                    const isAuto = autoChecks.has(idx);
+                    const isDone = effectiveChecks.includes(idx);
                     return (
                       <button
                         key={idx}
-                        onClick={() => isManual && !isDone && toggleCheck(idx)}
+                        onClick={() => !isAuto && !isDone && toggleCheck(idx)}
                         disabled={isDone && isAuto}
                         className={`w-full flex items-start gap-2 rounded-lg border px-2.5 py-1.5 text-left text-xs transition-all ${
                           isDone
@@ -517,13 +702,15 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
                         }`}>
                           {isDone && <Check className="w-2 h-2 text-white" />}
                         </span>
-                        <span className={`flex-1 leading-relaxed ${isDone ? 'line-through opacity-50' : ''}`}>
-                          {item.label}
-                          {item.required && !isDone && (
-                            <span className="ml-1 text-[8px] font-bold text-amber-500 bg-amber-500/10 px-1 py-0.5 rounded-full">obrig.</span>
+                        <span className="flex-1 min-w-0">
+                          <span className={`block leading-relaxed ${isDone ? 'line-through opacity-50' : ''}`}>
+                            {item.label}
+                          </span>
+                          {!isDone && item.required && (
+                            <span className="text-[8px] font-bold text-amber-500 bg-amber-500/10 px-1 py-0.5 rounded-full">obrig.</span>
                           )}
-                          {isAuto && isDone && (
-                            <span className="ml-1 text-[8px] font-bold text-primary/70 bg-primary/10 px-1 py-0.5 rounded-full">✓ auto</span>
+                          {isDone && isAuto && (
+                            <span className="text-[8px] font-bold text-primary/70 bg-primary/10 px-1 py-0.5 rounded-full">✓ auto</span>
                           )}
                         </span>
                       </button>
@@ -538,7 +725,6 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
                   Pular
                 </button>
                 <div className="flex gap-1.5 items-center">
-                  {/* Dots */}
                   <div className="hidden sm:flex gap-0.5 mr-1">
                     {tutorialSteps.slice(1).map((_, i) => (
                       <div

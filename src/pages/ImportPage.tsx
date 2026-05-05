@@ -77,6 +77,19 @@ function getImportedMonths(rows: ParsedRow[]): string[] {
   return [...months].sort();
 }
 
+// ── CC payment detection (used in both CSV and OFX parsers) ─────
+
+const CC_PAYMENT_KEYWORDS = [
+  'pagamento de fatura', 'pag fatura', 'fatura cartao', 'fatura cartão',
+  'pagto fatura', 'pgto cartao', 'pgto cartão', 'pag cartao', 'pag cartão',
+  'pagamento nubank', 'debito automatico cartao',
+];
+
+function detectCCPayment(description: string): boolean {
+  const lower = description.toLowerCase();
+  return CC_PAYMENT_KEYWORDS.some(kw => lower.includes(kw));
+}
+
 // ── OFX type detection ───────────────────────────────────────────
 
 type OFXType = 'bank' | 'creditcard';
@@ -111,30 +124,87 @@ function extractCCBillMonth(text: string): string {
 // ── CSV parser ───────────────────────────────────────────────────
 
 function parseCSV(text: string, rules: Array<{ [key: string]: string }>, source: 'bank' | 'cc', categories: Array<{ id: string; name: string }> = []): ParsedRow[] {
-  const lines = text.trim().split(/\r?\n/);
+  const allLines = text.split(/\r?\n/);
+  if (allLines.length < 2) return [];
+
+  // Find the real header line — some banks prepend account info rows before the actual header
+  let headerIdx = 0;
+  for (let i = 0; i < Math.min(allLines.length, 10); i++) {
+    const lower = allLines[i].toLowerCase();
+    if (
+      (lower.includes('data') || lower.includes('date')) &&
+      (lower.includes('valor') || lower.includes('histórico') || lower.includes('historico') ||
+       lower.includes('descrição') || lower.includes('descricao') ||
+       lower.includes('crédito') || lower.includes('credito') || lower.includes('débito') || lower.includes('debito'))
+    ) {
+      headerIdx = i;
+      break;
+    }
+  }
+
+  const lines = allLines.slice(headerIdx);
   if (lines.length < 2) return [];
 
-  const header = lines[0].toLowerCase();
-  const isNubank = header.includes('valor') && (header.includes('identificador') || header.includes('título'));
+  const headerCols = splitCsvLine(lines[0]).map(c => c.toLowerCase().replace(/\s+/g, ' ').trim());
+
+  // Detect split credit/debit format (Bradesco, Itaú, CEF, Santander, etc.)
+  const creditIdx = headerCols.findIndex(c => c.startsWith('crédito') || c.startsWith('credito') || c === 'cr');
+  const debitIdx  = headerCols.findIndex(c => c.startsWith('débito')  || c.startsWith('debito')  || c === 'db');
+  const dateIdx   = headerCols.findIndex(c => c === 'data' || c === 'date' || c === 'dt' || c.startsWith('data'));
+  const descIdx   = headerCols.findIndex(c =>
+    c.includes('histórico') || c.includes('historico') ||
+    c.includes('descrição') || c.includes('descricao') ||
+    c.includes('memo') || c.includes('lançamento') || c.includes('lancamento')
+  );
+
+  const isSplitFormat = creditIdx !== -1 && debitIdx !== -1;
+  const isNubank = headerCols.some(c => c.includes('valor')) &&
+    (headerCols.some(c => c.includes('identificador')) || headerCols.some(c => c.includes('título') || c.includes('titulo')));
 
   const rows: ParsedRow[] = [];
+
   for (let i = 1; i < lines.length; i++) {
-    const cols = splitCsvLine(lines[i]);
+    const line = lines[i];
+    if (!line.trim()) continue;
+
+    const cols = splitCsvLine(line);
     if (cols.length < 2) continue;
+
+    // Stop at footer / summary rows (lines that don't start with a date-like value)
+    const firstCol = cols[0].trim();
+    if (firstCol && !/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(firstCol) && !/^\d{4}-\d{2}-\d{2}/.test(firstCol)) continue;
 
     let date: string;
     let rawAmount: string;
     let description: string;
+    let isIncomeRow = false;
 
-    if (isNubank && cols.length >= 4) {
+    if (isSplitFormat) {
+      // Bradesco / Itaú / CEF style: Date | Desc | [Docto] | Crédito | Débito | Saldo
+      const dIdx = dateIdx >= 0 ? dateIdx : 0;
+      const hIdx = descIdx >= 0 ? descIdx : (dIdx === 0 ? 1 : 0);
+
+      date = parseDateStr(cols[dIdx] ?? '');
+      description = (cols[hIdx] ?? '').trim() || 'Transação';
+
+      const creditVal = parseMoney(cols[creditIdx] ?? '');
+      const debitVal  = parseMoney(cols[debitIdx]  ?? '');
+
+      if (creditVal !== null && creditVal > 0) {
+        rawAmount = cols[creditIdx];
+        isIncomeRow = true;
+      } else if (debitVal !== null && debitVal > 0) {
+        rawAmount = cols[debitIdx];
+        isIncomeRow = false;
+      } else {
+        continue;
+      }
+    } else if (isNubank) {
       date = parseDateStr(cols[0]);
       rawAmount = cols[1];
-      description = cols[3] || cols[2] || 'Transação';
-    } else if (isNubank && cols.length >= 3) {
-      date = parseDateStr(cols[0]);
-      rawAmount = cols[1];
-      description = cols[2] || 'Transação';
+      description = (cols.length >= 4 ? cols[3] : cols[2]) || 'Transação';
     } else {
+      // Generic fallback — only accept values that have a decimal separator (avoids picking up doc/transaction IDs)
       date = new Date().toISOString().split('T')[0];
       rawAmount = '0';
       description = 'Transação importada';
@@ -144,9 +214,12 @@ function parseCSV(text: string, rules: Array<{ [key: string]: string }>, source:
         if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(col) || /^\d{4}-\d{2}-\d{2}/.test(col)) {
           date = parseDateStr(col); continue;
         }
-        const n = parseMoney(col);
-        if (n !== null && !gotAmount && col.length <= 15) { rawAmount = col; gotAmount = true; continue; }
-        if (col.length > 3) description = col;
+        // Must contain comma or period acting as decimal — pure integers are likely doc numbers
+        if (!gotAmount && /[,.]/.test(col) && col.length <= 15) {
+          const n = parseMoney(col);
+          if (n !== null) { rawAmount = col; gotAmount = true; continue; }
+        }
+        if (col.length > 3 && isNaN(Number(col.replace(/\./g, '').replace(',', '.')))) description = col;
       }
     }
 
@@ -154,10 +227,24 @@ function parseCSV(text: string, rules: Array<{ [key: string]: string }>, source:
     if (amount === null || amount === 0) continue;
 
     const result = classifyDescription(description, amount, rules, categories);
+
+    let rowType: RowType;
+    if (source === 'cc') {
+      rowType = 'expense';
+    } else if (isSplitFormat) {
+      if (!isIncomeRow && detectCCPayment(description)) {
+        rowType = 'cc_payment';
+      } else {
+        rowType = isIncomeRow ? 'income' : result.type as RowType;
+      }
+    } else {
+      rowType = result.type as RowType;
+    }
+
     rows.push({
       date, description,
       amount: Math.abs(amount),
-      type: source === 'cc' ? 'expense' : result.type as RowType,
+      type: rowType,
       categoryId: result.categoryId ?? '',
       investmentId: result.investmentId ?? '',
       creditCardId: '',
@@ -173,20 +260,9 @@ function parseCSV(text: string, rules: Array<{ [key: string]: string }>, source:
 
 // ── OFX parser ───────────────────────────────────────────────────
 
-const CC_PAYMENT_KEYWORDS = [
-  'pagamento de fatura', 'pag fatura', 'fatura cartao', 'fatura cartão',
-  'pagto fatura', 'pgto cartao', 'pgto cartão', 'pag cartao', 'pag cartão',
-  'pagamento nubank', 'debito automatico cartao',
-];
-
 const CC_CREDIT_SKIP_KEYWORDS = [
   'pagamento recebido', 'ajuste a crédito',
 ];
-
-function detectCCPayment(description: string): boolean {
-  const lower = description.toLowerCase();
-  return CC_PAYMENT_KEYWORDS.some(kw => lower.includes(kw));
-}
 
 function shouldSkipCCCredit(description: string): boolean {
   const lower = description.toLowerCase();

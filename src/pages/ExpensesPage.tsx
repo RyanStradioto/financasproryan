@@ -1,14 +1,19 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useExpenses, useDeleteExpense, useUpdateExpense, useCategories, useAccounts, type Expense } from '@/hooks/useFinanceData';
+import { useCCTransactionsForMonth, useCreditCards, type CreditCardTransaction } from '@/hooks/useCreditCards';
 import { getMonthYear, formatCurrency, formatDate, getStatusColor, getStatusLabel } from '@/lib/format';
 import { formatWorkTime } from '@/lib/workTime';
 import { useWorkTimeCalc } from '@/hooks/useProfile';
 import MonthSelector from '@/components/finance/MonthSelector';
 import TransactionDialog from '@/components/finance/TransactionDialog';
 import EditTransactionDialog from '@/components/finance/EditTransactionDialog';
-import { Trash2, Pencil, Paperclip, Clock, ChevronDown, Filter, Search, X, TrendingDown, Receipt, SlidersHorizontal, Check, ArrowUp, ArrowDown } from 'lucide-react';
+import { Trash2, Pencil, Paperclip, Clock, ChevronDown, Filter, Search, X, TrendingDown, Receipt, SlidersHorizontal, Check, ArrowUp, ArrowDown, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+
+type ExpenseRow = Expense & { _type: 'expense' };
+type CCRow = CreditCardTransaction & { _type: 'cc' };
+type Row = ExpenseRow | CCRow;
 
 function DatePicker({ date, onChange }: { date: string; onChange: (d: string) => void }) {
   const [editing, setEditing] = useState(false);
@@ -109,6 +114,8 @@ export default function ExpensesPage() {
   const { data: expenses = [], isLoading } = useExpenses(month);
   const { data: categories = [] } = useCategories();
   const { data: accounts = [] } = useAccounts();
+  const { data: ccTransactions = [] } = useCCTransactionsForMonth(month);
+  const { data: creditCards = [] } = useCreditCards();
   const deleteExpense = useDeleteExpense();
   const updateExpense = useUpdateExpense();
   const [editing, setEditing] = useState<(Expense & { type: 'expense' }) | null>(null);
@@ -145,6 +152,7 @@ export default function ExpensesPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [filterOpen, setFilterOpen] = useState(false);
   const [catSearch, setCatSearch] = useState('');
+  const [showCCOnly, setShowCCOnly] = useState(false);
 
   const toggleStatus   = (v: string) => setFilterStatuses(p => p.includes(v) ? p.filter(x => x !== v) : [...p, v]);
   const toggleCategory = (v: string) => setFilterCategories(p => p.includes(v) ? p.filter(x => x !== v) : [...p, v]);
@@ -152,38 +160,56 @@ export default function ExpensesPage() {
 
   const activeFilterCount = filterStatuses.length + filterCategories.length + filterAccounts.length +
     (filterAmountMin !== '' ? 1 : 0) + (filterAmountMax !== '' ? 1 : 0);
-  const hasActiveFilters = !!(filterSearch || activeFilterCount > 0);
+  const hasActiveFilters = !!(filterSearch || activeFilterCount > 0 || showCCOnly);
 
   const clearFilters = () => {
     setFilterSearch(''); setFilterStatuses([]); setFilterCategories([]);
     setFilterAccounts([]); setFilterAmountMin(''); setFilterAmountMax('');
+    setShowCCOnly(false);
   };
 
   const STATUS_ORDER: Record<string, number> = { concluido: 0, pendente: 1, agendado: 2 };
 
-  const filtered = expenses.filter(e => {
-    if (filterStatuses.length > 0 && !filterStatuses.includes(e.status)) return false;
-    if (filterCategories.length > 0 && !filterCategories.includes(e.category_id ?? '')) return false;
-    if (filterAccounts.length > 0 && !filterAccounts.includes(e.account_id ?? '')) return false;
-    if (filterAmountMin !== '' && Number(e.amount) < Number(filterAmountMin)) return false;
-    if (filterAmountMax !== '' && Number(e.amount) > Number(filterAmountMax)) return false;
-    if (filterSearch && !e.description?.toLowerCase().includes(filterSearch.toLowerCase())) return false;
+  // Merge regular expenses + CC transactions
+  const allRows: Row[] = useMemo(() => [
+    ...expenses.map(e => ({ ...e, _type: 'expense' as const })),
+    ...ccTransactions.map(t => ({ ...t, _type: 'cc' as const })),
+  ], [expenses, ccTransactions]);
+
+  const filtered: Row[] = useMemo(() => allRows.filter(item => {
+    if (showCCOnly && item._type !== 'cc') return false;
+    if (filterSearch && !item.description?.toLowerCase().includes(filterSearch.toLowerCase())) return false;
+    if (filterCategories.length > 0 && !filterCategories.includes(item.category_id ?? '')) return false;
+    if (filterAmountMin !== '' && Number(item.amount) < Number(filterAmountMin)) return false;
+    if (filterAmountMax !== '' && Number(item.amount) > Number(filterAmountMax)) return false;
+    // Status and account filters only apply to regular expenses
+    if (item._type === 'expense') {
+      if (filterStatuses.length > 0 && !filterStatuses.includes(item.status)) return false;
+      if (filterAccounts.length > 0 && !filterAccounts.includes(item.account_id ?? '')) return false;
+    }
     return true;
   }).sort((a, b) => {
     let cmp = 0;
     if (sortBy === 'date')        cmp = new Date(b.date).getTime() - new Date(a.date).getTime();
     if (sortBy === 'amount')      cmp = Number(b.amount) - Number(a.amount);
     if (sortBy === 'description') cmp = (a.description ?? '').localeCompare(b.description ?? '');
-    if (sortBy === 'status')      cmp = (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99);
+    if (sortBy === 'status') {
+      const sA = a._type === 'expense' ? (STATUS_ORDER[a.status] ?? 99) : 100;
+      const sB = b._type === 'expense' ? (STATUS_ORDER[b.status] ?? 99) : 100;
+      cmp = sA - sB;
+    }
     if (sortBy === 'category') {
       const catA = categories.find(c => c.id === a.category_id)?.name ?? '';
       const catB = categories.find(c => c.id === b.category_id)?.name ?? '';
       cmp = catA.localeCompare(catB);
     }
     return sortDir === 'asc' ? -cmp : cmp;
-  });
+  }), [allRows, filterSearch, filterCategories, filterAmountMin, filterAmountMax, filterStatuses, filterAccounts, showCCOnly, sortBy, sortDir, categories]);
 
-  const total = filtered.reduce((s, e) => s + Number(e.amount), 0);
+  const totalExpenses = useMemo(() => expenses.reduce((s, e) => s + Number(e.amount), 0), [expenses]);
+  const totalCC = useMemo(() => ccTransactions.reduce((s, t) => s + Number(t.amount), 0), [ccTransactions]);
+  const total = filtered.reduce((s, r) => s + Number(r.amount), 0);
+  const totalItems = expenses.length + ccTransactions.length;
 
   const getCategoryName = (id: string | null) => {
     if (!id) return '—';
@@ -195,6 +221,16 @@ export default function ExpensesPage() {
     if (!id) return '—';
     const acc = accounts.find(a => a.id === id);
     return acc ? (hideIcon ? acc.name : `${acc.icon} ${acc.name}`) : '—';
+  };
+
+  const getCardName = (cardId: string) => {
+    const card = creditCards.find(c => c.id === cardId);
+    return card ? card.name : 'Cartão';
+  };
+
+  const getCardColor = (cardId: string) => {
+    const card = creditCards.find(c => c.id === cardId);
+    return card?.color ?? '#6366f1';
   };
 
   const handleDelete = async (id: string) => {
@@ -244,14 +280,32 @@ export default function ExpensesPage() {
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-1">Despesas</h1>
             <p className="text-sm text-muted-foreground flex items-center gap-2">
               <span className="inline-block w-2 h-2 rounded-full bg-expense animate-pulse" />
-              {hasActiveFilters ? `${filtered.length} de ` : ''}{expenses.length} lançamentos neste mês
+              {hasActiveFilters ? `${filtered.length} de ` : ''}{totalItems} lançamentos neste mês
+              {ccTransactions.length > 0 && (
+                <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-md bg-[#6366f1]/10 text-[#6366f1] border border-[#6366f1]/20 font-medium">
+                  <CreditCard className="w-3 h-3" />{ccTransactions.length} no cartão
+                </span>
+              )}
             </p>
           </div>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 relative z-10 w-full sm:w-auto mt-2 sm:mt-0">
+          {/* Summary mini chips */}
+          {ccTransactions.length > 0 && (
+            <div className="hidden md:flex flex-col items-end gap-1">
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] text-muted-foreground">Débito/Espécie</span>
+                <span className="text-sm font-bold text-expense">{formatCurrency(totalExpenses)}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] text-muted-foreground">Cartão de Crédito</span>
+                <span className="text-sm font-bold text-[#6366f1]">{formatCurrency(totalCC)}</span>
+              </div>
+            </div>
+          )}
           <div className="flex flex-col items-start sm:items-end mb-2 sm:mb-0">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Total Mensal</p>
-            <p className="text-3xl sm:text-4xl font-extrabold text-expense currency drop-shadow-sm leading-none">{formatCurrency(total)}</p>
+            <p className="text-3xl sm:text-4xl font-extrabold text-expense currency drop-shadow-sm leading-none">{formatCurrency(totalExpenses + totalCC)}</p>
           </div>
           <div className="w-full h-px sm:w-px sm:h-12 bg-border/50 block sm:mx-2 my-2 sm:my-0" />
           <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
@@ -281,6 +335,18 @@ export default function ExpensesPage() {
             )}
           </div>
 
+          {/* CC toggle */}
+          {ccTransactions.length > 0 && (
+            <button
+              onClick={() => setShowCCOnly(v => !v)}
+              className={`h-10 flex items-center gap-2 px-3.5 rounded-xl border text-sm font-medium transition-colors shadow-sm shrink-0 ${showCCOnly ? 'border-[#6366f1]/50 bg-[#6366f1]/10 text-[#6366f1]' : 'border-border/60 bg-card/50 text-foreground hover:bg-muted/50'}`}
+              title="Mostrar apenas cartão de crédito"
+            >
+              <CreditCard className="w-4 h-4" />
+              <span className="hidden sm:inline">Só Cartão</span>
+            </button>
+          )}
+
           {/* Filter panel button */}
           <Popover open={filterOpen} onOpenChange={(o) => { setFilterOpen(o); if (!o) setCatSearch(''); }}>
             <PopoverTrigger asChild>
@@ -307,7 +373,7 @@ export default function ExpensesPage() {
 
                 {/* Status */}
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Status</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Status (despesas)</p>
                   <div className="space-y-0.5">
                     {STATUSES.map(s => (
                       <button
@@ -362,7 +428,7 @@ export default function ExpensesPage() {
                 {/* Accounts */}
                 {accounts.length > 0 && (
                   <div>
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Conta</p>
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Conta (despesas)</p>
                     <div className="space-y-0.5">
                       {accounts.map(a => (
                         <button
@@ -445,8 +511,16 @@ export default function ExpensesPage() {
         </div>
 
         {/* Active filter chips */}
-        {activeFilterCount > 0 && (
+        {(activeFilterCount > 0 || showCCOnly) && (
           <div className="flex items-center gap-2 flex-wrap px-1">
+            {showCCOnly && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#6366f1]/10 border border-[#6366f1]/20 text-[#6366f1] text-xs font-medium">
+                <CreditCard className="w-3 h-3" /> Só Cartão
+                <button onClick={() => setShowCCOnly(false)} className="hover:opacity-70 ml-0.5 transition-opacity">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
             {filterStatuses.map(s => {
               const st = STATUSES.find(x => x.value === s);
               return (
@@ -495,7 +569,7 @@ export default function ExpensesPage() {
 
       {/* Mobile card list */}
       <div className="sm:hidden stat-card p-0 overflow-hidden divide-y divide-border/40">
-        {expenses.length === 0 && !isLoading && (
+        {totalItems === 0 && !isLoading && (
           <div className="flex flex-col items-center py-16 gap-4 bg-muted/5">
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center shadow-sm border border-border/50">
               <Receipt className="w-8 h-8 text-muted-foreground/50" />
@@ -506,7 +580,7 @@ export default function ExpensesPage() {
             </div>
           </div>
         )}
-        {expenses.length > 0 && filtered.length === 0 && (
+        {totalItems > 0 && filtered.length === 0 && (
           <div className="flex flex-col items-center py-12 gap-3">
             <Filter className="w-8 h-8 text-muted-foreground opacity-40" />
             <p className="text-sm font-medium text-muted-foreground">Nenhuma despesa encontrada</p>
@@ -515,62 +589,97 @@ export default function ExpensesPage() {
         )}
         {filtered.map((item) => {
           const cat = categories.find(c => c.id === item.category_id);
+          const isCC = item._type === 'cc';
+          const cardColor = isCC ? getCardColor((item as CCRow).credit_card_id) : undefined;
+
           return (
-            <div key={item.id} className="p-4 flex flex-col gap-3 relative hover:bg-muted/10 transition-colors">
-              <div className={`absolute top-0 left-0 w-1 h-full ${item.status === 'concluido' ? 'bg-success/80' : item.status === 'pendente' ? 'bg-warning/80' : 'bg-info/80'}`} />
+            <div key={`${item._type}-${item.id}`} className={`p-4 flex flex-col gap-3 relative hover:bg-muted/10 transition-colors ${isCC ? 'bg-[#6366f1]/[0.02]' : ''}`}>
+              <div
+                className="absolute top-0 left-0 w-1 h-full"
+                style={isCC
+                  ? { backgroundColor: cardColor }
+                  : { backgroundColor: (item as ExpenseRow).status === 'concluido' ? 'rgb(16 185 129 / 0.8)' : (item as ExpenseRow).status === 'pendente' ? 'rgb(245 158 11 / 0.8)' : 'rgb(59 130 246 / 0.8)' }
+                }
+              />
               <div className="flex items-center justify-between gap-3 pl-2">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-11 h-11 rounded-full bg-muted/40 flex items-center justify-center text-xl shrink-0 shadow-sm border border-border/60">
-                    {cat?.icon || '🛒'}
+                  <div
+                    className={`w-11 h-11 rounded-full flex items-center justify-center text-xl shrink-0 shadow-sm border ${isCC ? 'border-[#6366f1]/20' : 'border-border/60 bg-muted/40'}`}
+                    style={isCC ? { backgroundColor: `${cardColor}20` } : undefined}
+                  >
+                    {isCC ? <CreditCard className="w-5 h-5" style={{ color: cardColor }} /> : (cat?.icon || '🛒')}
                   </div>
                   <div className="min-w-0 flex flex-col justify-center">
                     <div className="flex items-center gap-1.5 mb-1">
                       <p className="font-bold text-[15px] leading-tight truncate text-foreground/95">{item.description || 'Despesa'}</p>
-                      {item.attachment_url && (
-                        <a href={item.attachment_url} target="_blank" rel="noopener noreferrer" className="text-primary shrink-0 hover:scale-110 transition-transform">
+                      {isCC && (item as CCRow).is_installment && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#6366f1]/10 text-[#6366f1] border border-[#6366f1]/20 font-bold shrink-0">
+                          {(item as CCRow).installment_number}/{(item as CCRow).total_installments}x
+                        </span>
+                      )}
+                      {!isCC && (item as ExpenseRow).attachment_url && (
+                        <a href={(item as ExpenseRow).attachment_url!} target="_blank" rel="noopener noreferrer" className="text-primary shrink-0 hover:scale-110 transition-transform">
                           <Paperclip className="w-3.5 h-3.5" />
                         </a>
                       )}
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-xs">
-                      <DatePicker date={item.date} onChange={d => handleDateChange(item.id, d)} />
-                      <OptionPicker value={item.category_id} options={categories} placeholder="Categoria" onChange={v => handleCategoryChange(item.id, v)} hideIcon />
+                      {isCC
+                        ? <span className="text-muted-foreground">{formatDate(item.date)}</span>
+                        : <DatePicker date={item.date} onChange={d => handleDateChange(item.id, d)} />
+                      }
+                      {isCC
+                        ? <span className="text-muted-foreground">{getCategoryName(item.category_id)}</span>
+                        : <OptionPicker value={item.category_id} options={categories} placeholder="Categoria" onChange={v => handleCategoryChange(item.id, v)} hideIcon />
+                      }
                     </div>
                   </div>
                 </div>
                 <div className="shrink-0 flex flex-col items-end gap-1.5">
                   <p className="font-extrabold text-expense text-lg tabular-nums leading-none tracking-tight">{formatCurrency(Number(item.amount))}</p>
-                  <StatusPicker status={item.status} onChange={s => handleStatusChange(item.id, s)} />
-                </div>
-              </div>
-              <div className="flex items-center justify-between pt-2.5 pl-2 mt-1">
-                <div className="flex items-center gap-2">
-                  {hourlyRate > 0 && (
-                    <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium bg-muted/20 px-2 py-1 rounded-full border border-border/40">
-                      <Clock className="w-3 h-3 text-accent-foreground/60" />{formatWorkTime(calcWorkTime(Number(item.amount)))}
+                  {isCC ? (
+                    <span
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border"
+                      style={{ color: cardColor, borderColor: `${cardColor}40`, backgroundColor: `${cardColor}15` }}
+                    >
+                      <CreditCard className="w-3 h-3" />
+                      {getCardName((item as CCRow).credit_card_id)}
                     </span>
-                  )}
-                  {item.account_id && (
-                    <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium bg-muted/20 px-2 py-1 rounded-full border border-border/40">
-                      {getAccountName(item.account_id, true)}
-                    </span>
+                  ) : (
+                    <StatusPicker status={(item as ExpenseRow).status} onChange={s => handleStatusChange(item.id, s)} />
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setEditing({ ...item, type: 'expense' })} className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors bg-muted/20">
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                  <button onClick={() => handleDelete(item.id)} className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors bg-muted/20">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
               </div>
+              {!isCC && (
+                <div className="flex items-center justify-between pt-2.5 pl-2 mt-1">
+                  <div className="flex items-center gap-2">
+                    {hourlyRate > 0 && (
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium bg-muted/20 px-2 py-1 rounded-full border border-border/40">
+                        <Clock className="w-3 h-3 text-accent-foreground/60" />{formatWorkTime(calcWorkTime(Number(item.amount)))}
+                      </span>
+                    )}
+                    {(item as ExpenseRow).account_id && (
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium bg-muted/20 px-2 py-1 rounded-full border border-border/40">
+                        {getAccountName((item as ExpenseRow).account_id, true)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setEditing({ ...(item as ExpenseRow), type: 'expense' })} className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors bg-muted/20">
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => handleDelete(item.id)} className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors bg-muted/20">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
         {filtered.length > 0 && (
-          <div className="flex items-center justify-between px-4 py-3 rounded-2xl bg-expense/8 border border-expense/15">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total</span>
+          <div className="flex items-center justify-between px-4 py-3 bg-expense/5 border-t border-expense/10">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total filtrado</span>
             <span className="font-extrabold text-expense currency">{formatCurrency(total)}</span>
           </div>
         )}
@@ -585,7 +694,7 @@ export default function ExpensesPage() {
                 <th className="text-left py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Data</th>
                 <th className="text-left py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Descrição</th>
                 <th className="text-left py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Categoria</th>
-                <th className="text-left py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Status</th>
+                <th className="text-left py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Status / Cartão</th>
                 <th className="text-right py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Valor</th>
                 {hourlyRate && <th className="text-center py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Trabalho</th>}
                 <th className="text-left py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Conta</th>
@@ -594,29 +703,76 @@ export default function ExpensesPage() {
             </thead>
             <tbody>
               {filtered.map((item) => {
+                const isCC = item._type === 'cc';
                 const wt = calcWorkTime(Number(item.amount));
+                const cardColor = isCC ? getCardColor((item as CCRow).credit_card_id) : undefined;
+
+                if (isCC) {
+                  const cc = item as CCRow;
+                  return (
+                    <tr key={`cc-${cc.id}`} className="border-b border-border/30 hover:bg-[#6366f1]/[0.03] transition-all" style={{ borderLeftColor: cardColor, borderLeftWidth: 3 }}>
+                      <td className="py-3.5 px-4 text-muted-foreground text-sm">{formatDate(cc.date)}</td>
+                      <td className="py-3.5 px-4 font-medium">
+                        <div className="flex items-center gap-2">
+                          {cc.description || 'Compra'}
+                          {cc.is_installment && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold border" style={{ color: cardColor, borderColor: `${cardColor}40`, backgroundColor: `${cardColor}15` }}>
+                              {cc.installment_number}/{cc.total_installments}x
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 text-muted-foreground text-xs">{getCategoryName(cc.category_id)}</td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border"
+                          style={{ color: cardColor, borderColor: `${cardColor}40`, backgroundColor: `${cardColor}15` }}
+                        >
+                          <CreditCard className="w-3.5 h-3.5" />
+                          {getCardName(cc.credit_card_id)}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-right currency font-bold text-expense">{formatCurrency(Number(cc.amount))}</td>
+                      {hourlyRate && (
+                        <td className="py-3.5 px-4 text-center">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent/50 text-xs font-semibold text-accent-foreground">
+                            <Clock className="w-3 h-3" />{formatWorkTime(wt)}
+                          </span>
+                        </td>
+                      )}
+                      <td className="py-3.5 px-4 text-xs text-muted-foreground">—</td>
+                      <td className="py-3.5 px-4">
+                        <a href="/cartoes" className="text-[10px] text-muted-foreground hover:text-[#6366f1] transition-colors flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                          Ver fatura →
+                        </a>
+                      </td>
+                    </tr>
+                  );
+                }
+
+                const exp = item as ExpenseRow;
                 return (
-                  <tr key={item.id} className="border-b border-border/30 hover:bg-muted/40 transition-all group">
+                  <tr key={`exp-${exp.id}`} className="border-b border-border/30 hover:bg-muted/40 transition-all group">
                     <td className="py-3.5 px-4">
-                      <DatePicker date={item.date} onChange={d => handleDateChange(item.id, d)} />
+                      <DatePicker date={exp.date} onChange={d => handleDateChange(exp.id, d)} />
                     </td>
                     <td className="py-3.5 px-4 font-medium">
                       <div className="flex items-center gap-1.5">
-                        {item.description || 'Despesa'}
-                        {item.attachment_url && (
-                          <a href={item.attachment_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
+                        {exp.description || 'Despesa'}
+                        {exp.attachment_url && (
+                          <a href={exp.attachment_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
                             <Paperclip className="w-3 h-3" />
                           </a>
                         )}
                       </div>
                     </td>
                     <td className="py-3.5 px-4">
-                      <OptionPicker value={item.category_id} options={categories} placeholder="Categoria" onChange={v => handleCategoryChange(item.id, v)} />
+                      <OptionPicker value={exp.category_id} options={categories} placeholder="Categoria" onChange={v => handleCategoryChange(exp.id, v)} />
                     </td>
                     <td className="py-3.5 px-4">
-                      <StatusPicker status={item.status} onChange={s => handleStatusChange(item.id, s)} />
+                      <StatusPicker status={exp.status} onChange={s => handleStatusChange(exp.id, s)} />
                     </td>
-                    <td className="py-3.5 px-4 text-right currency font-bold text-expense">{formatCurrency(Number(item.amount))}</td>
+                    <td className="py-3.5 px-4 text-right currency font-bold text-expense">{formatCurrency(Number(exp.amount))}</td>
                     {hourlyRate && (
                       <td className="py-3.5 px-4 text-center">
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent/50 text-xs font-semibold text-accent-foreground">
@@ -625,14 +781,14 @@ export default function ExpensesPage() {
                       </td>
                     )}
                     <td className="py-3.5 px-4">
-                      <OptionPicker value={item.account_id} options={accounts} placeholder="Conta" onChange={v => handleAccountChange(item.id, v)} />
+                      <OptionPicker value={exp.account_id} options={accounts} placeholder="Conta" onChange={v => handleAccountChange(exp.id, v)} />
                     </td>
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                        <button onClick={() => setEditing({ ...item, type: 'expense' })} className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all p-1.5 rounded-lg">
+                        <button onClick={() => setEditing({ ...exp, type: 'expense' })} className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all p-1.5 rounded-lg">
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
-                        <button onClick={() => handleDelete(item.id)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all p-1.5 rounded-lg">
+                        <button onClick={() => handleDelete(exp.id)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all p-1.5 rounded-lg">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -640,11 +796,11 @@ export default function ExpensesPage() {
                   </tr>
                 );
               })}
-              {expenses.length === 0 && !isLoading && (
+              {totalItems === 0 && !isLoading && (
                 <tr><td colSpan={hourlyRate ? 8 : 7} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-14 h-14 rounded-2xl bg-muted/50 flex items-center justify-center">
-                      <Trash2 className="w-6 h-6 text-muted-foreground" />
+                      <Receipt className="w-6 h-6 text-muted-foreground" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Nenhuma despesa neste mês</p>
@@ -653,7 +809,7 @@ export default function ExpensesPage() {
                   </div>
                 </td></tr>
               )}
-              {expenses.length > 0 && filtered.length === 0 && (
+              {totalItems > 0 && filtered.length === 0 && (
                 <tr><td colSpan={hourlyRate ? 8 : 7} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <Filter className="w-8 h-8 text-muted-foreground opacity-40" />
@@ -668,7 +824,14 @@ export default function ExpensesPage() {
             {filtered.length > 0 && (
               <tfoot>
                 <tr className="border-t-2 border-border bg-muted/20">
-                  <td colSpan={4} className="py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-muted-foreground">TOTAL</td>
+                  <td colSpan={3} className="py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-muted-foreground">TOTAL FILTRADO</td>
+                  <td className="py-3.5 px-4 text-xs text-muted-foreground">
+                    {ccTransactions.length > 0 && (
+                      <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-[#6366f1]/10 text-[#6366f1] font-medium">
+                        <CreditCard className="w-3 h-3" /> CC: {formatCurrency(totalCC)}
+                      </span>
+                    )}
+                  </td>
                   <td className="py-3.5 px-4 text-right currency font-extrabold text-expense">{formatCurrency(total)}</td>
                   {hourlyRate && (
                     <td className="py-3.5 px-4 text-center">

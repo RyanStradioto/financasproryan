@@ -417,6 +417,7 @@ export type Database = {
       }
       investments: {
         Row: {
+          annual_rate: number | null
           archived: boolean
           color: string
           created_at: string
@@ -424,13 +425,16 @@ export type Database = {
           icon: string
           id: string
           institution: string
+          liquidity: string | null
           name: string
+          photo_url: string | null
           total_invested: number
           type: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          annual_rate?: number | null
           archived?: boolean
           color?: string
           created_at?: string
@@ -438,13 +442,16 @@ export type Database = {
           icon?: string
           id?: string
           institution?: string
+          liquidity?: string | null
           name: string
+          photo_url?: string | null
           total_invested?: number
           type?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          annual_rate?: number | null
           archived?: boolean
           color?: string
           created_at?: string
@@ -452,7 +459,9 @@ export type Database = {
           icon?: string
           id?: string
           institution?: string
+          liquidity?: string | null
           name?: string
+          photo_url?: string | null
           total_invested?: number
           type?: string
           updated_at?: string

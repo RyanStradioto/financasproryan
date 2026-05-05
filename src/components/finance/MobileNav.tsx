@@ -1,5 +1,5 @@
-import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, TrendingUp, TrendingDown, BarChart3, CreditCard, Grid3X3, FileText, Brain, Settings, Landmark, Trash2 } from 'lucide-react';
+﻿import { NavLink, useLocation } from 'react-router-dom';
+import { LayoutDashboard, TrendingUp, TrendingDown, BarChart3, CreditCard, Grid3X3, FileText, Brain, Settings, Landmark, Trash2, CalendarClock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const links = [
@@ -8,6 +8,7 @@ const links = [
   { to: '/despesas', icon: TrendingDown, label: 'Despesas' },
   { to: '/investimentos', icon: BarChart3, label: 'Investir' },
   { to: '/contas', icon: Landmark, label: 'Contas' },
+  { to: '/planejamento', icon: CalendarClock, label: 'Plano' },
   { to: '/cartoes', icon: CreditCard, label: 'Cartões' },
   { to: '/categorias', icon: Grid3X3, label: 'Categorias' },
   { to: '/relatorio', icon: FileText, label: 'Relatório' },
@@ -50,3 +51,4 @@ export default function MobileNav() {
     </nav>
   );
 }
+

@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+﻿import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -14,6 +14,7 @@ const ExpensesPage    = lazy(() => import("./pages/ExpensesPage"));
 const CategoriesPage  = lazy(() => import("./pages/CategoriesPage"));
 const AccountsPage    = lazy(() => import("./pages/AccountsPage"));
 const CalendarPage    = lazy(() => import("./pages/CalendarPage"));
+const PlanningPage    = lazy(() => import("./pages/PlanningPage"));
 const SettingsPage    = lazy(() => import("./pages/SettingsPage"));
 const ImportPage      = lazy(() => import("./pages/ImportPage"));
 const InsightsPage    = lazy(() => import("./pages/InsightsPage"));
@@ -62,6 +63,7 @@ function ProtectedRoutes() {
           <Route path="/categorias"   element={<CategoriesPage />} />
           <Route path="/contas"       element={<AccountsPage />} />
           <Route path="/calendario"   element={<CalendarPage />} />
+          <Route path="/planejamento" element={<PlanningPage />} />
           <Route path="/configuracoes" element={<SettingsPage />} />
           <Route path="/importar"     element={<ImportPage />} />
           <Route path="/insights"     element={<InsightsPage />} />
@@ -90,3 +92,4 @@ const App = () => (
 );
 
 export default App;
+
