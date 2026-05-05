@@ -6,6 +6,21 @@ import type { Tables, TablesInsert } from '@/integrations/supabase/types';
 export type Investment = Tables<'investments'>;
 export type InvestmentTransaction = Tables<'investment_transactions'>;
 
+const OPTIONAL_INVESTMENT_COLUMNS = ['annual_rate', 'liquidity', 'photo_url'] as const;
+
+function stripUnsupportedColumns<T extends Record<string, unknown>>(payload: T, message?: string): Partial<T> {
+  if (!message) return payload;
+  let next: Record<string, unknown> = { ...payload };
+
+  for (const key of OPTIONAL_INVESTMENT_COLUMNS) {
+    if (message.includes(`'${key}'`) || message.includes(`"${key}"`) || message.includes(key)) {
+      delete next[key];
+    }
+  }
+
+  return next as Partial<T>;
+}
+
 export function useInvestments() {
   const { user } = useAuth();
   return useQuery({
@@ -101,10 +116,19 @@ export function useAddInvestment() {
   const { user } = useAuth();
   return useMutation({
     mutationFn: async (data: Omit<TablesInsert<'investments'>, 'user_id'>) => {
+      const firstPayload = { ...data, user_id: user!.id };
       const { error } = await supabase
         .from('investments')
-        .insert({ ...data, user_id: user!.id });
-      if (error) throw error;
+        .insert(firstPayload);
+      if (!error) return;
+
+      const fallbackPayload = stripUnsupportedColumns(firstPayload, error.message);
+      if (Object.keys(fallbackPayload).length === Object.keys(firstPayload).length) throw error;
+
+      const { error: fallbackError } = await supabase
+        .from('investments')
+        .insert(fallbackPayload as TablesInsert<'investments'>);
+      if (fallbackError) throw fallbackError;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['investments'] }),
   });
@@ -115,7 +139,13 @@ export function useUpdateInvestment() {
   return useMutation({
     mutationFn: async ({ id, ...data }: { id: string } & Partial<TablesInsert<'investments'>>) => {
       const { error } = await supabase.from('investments').update(data).eq('id', id);
-      if (error) throw error;
+      if (!error) return;
+
+      const fallbackPayload = stripUnsupportedColumns(data, error.message);
+      if (Object.keys(fallbackPayload).length === Object.keys(data).length) throw error;
+
+      const { error: fallbackError } = await supabase.from('investments').update(fallbackPayload).eq('id', id);
+      if (fallbackError) throw fallbackError;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['investments'] }),
   });
