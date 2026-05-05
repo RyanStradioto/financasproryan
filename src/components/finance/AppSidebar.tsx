@@ -19,6 +19,7 @@ import {
   Eye,
   EyeOff,
   Target,
+  Grid3X3,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
@@ -36,6 +37,7 @@ const mainLinks = [
 ];
 
 const toolLinks = [
+  { to: '/categorias', icon: Grid3X3, label: 'Categorias' },
   { to: '/contas', icon: Landmark, label: 'Contas' },
   { to: '/calendario', icon: CalendarDays, label: 'Calendario' },
   { to: '/relatorio', icon: FileText, label: 'Relatorio' },
@@ -47,7 +49,6 @@ const toolLinks = [
 
 function isLinkActive(pathname: string, to: string) {
   if (pathname === to) return true;
-  if (to === '/planejamento' && pathname === '/categorias') return true;
   return false;
 }
 

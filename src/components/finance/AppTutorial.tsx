@@ -61,7 +61,7 @@ const tutorialSteps: TutorialStep[] = [
     icon: Grid3X3,
     badge: 'Passo 2 de 7',
     color: 'from-emerald-500 to-teal-500',
-    route: '/planejamento',
+    route: '/categorias',
     highlightTarget: 'new-category',
     checklist: [
       { label: 'Criei pelo menos uma categoria', required: true },

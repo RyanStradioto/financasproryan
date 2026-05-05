@@ -6,6 +6,7 @@ import {
   BarChart3,
   CreditCard,
   Target,
+  Grid3X3,
   FileText,
   Brain,
   Settings,
@@ -21,6 +22,7 @@ const links = [
   { to: '/despesas', icon: TrendingDown, label: 'Despesas' },
   { to: '/investimentos', icon: BarChart3, label: 'Investir' },
   { to: '/cartoes', icon: CreditCard, label: 'Cartoes' },
+  { to: '/categorias', icon: Grid3X3, label: 'Categorias' },
   { to: '/contas', icon: Landmark, label: 'Contas' },
   { to: '/relatorio', icon: FileText, label: 'Relatorio' },
   { to: '/insights', icon: Brain, label: 'IA' },
@@ -30,7 +32,6 @@ const links = [
 
 function isActive(pathname: string, linkTo: string) {
   if (pathname === linkTo) return true;
-  if (linkTo === '/planejamento' && pathname === '/categorias') return true;
   return false;
 }
 

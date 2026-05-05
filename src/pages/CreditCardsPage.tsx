@@ -402,20 +402,23 @@ export default function CreditCardsPage() {
             </div>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-4">
-            <div className="rounded-xl border border-border/60 p-3 bg-muted/20 lg:col-span-1">
-              <p className="text-xs font-semibold mb-2">Fatura por categoria</p>
+          <div className="space-y-4">
+            <div className="rounded-lg border border-border/60 p-3 bg-muted/20">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold">Fatura por categoria</p>
+                <span className="text-[11px] text-muted-foreground">{byCategory.length} grupos</span>
+              </div>
               {byCategory.length === 0 ? (
                 <p className="text-xs text-muted-foreground py-4">Sem compras nesta fatura.</p>
               ) : (
-                <div className="space-y-2">
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {byCategory.map((row) => (
-                    <div key={row.id} className="space-y-1">
+                    <div key={row.id} className="rounded-md border border-border/50 bg-background/50 p-2.5">
                       <div className="flex items-center justify-between text-xs gap-2">
                         <span className="text-muted-foreground truncate">{row.label}</span>
                         <span className="font-semibold currency whitespace-nowrap">{formatCurrency(row.total)}</span>
                       </div>
-                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
                         <div className="h-full rounded-full bg-primary" style={{ width: `${row.pct}%` }} />
                       </div>
                     </div>
@@ -424,7 +427,7 @@ export default function CreditCardsPage() {
               )}
             </div>
 
-            <div className="lg:col-span-2 space-y-3">
+            <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h4 className="text-sm font-medium">{transactions.length} compras</h4>
                 <div className="flex items-center gap-2">
