@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+﻿import { useState, useMemo, useCallback, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -120,11 +120,12 @@ export default function TransactionDialog({ type, children }: Props) {
     e.preventDefault();
     const numAmount = parseFloat(amount.replace(/\./g, '').replace(',', '.'));
     if (isNaN(numAmount) || numAmount <= 0) {
-      toast.error('Valor inválido');
+      toast.error('Valor invÃ¡lido');
       return;
     }
 
     const numInstallments = parseInt(installments) || 1;
+    const selectedCreditCard = creditCards?.find((cc) => cc.id === creditCardId);
 
     try {
       // ── Pagar com cartão de crédito ──────────────────────────────────
@@ -162,9 +163,26 @@ export default function TransactionDialog({ type, children }: Props) {
           attachment_url: attachmentUrl,
           attachment_name: attachmentName,
         });
+      } else if (paymentMethod === 'credit_card') {
+        if (!selectedCreditCard) {
+          toast.error('Selecione um cartao de credito');
+          return;
+        }
+
+        await addCreditCardTransaction.mutateAsync({
+          credit_card_id: selectedCreditCard.id,
+          category_id: categoryId || null,
+          description,
+          amount: numAmount,
+          date,
+          bill_month: getCreditCardBillMonth(date, selectedCreditCard.closing_day),
+          installments: numInstallments,
+          notes: notes || undefined,
+        });
+
       } else if (investmentId) {
         if (numInstallments > 1) {
-          toast.error('Para enviar para investimento, lance em parcela única ou faça aportes separados.');
+          toast.error('Para enviar para investimento, lance em parcela Ãºnica ou faÃ§a aportes separados.');
           return;
         }
 
@@ -233,7 +251,7 @@ export default function TransactionDialog({ type, children }: Props) {
       reset();
       setOpen(false);
     } catch (err) {
-      console.error('Erro ao adicionar transação:', err);
+      console.error('Erro ao adicionar transaÃ§Ã£o:', err);
       const msg = err instanceof Error
         ? err.message
         : (typeof err === 'object' && err !== null && 'message' in err
@@ -257,7 +275,7 @@ export default function TransactionDialog({ type, children }: Props) {
         <DialogHeader className="mb-3">
           <DialogTitle className="text-base font-bold flex items-center gap-2">
             <span className={`w-7 h-7 rounded-xl flex items-center justify-center text-white text-sm font-bold ${type === 'income' ? 'bg-income' : 'bg-expense'}`}>
-              {type === 'income' ? '↑' : '↓'}
+              {type === 'income' ? 'â†‘' : 'â†“'}
             </span>
             {type === 'income' ? 'Nova Receita' : 'Nova Despesa'}
           </DialogTitle>
@@ -265,7 +283,7 @@ export default function TransactionDialog({ type, children }: Props) {
 
         <form onSubmit={handleSubmit} className="space-y-3 pb-2">
 
-          {/* Amount — currency masked */}
+          {/* Amount â€” currency masked */}
           <div
             onClick={() => document.getElementById('amount-input-' + type)?.focus()}
             className={`rounded-2xl p-4 cursor-text transition-all ${
@@ -383,9 +401,9 @@ export default function TransactionDialog({ type, children }: Props) {
 
           {/* Description */}
           <div className="space-y-1 relative">
-            <Label className="text-xs font-medium text-muted-foreground">Descrição</Label>
+            <Label className="text-xs font-medium text-muted-foreground">DescriÃ§Ã£o</Label>
             <Input
-              placeholder="Descreva a transação..."
+              placeholder="Descreva a transaÃ§Ã£o..."
               value={description}
               onChange={(e) => { setDescription(e.target.value); setShowSuggestions(true); suggestCategory(e.target.value); }}
               onFocus={() => setShowSuggestions(true)}
@@ -429,6 +447,24 @@ export default function TransactionDialog({ type, children }: Props) {
                 </Select>
               </div>
 
+              <div className="space-y-1">
+                <Label className="text-xs font-medium text-muted-foreground">Forma de pagamento</Label>
+                <Select
+                  value={paymentMethod}
+                  onValueChange={(v) => {
+                    const method = v as 'account' | 'credit_card';
+                    setPaymentMethod(method);
+                    if (method === 'credit_card') setInvestmentId('');
+                  }}
+                >
+                  <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="account">Conta / DÃ©bito / PIX</SelectItem>
+                    <SelectItem value="credit_card">CartÃ£o de crÃ©dito</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label className="text-xs font-medium text-muted-foreground">Parcelas</Label>
@@ -436,7 +472,7 @@ export default function TransactionDialog({ type, children }: Props) {
                     <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {[1,2,3,4,5,6,7,8,9,10,11,12,18,24,36,48].map(n => (
-                        <SelectItem key={n} value={String(n)}>{n === 1 ? 'À vista' : `${n}x`}</SelectItem>
+                        <SelectItem key={n} value={String(n)}>{n === 1 ? 'Ã€ vista' : `${n}x`}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -490,16 +526,16 @@ export default function TransactionDialog({ type, children }: Props) {
                       <SelectContent>
                         {Array.from({ length: parseInt(installments) }, (_, i) => i + 1).map(n => (
                           <SelectItem key={n} value={String(n)}>
-                            {n === 1 ? '1ª (nenhuma paga)' : `${n}ª (${n - 1} já paga${n - 1 > 1 ? 's' : ''})`}
+                            {n === 1 ? '1Âª (nenhuma paga)' : `${n}Âª (${n - 1} jÃ¡ paga${n - 1 > 1 ? 's' : ''})`}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="rounded-xl bg-primary/5 border border-primary/15 p-3 text-xs text-muted-foreground">
-                    💳 <span className="font-semibold text-foreground">{parseInt(installments) - parseInt(startInstallment) + 1} parcelas</span> de{' '}
+                    ðŸ’³ <span className="font-semibold text-foreground">{parseInt(installments) - parseInt(startInstallment) + 1} parcelas</span> de{' '}
                     <span className="font-semibold text-foreground currency">R$ {amount || '0,00'}</span>
-                    {' '}({startInstallment}/{installments} até {installments}/{installments})
+                    {' '}({startInstallment}/{installments} atÃ© {installments}/{installments})
                   </div>
                 </>
               )}
@@ -532,7 +568,7 @@ export default function TransactionDialog({ type, children }: Props) {
           )}
 
           <div className="space-y-1">
-            <Label className="text-xs font-medium text-muted-foreground">Observações (opcional)</Label>
+            <Label className="text-xs font-medium text-muted-foreground">ObservaÃ§Ãµes (opcional)</Label>
             <Textarea
               placeholder="Notas adicionais..."
               value={notes}
@@ -578,3 +614,5 @@ export default function TransactionDialog({ type, children }: Props) {
     </Dialog>
   );
 }
+
+

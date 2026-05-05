@@ -8,10 +8,11 @@ import { useSensitiveData } from './SensitiveData';
 
 const mainLinks = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/planejamento', icon: Target, label: 'Planejamento' },
   { to: '/receitas', icon: TrendingUp, label: 'Receitas' },
   { to: '/despesas', icon: TrendingDown, label: 'Despesas' },
   { to: '/investimentos', icon: BarChart3, label: 'Investimentos' },
-  { to: '/cartoes', icon: CreditCard, label: 'Cartões' },
+  { to: '/cartoes', icon: CreditCard, label: 'Cartoes' },
 ];
 
 const toolLinks = [
@@ -23,8 +24,13 @@ const toolLinks = [
   { to: '/insights', icon: Brain, label: 'Insights IA' },
   { to: '/importar', icon: Upload, label: 'Importar' },
   { to: '/lixeira', icon: Trash2, label: 'Lixeira' },
-  { to: '/configuracoes', icon: Settings, label: 'Configurações' },
+  { to: '/configuracoes', icon: Settings, label: 'Configuracoes' },
 ];
+
+function isLinkActive(pathname: string, to: string) {
+  if (pathname === to) return true;
+  return false;
+}
 
 export default function AppSidebar() {
   const { signOut, user } = useAuth();
@@ -33,43 +39,45 @@ export default function AppSidebar() {
   const location = useLocation();
   const trashCount = useTrashCount();
 
-  const renderLink = ({ to, icon: Icon, label }: { to: string; icon: typeof LayoutDashboard; label: string }) => (
-    <NavLink
-      key={to}
-      to={to}
-      className={cn(
-        'flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
-        location.pathname === to
-          ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
-          : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-      )}
-    >
-      <Icon className="w-4 h-4" />
-      {label}
-      {to === '/lixeira' && trashCount > 0 && (
-        <span className="ml-auto text-[10px] bg-destructive text-destructive-foreground px-1.5 py-0.5 rounded-full font-bold min-w-[18px] text-center">
-          {trashCount}
-        </span>
-      )}
-    </NavLink>
-  );
+  const renderLink = ({ to, icon: Icon, label }: { to: string; icon: typeof LayoutDashboard; label: string }) => {
+    const active = isLinkActive(location.pathname, to);
+
+    return (
+      <NavLink
+        key={to}
+        to={to}
+        className={cn(
+          'flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
+          active
+            ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted',
+        )}
+      >
+        <Icon className="w-4 h-4" />
+        {label}
+        {to === '/lixeira' && trashCount > 0 && (
+          <span className="ml-auto text-[10px] bg-destructive text-destructive-foreground px-1.5 py-0.5 rounded-full font-bold min-w-[18px] text-center">
+            {trashCount}
+          </span>
+        )}
+      </NavLink>
+    );
+  };
 
   return (
     <aside className="hidden lg:flex flex-col w-[260px] bg-card/50 backdrop-blur-sm border-r border-border/50 h-screen sticky top-0">
-      {/* Logo */}
       <div className="p-5 border-b border-border/50">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/20">
             <Wallet className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-bold text-sm tracking-tight">FinançasPro</h1>
+            <h1 className="font-bold text-sm tracking-tight">FinancasPro</h1>
             <p className="text-[11px] text-muted-foreground truncate max-w-[160px]">{user?.email}</p>
           </div>
         </div>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 px-3 pt-2 pb-1">Principal</p>
         {mainLinks.map(renderLink)}
@@ -78,7 +86,6 @@ export default function AppSidebar() {
         {toolLinks.map(renderLink)}
       </nav>
 
-      {/* Footer */}
       <div className="p-3 border-t border-border/50 space-y-0.5">
         <button
           onClick={toggleVisibility}

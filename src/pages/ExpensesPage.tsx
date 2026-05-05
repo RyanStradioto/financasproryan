@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useExpenses, useDeleteExpense, useUpdateExpense, useCategories, useAccounts, type Expense } from '@/hooks/useFinanceData';
 import { useCCTransactionsForMonth, useCreditCards, type CreditCardTransaction } from '@/hooks/useCreditCards';
 import { getMonthYear, formatCurrency, formatDate, getStatusColor, getStatusLabel } from '@/lib/format';
+import { detectCreditCardExpense } from '@/lib/paymentMethod';
 import { formatWorkTime } from '@/lib/workTime';
 import { useWorkTimeCalc } from '@/hooks/useProfile';
 import MonthSelector from '@/components/finance/MonthSelector';
@@ -315,8 +316,32 @@ export default function ExpensesPage() {
         </div>
       </div>
 
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cartao</p>
+            <CreditCard className="h-4 w-4 text-primary" />
+          </div>
+          <p className="mt-2 text-xl font-extrabold text-primary currency">{formatCurrency(creditTotal)}</p>
+        </div>
+        <div className="rounded-2xl border border-border/70 bg-card/70 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Debito / PIX</p>
+            <Landmark className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <p className="mt-2 text-xl font-extrabold currency">{formatCurrency(accountTotal)}</p>
+        </div>
+        <div className="rounded-2xl border border-warning/25 bg-warning/5 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Em aberto</p>
+            <Clock className="h-4 w-4 text-warning" />
+          </div>
+          <p className="mt-2 text-xl font-extrabold text-warning currency">{formatCurrency(scheduledTotal)}</p>
+        </div>
+      </div>
+
       {/* Filter Bar */}
-      <div className="space-y-2 p-1">
+      <div className="rounded-2xl border border-border/60 bg-card/50 p-3 shadow-sm">
         <div className="flex items-center gap-2">
           {/* Search */}
           <div className="relative flex-1 max-w-md">
@@ -648,6 +673,11 @@ export default function ExpensesPage() {
                   ) : (
                     <StatusPicker status={(item as ExpenseRow).status} onChange={s => handleStatusChange(item.id, s)} />
                   )}
+                  {payment.type === 'credit' && (
+                    <span className="text-[10px] text-primary flex items-center gap-1 font-medium bg-primary/10 px-2 py-1 rounded-full border border-primary/30">
+                      {payment.label}
+                    </span>
+                  )}
                 </div>
               </div>
               {!isCC && (
@@ -686,9 +716,9 @@ export default function ExpensesPage() {
       </div>
 
       {/* Desktop table */}
-      <div className="hidden sm:block stat-card p-0 overflow-hidden">
+      <div className="hidden sm:block rounded-2xl border border-border/70 bg-card/70 p-3 shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm data-table">
+          <table className="w-full border-separate border-spacing-y-2 text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/30">
                 <th className="text-left py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Data</th>
@@ -756,7 +786,7 @@ export default function ExpensesPage() {
                     <td className="py-3.5 px-4">
                       <DatePicker date={exp.date} onChange={d => handleDateChange(exp.id, d)} />
                     </td>
-                    <td className="py-3.5 px-4 font-medium">
+                    <td className="border-y border-border/50 bg-background/45 py-3.5 px-4 font-semibold group-hover:bg-muted/30 transition-colors">
                       <div className="flex items-center gap-1.5">
                         {exp.description || 'Despesa'}
                         {exp.attachment_url && (
@@ -774,7 +804,7 @@ export default function ExpensesPage() {
                     </td>
                     <td className="py-3.5 px-4 text-right currency font-bold text-expense">{formatCurrency(Number(exp.amount))}</td>
                     {hourlyRate && (
-                      <td className="py-3.5 px-4 text-center">
+                      <td className="border-y border-border/50 bg-background/45 py-3.5 px-4 text-center group-hover:bg-muted/30 transition-colors">
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent/50 text-xs font-semibold text-accent-foreground">
                           <Clock className="w-3 h-3" />{formatWorkTime(wt)}
                         </span>
@@ -783,7 +813,16 @@ export default function ExpensesPage() {
                     <td className="py-3.5 px-4">
                       <OptionPicker value={exp.account_id} options={accounts} placeholder="Conta" onChange={v => handleAccountChange(exp.id, v)} />
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td className="border-y border-border/50 bg-background/45 py-3.5 px-4 group-hover:bg-muted/30 transition-colors">
+                      {payment.type === 'credit' ? (
+                        <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary border border-primary/30">
+                          {payment.label}
+                        </span>
+                      ) : (
+                        <OptionPicker value={item.account_id} options={accounts} placeholder="Conta" onChange={v => handleAccountChange(item.id, v)} />
+                      )}
+                    </td>
+                    <td className="rounded-r-xl border-y border-r border-border/50 bg-background/45 py-3.5 px-4 group-hover:bg-muted/30 transition-colors">
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                         <button onClick={() => setEditing({ ...exp, type: 'expense' })} className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all p-1.5 rounded-lg">
                           <Pencil className="w-3.5 h-3.5" />
@@ -840,7 +879,7 @@ export default function ExpensesPage() {
                       </span>
                     </td>
                   )}
-                  <td colSpan={2}></td>
+                  <td colSpan={3}></td>
                 </tr>
               </tfoot>
             )}

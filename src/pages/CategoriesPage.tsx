@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useCategories, useAddCategory, useUpdateCategory, useDeleteCategory, useExpenses } from '@/hooks/useFinanceData';
 import { useCCTransactionsForMonth } from '@/hooks/useCreditCards';
 import { formatCurrency, getMonthYear } from '@/lib/format';
@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import MonthSelector from '@/components/finance/MonthSelector';
+import { buildDescriptionAmountKey, buildExpenseMatchKey, parseStructuredCardMarker } from '@/lib/paymentMethod';
 
 const ICONS = ['🏠', '🛒', '🚗', '💰', '🎮', '🍔', '📚', '🏋️', '⚕️', '👕', '🎬', '🏷️', '💳', '📱', '✈️', '🐶'];
 
@@ -51,6 +52,35 @@ export default function CategoriesPage() {
   const [editBudget, setEditBudget] = useState('');
 
   const activeCategories = categories.filter(c => !c.archived);
+
+  const { categoryByTxId, categoryByMatchKey, categoryByLooseKey } = useMemo(() => {
+    const byTxId = new Map<string, string>();
+    const byKey = new Map<string, string>();
+    const byLooseKey = new Map<string, string>();
+
+    creditTransactions.forEach((tx) => {
+      if (!tx.category_id) return;
+      byTxId.set(tx.id, tx.category_id);
+      byKey.set(buildExpenseMatchKey(tx.description || '', tx.date, Number(tx.amount) || 0), tx.category_id);
+      byLooseKey.set(`${tx.bill_month}|${buildDescriptionAmountKey(tx.description || '', Number(tx.amount) || 0)}`, tx.category_id);
+    });
+
+    return { categoryByTxId: byTxId, categoryByMatchKey: byKey, categoryByLooseKey: byLooseKey };
+  }, [creditTransactions]);
+
+  const resolveCategoryId = (expense: { category_id: string | null; notes: string | null; description: string; date: string; amount: number }) => {
+    if (expense.category_id) return expense.category_id;
+
+    const marker = parseStructuredCardMarker(expense.notes);
+    if (marker?.transactionId && categoryByTxId.has(marker.transactionId)) {
+      return categoryByTxId.get(marker.transactionId) ?? null;
+    }
+
+    const matchKey = buildExpenseMatchKey(expense.description || '', expense.date, Number(expense.amount) || 0);
+    const billMonth = marker?.billMonth ?? expense.date?.slice(0, 7);
+    const looseKey = `${billMonth}|${buildDescriptionAmountKey(expense.description || '', Number(expense.amount) || 0)}`;
+    return categoryByMatchKey.get(matchKey) ?? categoryByLooseKey.get(looseKey) ?? null;
+  };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();

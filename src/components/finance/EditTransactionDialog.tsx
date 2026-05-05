@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useCategories, useAccounts, useUpdateIncome, useUpdateExpense, useDeleteExpense, type Income, type Expense } from '@/hooks/useFinanceData';
 import { useAddCreditCardTransaction, useCreditCards } from '@/hooks/useCreditCards';
 import { useFileUpload } from '@/hooks/useFileUpload';
+import { detectCreditCardExpense, stripCreditCardMarkers } from '@/lib/paymentMethod';
 import { toast } from 'sonner';
 import { Paperclip, X, FileText, ExternalLink } from 'lucide-react';
 
@@ -54,6 +55,7 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
       setAttachmentUrl(transaction.attachment_url || null);
       setAttachmentName(transaction.attachment_name || null);
       if (transaction.type === 'expense') {
+        const detected = detectCreditCardExpense(transaction, creditCards ?? [], accounts ?? []);
         setCategoryId(transaction.category_id || '');
         setPaymentMethod('account');
         setCreditCardId('');
@@ -61,7 +63,13 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
         setStartInstallment('1');
       }
     }
-  }, [transaction]);
+  }, [transaction, creditCards, accounts]);
+
+  const getCreditCardBillMonth = (purchaseDate: string, closingDay: number) => {
+    const [year, month, day] = purchaseDate.split('-').map(Number);
+    const billDate = day > closingDay ? new Date(year, month, 1) : new Date(year, month - 1, 1);
+    return `${billDate.getFullYear()}-${String(billDate.getMonth() + 1).padStart(2, '0')}`;
+  };
 
   const handlePaymentMethodChange = (v: string) => {
     setPaymentMethod(v as 'account' | 'credit_card');
@@ -145,9 +153,11 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
 
         await deleteExpense.mutateAsync(transaction.id);
       } else {
+        const cleanNotes = stripCreditCardMarkers(notes) || null;
         await updateExpense.mutateAsync({
           ...baseData,
           category_id: categoryId || null,
+          notes: cleanNotes,
         });
       }
 

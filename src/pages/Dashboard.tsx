@@ -23,6 +23,7 @@ import { formatWorkTime } from '@/lib/workTime';
 import { cn } from '@/lib/utils';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import PendingExpensesDialog from '@/components/finance/PendingExpensesDialog';
+import { buildDescriptionAmountKey, buildExpenseMatchKey, detectCreditCardExpense, parseStructuredCardMarker } from '@/lib/paymentMethod';
 
 const CHART_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
 
@@ -100,6 +101,8 @@ export default function Dashboard() {
   const { data: expenses = [] } = useExpenses(month);
   const { data: categories = [] } = useCategories();
   const { data: accounts = [] } = useAccounts();
+  const { data: creditCards = [] } = useCreditCards();
+  const { data: creditTransactions = [] } = useCreditCardTransactions();
   const { investmentTotal } = useNetWorth();
   const { data: accumulatedBalance = 0 } = useAccumulatedBalance(month);
   const { data: ccTransactions = [] } = useCCTransactionsForMonth(month);
@@ -107,6 +110,37 @@ export default function Dashboard() {
 
   const [editing, setEditing] = useState<((Income & { type: 'income' }) | (Expense & { type: 'expense' })) | null>(null);
   const [pendingModalOpen, setPendingModalOpen] = useState(false);
+  const isCreditCardExpense = (expense: Pick<Expense, 'notes' | 'account_id'>) =>
+    detectCreditCardExpense(expense, creditCards, accounts).isCreditCard;
+
+  const { categoryByTxId, categoryByMatchKey, categoryByLooseKey } = useMemo(() => {
+    const byTxId = new Map<string, string>();
+    const byKey = new Map<string, string>();
+    const byLooseKey = new Map<string, string>();
+
+    creditTransactions.forEach((tx) => {
+      if (!tx.category_id) return;
+      byTxId.set(tx.id, tx.category_id);
+      byKey.set(buildExpenseMatchKey(tx.description || '', tx.date, Number(tx.amount) || 0), tx.category_id);
+      byLooseKey.set(`${tx.bill_month}|${buildDescriptionAmountKey(tx.description || '', Number(tx.amount) || 0)}`, tx.category_id);
+    });
+
+    return { categoryByTxId: byTxId, categoryByMatchKey: byKey, categoryByLooseKey: byLooseKey };
+  }, [creditTransactions]);
+
+  const resolveCategoryId = (expense: Expense) => {
+    if (expense.category_id) return expense.category_id;
+
+    const marker = parseStructuredCardMarker(expense.notes);
+    if (marker?.transactionId && categoryByTxId.has(marker.transactionId)) {
+      return categoryByTxId.get(marker.transactionId) ?? null;
+    }
+
+    const matchKey = buildExpenseMatchKey(expense.description || '', expense.date, Number(expense.amount) || 0);
+    const billMonth = marker?.billMonth ?? expense.date?.slice(0, 7);
+    const looseKey = `${billMonth}|${buildDescriptionAmountKey(expense.description || '', Number(expense.amount) || 0)}`;
+    return categoryByMatchKey.get(matchKey) ?? categoryByLooseKey.get(looseKey) ?? null;
+  };
 
   // ── Core numbers ─────────────────────────────────────────────
   const totalIncome = useMemo(() =>
@@ -124,6 +158,9 @@ export default function Dashboard() {
   const pendingAmount = useMemo(() =>
     expenses.filter(e => e.status !== 'concluido').reduce((s, e) => s + Number(e.amount), 0)
   , [expenses]);
+  const cardExpenses = useMemo(() =>
+    expenses.filter(e => isCreditCardExpense(e)).reduce((s, e) => s + Number(e.amount), 0)
+  , [expenses, creditCards, accounts]);
 
   const balance = accumulatedBalance;
   const netWorth = accumulatedBalance + investmentTotal;
@@ -192,11 +229,11 @@ export default function Dashboard() {
   // ── Budget progress for Rings ────────────────────────────────
   const budgetsWithData = useMemo(() =>
     categories.filter(c => Number(c.monthly_budget) > 0).map(cat => {
-      const spent = expenses.filter(e => e.category_id === cat.id).reduce((s, e) => s + Number(e.amount), 0);
+      const spent = expenses.filter(e => resolveCategoryId(e) === cat.id).reduce((s, e) => s + Number(e.amount), 0);
       const budget = Number(cat.monthly_budget);
       return { ...cat, spent, budget };
     }).sort((a, b) => b.budget - a.budget)
-  , [categories, expenses]);
+  , [categories, expenses, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
 
   // ── Recent transactions ──────────────────────────────────────
   const recentTransactions = useMemo(() => [
@@ -248,6 +285,20 @@ export default function Dashboard() {
               </button>
             </TransactionDialog>
           </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="rounded-2xl border border-border/60 bg-card/70 px-4 py-3">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">No cartao</p>
+          <p className="text-lg font-extrabold currency text-primary mt-1">{maskCurrency(formatCurrency(cardExpenses))}</p>
+        </div>
+        <div className="rounded-2xl border border-border/60 bg-card/70 px-4 py-3">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Pendencias</p>
+          <p className="text-lg font-extrabold currency text-warning mt-1">{maskCurrency(formatCurrency(pendingAmount))}</p>
+        </div>
+        <div className="rounded-2xl border border-border/60 bg-card/70 px-4 py-3">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Taxa economia</p>
+          <p className="text-lg font-extrabold mt-1">{savings.toFixed(1)}%</p>
         </div>
       </div>
 
@@ -379,7 +430,7 @@ export default function Dashboard() {
         <div className="stat-card flex flex-col">
           <h3 className="text-sm font-semibold mb-6 flex items-center gap-2">
             <Target className="w-4 h-4 text-primary" /> Orçamentos Principais
-            <a href="/categorias" className="ml-auto text-xs text-primary hover:underline flex items-center gap-0.5 font-normal">
+            <a href="/planejamento" className="ml-auto text-xs text-primary hover:underline flex items-center gap-0.5 font-normal">
               Ver todos <ChevronRight className="w-3 h-3" />
             </a>
           </h3>
@@ -428,6 +479,7 @@ export default function Dashboard() {
             <div className="space-y-1 flex-1">
               {recentTransactions.map((t) => {
                 const wt = hourlyRate > 0 && t.type === 'expense' ? calcWorkTime(Number(t.amount)) : null;
+                const cardExpense = t.type === 'expense' && isCreditCardExpense(t as Expense);
                 return (
                   <div key={t.id} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-muted/50 transition-all group -mx-2">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -443,6 +495,11 @@ export default function Dashboard() {
                         <div className="flex items-center gap-1.5">
                           <p className="text-[10px] text-muted-foreground truncate">{formatDate(t.date)}</p>
                           <div className={cn('w-1.5 h-1.5 shrink-0 rounded-full', t.status === 'concluido' ? 'bg-success' : t.status === 'pendente' ? 'bg-warning' : 'bg-info')} />
+                          {cardExpense && (
+                            <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold text-primary">
+                              Cartao
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

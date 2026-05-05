@@ -125,7 +125,9 @@ export function useAddCreditCardTransaction() {
         const [y, m] = data.bill_month.split('-').map(Number);
         const future = new Date(y, m - 1 + i, 1);
         const futureBill = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, '0')}`;
+        const txId = crypto.randomUUID();
         return {
+          id: txId,
           user_id: user!.id,
           credit_card_id: data.credit_card_id,
           category_id: data.category_id ?? null,
@@ -145,8 +147,37 @@ export function useAddCreditCardTransaction() {
 
       const { error } = await supabase.from('credit_card_transactions').insert(rows);
       if (error) throw error;
+
+      // Keep budget/discipline tracking in sync by mirroring credit-card purchases in expenses.
+      const installmentAmount = +(data.amount / total).toFixed(2);
+      const baseDate = new Date(`${data.date}T00:00:00`);
+      const expenseRows = rows.map((tx, i) => {
+        const d = new Date(baseDate);
+        d.setMonth(d.getMonth() + i);
+        const expenseDate = d.toISOString().split('T')[0];
+        const baseNote = data.notes?.trim();
+        const cardMarker = `[Cartao de credito|card:${data.credit_card_id}|bill:${tx.bill_month}|tx:${tx.id}]`;
+        return {
+          user_id: user!.id,
+          date: expenseDate,
+          description: total > 1 ? `${data.description} (${i + 1}/${total})` : data.description,
+          amount: installmentAmount,
+          category_id: data.category_id ?? null,
+          account_id: null,
+          status: i === 0 ? (data.paid ? 'concluido' : 'pendente') : 'agendado',
+          notes: baseNote ? `${cardMarker} ${baseNote}` : cardMarker,
+          is_recurring: data.is_recurring ?? false,
+        };
+      });
+
+      const { error: expenseError } = await supabase.from('expenses').insert(expenseRows);
+      if (expenseError) throw expenseError;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['cc-transactions'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cc-transactions'] });
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+      qc.invalidateQueries({ queryKey: ['accumulated-balance'] });
+    },
   });
 }
 

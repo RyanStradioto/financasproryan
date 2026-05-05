@@ -40,9 +40,17 @@ const INVESTMENT_TYPES = [
 ];
 
 const TYPE_COLORS: Record<string, string> = {
-  cdb: '#10b981', lci: '#06b6d4', lca: '#84cc16', tesouro: '#3b82f6',
-  acoes: '#f59e0b', fii: '#8b5cf6', poupanca: '#ec4899', caixinha: '#f97316',
-  fundo: '#6366f1', cripto: '#ef4444', outro: '#6b7280',
+  cdb: '#10b981',
+  lci: '#06b6d4',
+  lca: '#84cc16',
+  tesouro: '#3b82f6',
+  acoes: '#f59e0b',
+  fii: '#8b5cf6',
+  poupanca: '#ec4899',
+  caixinha: '#f97316',
+  fundo: '#6366f1',
+  cripto: '#ef4444',
+  outro: '#6b7280',
 };
 
 const PRESET_COLORS = [
@@ -113,9 +121,29 @@ export default function InvestmentsPage() {
   const totalReturn     = totalPatrimony - totalInvested;
   const returnPct       = totalInvested > 0 ? (totalReturn / totalInvested) * 100 : 0;
 
-  const selectedTxns = selectedInvestment
-    ? allTransactions.filter(t => t.investment_id === selectedInvestment)
-    : allTransactions;
+  const selectedTxns = selectedInvestment ? allTransactions.filter((t) => t.investment_id === selectedInvestment) : allTransactions;
+
+  const openMovimentacao = (id: string, type: 'aporte' | 'resgate' | 'rendimento' | 'taxa' | 'ir') => {
+    setAporteData((p) => ({ ...p, type }));
+    setShowAporte(id);
+  };
+
+  const openEdit = (invId: string) => {
+    const inv = investmentViews.find((i) => i.id === invId);
+    if (!inv) return;
+
+    setEditInv({
+      id: inv.id,
+      name: inv.name,
+      type: inv.type,
+      institution: inv.institution || '',
+      color: inv.color || TYPE_COLORS[inv.type] || TYPE_COLORS.outro,
+      annualRate: String(inv.profile.annualRate),
+      liquidity: inv.profile.liquidity,
+      monthlyContribution: String(inv.profile.monthlyContribution || 0),
+    });
+    setShowEditInvestment(inv.id);
+  };
 
   const pieData = investments
     .filter(i => Number(i.current_value) > 0)
@@ -172,10 +200,11 @@ export default function InvestmentsPage() {
   };
 
   const handleNewInvestment = async () => {
-    if (!newInv.name) return toast.error('Informe o nome do investimento');
+    if (!newInv.name.trim()) return toast.error('Informe o nome do investimento');
+
     try {
       await addInvestment.mutateAsync({
-        name: newInv.name,
+        name: newInv.name.trim(),
         type: newInv.type,
         institution: newInv.institution,
         current_value: parseFloat(newInv.current_value) || 0,
@@ -186,6 +215,7 @@ export default function InvestmentsPage() {
         liquidity: newInv.liquidity,
         photo_url: newInv.photo_url || null,
       });
+
       toast.success('Investimento cadastrado!');
       setShowNewInvestment(false);
       setNewInv({ name: '', type: 'cdb', institution: '', current_value: '', annual_rate: '', liquidity: 'diaria', photo_url: '' });
@@ -196,6 +226,7 @@ export default function InvestmentsPage() {
 
   const handleAporte = async () => {
     if (!aporteData.amount || !showAporte) return;
+
     try {
       await addTransaction.mutateAsync({
         investment_id: showAporte,
@@ -203,12 +234,18 @@ export default function InvestmentsPage() {
         amount: parseFloat(aporteData.amount),
         date: aporteData.date,
         account_id: aporteData.account_id || null,
-        description: aporteData.description || (aporteData.type === 'aporte' ? 'Aporte' : 'Movimentação'),
+        description: aporteData.description || (aporteData.type === 'aporte' ? 'Aporte' : 'Movimentacao'),
       });
       const label = { aporte: 'Aporte', resgate: 'Resgate', rendimento: 'Rendimento', taxa: 'Taxa', ir: 'IR' }[aporteData.type];
       toast.success(`${label} registrado ✅`);
       setShowAporte(null);
-      setAporteData({ amount: '', date: new Date().toISOString().split('T')[0], type: 'aporte', account_id: '', description: '' });
+      setAporteData({
+        amount: '',
+        date: new Date().toISOString().split('T')[0],
+        type: 'aporte',
+        account_id: '',
+        description: '',
+      });
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -233,7 +270,7 @@ export default function InvestmentsPage() {
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="stat-card">
-          <p className="text-xs text-muted-foreground mb-1">Patrimônio Total</p>
+          <p className="text-xs text-muted-foreground mb-1">Patrimonio Total</p>
           <p className="text-xl font-bold text-primary">{maskCurrency(formatCurrency(totalPatrimony))}</p>
         </div>
         <div className="stat-card">
@@ -242,13 +279,13 @@ export default function InvestmentsPage() {
         </div>
         <div className="stat-card">
           <p className="text-xs text-muted-foreground mb-1">Rendimento</p>
-          <p className={`text-xl font-bold ${totalReturn >= 0 ? 'text-income' : 'text-expense'}`}>
+          <p className={cn('text-xl font-bold', totalReturn >= 0 ? 'text-income' : 'text-expense')}>
             {totalReturn >= 0 ? '+' : ''}{maskCurrency(formatCurrency(totalReturn))}
           </p>
         </div>
         <div className="stat-card">
           <p className="text-xs text-muted-foreground mb-1">Retorno %</p>
-          <p className={`text-xl font-bold ${returnPct >= 0 ? 'text-income' : 'text-expense'}`}>
+          <p className={cn('text-xl font-bold', returnPct >= 0 ? 'text-income' : 'text-expense')}>
             {isVisible ? `${returnPct >= 0 ? '+' : ''}${returnPct.toFixed(2)}%` : maskText('12,34%')}
           </p>
         </div>
@@ -383,7 +420,7 @@ export default function InvestmentsPage() {
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Investido</span>
-                    <span>{maskCurrency(formatCurrency(Number(inv.total_invested)))}</span>
+                    <span>{maskCurrency(formatCurrency(inv.invested))}</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Rendimento</span>
@@ -461,12 +498,10 @@ export default function InvestmentsPage() {
       {selectedTxns.length > 0 && (
         <div className="stat-card">
           <h3 className="font-semibold text-sm mb-4">
-            {selectedInvestment
-              ? `Histórico — ${investments.find(i => i.id === selectedInvestment)?.name}`
-              : 'Histórico de movimentações'}
+            {selectedInvestment ? `Historico - ${investmentViews.find((i) => i.id === selectedInvestment)?.name}` : 'Historico de movimentacoes'}
           </h3>
           <div className="space-y-2">
-            {selectedTxns.slice(0, 20).map(t => (
+            {selectedTxns.slice(0, 20).map((t) => (
               <div key={t.id} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
                 <div className="flex items-center gap-3">
                   <div className={`w-2 h-2 rounded-full ${
@@ -627,7 +662,7 @@ export default function InvestmentsPage() {
       <Dialog open={!!showAporte} onOpenChange={o => !o && setShowAporte(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Movimentação Patrimonial</DialogTitle>
+            <DialogTitle>Movimentacao Patrimonial</DialogTitle>
           </DialogHeader>
           <div className="rounded-lg bg-primary/5 border border-primary/20 px-3 py-2 text-xs text-muted-foreground mb-2">
             ℹ️ Aportes e resgates <strong>não são despesas</strong> — transferem patrimônio entre conta e investimento.

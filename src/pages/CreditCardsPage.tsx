@@ -9,6 +9,7 @@ import {
   useCreditCards,
   useAddCreditCard,
   useDeleteCreditCard,
+  useUpdateCreditCard,
   useCreditCardTransactions,
   useAddCreditCardTransaction,
   useToggleCCTransactionPaid,
@@ -38,10 +39,13 @@ function monthLabel(m: string) {
 
 const CARD_COLORS = ['#6366f1', '#ec4899', '#f97316', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444', '#0ea5e9', '#f59e0b'];
 
+type TxFilter = 'all' | 'pending' | 'paid';
+
 export default function CreditCardsPage() {
   const [billMonth, setBillMonth] = useState(getMonthYear());
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [showNewCard, setShowNewCard] = useState(false);
+  const [showEditCard, setShowEditCard] = useState(false);
   const [showNewTx, setShowNewTx] = useState(false);
   const [showPayBill, setShowPayBill] = useState(false);
   const [payBillAccountId, setPayBillAccountId] = useState('');
@@ -53,22 +57,53 @@ export default function CreditCardsPage() {
   const { data: transactions = [] } = useCreditCardTransactions(selectedCard ?? undefined, billMonth);
   const { data: upcomingTxns = [] } = useUpcomingInstallments(3);
   const addCard = useAddCreditCard();
+  const updateCard = useUpdateCreditCard();
   const deleteCard = useDeleteCreditCard();
   const addTx = useAddCreditCardTransaction();
   const togglePaid = useToggleCCTransactionPaid();
   const deleteTx = useDeleteCCTransaction();
   const addExpense = useAddExpense();
 
+  useEffect(() => {
+    if (!selectedCard && cards.length > 0) setSelectedCard(cards[0].id);
+    if (selectedCard && cards.every((c) => c.id !== selectedCard)) setSelectedCard(cards[0]?.id ?? null);
+  }, [cards, selectedCard]);
+
   const [newCard, setNewCard] = useState({
-    name: '', color: CARD_COLORS[0], credit_limit: '', closing_day: '10', due_day: '17'
+    name: '',
+    color: CARD_COLORS[0],
+    credit_limit: '',
+    closing_day: '10',
+    due_day: '17',
+  });
+
+  const [editCard, setEditCard] = useState({
+    name: '',
+    color: CARD_COLORS[0],
+    credit_limit: '',
+    closing_day: '10',
+    due_day: '17',
   });
 
   const [newTx, setNewTx] = useState({
-    description: '', amount: '', date: new Date().toISOString().split('T')[0],
-    category_id: '', installments: '1', notes: '',
+    description: '',
+    amount: '',
+    date: new Date().toISOString().split('T')[0],
+    category_id: '',
+    installments: '1',
+    notes: '',
   });
 
-  const currentCard = cards.find(c => c.id === selectedCard);
+  const currentCard = cards.find((c) => c.id === selectedCard);
+  const activeCategories = categories.filter((c) => !c.archived);
+  const categoryById = useMemo(
+    () => activeCategories.reduce<Record<string, { name: string; icon: string }>>((acc, c) => {
+      acc[c.id] = { name: c.name, icon: c.icon };
+      return acc;
+    }, {}),
+    [activeCategories],
+  );
+
   const billTotal = transactions.reduce((s, t) => s + Number(t.amount), 0);
   const paidTotal = transactions.filter(t => t.paid).reduce((s, t) => s + Number(t.amount), 0);
   const unpaidTotal = billTotal - paidTotal;
@@ -107,17 +142,18 @@ export default function CreditCardsPage() {
   }, [transactions, categories]);
 
   const handleAddCard = async () => {
-    if (!newCard.name) return toast.error('Informe o nome do cartão');
+    if (!newCard.name.trim()) return toast.error('Informe o nome do cartao');
+
     try {
       await addCard.mutateAsync({
         name: newCard.name,
         color: newCard.color,
         credit_limit: parseFloat(newCard.credit_limit) || 0,
-        closing_day: parseInt(newCard.closing_day),
-        due_day: parseInt(newCard.due_day),
+        closing_day: parseInt(newCard.closing_day) || 1,
+        due_day: parseInt(newCard.due_day) || 10,
         icon: '💳',
       });
-      toast.success('Cartão adicionado!');
+      toast.success('Cartao adicionado!');
       setShowNewCard(false);
       setNewCard({ name: '', color: CARD_COLORS[0], credit_limit: '', closing_day: '10', due_day: '17' });
     } catch (e) { toast.error((e as Error).message); }
@@ -129,7 +165,7 @@ export default function CreditCardsPage() {
       await addTx.mutateAsync({
         credit_card_id: selectedCard,
         description: newTx.description,
-        amount: parseFloat(newTx.amount),
+        amount: numericAmount,
         date: newTx.date,
         bill_month: newTxBillMonth,
         category_id: newTx.category_id || null,
@@ -162,7 +198,20 @@ export default function CreditCardsPage() {
     } catch (e) { toast.error((e as Error).message); }
   };
 
-  const activeCategories = categories.filter(c => !c.archived);
+  const getBillDates = () => {
+    if (!currentCard) return null;
+    const [year, month] = billMonth.split('-').map(Number);
+    const closingDate = new Date(year, month - 1, currentCard.closing_day);
+    const dueDate = new Date(year, month - 1, currentCard.due_day);
+    const now = new Date();
+    return {
+      closingDate: closingDate.toLocaleDateString('pt-BR'),
+      dueDate: dueDate.toLocaleDateString('pt-BR'),
+      status: now > closingDate ? 'Fechada' : 'Aberta',
+    };
+  };
+
+  const billDates = getBillDates();
 
   // Total de faturas do mês por cartão (para o grid)
   const cardTotals = useMemo(() => {
@@ -284,11 +333,11 @@ export default function CreditCardsPage() {
           </Button>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {cards.map(card => {
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {cards.map((card) => {
             const isSelected = selectedCard === card.id;
             return (
-              <div
+              <button
                 key={card.id}
                 onClick={() => setSelectedCard(isSelected ? null : card.id)}
                 className={`relative rounded-2xl p-5 cursor-pointer transition-all text-white overflow-hidden select-none ${isSelected ? 'ring-2 ring-white/60 shadow-xl scale-[1.02]' : 'hover:scale-[1.01] hover:shadow-lg'}`}
@@ -395,7 +444,10 @@ export default function CreditCardsPage() {
             </div>
             <div className="h-2.5 bg-muted rounded-full overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all ${limitUsagePercent > 80 ? 'bg-expense' : limitUsagePercent > 50 ? 'bg-warning' : 'bg-income'}`}
+                className={cn(
+                  'h-full rounded-full transition-all',
+                  limitUsagePercent > 80 ? 'bg-expense' : limitUsagePercent > 50 ? 'bg-warning' : 'bg-income',
+                )}
                 style={{ width: `${limitUsagePercent}%` }}
               />
             </div>
@@ -497,7 +549,7 @@ export default function CreditCardsPage() {
                 );
               })}
             </div>
-          )}
+          </div>
         </div>
       )}
 
@@ -512,9 +564,9 @@ export default function CreditCardsPage() {
       {/* ── Add Card Dialog ────────────────────────────────────────── */}
       <Dialog open={showNewCard} onOpenChange={setShowNewCard}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Novo Cartão de Crédito</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Novo Cartao de Credito</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label>Nome do cartão</Label><Input placeholder="Ex: Nubank Roxinho" value={newCard.name} onChange={e => setNewCard(p => ({ ...p, name: e.target.value }))} /></div>
+            <div><Label>Nome do cartao</Label><Input placeholder="Ex: Nubank" value={newCard.name} onChange={(e) => setNewCard((p) => ({ ...p, name: e.target.value }))} /></div>
             <div>
               <Label>Cor</Label>
               <div className="flex gap-2 mt-2 flex-wrap">
@@ -529,10 +581,10 @@ export default function CreditCardsPage() {
                 {newCard.name || 'Prévia do cartão'} · Dia {newCard.closing_day}/{newCard.due_day}
               </div>
             </div>
-            <div><Label>Limite (R$)</Label><Input type="number" placeholder="5000" value={newCard.credit_limit} onChange={e => setNewCard(p => ({ ...p, credit_limit: e.target.value }))} /></div>
+            <div><Label>Limite (R$)</Label><Input type="number" placeholder="5000" value={newCard.credit_limit} onChange={(e) => setNewCard((p) => ({ ...p, credit_limit: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Dia de fechamento</Label><Input type="number" min={1} max={31} value={newCard.closing_day} onChange={e => setNewCard(p => ({ ...p, closing_day: e.target.value }))} /></div>
-              <div><Label>Dia de vencimento</Label><Input type="number" min={1} max={31} value={newCard.due_day} onChange={e => setNewCard(p => ({ ...p, due_day: e.target.value }))} /></div>
+              <div><Label>Dia de fechamento</Label><Input type="number" min={1} max={31} value={newCard.closing_day} onChange={(e) => setNewCard((p) => ({ ...p, closing_day: e.target.value }))} /></div>
+              <div><Label>Dia de vencimento</Label><Input type="number" min={1} max={31} value={newCard.due_day} onChange={(e) => setNewCard((p) => ({ ...p, due_day: e.target.value }))} /></div>
             </div>
           </div>
           <DialogFooter>
@@ -545,14 +597,14 @@ export default function CreditCardsPage() {
       {/* ── Add Transaction Dialog ─────────────────────────────────── */}
       <Dialog open={showNewTx} onOpenChange={setShowNewTx}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Nova Compra — {currentCard?.name}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Nova Compra - {currentCard?.name}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label>Descrição</Label><Input placeholder="Ex: iFood, Netflix..." value={newTx.description} onChange={e => setNewTx(p => ({ ...p, description: e.target.value }))} /></div>
+            <div><Label>Descricao</Label><Input placeholder="Ex: iFood, Academia..." value={newTx.description} onChange={(e) => setNewTx((p) => ({ ...p, description: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Valor total (R$)</Label><Input type="number" placeholder="0,00" value={newTx.amount} onChange={e => setNewTx(p => ({ ...p, amount: e.target.value }))} /></div>
+              <div><Label>Valor total (R$)</Label><Input type="number" placeholder="0,00" value={newTx.amount} onChange={(e) => setNewTx((p) => ({ ...p, amount: e.target.value }))} /></div>
               <div>
                 <Label>Parcelas</Label>
-                <Input type="number" min={1} max={48} value={newTx.installments} onChange={e => setNewTx(p => ({ ...p, installments: e.target.value }))} />
+                <Input type="number" min={1} max={48} value={newTx.installments} onChange={(e) => setNewTx((p) => ({ ...p, installments: e.target.value }))} />
               </div>
             </div>
             <div><Label>Data da compra</Label><Input type="date" value={newTx.date} onChange={e => setNewTx(p => ({ ...p, date: e.target.value }))} /></div>
@@ -577,14 +629,15 @@ export default function CreditCardsPage() {
 
             <div>
               <Label>Categoria</Label>
-              <Select value={newTx.category_id} onValueChange={v => setNewTx(p => ({ ...p, category_id: v }))}>
+              <Select value={newTx.category_id || '__auto__'} onValueChange={(v) => setNewTx((p) => ({ ...p, category_id: v === '__auto__' ? '' : v }))}>
                 <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
                 <SelectContent>
-                  {activeCategories.map(c => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
+                  <SelectItem value="__auto__">Auto (recomendado)</SelectItem>
+                  {activeCategories.map((c) => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            <div><Label>Notas</Label><Input placeholder="Opcional..." value={newTx.notes} onChange={e => setNewTx(p => ({ ...p, notes: e.target.value }))} /></div>
+            <div><Label>Notas</Label><Input placeholder="Opcional..." value={newTx.notes} onChange={(e) => setNewTx((p) => ({ ...p, notes: e.target.value }))} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewTx(false)}>Cancelar</Button>

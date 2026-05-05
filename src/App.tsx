@@ -9,6 +9,7 @@ import AppLayout from "./components/finance/AppLayout";
 
 // Rotas pesadas carregadas sob demanda para reduzir o bundle inicial
 const Dashboard       = lazy(() => import("./pages/Dashboard"));
+const PlanningPage    = lazy(() => import("./pages/PlanningPage"));
 const IncomePage      = lazy(() => import("./pages/IncomePage"));
 const ExpensesPage    = lazy(() => import("./pages/ExpensesPage"));
 const CategoriesPage  = lazy(() => import("./pages/CategoriesPage"));
@@ -61,6 +62,7 @@ function ProtectedRoutes() {
           <Route path="/receitas"     element={<IncomePage />} />
           <Route path="/despesas"     element={<ExpensesPage />} />
           <Route path="/categorias"   element={<CategoriesPage />} />
+          <Route path="/planejamento" element={<PlanningPage />} />
           <Route path="/contas"       element={<AccountsPage />} />
           <Route path="/calendario"   element={<CalendarPage />} />
           <Route path="/planejamento" element={<PlanningPage />} />
