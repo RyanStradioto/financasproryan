@@ -125,7 +125,6 @@ export default function TransactionDialog({ type, children }: Props) {
     }
 
     const numInstallments = parseInt(installments) || 1;
-    const selectedCreditCard = creditCards?.find((cc) => cc.id === creditCardId);
 
     try {
       // ── Pagar com cartão de crédito ──────────────────────────────────
@@ -163,23 +162,6 @@ export default function TransactionDialog({ type, children }: Props) {
           attachment_url: attachmentUrl,
           attachment_name: attachmentName,
         });
-      } else if (paymentMethod === 'credit_card') {
-        if (!selectedCreditCard) {
-          toast.error('Selecione um cartao de credito');
-          return;
-        }
-
-        await addCreditCardTransaction.mutateAsync({
-          credit_card_id: selectedCreditCard.id,
-          category_id: categoryId || null,
-          description,
-          amount: numAmount,
-          date,
-          bill_month: getCreditCardBillMonth(date, selectedCreditCard.closing_day),
-          installments: numInstallments,
-          notes: notes || undefined,
-        });
-
       } else if (investmentId) {
         if (numInstallments > 1) {
           toast.error('Para enviar para investimento, lance em parcela Ãºnica ou faÃ§a aportes separados.');
@@ -447,23 +429,6 @@ export default function TransactionDialog({ type, children }: Props) {
                 </Select>
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-xs font-medium text-muted-foreground">Forma de pagamento</Label>
-                <Select
-                  value={paymentMethod}
-                  onValueChange={(v) => {
-                    const method = v as 'account' | 'credit_card';
-                    setPaymentMethod(method);
-                    if (method === 'credit_card') setInvestmentId('');
-                  }}
-                >
-                  <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="account">Conta / DÃ©bito / PIX</SelectItem>
-                    <SelectItem value="credit_card">CartÃ£o de crÃ©dito</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">

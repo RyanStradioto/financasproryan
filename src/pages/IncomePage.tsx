@@ -10,6 +10,8 @@ import { Trash2, Pencil, Paperclip, Clock, TrendingUp, ChevronDown, Search, X, F
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
+type PickerOption = { id: string; name: string; icon?: string | null };
+
 function DatePicker({ date, onChange }: { date: string; onChange: (d: string) => void }) {
   const [editing, setEditing] = useState(false);
   return editing ? (

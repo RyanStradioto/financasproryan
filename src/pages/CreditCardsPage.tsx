@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Plus, CreditCard, Trash2, Check, X, ChevronLeft, ChevronRight, ChevronDown, Wallet, CalendarDays, Zap, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -18,6 +18,7 @@ import {
 } from '@/hooks/useCreditCards';
 import { useCategories, useAccounts, useAddExpense } from '@/hooks/useFinanceData';
 import { getMonthYear, formatCurrency, formatDate, calcBillMonth } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 function prevMonth(m: string) {
@@ -110,6 +111,8 @@ export default function CreditCardsPage() {
   const limitUsagePercent = currentCard
     ? Math.min(100, (billTotal / Math.max(Number(currentCard.credit_limit), 1)) * 100)
     : 0;
+
+  const numericAmount = parseFloat(newTx.amount.replace(',', '.')) || 0;
 
   const newTxBillMonth = useMemo(() => {
     if (!currentCard) return billMonth;

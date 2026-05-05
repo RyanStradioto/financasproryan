@@ -18,6 +18,7 @@ import {
 } from '@/hooks/useInvestments';
 import { useAccounts } from '@/hooks/useFinanceData';
 import { formatCurrency, formatDate } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { useSensitiveData } from '@/components/finance/SensitiveData';

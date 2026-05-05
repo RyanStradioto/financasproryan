@@ -1,5 +1,5 @@
 ﻿import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, TrendingUp, TrendingDown, BarChart3, CreditCard, Grid3X3, FileText, Brain, Settings, Landmark, Trash2, CalendarClock } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, TrendingDown, BarChart3, CreditCard, Grid3X3, FileText, Brain, Settings, Landmark, Trash2, CalendarClock, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const links = [
