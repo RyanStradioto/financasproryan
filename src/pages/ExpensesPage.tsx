@@ -282,7 +282,7 @@ export default function ExpensesPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* ─── Hero Header ─── */}
-      <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-expense/[0.04] p-5 sm:p-7 shadow-sm">
+      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-expense/[0.04] p-4 shadow-sm sm:rounded-3xl sm:p-7">
         <div className="absolute -top-24 -right-24 w-72 h-72 bg-expense/15 blur-3xl rounded-full pointer-events-none" />
         <div className="absolute -bottom-32 -left-20 w-64 h-64 bg-expense/[0.06] blur-3xl rounded-full pointer-events-none" />
 
@@ -308,7 +308,7 @@ export default function ExpensesPage() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="grid w-full grid-cols-1 gap-2 min-[430px]:grid-cols-[minmax(0,1fr)_auto] sm:w-auto sm:flex sm:shrink-0">
               <MonthSelector month={month} onChange={setMonth} />
               <TransactionDialog type="expense" />
             </div>
@@ -318,11 +318,11 @@ export default function ExpensesPage() {
           <div className="flex flex-col md:flex-row items-stretch md:items-end justify-between gap-5 pt-1">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80 mb-1.5">Total no mês</p>
-              <p className="text-4xl sm:text-5xl font-black text-expense currency leading-none tracking-tight">{formatCurrency(totalExpenses + totalCC)}</p>
+              <p className="text-3xl min-[390px]:text-4xl sm:text-5xl font-black text-expense currency leading-none tracking-tight truncate max-w-full">{formatCurrency(totalExpenses + totalCC)}</p>
             </div>
 
             {/* Inline split chips: Débito | Crédito | Em aberto */}
-            <div className="grid grid-cols-3 gap-2 md:gap-3 md:max-w-md w-full">
+            <div className="grid grid-cols-1 gap-2 min-[430px]:grid-cols-3 md:gap-3 md:max-w-md w-full">
               <div className="rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm px-3 py-2.5">
                 <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
                   <Landmark className="h-3 w-3" />
@@ -351,9 +351,9 @@ export default function ExpensesPage() {
 
       {/* Filter Bar */}
       <div className="rounded-2xl border border-border/60 bg-card/50 p-3 shadow-sm">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           {/* Search */}
-          <div className="relative flex-1 max-w-md">
+          <div className="relative w-full sm:max-w-md sm:flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <input
               type="text"
@@ -369,6 +369,7 @@ export default function ExpensesPage() {
             )}
           </div>
 
+          <div className="grid grid-cols-2 gap-2 min-[430px]:grid-cols-3 sm:flex sm:items-center">
           {/* CC toggle */}
           {ccTransactions.length > 0 && (
             <button
@@ -542,6 +543,7 @@ export default function ExpensesPage() {
               <span className="hidden sm:inline">Limpar</span>
             </button>
           )}
+          </div>
         </div>
 
         {/* Active filter chips */}
@@ -635,8 +637,8 @@ export default function ExpensesPage() {
                   : { backgroundColor: (item as ExpenseRow).status === 'concluido' ? 'rgb(16 185 129 / 0.8)' : (item as ExpenseRow).status === 'pendente' ? 'rgb(245 158 11 / 0.8)' : 'rgb(59 130 246 / 0.8)' }
                 }
               />
-              <div className="flex items-center justify-between gap-3 pl-2">
-                <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-start justify-between gap-3 pl-2">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
                   <div
                     className={`w-11 h-11 rounded-full flex items-center justify-center text-xl shrink-0 shadow-sm border ${isCC ? 'border-[#6366f1]/20' : 'border-border/60 bg-muted/40'}`}
                     style={isCC ? { backgroundColor: `${cardColor}20` } : undefined}
@@ -670,7 +672,7 @@ export default function ExpensesPage() {
                   </div>
                 </div>
                 <div className="shrink-0 flex flex-col items-end gap-1.5">
-                  <p className="font-extrabold text-expense text-lg tabular-nums leading-none tracking-tight">{formatCurrency(Number(item.amount))}</p>
+                  <p className="mobile-card-value font-extrabold text-expense text-base min-[390px]:text-lg tabular-nums tracking-tight">{formatCurrency(Number(item.amount))}</p>
                   {isCC ? (
                     <span
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border"

@@ -60,14 +60,14 @@ export default function AccountsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Contas Bancárias</h1>
           <p className="text-sm text-muted-foreground">Gerencie suas contas e visualize o fluxo geral</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" data-tutorial-target="new-account"><Plus className="w-4 h-4 mr-1" />Nova Conta</Button>
+            <Button size="sm" className="w-full sm:w-auto" data-tutorial-target="new-account"><Plus className="w-4 h-4 mr-1" />Nova Conta</Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader><DialogTitle>Nova Conta</DialogTitle></DialogHeader>
@@ -101,10 +101,10 @@ export default function AccountsPage() {
 
       {/* ── Card de Saldo Global ── */}
       <div className="rounded-xl bg-primary/5 border border-primary/20 p-5">
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
           <Wallet className="w-5 h-5 text-primary" />
           <h2 className="font-semibold text-sm">Fluxo Geral de Caixa</h2>
-          <span className="ml-auto text-xs text-muted-foreground flex items-center gap-1">
+          <span className="w-full text-xs text-muted-foreground flex items-center gap-1 sm:ml-auto sm:w-auto">
             <Info className="w-3 h-3" /> Todas as transações (com e sem conta vinculada)
           </span>
         </div>

@@ -448,7 +448,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 sm:space-y-8 animate-fade-in pb-10 w-full max-w-full overflow-x-hidden sm:overflow-visible">
       {/* ─── Hero Header Premium ─── */}
-      <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.04] p-5 sm:p-7 shadow-sm">
+      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.04] p-4 shadow-sm sm:rounded-3xl sm:p-7">
         <div className="absolute -top-24 -right-32 w-80 h-80 bg-primary/15 blur-3xl rounded-full pointer-events-none" />
         <div className="absolute -bottom-32 -left-24 w-72 h-72 bg-income/[0.08] blur-3xl rounded-full pointer-events-none" />
 
@@ -468,15 +468,15 @@ export default function Dashboard() {
                 </h1>
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 sm:w-auto sm:flex sm:shrink-0">
               <MonthSelector month={month} onChange={setMonth} />
               <TransactionDialog type="income">
-                <button className="h-9 px-3 rounded-xl bg-income text-income-foreground font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-income/90 hover:shadow-md hover:shadow-income/20 active:scale-[0.97] transition-all">
+                <button className="h-9 w-9 rounded-xl bg-income text-income-foreground font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-income/90 hover:shadow-md hover:shadow-income/20 active:scale-[0.97] transition-all sm:w-auto sm:px-3">
                   <ArrowUpRight className="w-4 h-4 shrink-0" /> <span className="hidden sm:inline">Receita</span>
                 </button>
               </TransactionDialog>
               <TransactionDialog type="expense">
-                <button className="h-9 px-3 rounded-xl bg-expense text-expense-foreground font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-expense/90 hover:shadow-md hover:shadow-expense/20 active:scale-[0.97] transition-all">
+                <button className="h-9 w-9 rounded-xl bg-expense text-expense-foreground font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-expense/90 hover:shadow-md hover:shadow-expense/20 active:scale-[0.97] transition-all sm:w-auto sm:px-3">
                   <ArrowDownRight className="w-4 h-4 shrink-0" /> <span className="hidden sm:inline">Despesa</span>
                 </button>
               </TransactionDialog>
@@ -484,7 +484,7 @@ export default function Dashboard() {
           </div>
 
           {/* Health-driven insight strip */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+          <div className="grid grid-cols-1 gap-2 min-[390px]:grid-cols-2 md:grid-cols-4 md:gap-3">
             {/* Saúde Financeira */}
             <div className="rounded-2xl border px-3 py-2.5 relative overflow-hidden" style={{ borderColor: `${healthColor}33`, backgroundColor: `${healthColor}0d` }}>
               <div className="flex items-center gap-1.5 mb-0.5" style={{ color: healthColor }}>
@@ -537,7 +537,7 @@ export default function Dashboard() {
       <SmartAlerts expenses={expenses} income={income} categories={categories} />
 
       {/* ─── KPI Cards Premium ─── */}
-      <div className={`grid grid-cols-2 gap-3 sm:gap-4 stagger-1 ${totalCCThisMonth > 0 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
+      <div className={`grid grid-cols-1 gap-3 min-[390px]:grid-cols-2 sm:gap-4 stagger-1 ${totalCCThisMonth > 0 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
         <KpiCard
           label="Receitas"
           value={formatCurrency(totalIncome)}

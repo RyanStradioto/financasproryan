@@ -31,19 +31,19 @@ export default function MonthSelector({ month, onChange }: Props) {
   const nowYear = new Date().getFullYear();
 
   return (
-    <div className="flex items-center gap-1">
-      <Button variant="ghost" size="icon" onClick={() => shift(-1)} className="h-8 w-8">
+    <div className="flex w-full min-w-0 items-center gap-1 sm:w-auto">
+      <Button variant="ghost" size="icon" onClick={() => shift(-1)} className="h-9 w-9 shrink-0 sm:h-8 sm:w-8">
         <ChevronLeft className="w-4 h-4" />
       </Button>
 
       <Popover open={open} onOpenChange={(o) => { setOpen(o); if (o) setViewYear(y); }}>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="min-w-[160px] gap-2 capitalize">
-            <CalendarDays className="w-3.5 h-3.5" />
-            {getMonthLabel(month)}
+          <Button variant="outline" size="sm" className="min-w-0 flex-1 justify-center gap-1.5 px-2 capitalize sm:min-w-[160px] sm:flex-none sm:gap-2">
+            <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">{getMonthLabel(month)}</span>
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[280px] p-3" align="center">
+        <PopoverContent className="w-[calc(100vw-1.5rem)] max-w-[280px] p-3" align="center">
           <div className="flex items-center justify-between mb-3">
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewYear(v => v - 1)}>
               <ChevronLeft className="w-3.5 h-3.5" />
@@ -91,7 +91,7 @@ export default function MonthSelector({ month, onChange }: Props) {
         </PopoverContent>
       </Popover>
 
-      <Button variant="ghost" size="icon" onClick={() => shift(1)} className="h-8 w-8">
+      <Button variant="ghost" size="icon" onClick={() => shift(1)} className="h-9 w-9 shrink-0 sm:h-8 sm:w-8">
         <ChevronRight className="w-4 h-4" />
       </Button>
     </div>

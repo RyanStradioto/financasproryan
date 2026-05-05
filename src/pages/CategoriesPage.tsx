@@ -150,7 +150,7 @@ export default function CategoriesPage() {
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Categorias</h1>
           <p className="text-sm text-muted-foreground">Orçamento por categoria</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex">
           <MonthSelector month={month} onChange={setMonth} />
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -190,7 +190,7 @@ export default function CategoriesPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 min-[430px]:grid-cols-2 lg:grid-cols-3">
         {activeCategories.map(cat => {
           const spentExpenses = expenses
             .filter(e => e.category_id === cat.id)

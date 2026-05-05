@@ -207,7 +207,7 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 min-[430px]:grid-cols-2">
             <div className="space-y-1">
               <Label className="text-xs font-medium text-muted-foreground">Data</Label>
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required style={{ fontSize: '16px' }} className="h-11" />
@@ -279,7 +279,7 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2 min-[430px]:grid-cols-2">
                   <div className="space-y-1">
                     <Label className="text-xs font-medium text-muted-foreground">Cartão</Label>
                     <Select value={creditCardId} onValueChange={setCreditCardId}>

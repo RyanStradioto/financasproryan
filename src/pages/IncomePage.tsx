@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useIncome, useDeleteIncome, useUpdateIncome, useAccounts, type Income } from '@/hooks/useFinanceData';
 import { getMonthYear, formatCurrency, formatDate, getStatusColor, getStatusLabel } from '@/lib/format';
 import { formatWorkTime } from '@/lib/workTime';
@@ -6,9 +6,10 @@ import { useWorkTimeCalc } from '@/hooks/useProfile';
 import MonthSelector from '@/components/finance/MonthSelector';
 import TransactionDialog from '@/components/finance/TransactionDialog';
 import EditTransactionDialog from '@/components/finance/EditTransactionDialog';
-import { Trash2, Pencil, Paperclip, Clock, TrendingUp, ChevronDown, Search, X, Filter, PiggyBank, SlidersHorizontal, Check, ArrowUp, ArrowDown } from 'lucide-react';
+import { Trash2, Pencil, Paperclip, Clock, TrendingUp, ChevronDown, Search, X, Filter, PiggyBank, SlidersHorizontal, Check, ArrowUp, ArrowDown, ArrowUpRight, ArrowDownRight, Landmark, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 type PickerOption = { id: string; name: string; icon?: string | null };
 
@@ -108,7 +109,15 @@ function StatusPicker({ status, onChange }: { status: string; onChange: (s: stri
 
 export default function IncomePage() {
   const [month, setMonth] = useState(getMonthYear());
+  // Previous month for MoM delta
+  const prevMonth = useMemo(() => {
+    const [y, m] = month.split('-').map(Number);
+    const d = new Date(y, m - 2, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }, [month]);
+
   const { data: income = [], isLoading } = useIncome(month);
+  const { data: prevIncome = [] } = useIncome(prevMonth);
   const { data: accounts = [] } = useAccounts();
   const deleteIncome = useDeleteIncome();
   const updateIncome = useUpdateIncome();
@@ -172,6 +181,16 @@ export default function IncomePage() {
 
   const total = filtered.reduce((s, i) => s + Number(i.amount), 0);
 
+  // ── Stats for hero ─────────────────────────────────────────
+  const totalAll = useMemo(() => income.reduce((s, i) => s + Number(i.amount), 0), [income]);
+  const totalReceived = useMemo(() => income.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0), [income]);
+  const totalPending = useMemo(() => income.filter(i => i.status !== 'concluido').reduce((s, i) => s + Number(i.amount), 0), [income]);
+  const prevTotalAll = useMemo(() => prevIncome.reduce((s, i) => s + Number(i.amount), 0), [prevIncome]);
+  const incomeDelta = useMemo(() => {
+    if (prevTotalAll === 0) return totalAll > 0 ? 100 : null;
+    return ((totalAll - prevTotalAll) / prevTotalAll) * 100;
+  }, [totalAll, prevTotalAll]);
+
   const getAccountName = (id: string | null, hideIcon = false) => {
     if (!id) return '—';
     const acc = accounts.find(a => a.id === id);
@@ -210,39 +229,93 @@ export default function IncomePage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Hero Header */}
-      <div className="hero-card flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
-        <div className="absolute -top-20 -right-20 w-64 h-64 bg-income/20 blur-3xl rounded-full pointer-events-none" />
-        <div className="flex items-center gap-4 relative z-10">
-          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-income/30 to-income/10 flex items-center justify-center shadow-inner border border-income/20">
-            <TrendingUp className="w-7 h-7 sm:w-8 sm:h-8 text-income drop-shadow-md" />
+      {/* ─── Hero Header ─── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-income/[0.06] p-4 shadow-sm sm:rounded-3xl sm:p-7">
+        <div className="absolute -top-24 -right-24 w-72 h-72 bg-income/15 blur-3xl rounded-full pointer-events-none" />
+        <div className="absolute -bottom-32 -left-20 w-64 h-64 bg-income/[0.06] blur-3xl rounded-full pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col gap-5">
+          {/* Title row */}
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-income/25 to-income/5 flex items-center justify-center shadow-inner border border-income/15 shrink-0">
+                <TrendingUp className="w-6 h-6 sm:w-7 sm:h-7 text-income" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-none">Receitas</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 flex items-center gap-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-income animate-pulse" />
+                    {hasActiveFilters ? `${filtered.length} de ${income.length}` : income.length} {income.length === 1 ? 'recebimento' : 'recebimentos'}
+                  </span>
+                  {incomeDelta !== null && incomeDelta !== 0 && (
+                    <span className={cn(
+                      'inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[10px] uppercase tracking-wide border',
+                      incomeDelta > 0 ? 'bg-income/10 text-income border-income/20' : 'bg-expense/10 text-expense border-expense/20',
+                    )}>
+                      {incomeDelta > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                      {Math.abs(incomeDelta).toFixed(0)}% vs anterior
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="grid w-full grid-cols-1 gap-2 min-[430px]:grid-cols-[minmax(0,1fr)_auto] sm:w-auto sm:flex sm:shrink-0">
+              <MonthSelector month={month} onChange={setMonth} />
+              <TransactionDialog type="income" />
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-1">Receitas</h1>
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-income animate-pulse" />
-              {hasActiveFilters ? `${filtered.length} de ` : ''}{income.length} recebimentos neste mês
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 relative z-10 w-full sm:w-auto mt-2 sm:mt-0">
-          <div className="flex flex-col items-start sm:items-end mb-2 sm:mb-0">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Total Mensal</p>
-            <p className="text-3xl sm:text-4xl font-extrabold text-income currency drop-shadow-sm leading-none">{formatCurrency(total)}</p>
-          </div>
-          <div className="w-full h-px sm:w-px sm:h-12 bg-border/50 block sm:mx-2 my-2 sm:my-0" />
-          <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
-            <div className="w-full sm:w-auto"><MonthSelector month={month} onChange={setMonth} /></div>
-            <div className="w-full sm:w-auto"><TransactionDialog type="income" /></div>
+
+          {/* Total + breakdown chips */}
+          <div className="flex flex-col md:flex-row items-stretch md:items-end justify-between gap-5 pt-1">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80 mb-1.5">Total no mês</p>
+              <p className="text-3xl min-[390px]:text-4xl sm:text-5xl font-black text-income currency leading-none tracking-tight truncate max-w-full">{formatCurrency(totalAll)}</p>
+            </div>
+
+            {/* Stats chips: Recebido | Pendente | Trabalho equivalente */}
+            <div className="grid grid-cols-1 gap-2 min-[430px]:grid-cols-3 md:gap-3 md:max-w-md w-full">
+              <div className="rounded-xl border border-income/25 bg-income/[0.06] px-3 py-2.5">
+                <div className="flex items-center gap-1.5 text-income mb-0.5">
+                  <Check className="h-3 w-3" />
+                  <p className="text-[9px] font-bold uppercase tracking-wider">Recebido</p>
+                </div>
+                <p className="text-sm sm:text-base font-extrabold currency text-income tabular-nums whitespace-nowrap truncate">{formatCurrency(totalReceived)}</p>
+              </div>
+              <div className="rounded-xl border border-warning/25 bg-warning/[0.06] px-3 py-2.5">
+                <div className="flex items-center gap-1.5 text-warning mb-0.5">
+                  <Clock className="h-3 w-3" />
+                  <p className="text-[9px] font-bold uppercase tracking-wider">A receber</p>
+                </div>
+                <p className="text-sm sm:text-base font-extrabold currency text-warning tabular-nums whitespace-nowrap truncate">{formatCurrency(totalPending)}</p>
+              </div>
+              {hourlyRate > 0 ? (
+                <div className="rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm px-3 py-2.5">
+                  <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
+                    <Clock className="h-3 w-3" />
+                    <p className="text-[9px] font-bold uppercase tracking-wider">Trabalho</p>
+                  </div>
+                  <p className="text-sm sm:text-base font-extrabold tabular-nums whitespace-nowrap truncate">{formatWorkTime(calcWorkTime(totalReceived))}</p>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm px-3 py-2.5">
+                  <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
+                    <Landmark className="h-3 w-3" />
+                    <p className="text-[9px] font-bold uppercase tracking-wider">Contas</p>
+                  </div>
+                  <p className="text-sm sm:text-base font-extrabold tabular-nums whitespace-nowrap truncate">{accounts.length}</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Filter Bar */}
       <div className="space-y-2 p-1">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           {/* Search */}
-          <div className="relative flex-1 max-w-md">
+          <div className="relative w-full sm:max-w-md sm:flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <input
               type="text"
@@ -259,6 +332,7 @@ export default function IncomePage() {
           </div>
 
           {/* Filter panel button */}
+          <div className="grid grid-cols-[1fr_auto] gap-2 sm:flex sm:items-center">
           <Popover open={filterOpen} onOpenChange={setFilterOpen}>
             <PopoverTrigger asChild>
               <button className={`h-10 flex items-center gap-2 px-3.5 rounded-xl border text-sm font-medium transition-colors shadow-sm shrink-0 ${activeFilterCount > 0 ? 'border-primary/50 bg-primary/10 text-primary' : 'border-border/60 bg-card/50 text-foreground hover:bg-muted/50'}`}>
@@ -384,6 +458,7 @@ export default function IncomePage() {
               <span className="hidden sm:inline">Limpar</span>
             </button>
           )}
+          </div>
         </div>
 
         {/* Active filter chips */}
@@ -447,8 +522,8 @@ export default function IncomePage() {
         {filtered.map((item) => (
           <div key={item.id} className="p-4 flex flex-col gap-3 relative hover:bg-muted/10 transition-colors">
             <div className={`absolute top-0 left-0 w-1 h-full ${item.status === 'concluido' ? 'bg-success/80' : item.status === 'pendente' ? 'bg-warning/80' : 'bg-info/80'}`} />
-            <div className="flex items-center justify-between gap-3 pl-2">
-              <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-start justify-between gap-3 pl-2">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
                 <div className="w-11 h-11 rounded-full bg-income/10 flex items-center justify-center text-income text-xl shrink-0 shadow-sm border border-income/30">
                   <TrendingUp className="w-5 h-5" />
                 </div>
@@ -467,7 +542,7 @@ export default function IncomePage() {
                 </div>
               </div>
               <div className="shrink-0 flex flex-col items-end gap-1.5">
-                <p className="font-extrabold text-income text-lg tabular-nums leading-none tracking-tight">+{formatCurrency(Number(item.amount))}</p>
+                <p className="mobile-card-value font-extrabold text-income text-base min-[390px]:text-lg tabular-nums tracking-tight">+{formatCurrency(Number(item.amount))}</p>
                 <StatusPicker status={item.status} onChange={s => handleStatusChange(item.id, s)} />
               </div>
             </div>
@@ -503,59 +578,63 @@ export default function IncomePage() {
         )}
       </div>
 
-      {/* Desktop table */}
-      <div className="hidden sm:block stat-card p-0 overflow-hidden">
+      {/* ─── Desktop table ─── */}
+      <div className="hidden sm:block rounded-2xl border border-border/60 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm data-table">
+          <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-muted/30">
-                <th className="text-left py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Data</th>
-                <th className="text-left py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Descrição</th>
-                <th className="text-left py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Status</th>
-                <th className="text-right py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Valor</th>
-                {hourlyRate && <th className="text-center py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Equivalente</th>}
-                <th className="text-left py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Conta</th>
-                <th className="py-3.5 px-4 w-20"></th>
+              <tr className="bg-muted/30 border-b border-border/60">
+                <th className="text-left py-3 px-5 font-semibold text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80 w-[110px]">Data</th>
+                <th className="text-left py-3 px-3 font-semibold text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80">Descrição</th>
+                <th className="text-left py-3 px-3 font-semibold text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80 w-[160px]">Status / Conta</th>
+                <th className="text-right py-3 px-3 font-semibold text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80 w-[130px]">Valor</th>
+                {hourlyRate && <th className="text-center py-3 px-3 font-semibold text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80 w-[110px]">Equivalente</th>}
+                <th className="py-3 px-3 w-[80px]"></th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-border/40">
               {filtered.map((item) => {
                 const wt = calcWorkTime(Number(item.amount));
+                const statusColor =
+                  item.status === 'concluido' ? 'rgb(16 185 129)' :
+                  item.status === 'pendente' ? 'rgb(245 158 11)' :
+                  'rgb(59 130 246)';
                 return (
-                  <tr key={item.id} className="border-b border-border/30 hover:bg-muted/40 transition-all group">
-                    <td className="py-3.5 px-4">
+                  <tr key={item.id} className="hover:bg-muted/30 transition-colors group relative">
+                    <td className="py-3 pl-5 pr-3 relative">
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full opacity-70" style={{ backgroundColor: statusColor }} />
                       <DatePicker date={item.date} onChange={d => handleDateChange(item.id, d)} />
                     </td>
-                    <td className="py-3.5 px-4 font-medium">
+                    <td className="py-3 px-3">
                       <div className="flex items-center gap-1.5">
-                        {item.description || 'Receita'}
+                        <span className="font-semibold text-foreground">{item.description || 'Receita'}</span>
                         {item.attachment_url && (
-                          <a href={item.attachment_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
+                          <a href={item.attachment_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 shrink-0">
                             <Paperclip className="w-3 h-3" />
                           </a>
                         )}
                       </div>
                     </td>
-                    <td className="py-3.5 px-4">
-                      <StatusPicker status={item.status} onChange={s => handleStatusChange(item.id, s)} />
+                    <td className="py-3 px-3">
+                      <div className="flex flex-col gap-1 items-start">
+                        <StatusPicker status={item.status} onChange={s => handleStatusChange(item.id, s)} />
+                        <OptionPicker value={item.account_id} options={accounts} placeholder="conta…" onChange={v => handleAccountChange(item.id, v)} />
+                      </div>
                     </td>
-                    <td className="py-3.5 px-4 text-right currency font-bold text-income">{formatCurrency(Number(item.amount))}</td>
+                    <td className="py-3 px-3 text-right currency font-bold text-income tabular-nums whitespace-nowrap">+{formatCurrency(Number(item.amount))}</td>
                     {hourlyRate && (
-                      <td className="py-3.5 px-4 text-center">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent/50 text-xs font-semibold text-accent-foreground">
+                      <td className="py-3 px-3 text-center">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-accent/40 text-[11px] font-semibold text-accent-foreground/90">
                           <Clock className="w-3 h-3" />{formatWorkTime(wt)}
                         </span>
                       </td>
                     )}
-                    <td className="py-3.5 px-4">
-                      <OptionPicker value={item.account_id} options={accounts} placeholder="Conta" onChange={v => handleAccountChange(item.id, v)} />
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                        <button onClick={() => setEditing({ ...item, type: 'income' })} className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all p-1.5 rounded-lg">
+                    <td className="py-3 px-3">
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => setEditing({ ...item, type: 'income' })} className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all">
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
-                        <button onClick={() => handleDelete(item.id)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all p-1.5 rounded-lg">
+                        <button onClick={() => handleDelete(item.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -564,10 +643,10 @@ export default function IncomePage() {
                 );
               })}
               {income.length === 0 && !isLoading && (
-                <tr><td colSpan={hourlyRate ? 7 : 6} className="py-16 text-center">
+                <tr><td colSpan={hourlyRate ? 6 : 5} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-14 h-14 rounded-2xl bg-muted/50 flex items-center justify-center">
-                      <TrendingUp className="w-6 h-6 text-muted-foreground" />
+                      <Receipt className="w-6 h-6 text-muted-foreground" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Nenhuma receita neste mês</p>
@@ -577,7 +656,7 @@ export default function IncomePage() {
                 </td></tr>
               )}
               {income.length > 0 && filtered.length === 0 && (
-                <tr><td colSpan={hourlyRate ? 7 : 6} className="py-16 text-center">
+                <tr><td colSpan={hourlyRate ? 6 : 5} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <Filter className="w-8 h-8 text-muted-foreground opacity-40" />
                     <div>
@@ -590,17 +669,19 @@ export default function IncomePage() {
             </tbody>
             {filtered.length > 0 && (
               <tfoot>
-                <tr className="border-t-2 border-border bg-muted/20">
-                  <td colSpan={3} className="py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-muted-foreground">TOTAL</td>
-                  <td className="py-3.5 px-4 text-right currency font-extrabold text-income">{formatCurrency(total)}</td>
+                <tr className="border-t border-border/60 bg-gradient-to-r from-muted/30 via-income/[0.04] to-muted/30">
+                  <td colSpan={3} className="py-3.5 pl-5 pr-3 font-bold text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+                    Total filtrado
+                  </td>
+                  <td className="py-3.5 px-3 text-right currency font-black text-income text-base tabular-nums whitespace-nowrap">+{formatCurrency(total)}</td>
                   {hourlyRate && (
-                    <td className="py-3.5 px-4 text-center">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent/50 text-xs font-bold text-accent-foreground">
+                    <td className="py-3.5 px-3 text-center">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-accent/50 text-[11px] font-bold text-accent-foreground">
                         <Clock className="w-3 h-3" />{formatWorkTime(calcWorkTime(total))}
                       </span>
                     </td>
                   )}
-                  <td colSpan={2}></td>
+                  <td className="py-3.5 px-3"></td>
                 </tr>
               </tfoot>
             )}

@@ -37,13 +37,13 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(
         // Mobile: bottom sheet sliding up from bottom
-        "fixed bottom-0 left-0 right-0 z-50 w-full rounded-t-2xl border-t border-x bg-background px-4 pb-[env(safe-area-inset-bottom)] pt-4 shadow-xl overflow-x-hidden",
+        "fixed bottom-0 left-0 right-0 z-50 max-h-[92dvh] w-full max-w-[100vw] overflow-y-auto overflow-x-hidden rounded-t-2xl border-t border-x bg-background px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 shadow-xl",
         "duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
         // Desktop: centered modal
         "sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%]",
-        "sm:max-w-md sm:rounded-2xl sm:border sm:px-6 sm:pb-6 sm:pt-5",
+        "sm:w-full sm:max-w-md sm:rounded-2xl sm:border sm:px-6 sm:pb-6 sm:pt-5",
         "sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95",
         "sm:data-[state=closed]:slide-out-to-left-1/2 sm:data-[state=closed]:slide-out-to-top-[48%]",
         "sm:data-[state=open]:slide-in-from-left-1/2 sm:data-[state=open]:slide-in-from-top-[48%]",

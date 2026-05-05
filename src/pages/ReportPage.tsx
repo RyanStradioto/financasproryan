@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo } from 'react';
 import { useIncome, useExpenses, useCategories, useAccounts } from '@/hooks/useFinanceData';
+import { useCreditCardTransactions } from '@/hooks/useCreditCards';
 import { formatCurrency, getMonthLabel } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -75,6 +76,7 @@ export default function ReportPage() {
 
   const { data: allIncome = [] } = useIncome(generated ? undefined : '__skip__');
   const { data: allExpenses = [] } = useExpenses(generated ? undefined : '__skip__');
+  const { data: allCCTransactions = [] } = useCreditCardTransactions();
   const { data: categories = [] } = useCategories();
   const { data: accounts = [] } = useAccounts();
 
@@ -82,31 +84,54 @@ export default function ReportPage() {
     const m = i.date?.substring(0, 7);
     return m && m >= startMonth && m <= endMonth;
   });
+
+  // Filter out CC mirror rows and bill payment markers — the actual CC charges come in via
+  // allCCTransactions grouped by bill_month. Without this, CC purchases get double-counted
+  // (mirror in expenses + tx in cc_transactions).
+  const isCCMirror = (notes: string | null | undefined) =>
+    !!notes && /\[Cartao de credito\b/i.test(notes);
+  const isBillPayment = (notes: string | null | undefined) =>
+    !!notes && /\[FATURA_CARTAO\]/i.test(notes);
+
   const expensesInRange = allExpenses.filter(e => {
     const m = e.date?.substring(0, 7);
-    return m && m >= startMonth && m <= endMonth;
+    if (!m || m < startMonth || m > endMonth) return false;
+    return !isCCMirror(e.notes) && !isBillPayment(e.notes);
+  });
+
+  const ccTransactionsInRange = allCCTransactions.filter(t => {
+    return t.bill_month && t.bill_month >= startMonth && t.bill_month <= endMonth;
   });
 
   const totalIncome = incomeInRange.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0);
-  const totalExpenses = expensesInRange.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0);
+  const totalExpensesNonCC = expensesInRange.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0);
+  const totalCC = ccTransactionsInRange.reduce((s, t) => s + Number(t.amount), 0);
+  const totalExpenses = totalExpensesNonCC + totalCC;
   const balance = totalIncome - totalExpenses;
   const savingsRate = totalIncome > 0 ? (balance / totalIncome) * 100 : 0;
 
   const pendingIncome = incomeInRange.filter(i => i.status !== 'concluido').reduce((s, i) => s + Number(i.amount), 0);
   const pendingExpenses = expensesInRange.filter(e => e.status !== 'concluido').reduce((s, e) => s + Number(e.amount), 0);
 
+  // Category breakdown: combine non-CC expenses + CC transactions by category
   const catBreakdown = categories
-    .map(cat => ({
-      name: cat.name,
-      icon: cat.icon,
-      value: expensesInRange.filter(e => e.category_id === cat.id && e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0),
-    }))
+    .map(cat => {
+      const fromExp = expensesInRange.filter(e => e.category_id === cat.id && e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0);
+      const fromCC = ccTransactionsInRange.filter(t => t.category_id === cat.id).reduce((s, t) => s + Number(t.amount), 0);
+      return {
+        name: cat.name,
+        icon: cat.icon,
+        value: fromExp + fromCC,
+      };
+    })
     .filter(c => c.value > 0)
     .sort((a, b) => b.value - a.value);
 
   const monthlyTrend = monthsInRange.map(m => {
     const inc = incomeInRange.filter(i => i.date?.startsWith(m) && i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0);
-    const exp = expensesInRange.filter(e => e.date?.startsWith(m) && e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0);
+    const expReal = expensesInRange.filter(e => e.date?.startsWith(m) && e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0);
+    const expCC = ccTransactionsInRange.filter(t => t.bill_month === m).reduce((s, t) => s + Number(t.amount), 0);
+    const exp = expReal + expCC;
     const [y, mo] = m.split('-').map(Number);
     const shortNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     return {
@@ -117,10 +142,25 @@ export default function ReportPage() {
     };
   });
 
-  const topExpenses = [...expensesInRange]
-    .filter(e => e.status === 'concluido')
-    .sort((a, b) => Number(b.amount) - Number(a.amount))
-    .slice(0, 10);
+  // Top 10 — combine biggest individual movements from both sources
+  const topExpenses = [
+    ...expensesInRange.filter(e => e.status === 'concluido').map(e => ({
+      id: e.id,
+      description: e.description,
+      amount: Number(e.amount),
+      date: e.date,
+      category_id: e.category_id,
+      isCC: false,
+    })),
+    ...ccTransactionsInRange.map(t => ({
+      id: t.id,
+      description: t.description,
+      amount: Number(t.amount),
+      date: t.date,
+      category_id: t.category_id,
+      isCC: true,
+    })),
+  ].sort((a, b) => b.amount - a.amount).slice(0, 10);
 
   const accountBreakdown = accounts
     .map(acc => {
@@ -283,7 +323,7 @@ export default function ReportPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* ─── Hero Header ─── */}
-      <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-info/[0.05] p-5 sm:p-7 shadow-sm">
+      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-info/[0.05] p-4 shadow-sm sm:rounded-3xl sm:p-7">
         <div className="absolute -top-24 -right-32 w-80 h-80 bg-info/15 blur-3xl rounded-full pointer-events-none" />
         <div className="absolute -bottom-32 -left-24 w-72 h-72 bg-primary/[0.08] blur-3xl rounded-full pointer-events-none" />
 
@@ -304,7 +344,7 @@ export default function ReportPage() {
       </div>
 
       {/* ─── Period Selector Card ─── */}
-      <div className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm p-5 sm:p-6 shadow-sm">
+      <div className="rounded-2xl border border-border/60 bg-card/70 backdrop-blur-sm p-4 shadow-sm sm:rounded-3xl sm:p-6">
         <div className="flex items-center gap-2.5 mb-4">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/15">
             <Calendar className="w-4 h-4 text-primary" />
@@ -387,14 +427,14 @@ export default function ReportPage() {
                   <TrendingUp className="w-3 h-3" /> {incomeInRange.length} receitas
                 </span>
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-expense/10 border border-expense/20 text-expense text-[11px] font-semibold">
-                  <TrendingDown className="w-3 h-3" /> {expensesInRange.length} despesas
+                  <TrendingDown className="w-3 h-3" /> {expensesInRange.length + ccTransactionsInRange.length} despesas
                 </span>
               </div>
             </div>
           </div>
 
           {/* Summary KPIs */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 gap-3 min-[390px]:grid-cols-2 lg:grid-cols-4 sm:gap-4">
             <div className="relative overflow-hidden rounded-2xl border border-income/25 bg-card/70 backdrop-blur-sm p-4 sm:p-5 shadow-sm">
               <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full opacity-[0.08] pointer-events-none" style={{ background: 'radial-gradient(circle, hsl(160, 84%, 39%) 0%, transparent 70%)' }} />
               <div className="relative z-10">
@@ -461,7 +501,7 @@ export default function ReportPage() {
 
           {/* Period Stats (only when range > 1 month) */}
           {monthsInRange.length > 1 && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 gap-3 min-[390px]:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-2xl border border-border/60 bg-card/50 p-3.5">
                 <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
                   <ArrowUpRight className="w-3 h-3 text-income" />
@@ -646,7 +686,12 @@ export default function ReportPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-semibold truncate">{e.description || 'Despesa'}</p>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <p className="text-sm font-semibold truncate">{e.description || 'Despesa'}</p>
+                              {e.isCC && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-[#6366f1]/10 text-[#6366f1] border border-[#6366f1]/20 font-bold shrink-0">CARTÃO</span>
+                              )}
+                            </div>
                             <span className="text-sm font-extrabold currency text-expense tabular-nums whitespace-nowrap shrink-0">{formatCurrency(Number(e.amount))}</span>
                           </div>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">

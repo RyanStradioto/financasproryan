@@ -236,25 +236,25 @@ export default function InvestmentsPage() {
     <div className="space-y-6 animate-fade-in">
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Investimentos</h1>
           <p className="text-sm text-muted-foreground">Gestão patrimonial — aportes não são despesas</p>
         </div>
-        <Button onClick={() => setShowNewInvestment(true)} data-tutorial-target="new-investment">
+        <Button onClick={() => setShowNewInvestment(true)} className="w-full sm:w-auto" data-tutorial-target="new-investment">
           <Plus className="w-4 h-4 mr-1" /> Novo Ativo
         </Button>
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 gap-3 min-[430px]:grid-cols-2 lg:grid-cols-4">
         <div className="stat-card">
           <p className="text-xs text-muted-foreground mb-1">Patrimonio Total</p>
-          <p className="text-xl font-bold text-primary">{maskCurrency(formatCurrency(totalPatrimony))}</p>
+          <p className="truncate text-xl font-bold text-primary">{maskCurrency(formatCurrency(totalPatrimony))}</p>
         </div>
         <div className="stat-card">
           <p className="text-xs text-muted-foreground mb-1">Total Investido</p>
-          <p className="text-xl font-bold">{maskCurrency(formatCurrency(totalInvested))}</p>
+          <p className="truncate text-xl font-bold">{maskCurrency(formatCurrency(totalInvested))}</p>
         </div>
         <div className="stat-card">
           <p className="text-xs text-muted-foreground mb-1">Rendimento</p>

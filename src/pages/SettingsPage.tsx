@@ -312,7 +312,7 @@ export default function SettingsPage() {
   const nextMonthlySend = getNextMonthlySend();
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-2xl">
+    <div className="w-full max-w-2xl space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
         <p className="text-sm text-muted-foreground">Seus dados pessoais e preferências</p>
@@ -323,7 +323,7 @@ export default function SettingsPage() {
           <User className="w-4 h-4 text-primary" />
           Dados da Conta
         </div>
-        <div className="grid gap-4 pl-6">
+        <div className="grid gap-4 pl-0 sm:pl-6">
           <div>
             <label className="text-xs text-muted-foreground">Email</label>
             <p className="text-sm font-medium">{user?.email}</p>
@@ -369,7 +369,7 @@ export default function SettingsPage() {
           <Lock className="w-4 h-4 text-primary" />
           Alterar Senha
         </div>
-        <div className="grid gap-4 pl-6">
+        <div className="grid gap-4 pl-0 sm:pl-6">
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Senha Atual</label>
             <div className="relative">
@@ -443,7 +443,7 @@ export default function SettingsPage() {
           <Briefcase className="w-4 h-4 text-primary" />
           Dados Profissionais
         </div>
-        <div className="grid gap-4 pl-6">
+        <div className="grid gap-4 pl-0 sm:pl-6">
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Salário Mensal (R$)</label>
             <input
@@ -455,7 +455,7 @@ export default function SettingsPage() {
               className="flex h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
                 <Clock className="w-3 h-3" /> Horas por dia
@@ -505,7 +505,7 @@ export default function SettingsPage() {
           <Mail className="w-4 h-4 text-primary" />
           Notificações
         </div>
-        <div className="pl-6 space-y-4">
+        <div className="space-y-4 pl-0 sm:pl-6">
           <label className="flex items-center gap-3 cursor-pointer">
             <div
               onClick={() => setWeeklyEmail(!weeklyEmail)}
@@ -542,11 +542,11 @@ export default function SettingsPage() {
               <p className="mt-1 text-xs text-muted-foreground">Envio automático no dia 1 de cada mês às 09:00.</p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid gap-2 sm:flex sm:flex-wrap">
             <button
               onClick={handleTestEmail}
               disabled={sendingTest}
-              className="flex items-center gap-2 h-9 px-4 rounded-xl border border-border bg-muted/50 text-sm font-medium hover:bg-muted transition-all disabled:opacity-50"
+              className="flex h-9 items-center justify-center gap-2 rounded-xl border border-border bg-muted/50 px-4 text-sm font-medium transition-all hover:bg-muted disabled:opacity-50"
             >
               <Send className="w-3.5 h-3.5" />
               {sendingTest ? 'Enviando...' : 'Testar Resumo Semanal'}
@@ -554,7 +554,7 @@ export default function SettingsPage() {
             <button
               onClick={handleTestMonthly}
               disabled={sendingMonthly}
-              className="flex items-center gap-2 h-9 px-4 rounded-xl border border-primary/30 bg-primary/10 text-sm font-medium hover:bg-primary/20 transition-all disabled:opacity-50"
+              className="flex h-9 items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 text-sm font-medium transition-all hover:bg-primary/20 disabled:opacity-50"
             >
               <Send className="w-3.5 h-3.5" />
               {sendingMonthly ? 'Enviando...' : 'Testar Relatório Mensal'}
@@ -577,7 +577,7 @@ export default function SettingsPage() {
           <Sparkles className="w-4 h-4 text-primary" />
           Tutorial do App
         </div>
-        <div className="pl-6 space-y-3">
+        <div className="space-y-3 pl-0 sm:pl-6">
           <p className="text-sm text-muted-foreground">
             O passo a passo do aplicativo aparece automaticamente uma unica vez para cada usuario. Se quiser rever depois, e so abrir novamente aqui.
           </p>

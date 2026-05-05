@@ -38,7 +38,7 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Calendário Financeiro</h1>
           <p className="text-sm text-muted-foreground">Visualize gastos e receitas por dia</p>
@@ -46,8 +46,8 @@ export default function CalendarPage() {
         <MonthSelector month={month} onChange={setMonth} />
       </div>
 
-      <div className="stat-card overflow-hidden p-0">
-        <div className="grid grid-cols-7">
+      <div className="stat-card overflow-x-auto overflow-y-hidden p-0">
+        <div className="grid min-w-[620px] grid-cols-7 sm:min-w-0">
           {weekDays.map(d => (
             <div key={d} className="text-center py-3 text-xs font-semibold text-muted-foreground border-b border-border bg-muted/30">
               {d}

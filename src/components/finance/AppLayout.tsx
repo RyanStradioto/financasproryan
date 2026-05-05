@@ -13,7 +13,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <AppSidebar />
           <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
             <MobileHeader />
-            <main className="flex-1 p-4 lg:p-8 pb-24 lg:pb-8 max-w-6xl mx-auto w-full overflow-x-hidden">
+            <main className="flex-1 w-full max-w-6xl mx-auto overflow-x-hidden px-3 py-4 pb-[calc(5.75rem+env(safe-area-inset-bottom))] sm:px-5 lg:px-8 lg:py-8 lg:pb-8">
               {children}
             </main>
           </div>

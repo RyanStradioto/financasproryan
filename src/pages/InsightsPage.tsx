@@ -235,7 +235,7 @@ export default function InsightsPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* ─── Hero Header ─── */}
-      <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.06] p-5 sm:p-7 shadow-sm">
+      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.06] p-4 shadow-sm sm:rounded-3xl sm:p-7">
         <div className="absolute -top-24 -right-32 w-80 h-80 bg-primary/15 blur-3xl rounded-full pointer-events-none" />
         <div className="absolute -bottom-32 -left-24 w-72 h-72 bg-info/[0.08] blur-3xl rounded-full pointer-events-none" />
 
@@ -254,11 +254,13 @@ export default function InsightsPage() {
                 </p>
               </div>
             </div>
-            <MonthSelector month={month} onChange={(m) => { setMonth(m); setGenerated(false); setAiInsights([]); }} />
+            <div className="w-full sm:w-auto">
+              <MonthSelector month={month} onChange={(m) => { setMonth(m); setGenerated(false); setAiInsights([]); }} />
+            </div>
           </div>
 
           {/* Quick stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
+          <div className="grid grid-cols-1 gap-2 min-[390px]:grid-cols-2 lg:grid-cols-4 md:gap-3">
             <div className="rounded-2xl border border-income/25 bg-income/[0.06] px-3 py-2.5">
               <div className="flex items-center gap-1.5 text-income mb-0.5">
                 <TrendingUp className="h-3 w-3" />
@@ -292,7 +294,7 @@ export default function InsightsPage() {
       </div>
 
       {/* ─── Consultoria IA Card (Hero CTA) ─── */}
-      <div className="relative overflow-hidden rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/[0.10] via-primary/[0.04] to-card p-6 sm:p-8 shadow-sm">
+      <div className="relative overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/[0.10] via-primary/[0.04] to-card p-4 shadow-sm sm:rounded-3xl sm:p-8">
         <div className="absolute -top-24 -right-20 w-72 h-72 bg-primary/20 blur-3xl rounded-full pointer-events-none" />
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
 
@@ -320,7 +322,7 @@ export default function InsightsPage() {
               <p className="text-sm text-muted-foreground max-w-md mb-5 leading-relaxed">
                 Receba uma análise personalizada com recomendações específicas para sua situação financeira atual.
               </p>
-              <div className="flex flex-wrap items-center justify-center gap-2">
+              <div className="grid w-full gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-center">
                 <Button onClick={generateAiInsights} disabled={loading} size="lg" className="gap-2 bg-primary hover:bg-primary/90 shadow-md shadow-primary/20 rounded-xl">
                   {loading ? (
                     <><Loader2 className="w-4 h-4 animate-spin" />Analisando seus dados...</>

@@ -139,6 +139,13 @@
   #root {
     @apply overflow-x-hidden w-full max-w-[100vw];
   }
+
+  input,
+  select,
+  textarea,
+  button {
+    min-width: 0;
+  }
 }
 
 @layer utilities {
@@ -231,6 +238,30 @@
     animation: shimmer 3s ease-in-out infinite;
     border-radius: inherit;
     pointer-events: none;
+  }
+
+  .mobile-stack-actions {
+    @apply grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:items-center;
+  }
+
+  .mobile-fluid-grid {
+    @apply grid grid-cols-1 gap-3 min-[430px]:grid-cols-2;
+  }
+
+  .mobile-card-value {
+    @apply max-w-[44vw] truncate text-right leading-tight;
+  }
+}
+
+@media (max-width: 640px) {
+  .stat-card {
+    border-radius: 1rem;
+    padding: 1rem;
+  }
+
+  .hero-card {
+    border-radius: 1rem;
+    padding: 1rem;
   }
 }
 

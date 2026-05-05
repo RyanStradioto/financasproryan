@@ -6,11 +6,15 @@ import { Button } from '@/components/ui/button';
 import { useSensitiveData } from './SensitiveData';
 
 type InstallMode = 'native' | 'ios' | 'unsupported';
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+};
 
 export default function MobileHeader() {
   const { theme, toggleTheme } = useTheme();
   const { isVisible, toggleVisibility } = useSensitiveData();
-  const deferredPrompt = useRef<any>(null);
+  const deferredPrompt = useRef<BeforeInstallPromptEvent | null>(null);
   const [canInstall, setCanInstall] = useState(false);
   const [installOpen, setInstallOpen] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
@@ -30,8 +34,9 @@ export default function MobileHeader() {
     setIsStandalone(standalone);
 
     const handleBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      deferredPrompt.current = event;
+      const installEvent = event as BeforeInstallPromptEvent;
+      installEvent.preventDefault();
+      deferredPrompt.current = installEvent;
       setCanInstall(true);
     };
 
@@ -75,14 +80,14 @@ export default function MobileHeader() {
 
   return (
     <>
-      <header className="lg:hidden sticky top-0 z-40 bg-card/80 backdrop-blur-xl border-b border-border/50 px-4 py-3 flex items-center justify-between">
+      <header className="lg:hidden sticky top-0 z-40 bg-card/85 backdrop-blur-xl border-b border-border/50 px-3 py-2.5 flex items-center justify-between gap-2 sm:px-4 sm:py-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-md shadow-primary/25 shrink-0">
             <Wallet className="w-4 h-4 text-primary-foreground" />
           </div>
           <span className="font-bold text-sm tracking-tight truncate">FinancasPro</span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           <button
             onClick={toggleVisibility}
             className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
@@ -93,10 +98,11 @@ export default function MobileHeader() {
           {showInstallButton && (
             <button
               onClick={handleInstall}
-              className="flex items-center gap-1.5 h-9 px-3 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-all shadow-sm shadow-primary/20"
+              className="flex h-9 w-9 items-center justify-center gap-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold shadow-sm shadow-primary/20 transition-all hover:bg-primary/90 min-[390px]:w-auto min-[390px]:px-3"
+              aria-label="Baixar app"
             >
               <Download className="w-3.5 h-3.5" />
-              Baixar app
+              <span className="hidden min-[390px]:inline">Baixar app</span>
             </button>
           )}
           <button

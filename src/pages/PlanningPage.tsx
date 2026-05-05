@@ -252,7 +252,7 @@ export default function PlanningPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Planejamento</h1>
           <p className="text-sm text-muted-foreground">Organize seus custos fixos e preveja o salário do mês</p>
@@ -302,8 +302,8 @@ export default function PlanningPage() {
           {/* Add form */}
           <div className="stat-card space-y-3">
             <p className="text-sm font-semibold">Adicionar custo fixo</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <div className="col-span-2">
+            <div className="grid grid-cols-1 gap-2 min-[430px]:grid-cols-2 sm:grid-cols-4">
+              <div className="min-[430px]:col-span-2">
                 <Label className="text-xs text-muted-foreground">Descrição</Label>
                 <Input
                   placeholder="Ex: Academia, Streaming..."
@@ -332,7 +332,7 @@ export default function PlanningPage() {
                   className="h-10"
                 />
               </div>
-              <div className="col-span-2 sm:col-span-1">
+              <div className="min-[430px]:col-span-2 sm:col-span-1">
                 <Label className="text-xs text-muted-foreground">Categoria</Label>
                 <Select value={costForm.category_id || '__none__'} onValueChange={(v) => setCostForm(p => ({ ...p, category_id: v === '__none__' ? '' : v }))}>
                   <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
@@ -342,7 +342,7 @@ export default function PlanningPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="col-span-2 sm:col-span-1">
+              <div className="min-[430px]:col-span-2 sm:col-span-1">
                 <Label className="text-xs text-muted-foreground">Conta</Label>
                 <Select value={costForm.account_id || '__none__'} onValueChange={(v) => setCostForm(p => ({ ...p, account_id: v === '__none__' ? '' : v }))}>
                   <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
@@ -352,7 +352,7 @@ export default function PlanningPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="col-span-2 sm:col-span-2 flex items-end">
+              <div className="min-[430px]:col-span-2 sm:col-span-2 flex items-end">
                 <Button onClick={addFixedCost} className="w-full h-10">
                   <Plus className="w-4 h-4 mr-1.5" /> Adicionar
                 </Button>
@@ -369,7 +369,7 @@ export default function PlanningPage() {
           ) : (
             <div className="space-y-2">
               {fixedCosts.map((item) => (
-                <div key={item.id} className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+                <div key={item.id} className="flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3">
                   {editingId === item.id ? (
                     // Inline edit
                     <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -405,8 +405,8 @@ export default function PlanningPage() {
 
           {/* Generate button */}
           {fixedCosts.length > 0 && (
-            <div className="flex items-center gap-3">
-              <Button onClick={generateFixedCosts} disabled={addExpenseBatch.isPending} className="gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+              <Button onClick={generateFixedCosts} disabled={addExpenseBatch.isPending} className="w-full gap-2 sm:w-auto">
                 <CalendarClock className="w-4 h-4" />
                 Agendar {fixedCosts.length} custo{fixedCosts.length !== 1 ? 's' : ''} em {String(mon).padStart(2,'0')}/{year}
               </Button>

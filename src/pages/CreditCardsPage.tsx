@@ -230,7 +230,7 @@ export default function CreditCardsPage() {
     <div className="space-y-6 animate-fade-in">
 
       {/* ─── Hero Header ─── */}
-      <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-[#6366f1]/[0.05] p-5 sm:p-7 shadow-sm">
+      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-[#6366f1]/[0.05] p-4 shadow-sm sm:rounded-3xl sm:p-7">
         <div className="absolute -top-20 -right-20 w-72 h-72 bg-[#6366f1]/15 blur-3xl rounded-full pointer-events-none" />
         <div className="absolute -bottom-32 -left-24 w-72 h-72 bg-[#8b5cf6]/[0.08] blur-3xl rounded-full pointer-events-none" />
 
@@ -256,12 +256,12 @@ export default function CreditCardsPage() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Button variant="outline" size="sm" onClick={() => setShowNewCard(true)} className="gap-1.5 h-9">
+            <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:shrink-0">
+              <Button variant="outline" size="sm" onClick={() => setShowNewCard(true)} className="h-9 gap-1.5">
                 <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Novo Cartão</span>
               </Button>
               {selectedCard && (
-                <Button size="sm" onClick={() => setShowNewTx(true)} className="gap-1.5 h-9 bg-[#6366f1] hover:bg-[#6366f1]/90 text-white shadow-sm shadow-[#6366f1]/20">
+                <Button size="sm" onClick={() => setShowNewTx(true)} className="h-9 gap-1.5 bg-[#6366f1] text-white shadow-sm shadow-[#6366f1]/20 hover:bg-[#6366f1]/90">
                   <Plus className="w-4 h-4" /> Nova Compra
                 </Button>
               )}
@@ -270,7 +270,7 @@ export default function CreditCardsPage() {
 
           {/* Stats row */}
           {cards.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
+            <div className="grid grid-cols-1 gap-2 min-[430px]:grid-cols-2 md:grid-cols-3 md:gap-3">
               <div className="rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm px-3 py-2.5">
                 <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
                   <Wallet className="h-3 w-3" />
@@ -287,7 +287,7 @@ export default function CreditCardsPage() {
                 </div>
                 <p className="text-sm sm:text-base font-extrabold currency text-[#6366f1] truncate">{formatCurrency(futureTotal)}</p>
               </div>
-              <div className="col-span-2 md:col-span-1 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm px-3 py-2.5">
+              <div className="min-[430px]:col-span-2 md:col-span-1 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm px-3 py-2.5">
                 <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
                   <Sparkles className="h-3 w-3" />
                   <p className="text-[9px] font-bold uppercase tracking-wider">Próximas faturas</p>
@@ -303,7 +303,7 @@ export default function CreditCardsPage() {
       {futureTxns.length > 0 && (
         <div className="rounded-3xl border border-border/60 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden">
           {/* Section header */}
-          <div className="flex items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#6366f1]/5 via-transparent to-transparent border-b border-border/50">
+          <div className="flex flex-col gap-3 px-4 py-4 bg-gradient-to-r from-[#6366f1]/5 via-transparent to-transparent border-b border-border/50 sm:flex-row sm:items-center sm:justify-between sm:px-5">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#6366f1]/20 to-[#6366f1]/5 flex items-center justify-center border border-[#6366f1]/15 shrink-0">
                 <CalendarDays className="w-4.5 h-4.5 text-[#6366f1]" />
@@ -313,7 +313,7 @@ export default function CreditCardsPage() {
                 <p className="text-[11px] text-muted-foreground mt-0.5">{upcomingMonths.length} {upcomingMonths.length === 1 ? 'mês com lançamentos' : 'meses com lançamentos'} · todas as parcelas futuras</p>
               </div>
             </div>
-            <div className="text-right shrink-0">
+            <div className="shrink-0 sm:text-right">
               <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/80">Total</p>
               <p className="text-sm sm:text-base font-extrabold currency text-[#6366f1] tabular-nums">{formatCurrency(futureTotal)}</p>
             </div>
@@ -540,7 +540,7 @@ export default function CreditCardsPage() {
           <div className="absolute top-0 left-0 w-full h-1 rounded-t-2xl" style={{ background: `linear-gradient(90deg, ${currentCard.color}, ${currentCard.color}44)` }} />
 
           {/* Bill Header */}
-          <div className="flex items-center justify-between flex-wrap gap-4 pt-2">
+          <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${currentCard.color}20`, border: `1.5px solid ${currentCard.color}40` }}>
                 <CreditCard className="w-5 h-5" style={{ color: currentCard.color }} />
@@ -550,11 +550,11 @@ export default function CreditCardsPage() {
                 <p className="text-xs text-muted-foreground">Fecha dia {currentCard.closing_day} · Vence dia {currentCard.due_day}</p>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 bg-muted/40 rounded-xl px-2 py-1.5">
+            <div className="flex w-full items-center gap-1.5 rounded-xl bg-muted/40 px-2 py-1.5 sm:w-auto">
               <button onClick={() => setBillMonth(prevMonth(billMonth))} className="p-1.5 hover:bg-muted rounded-lg transition-colors">
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="text-sm font-semibold capitalize px-1 min-w-[120px] text-center">{monthLabel(billMonth)}</span>
+              <span className="min-w-0 flex-1 px-1 text-center text-sm font-semibold capitalize sm:min-w-[120px]">{monthLabel(billMonth)}</span>
               <button onClick={() => setBillMonth(nextMonth(billMonth))} className="p-1.5 hover:bg-muted rounded-lg transition-colors">
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -562,7 +562,7 @@ export default function CreditCardsPage() {
           </div>
 
           {/* Bill Stats */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 min-[430px]:grid-cols-3">
             <div className="rounded-xl border p-3 space-y-1" style={{ borderColor: `${currentCard.color}30`, backgroundColor: `${currentCard.color}08` }}>
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Total fatura</p>
               <p className="font-extrabold text-lg currency text-expense">{formatCurrency(billTotal)}</p>
@@ -615,9 +615,9 @@ export default function CreditCardsPage() {
           )}
 
           {/* Actions */}
-          <div className="flex items-center justify-between flex-wrap gap-2 pt-1 border-t border-border/50">
+          <div className="flex flex-col gap-2 pt-1 border-t border-border/50 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">{transactions.length} compra{transactions.length !== 1 ? 's' : ''} · {transactions.filter(t => t.paid).length} paga{transactions.filter(t => t.paid).length !== 1 ? 's' : ''}</p>
-            <div className="flex gap-2">
+            <div className="grid w-full grid-cols-1 gap-2 min-[430px]:grid-cols-2 sm:flex sm:w-auto">
               {unpaidTotal > 0 && (
                 <Button size="sm" variant="outline" className="border-income/30 text-income hover:bg-income/5 gap-1.5" onClick={() => setShowPayBill(true)}>
                   <Wallet className="w-3.5 h-3.5" />
@@ -648,7 +648,7 @@ export default function CreditCardsPage() {
                 return (
                   <div
                     key={t.id}
-                    className={`flex items-center justify-between py-2.5 px-3 rounded-xl transition-all border ${t.paid ? 'bg-income/[0.04] border-income/15' : 'hover:bg-muted/30 border-transparent hover:border-border/40'}`}
+                    className={`flex flex-col gap-2 rounded-xl border px-3 py-2.5 transition-all sm:flex-row sm:items-center sm:justify-between ${t.paid ? 'bg-income/[0.04] border-income/15' : 'hover:bg-muted/30 border-transparent hover:border-border/40'}`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <button
@@ -679,7 +679,7 @@ export default function CreditCardsPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                    <div className="flex w-full items-center justify-between gap-2 sm:ml-2 sm:w-auto sm:shrink-0">
                       <span className={`text-sm font-bold currency ${t.paid ? 'text-muted-foreground' : ''}`}>{formatCurrency(Number(t.amount))}</span>
                       <button
                         onClick={() => deleteTx.mutate(t.id)}
