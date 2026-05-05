@@ -101,12 +101,12 @@ function KpiCard({
         {/* Value + sparkline */}
         <div className="flex items-end justify-between mt-1 gap-2">
           <div className="min-w-0 flex-1">
-            <p className="text-lg sm:text-xl font-extrabold currency tracking-tight leading-none break-all">{displayValue}</p>
-            {sub && <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1.5 leading-tight">{sub}</p>}
+            <p className="text-base sm:text-lg lg:text-xl font-extrabold currency tracking-tight leading-none whitespace-nowrap tabular-nums truncate">{displayValue}</p>
+            {sub && <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1.5 leading-tight line-clamp-2">{sub}</p>}
           </div>
           {sparklineData && sparklineData.length > 1 && (
-            <div className="shrink-0 -mr-1 opacity-60 group-hover:opacity-100 transition-opacity">
-              <SparklineChart data={sparklineData} color={sparkColor} width={56} height={26} />
+            <div className="shrink-0 -mr-1 opacity-60 group-hover:opacity-100 transition-opacity hidden sm:block">
+              <SparklineChart data={sparklineData} color={sparkColor} width={48} height={22} />
             </div>
           )}
         </div>
@@ -583,11 +583,11 @@ export default function Dashboard() {
                 </div>
                 <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-info group-hover:translate-x-0.5 transition-all" />
               </div>
-              <div className="mt-1">
-                <p className="text-lg sm:text-xl font-extrabold currency tracking-tight leading-none text-info break-all">
+              <div className="mt-1 min-w-0">
+                <p className="text-base sm:text-lg lg:text-xl font-extrabold currency tracking-tight leading-none text-info whitespace-nowrap tabular-nums truncate">
                   {maskCurrency(formatCurrency(netWorth))}
                 </p>
-                <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1.5 leading-tight">
+                <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1.5 leading-tight line-clamp-2">
                   Contas {maskCurrency(formatCurrency(balance))} · Invest. {maskCurrency(formatCurrency(investmentTotal))}
                 </p>
               </div>
@@ -610,8 +610,8 @@ export default function Dashboard() {
                   </div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-[#6366f1] group-hover:translate-x-0.5 transition-all" />
                 </div>
-                <div className="mt-1">
-                  <p className="text-lg sm:text-xl font-extrabold currency tracking-tight leading-none text-[#6366f1] break-all">
+                <div className="mt-1 min-w-0">
+                  <p className="text-base sm:text-lg lg:text-xl font-extrabold currency tracking-tight leading-none text-[#6366f1] whitespace-nowrap tabular-nums truncate">
                     {maskCurrency(formatCurrency(totalCCThisMonth))}
                   </p>
                   <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1.5 leading-tight">
@@ -998,7 +998,8 @@ export default function Dashboard() {
               {/* Status List */}
               <div className="space-y-3">
                 {statusData.map(s => {
-                  const pct = totalExpensesAll > 0 ? (s.value / totalExpensesAll) * 100 : 0;
+                  const statusGrandTotal = statusData.reduce((acc, d) => acc + d.value, 0);
+                  const pct = statusGrandTotal > 0 ? (s.value / statusGrandTotal) * 100 : 0;
                   return (
                     <div key={s.name} className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/50 hover:bg-muted/40 transition-colors">
                       <div className="flex items-center gap-3">
@@ -1026,7 +1027,10 @@ export default function Dashboard() {
       </div>
 
       {/* ─── NEW: Top Movimentos do Mês ─── */}
-      {(topExpenses.length > 0 || topIncomes.length > 0) && (
+      {(topExpenses.length > 0 || topIncomes.length > 0) && (() => {
+        const showAllocationFiller = topExpenses.length > 0 && topIncomes.length === 0 && allocationData.length > 0 && investmentTotal > 0;
+        const showIncomeFiller = topIncomes.length > 0 && topExpenses.length === 0;
+        return (
         <div className="grid lg:grid-cols-2 gap-6 stagger-4">
           {/* Top Despesas */}
           {topExpenses.length > 0 && (
@@ -1086,6 +1090,79 @@ export default function Dashboard() {
             </div>
           )}
 
+          {/* Allocation as filler when no incomes */}
+          {showAllocationFiller && (
+            <div className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm p-5 sm:p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4 gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-info/20 to-info/5 flex items-center justify-center border border-info/15">
+                    <PiggyBank className="w-4 h-4 text-info" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold leading-tight">Alocação do Patrimônio</h3>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Contas vs Investimentos</p>
+                  </div>
+                </div>
+                <a href="/investimentos" className="text-[11px] text-primary hover:underline font-medium flex items-center gap-0.5">
+                  Detalhes <ChevronRight className="w-3 h-3" />
+                </a>
+              </div>
+              <div className="flex flex-col items-center gap-4">
+                <div className="relative w-40 h-40">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={allocationData} dataKey="value" cx="50%" cy="50%" innerRadius={45} outerRadius={72} paddingAngle={3} strokeWidth={0}>
+                        {allocationData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                      </Pie>
+                      <RechartsTooltip
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null;
+                          const item = payload[0]?.payload;
+                          return <ChartTooltipCard title={item?.name} rows={[{ label: 'Valor', value: maskCurrency(formatCurrency(Number(item?.value || 0))), color: payload[0]?.color }]} />;
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Total</p>
+                    <p className="text-sm font-extrabold currency tabular-nums whitespace-nowrap">{maskCurrency(formatCurrency(netWorth))}</p>
+                  </div>
+                </div>
+                <div className="w-full space-y-2.5">
+                  {allocationData.map(d => {
+                    const pct = netWorth > 0 ? (d.value / netWorth) * 100 : 0;
+                    return (
+                      <div key={d.name}>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.fill }} />
+                            <span className="text-xs font-semibold">{d.name}</span>
+                          </div>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-xs font-extrabold currency tabular-nums whitespace-nowrap">{maskCurrency(formatCurrency(d.value))}</span>
+                            <span className="text-[10px] text-muted-foreground font-semibold">{pct.toFixed(1)}%</span>
+                          </div>
+                        </div>
+                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: d.fill }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Empty filler when no expenses but have incomes */}
+          {showIncomeFiller && (
+            <div className="rounded-3xl border border-dashed border-border/40 bg-muted/10 p-10 flex flex-col items-center justify-center text-center">
+              <Trophy className="w-10 h-10 text-income/40 mb-3" />
+              <p className="text-sm font-bold text-foreground">Nenhuma despesa neste mês</p>
+              <p className="text-xs text-muted-foreground mt-1">Continue assim — sua economia agradece!</p>
+            </div>
+          )}
+
           {/* Top Receitas */}
           {topIncomes.length > 0 && (
             <div className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm p-5 sm:p-6 shadow-sm">
@@ -1139,10 +1216,11 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-      )}
+        );
+      })()}
 
-      {/* ─── NEW: Allocation Patrimônio (when investments exist) ─── */}
-      {allocationData.length > 0 && investmentTotal > 0 && (
+      {/* ─── Allocation Patrimônio (skip when already shown as filler) ─── */}
+      {allocationData.length > 0 && investmentTotal > 0 && !(topExpenses.length > 0 && topIncomes.length === 0) && (
         <div className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm p-5 sm:p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4 gap-3">
             <div className="flex items-center gap-2.5">
