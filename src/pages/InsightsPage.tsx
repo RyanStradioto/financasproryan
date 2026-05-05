@@ -211,7 +211,10 @@ export default function InsightsPage() {
       const { data, error } = await supabase.functions.invoke('financial-insights', {
         body: {
           income: income.map(i => ({ amount: i.amount, status: i.status, description: i.description, date: i.date })),
-          expenses: expenses.map(e => ({ amount: e.amount, status: e.status, category_id: e.category_id, description: e.description, date: e.date })),
+          expenses: expenses.map(e => ({ amount: e.amount, status: e.status, category_id: e.category_id, description: e.description, date: e.date, notes: e.notes })),
+          prev_income: prevIncome.map(i => ({ amount: i.amount, status: i.status, description: i.description, date: i.date })),
+          prev_expenses: prevExpenses.map(e => ({ amount: e.amount, status: e.status, category_id: e.category_id, description: e.description, date: e.date, notes: e.notes })),
+          cc_transactions: ccTxns.map(t => ({ amount: t.amount, category_id: t.category_id, description: t.description, date: t.date, bill_month: t.bill_month })),
           categories: categories.filter(c => !c.archived).map(c => ({ id: c.id, name: c.name, icon: c.icon, monthly_budget: c.monthly_budget })),
           profile: profile ? { monthly_salary: profile.monthly_salary } : null,
           investments: investments.map(i => ({ name: i.name, type: i.type, current_value: i.current_value, total_invested: i.total_invested })),

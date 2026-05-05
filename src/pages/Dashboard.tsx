@@ -1067,18 +1067,18 @@ export default function Dashboard() {
                             #{idx + 1}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <p className="text-[13px] font-semibold truncate">{tx.description}</p>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <p className="text-[13px] font-semibold truncate min-w-0 flex-1">{tx.description}</p>
                               {tx.kind === 'cc' && (
                                 <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-[#6366f1]/10 text-[#6366f1] border border-[#6366f1]/20 font-bold shrink-0">CARTÃO</span>
                               )}
                             </div>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                            <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
                               {cat ? `${cat.icon} ${cat.name}` : 'Sem categoria'} · {formatDate(tx.date)}
                             </p>
                           </div>
                         </div>
-                        <p className="text-sm font-extrabold currency text-expense tabular-nums shrink-0">{maskCurrency(formatCurrency(tx.amount))}</p>
+                        <p className="text-sm font-extrabold currency text-expense tabular-nums shrink-0 whitespace-nowrap">{maskCurrency(formatCurrency(tx.amount))}</p>
                       </div>
                       <div className="h-1 bg-muted/60 rounded-full overflow-hidden ml-9">
                         <div className="h-full bg-gradient-to-r from-expense/40 to-expense/80 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
@@ -1199,12 +1199,12 @@ export default function Dashboard() {
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="text-[13px] font-semibold truncate">{tx.description || 'Receita'}</p>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                            <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
                               {cat ? `${cat.icon} ${cat.name}` : 'Sem categoria'} · {formatDate(tx.date)}
                             </p>
                           </div>
                         </div>
-                        <p className="text-sm font-extrabold currency text-income tabular-nums shrink-0">{maskCurrency(formatCurrency(Number(tx.amount)))}</p>
+                        <p className="text-sm font-extrabold currency text-income tabular-nums shrink-0 whitespace-nowrap">{maskCurrency(formatCurrency(Number(tx.amount)))}</p>
                       </div>
                       <div className="h-1 bg-muted/60 rounded-full overflow-hidden ml-9">
                         <div className="h-full bg-gradient-to-r from-income/40 to-income/80 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />

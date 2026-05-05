@@ -269,33 +269,44 @@ export default function CreditCardsPage() {
           </div>
 
           {/* Stats row */}
-          {cards.length > 0 && (
-            <div className="grid grid-cols-1 gap-2 min-[430px]:grid-cols-2 md:grid-cols-3 md:gap-3">
-              <div className="rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm px-3 py-2.5">
-                <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
-                  <Wallet className="h-3 w-3" />
-                  <p className="text-[9px] font-bold uppercase tracking-wider">Limite total</p>
+          {cards.length > 0 && (() => {
+            const totalLimit = cards.reduce((s, c) => s + Number(c.credit_limit), 0);
+            const totalAvailable = Math.max(0, totalLimit - futureTotal);
+            const usagePct = totalLimit > 0 ? (futureTotal / totalLimit) * 100 : 0;
+            return (
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
+                <div className="rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm px-3 py-2.5">
+                  <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
+                    <Wallet className="h-3 w-3" />
+                    <p className="text-[9px] font-bold uppercase tracking-wider">Limite total</p>
+                  </div>
+                  <p className="text-sm sm:text-base font-extrabold currency tabular-nums whitespace-nowrap truncate">{formatCurrency(totalLimit)}</p>
                 </div>
-                <p className="text-sm sm:text-base font-extrabold currency truncate">
-                  {formatCurrency(cards.reduce((s, c) => s + Number(c.credit_limit), 0))}
-                </p>
-              </div>
-              <div className="rounded-xl border border-[#6366f1]/25 bg-[#6366f1]/[0.06] px-3 py-2.5">
-                <div className="flex items-center gap-1.5 text-[#6366f1] mb-0.5">
-                  <TrendingUp className="h-3 w-3" />
-                  <p className="text-[9px] font-bold uppercase tracking-wider">Compromisso futuro</p>
+                <div className="rounded-xl border border-income/25 bg-income/[0.06] px-3 py-2.5">
+                  <div className="flex items-center gap-1.5 text-income mb-0.5">
+                    <Sparkles className="h-3 w-3" />
+                    <p className="text-[9px] font-bold uppercase tracking-wider">Disponível</p>
+                  </div>
+                  <p className="text-sm sm:text-base font-extrabold currency text-income tabular-nums whitespace-nowrap truncate">{formatCurrency(totalAvailable)}</p>
                 </div>
-                <p className="text-sm sm:text-base font-extrabold currency text-[#6366f1] truncate">{formatCurrency(futureTotal)}</p>
-              </div>
-              <div className="min-[430px]:col-span-2 md:col-span-1 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm px-3 py-2.5">
-                <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
-                  <Sparkles className="h-3 w-3" />
-                  <p className="text-[9px] font-bold uppercase tracking-wider">Próximas faturas</p>
+                <div className="rounded-xl border border-[#6366f1]/25 bg-[#6366f1]/[0.06] px-3 py-2.5">
+                  <div className="flex items-center gap-1.5 text-[#6366f1] mb-0.5">
+                    <TrendingUp className="h-3 w-3" />
+                    <p className="text-[9px] font-bold uppercase tracking-wider">Comprometido</p>
+                  </div>
+                  <p className="text-sm sm:text-base font-extrabold currency text-[#6366f1] tabular-nums whitespace-nowrap truncate">{formatCurrency(futureTotal)}</p>
+                  <p className="text-[10px] text-[#6366f1]/70 mt-0.5 font-semibold">{usagePct.toFixed(0)}% do limite</p>
                 </div>
-                <p className="text-sm sm:text-base font-extrabold truncate">{upcomingMonths.length} {upcomingMonths.length === 1 ? 'mês' : 'meses'}</p>
+                <div className="rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm px-3 py-2.5">
+                  <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
+                    <CalendarDays className="h-3 w-3" />
+                    <p className="text-[9px] font-bold uppercase tracking-wider">Faturas</p>
+                  </div>
+                  <p className="text-sm sm:text-base font-extrabold tabular-nums whitespace-nowrap truncate">{upcomingMonths.length} {upcomingMonths.length === 1 ? 'mês' : 'meses'}</p>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       </div>
 
@@ -498,25 +509,25 @@ export default function CreditCardsPage() {
                     <CreditCard className="w-7 h-7 text-white/40" />
                   </div>
 
-                  {/* Bottom: limit usage bar */}
+                  {/* Bottom: limit usage bar + saldo disponível */}
                   <div className="space-y-2">
-                    <div className="flex items-end justify-between gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <div>
                         <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider mb-0.5">Comprometido</p>
-                        <p className="font-extrabold text-base tracking-tight tabular-nums">{formatCurrency(cardFutureTotal)}</p>
+                        <p className="font-extrabold text-sm tracking-tight tabular-nums whitespace-nowrap truncate">{formatCurrency(cardFutureTotal)}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider mb-0.5">Fecha · Vence</p>
-                        <p className="font-bold text-sm tabular-nums">{String(card.closing_day).padStart(2,'0')} · {String(card.due_day).padStart(2,'0')}</p>
+                        <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider mb-0.5">Disponível</p>
+                        <p className="font-extrabold text-sm tracking-tight tabular-nums whitespace-nowrap truncate">{formatCurrency(Math.max(0, Number(card.credit_limit) - cardFutureTotal))}</p>
                       </div>
                     </div>
                     <div className="space-y-1">
                       <div className="h-1.5 bg-black/25 rounded-full overflow-hidden">
                         <div className="h-full bg-white/80 rounded-full transition-all" style={{ width: `${cardLimitUsage}%` }} />
                       </div>
-                      <div className="flex items-center justify-between text-[9px] font-semibold">
-                        <span className="text-white/60 uppercase tracking-wider">Limite {formatCurrency(Number(card.credit_limit))}</span>
-                        <span className="text-white/90">{cardLimitUsage.toFixed(0)}%</span>
+                      <div className="flex items-center justify-between text-[9px] font-semibold gap-2">
+                        <span className="text-white/60 uppercase tracking-wider truncate">Limite {formatCurrency(Number(card.credit_limit))}</span>
+                        <span className="text-white/90 whitespace-nowrap">Fecha {String(card.closing_day).padStart(2,'0')} · {cardLimitUsage.toFixed(0)}%</span>
                       </div>
                     </div>
                   </div>

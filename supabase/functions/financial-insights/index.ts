@@ -136,7 +136,17 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { income = [], expenses = [], categories = [], profile = null, month_label = "este mês" } = await req.json();
+    const {
+      income = [],
+      expenses = [],
+      prev_income = [],
+      prev_expenses = [],
+      categories = [],
+      profile = null,
+      investments = [],
+      cc_transactions = [],
+      month_label = "este mês",
+    } = await req.json();
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
 
     const fallbackInsights = buildDeterministicInsights({
@@ -153,26 +163,92 @@ serve(async (req) => {
       });
     }
 
-    const totalIncome = income.reduce((s: number, i: Record<string, unknown>) => s + Number(i.amount), 0);
-    const totalExpenses = expenses.reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0);
+    // ── Build a rich, specific data summary for the AI ───────────────
+    const totalIncome = income.filter((i: Item) => i.status === "concluido").reduce((s: number, i: Item) => s + Number(i.amount), 0);
+    const totalExpensesPaid = expenses.filter((e: Item) => e.status === "concluido").reduce((s: number, e: Item) => s + Number(e.amount), 0);
+    const totalCC = cc_transactions.reduce((s: number, t: Record<string, unknown>) => s + Number(t.amount), 0);
+    const totalExpenses = totalExpensesPaid + totalCC;
+    const balance = totalIncome - totalExpenses;
     const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome * 100) : 0;
-    const dailyAvg = totalExpenses / 30;
-    const categoryMetrics = categories.map((c: Record<string, unknown>) => {
-      const spent = expenses.filter((e: Record<string, unknown>) => e.category_id === c.id).reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0);
+
+    // Previous month comparisons
+    const prevTotalIncome = prev_income.filter((i: Item) => i.status === "concluido").reduce((s: number, i: Item) => s + Number(i.amount), 0);
+    const prevTotalExpenses = prev_expenses.filter((e: Item) => e.status === "concluido").reduce((s: number, e: Item) => s + Number(e.amount), 0);
+    const incomeMoM = prevTotalIncome > 0 ? ((totalIncome - prevTotalIncome) / prevTotalIncome * 100) : null;
+    const expenseMoM = prevTotalExpenses > 0 ? ((totalExpenses - prevTotalExpenses) / prevTotalExpenses * 100) : null;
+
+    const today = new Date();
+    const dayOfMonth = today.getDate();
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const dailyAvg = dayOfMonth > 0 ? totalExpenses / dayOfMonth : 0;
+    const projectedMonthEnd = dailyAvg * lastDayOfMonth;
+
+    // Top 5 individual expenses + CC purchases
+    const allMovements = [
+      ...expenses.filter((e: Item) => e.status === "concluido").map((e: Item) => ({ ...e, source: "exp" })),
+      ...cc_transactions.map((t: Record<string, unknown>) => ({ ...t, source: "cc" })),
+    ].sort((a: Record<string, unknown>, b: Record<string, unknown>) => Number(b.amount) - Number(a.amount)).slice(0, 5);
+
+    const categoryMetrics = categories.map((c: Category) => {
+      const fromExp = expenses.filter((e: Item) => e.status === "concluido" && e.category_id === c.id).reduce((s: number, e: Item) => s + Number(e.amount), 0);
+      const fromCC = cc_transactions.filter((t: Record<string, unknown>) => t.category_id === c.id).reduce((s: number, t: Record<string, unknown>) => s + Number(t.amount), 0);
+      const spent = fromExp + fromCC;
       const budget = Number(c.monthly_budget) || 0;
-      return { name: c.name, spent, budget, pct: totalExpenses > 0 ? (spent / totalExpenses * 100) : 0 };
-    }).sort((a, b) => b.spent - a.spent);
+      const overBy = budget > 0 && spent > budget ? spent - budget : 0;
+      return { name: c.name, icon: c.icon, spent, budget, overBy, pct: totalExpenses > 0 ? (spent / totalExpenses * 100) : 0 };
+    }).filter((c: Record<string, number>) => Number(c.spent) > 0).sort((a, b) => Number(b.spent) - Number(a.spent));
 
-    const prompt = `Você é um consultor financeiro pessoal. Gere 4 ou 5 insights em JSON para ${month_label}.
-Receitas: R$ ${totalIncome.toFixed(2)}
-Despesas: R$ ${totalExpenses.toFixed(2)}
-Taxa de poupança: ${savingsRate.toFixed(1)}%
-Média diária de despesas: R$ ${dailyAvg.toFixed(2)}
-Categorias:
-${categoryMetrics.map(c => `${c.name}: R$ ${c.spent.toFixed(2)} (${c.pct.toFixed(1)}%) orçamento ${c.budget || 0}`).join("\n")}
+    // Investment summary
+    const invCurrent = investments.reduce((s: number, i: Record<string, unknown>) => s + Number(i.current_value || 0), 0);
+    const invInvested = investments.reduce((s: number, i: Record<string, unknown>) => s + Number(i.total_invested || 0), 0);
+    const invReturn = invInvested > 0 ? ((invCurrent - invInvested) / invInvested * 100) : 0;
 
-Formato obrigatório:
-[{"icon":"emoji","title":"titulo","description":"texto especifico com numeros","type":"warning|tip|achievement"}]`;
+    const salary = Number(profile?.monthly_salary || 0);
+    const reservaMeses = totalExpenses > 0 ? invCurrent / totalExpenses : 0;
+
+    const prompt = `Você é um consultor financeiro pessoal experiente, direto e que trabalha com NÚMEROS REAIS, não com generalidades. Gere 6 a 8 insights ESPECÍFICOS, ACIONÁVEIS e PERSONALIZADOS para o mês de ${month_label}.
+
+REGRAS CRÍTICAS:
+- NÃO use frases genéricas tipo "controle seus gastos", "economize mais", "revise seu orçamento". TODA recomendação deve citar valores em R$ e categorias específicas.
+- TODA descrição deve ter pelo menos UM número concreto (R$, %, dias, meses).
+- Misture os 3 tipos: warning, tip, achievement. Pelo menos 1 de cada se aplicável.
+- Use linguagem coloquial brasileira, segunda pessoa ("você"), sem jargão.
+- Seja específico em ações: "corte X% em Y categoria por 3 meses para juntar Z" em vez de "reduza gastos".
+- Identifique padrões e anomalias nos dados, não apenas reporte totais.
+
+DADOS DO MÊS:
+- Receita concluída: ${fmt(totalIncome)}${incomeMoM !== null ? ` (${incomeMoM > 0 ? "+" : ""}${incomeMoM.toFixed(0)}% vs mês anterior)` : ""}
+- Despesa total: ${fmt(totalExpenses)}${expenseMoM !== null ? ` (${expenseMoM > 0 ? "+" : ""}${expenseMoM.toFixed(0)}% vs mês anterior)` : ""}
+  - Em conta/débito/PIX: ${fmt(totalExpensesPaid)}
+  - No cartão de crédito: ${fmt(totalCC)}
+- Saldo: ${fmt(balance)} ${balance < 0 ? "(NEGATIVO)" : ""}
+- Taxa de poupança: ${savingsRate.toFixed(1)}%
+- Dia ${dayOfMonth} de ${lastDayOfMonth} do mês
+- Média diária de gastos: ${fmt(dailyAvg)}
+- Projeção de fechamento (se manter ritmo): ${fmt(projectedMonthEnd)}
+${salary > 0 ? `- Salário declarado: ${fmt(salary)}` : ""}
+
+CATEGORIAS (em ordem de gasto):
+${categoryMetrics.slice(0, 12).map((c) => {
+  return `- ${c.icon || ""} ${c.name}: ${fmt(c.spent)} (${c.pct.toFixed(0)}% do total)${c.budget > 0 ? `, orçamento ${fmt(c.budget)}${c.overBy > 0 ? ` ESTOUROU em ${fmt(c.overBy)}` : ` (${((c.spent/c.budget)*100).toFixed(0)}% usado)`}` : " (sem orçamento)"}`
+}).join("\n")}
+
+TOP 5 GASTOS INDIVIDUAIS:
+${allMovements.map((m: Record<string, unknown>, i: number) => `${i + 1}. ${m.description || "(sem descrição)"} — ${fmt(Number(m.amount))} ${m.source === "cc" ? "[CARTÃO]" : "[CONTA]"} em ${m.date}`).join("\n")}
+
+INVESTIMENTOS:
+- Patrimônio investido: ${fmt(invCurrent)}
+- Total aportado: ${fmt(invInvested)}
+- Rentabilidade acumulada: ${invReturn.toFixed(1)}%
+- Reserva de emergência: ${reservaMeses.toFixed(1)} meses de gastos
+
+EXEMPLOS DE INSIGHTS BONS:
+{"icon":"🍔","title":"Alimentação subiu 28% vs mês anterior","description":"Saiu de R$ 600 em abril para R$ 768 em maio. As 3 idas ao restaurante (R$ 180 cada) representam 70% desse aumento. Cortar 1 jantar/semana economiza R$ 720/mês.","type":"warning"}
+{"icon":"💳","title":"Cartão consumindo 38% da renda","description":"R$ 1.520 de fatura para R$ 4.000 de receita é alto. Acima de 30% começa a comprometer o caixa. Tente migrar gastos recorrentes (Netflix, Spotify) para débito automático.","type":"warning"}
+{"icon":"🏆","title":"Reserva de emergência confortável","description":"Você tem 4.2 meses de despesas guardadas em investimentos. Considera-se ideal 3-6 meses, então pode focar em ativos de mais retorno como ETFs ou ações.","type":"achievement"}
+
+Retorne APENAS um JSON array válido (sem markdown, sem texto antes ou depois):
+[{"icon":"emoji","title":"título curto e específico","description":"texto detalhado com números e ações concretas","type":"warning|tip|achievement"}]`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -181,11 +257,12 @@ Formato obrigatório:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "Retorne APENAS um JSON array válido, sem markdown." },
+          { role: "system", content: "Você é um consultor financeiro brasileiro que dá conselhos específicos com números reais. Retorne APENAS um JSON array válido, sem markdown, sem texto antes ou depois." },
           { role: "user", content: prompt },
         ],
+        temperature: 0.6,
       }),
     });
 
