@@ -294,7 +294,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="rounded-2xl border border-border/60 bg-card/70 px-4 py-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">No cartao</p>
-          <p className="text-lg font-extrabold currency text-primary mt-1">{maskCurrency(formatCurrency(cardExpenses))}</p>
+          <p className="text-lg font-extrabold currency text-primary mt-1">{maskCurrency(formatCurrency(totalCCThisMonth))}</p>
         </div>
         <div className="rounded-2xl border border-border/60 bg-card/70 px-4 py-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Pendencias</p>
