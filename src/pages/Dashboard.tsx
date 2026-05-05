@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { TrendingUp, TrendingDown, Wallet, PiggyBank, Pencil, BarChart3, ArrowUpRight, ArrowDownRight, Target, Clock, Zap, ChevronRight, BellRing, Sparkles } from 'lucide-react';
 import { useIncome, useExpenses, useAccounts, type Income, type Expense } from '@/hooks/useFinanceData';
 import { useNetWorth } from '@/hooks/useInvestments';
+import { useCreditCards, useCreditCardTransactions } from '@/hooks/useCreditCards';
 import { getMonthYear, formatCurrency, formatDate, getStatusColor, getStatusLabel } from '@/lib/format';
 import MonthSelector from '@/components/finance/MonthSelector';
 import TransactionDialog from '@/components/finance/TransactionDialog';
@@ -22,6 +23,7 @@ import { formatWorkTime } from '@/lib/workTime';
 import { cn } from '@/lib/utils';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import PendingExpensesDialog from '@/components/finance/PendingExpensesDialog';
+import { buildExpenseMatchKey, detectCreditCardExpense, parseStructuredCardMarker } from '@/lib/paymentMethod';
 
 const CHART_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
 
@@ -99,14 +101,41 @@ export default function Dashboard() {
   const { data: expenses = [] } = useExpenses(month);
   const { data: categories = [] } = useCategories();
   const { data: accounts = [] } = useAccounts();
+  const { data: creditCards = [] } = useCreditCards();
+  const { data: creditTransactions = [] } = useCreditCardTransactions();
   const { investmentTotal } = useNetWorth();
   const { data: accumulatedBalance = 0 } = useAccumulatedBalance(month);
   const { calcWorkTime, hourlyRate } = useWorkTimeCalc();
 
   const [editing, setEditing] = useState<((Income & { type: 'income' }) | (Expense & { type: 'expense' })) | null>(null);
   const [pendingModalOpen, setPendingModalOpen] = useState(false);
-  const isCreditCardExpense = (notes?: string | null) =>
-    !!notes && /\[Cartao de credito\|card:[^|\]]+\|bill:[0-9]{4}-[0-9]{2}\]/i.test(notes);
+  const isCreditCardExpense = (expense: Pick<Expense, 'notes' | 'account_id'>) =>
+    detectCreditCardExpense(expense, creditCards, accounts).isCreditCard;
+
+  const { categoryByTxId, categoryByMatchKey } = useMemo(() => {
+    const byTxId = new Map<string, string>();
+    const byKey = new Map<string, string>();
+
+    creditTransactions.forEach((tx) => {
+      if (!tx.category_id) return;
+      byTxId.set(tx.id, tx.category_id);
+      byKey.set(buildExpenseMatchKey(tx.description || '', tx.date, Number(tx.amount) || 0), tx.category_id);
+    });
+
+    return { categoryByTxId: byTxId, categoryByMatchKey: byKey };
+  }, [creditTransactions]);
+
+  const resolveCategoryId = (expense: Expense) => {
+    if (expense.category_id) return expense.category_id;
+
+    const marker = parseStructuredCardMarker(expense.notes);
+    if (marker?.transactionId && categoryByTxId.has(marker.transactionId)) {
+      return categoryByTxId.get(marker.transactionId) ?? null;
+    }
+
+    const matchKey = buildExpenseMatchKey(expense.description || '', expense.date, Number(expense.amount) || 0);
+    return categoryByMatchKey.get(matchKey) ?? null;
+  };
 
   // ── Core numbers ─────────────────────────────────────────────
   const totalIncome = useMemo(() =>
@@ -125,8 +154,8 @@ export default function Dashboard() {
     expenses.filter(e => e.status !== 'concluido').reduce((s, e) => s + Number(e.amount), 0)
   , [expenses]);
   const cardExpenses = useMemo(() =>
-    expenses.filter(e => isCreditCardExpense(e.notes)).reduce((s, e) => s + Number(e.amount), 0)
-  , [expenses]);
+    expenses.filter(e => isCreditCardExpense(e)).reduce((s, e) => s + Number(e.amount), 0)
+  , [expenses, creditCards, accounts]);
 
   const balance = accumulatedBalance;
   const savings = totalIncome > 0 ? ((totalIncome - totalExpensesPaid) / totalIncome) * 100 : 0;
@@ -137,12 +166,12 @@ export default function Dashboard() {
       .map(cat => ({
         name: cat.name,
         icon: cat.icon,
-        value: expenses.filter(e => e.category_id === cat.id).reduce((s, e) => s + Number(e.amount), 0),
+        value: expenses.filter(e => resolveCategoryId(e) === cat.id).reduce((s, e) => s + Number(e.amount), 0),
         budget: Number(cat.monthly_budget) || 0,
       }))
       .filter(c => c.value > 0)
       .sort((a, b) => b.value - a.value)
-  , [expenses, categories]);
+  , [expenses, categories, categoryByTxId, categoryByMatchKey]);
 
   // ── Status breakdown bar data ────────────────────────────────
   const statusData = useMemo(() => [
@@ -183,11 +212,11 @@ export default function Dashboard() {
   // ── Budget progress for Rings ────────────────────────────────
   const budgetsWithData = useMemo(() =>
     categories.filter(c => Number(c.monthly_budget) > 0).map(cat => {
-      const spent = expenses.filter(e => e.category_id === cat.id).reduce((s, e) => s + Number(e.amount), 0);
+      const spent = expenses.filter(e => resolveCategoryId(e) === cat.id).reduce((s, e) => s + Number(e.amount), 0);
       const budget = Number(cat.monthly_budget);
       return { ...cat, spent, budget };
     }).sort((a, b) => b.budget - a.budget)
-  , [categories, expenses]);
+  , [categories, expenses, categoryByTxId, categoryByMatchKey]);
 
   // ── Recent transactions ──────────────────────────────────────
   const recentTransactions = useMemo(() => [
@@ -357,7 +386,7 @@ export default function Dashboard() {
         <div className="stat-card flex flex-col">
           <h3 className="text-sm font-semibold mb-6 flex items-center gap-2">
             <Target className="w-4 h-4 text-primary" /> Orçamentos Principais
-            <a href="/categorias" className="ml-auto text-xs text-primary hover:underline flex items-center gap-0.5 font-normal">
+            <a href="/planejamento" className="ml-auto text-xs text-primary hover:underline flex items-center gap-0.5 font-normal">
               Ver todos <ChevronRight className="w-3 h-3" />
             </a>
           </h3>
@@ -406,7 +435,7 @@ export default function Dashboard() {
             <div className="space-y-1 flex-1">
               {recentTransactions.map((t) => {
                 const wt = hourlyRate > 0 && t.type === 'expense' ? calcWorkTime(Number(t.amount)) : null;
-                const cardExpense = t.type === 'expense' && isCreditCardExpense((t as Expense).notes);
+                const cardExpense = t.type === 'expense' && isCreditCardExpense(t as Expense);
                 return (
                   <div key={t.id} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-muted/50 transition-all group -mx-2">
                     <div className="flex items-center gap-3 min-w-0 flex-1">

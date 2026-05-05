@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useExpenses, useDeleteExpense, useUpdateExpense, useCategories, useAccounts, type Expense } from '@/hooks/useFinanceData';
 import { useCreditCards } from '@/hooks/useCreditCards';
 import { getMonthYear, formatCurrency, formatDate, getStatusColor, getStatusLabel } from '@/lib/format';
+import { detectCreditCardExpense } from '@/lib/paymentMethod';
 import { formatWorkTime } from '@/lib/workTime';
 import { useWorkTimeCalc } from '@/hooks/useProfile';
 import MonthSelector from '@/components/finance/MonthSelector';
@@ -199,17 +200,26 @@ export default function ExpensesPage() {
     return acc ? (hideIcon ? acc.name : `${acc.icon} ${acc.name}`) : '—';
   };
 
-  const getCardMeta = (notes?: string | null) => {
-    if (!notes) return null;
-    const match = notes.match(/\[Cartao de credito\|card:([^|\]]+)\|bill:([0-9]{4}-[0-9]{2})\]/i);
-    if (!match) return null;
-    const [, cardId, billMonth] = match;
-    return { cardId, billMonth };
-  };
+  const getPaymentInfo = (item: Pick<Expense, 'notes' | 'account_id'>) => {
+    const cc = detectCreditCardExpense(item, creditCards, accounts);
+    if (cc.isCreditCard) {
+      return {
+        type: 'credit' as const,
+        label: cc.cardName ?? 'Cartao de credito',
+      };
+    }
 
-  const getCardName = (cardId?: string | null) => {
-    if (!cardId) return 'Cartao de credito';
-    return creditCards.find((c) => c.id === cardId)?.name ?? 'Cartao de credito';
+    if (item.account_id) {
+      return {
+        type: 'account' as const,
+        label: getAccountName(item.account_id, true),
+      };
+    }
+
+    return {
+      type: 'account' as const,
+      label: 'Conta / Debito / PIX',
+    };
   };
 
   const handleDelete = async (id: string) => {
@@ -530,7 +540,7 @@ export default function ExpensesPage() {
         )}
         {filtered.map((item) => {
           const cat = categories.find(c => c.id === item.category_id);
-          const cardMeta = getCardMeta(item.notes);
+          const payment = getPaymentInfo(item);
           return (
             <div key={item.id} className="p-4 flex flex-col gap-3 relative hover:bg-muted/10 transition-colors">
               <div className={`absolute top-0 left-0 w-1 h-full ${item.status === 'concluido' ? 'bg-success/80' : item.status === 'pendente' ? 'bg-warning/80' : 'bg-info/80'}`} />
@@ -561,19 +571,26 @@ export default function ExpensesPage() {
               </div>
               <div className="flex items-center justify-between pt-2.5 pl-2 mt-1">
                 <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-semibold px-2 py-1 rounded-full border ${
+                    payment.type === 'credit'
+                      ? 'text-primary bg-primary/10 border-primary/30'
+                      : 'text-muted-foreground bg-muted/30 border-border/50'
+                  }`}>
+                    {payment.type === 'credit' ? 'Credito' : 'Debito/PIX'}
+                  </span>
                   {hourlyRate > 0 && (
                     <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium bg-muted/20 px-2 py-1 rounded-full border border-border/40">
                       <Clock className="w-3 h-3 text-accent-foreground/60" />{formatWorkTime(calcWorkTime(Number(item.amount)))}
                     </span>
                   )}
-                  {item.account_id && (
+                  {item.account_id && payment.type === 'account' && (
                     <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium bg-muted/20 px-2 py-1 rounded-full border border-border/40">
                       {getAccountName(item.account_id, true)}
                     </span>
                   )}
-                  {cardMeta && (
+                  {payment.type === 'credit' && (
                     <span className="text-[10px] text-primary flex items-center gap-1 font-medium bg-primary/10 px-2 py-1 rounded-full border border-primary/30">
-                      {getCardName(cardMeta.cardId)}
+                      {payment.label}
                     </span>
                   )}
                 </div>
@@ -609,6 +626,7 @@ export default function ExpensesPage() {
                 <th className="text-left py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Status</th>
                 <th className="text-right py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Valor</th>
                 {hourlyRate && <th className="text-center py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Trabalho</th>}
+                <th className="text-left py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Pagamento</th>
                 <th className="text-left py-3.5 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Conta</th>
                 <th className="py-3.5 px-4 w-20"></th>
               </tr>
@@ -616,7 +634,7 @@ export default function ExpensesPage() {
             <tbody>
               {filtered.map((item) => {
                 const wt = calcWorkTime(Number(item.amount));
-                const cardMeta = getCardMeta(item.notes);
+                const payment = getPaymentInfo(item);
                 return (
                   <tr key={item.id} className="border-b border-border/30 hover:bg-muted/40 transition-all group">
                     <td className="py-3.5 px-4">
@@ -647,9 +665,20 @@ export default function ExpensesPage() {
                       </td>
                     )}
                     <td className="py-3.5 px-4">
-                      {cardMeta ? (
+                      {payment.type === 'credit' ? (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary border border-primary/30">
+                          Credito
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground border border-border/60">
+                          Debito / PIX
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      {payment.type === 'credit' ? (
                         <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary border border-primary/30">
-                          {getCardName(cardMeta.cardId)}
+                          {payment.label}
                         </span>
                       ) : (
                         <OptionPicker value={item.account_id} options={accounts} placeholder="Conta" onChange={v => handleAccountChange(item.id, v)} />
@@ -669,7 +698,7 @@ export default function ExpensesPage() {
                 );
               })}
               {expenses.length === 0 && !isLoading && (
-                <tr><td colSpan={hourlyRate ? 8 : 7} className="py-16 text-center">
+                <tr><td colSpan={hourlyRate ? 9 : 8} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-14 h-14 rounded-2xl bg-muted/50 flex items-center justify-center">
                       <Trash2 className="w-6 h-6 text-muted-foreground" />
@@ -682,7 +711,7 @@ export default function ExpensesPage() {
                 </td></tr>
               )}
               {expenses.length > 0 && filtered.length === 0 && (
-                <tr><td colSpan={hourlyRate ? 8 : 7} className="py-16 text-center">
+                <tr><td colSpan={hourlyRate ? 9 : 8} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <Filter className="w-8 h-8 text-muted-foreground opacity-40" />
                     <div>
@@ -705,7 +734,7 @@ export default function ExpensesPage() {
                       </span>
                     </td>
                   )}
-                  <td colSpan={2}></td>
+                  <td colSpan={3}></td>
                 </tr>
               </tfoot>
             )}

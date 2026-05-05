@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useCategories, useAccounts, useUpdateIncome, useUpdateExpense, useDeleteExpense, type Income, type Expense } from '@/hooks/useFinanceData';
 import { useAddCreditCardTransaction, useCreditCards } from '@/hooks/useCreditCards';
 import { useFileUpload } from '@/hooks/useFileUpload';
+import { detectCreditCardExpense, stripCreditCardMarkers } from '@/lib/paymentMethod';
 import { toast } from 'sonner';
 import { Paperclip, X, FileText, ExternalLink } from 'lucide-react';
 
@@ -40,12 +41,6 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
   const deleteExpense = useDeleteExpense();
   const addCreditCardTransaction = useAddCreditCardTransaction();
   const { upload, uploading } = useFileUpload();
-  const parseCardMarker = (raw?: string | null) => {
-    if (!raw) return null;
-    const match = raw.match(/^\[Cartao de credito\|card:([^|\]]+)\|bill:([0-9]{4}-[0-9]{2})\]\s*/i);
-    if (!match) return null;
-    return { cardId: match[1], cleanNotes: raw.replace(match[0], '') };
-  };
 
   useEffect(() => {
     if (transaction) {
@@ -59,15 +54,15 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
       setAttachmentUrl(transaction.attachment_url || null);
       setAttachmentName(transaction.attachment_name || null);
       if (transaction.type === 'expense') {
-        const cardMeta = parseCardMarker(transaction.notes);
+        const detected = detectCreditCardExpense(transaction, creditCards ?? [], accounts ?? []);
         setCategoryId(transaction.category_id || '');
-        setPaymentMethod(cardMeta ? 'credit_card' : 'account');
-        setCreditCardId(cardMeta?.cardId || '');
-        setNotes(cardMeta?.cleanNotes || transaction.notes || '');
+        setPaymentMethod(detected.isCreditCard ? 'credit_card' : 'account');
+        setCreditCardId(detected.cardId || '');
+        setNotes(stripCreditCardMarkers(transaction.notes));
         setInstallments('1');
       }
     }
-  }, [transaction]);
+  }, [transaction, creditCards, accounts]);
 
   const getCreditCardBillMonth = (purchaseDate: string, closingDay: number) => {
     const [year, month, day] = purchaseDate.split('-').map(Number);
@@ -136,7 +131,7 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
 
         await deleteExpense.mutateAsync(transaction.id);
       } else {
-        const cleanNotes = notes || null;
+        const cleanNotes = stripCreditCardMarkers(notes) || null;
         await updateExpense.mutateAsync({
           ...baseData,
           category_id: categoryId || null,

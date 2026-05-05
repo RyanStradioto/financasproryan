@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useCategories, useAddCategory, useUpdateCategory, useDeleteCategory, useExpenses } from '@/hooks/useFinanceData';
+import { useCreditCardTransactions } from '@/hooks/useCreditCards';
 import { formatCurrency, getMonthYear } from '@/lib/format';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import MonthSelector from '@/components/finance/MonthSelector';
+import { buildExpenseMatchKey, parseStructuredCardMarker } from '@/lib/paymentMethod';
 
 const ICONS = ['🏠', '🛒', '🚗', '💰', '🎮', '🍔', '📚', '🏋️', '⚕️', '👕', '🎬', '🏷️', '💳', '📱', '✈️', '🐶'];
 
@@ -33,6 +35,7 @@ export default function CategoriesPage() {
   const [month, setMonth] = useState(getMonthYear());
   const { data: categories = [] } = useCategories();
   const { data: expenses = [] } = useExpenses(month);
+  const { data: creditTransactions = [] } = useCreditCardTransactions();
   const addCategory = useAddCategory();
   const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
@@ -49,6 +52,31 @@ export default function CategoriesPage() {
   const [editBudget, setEditBudget] = useState('');
 
   const activeCategories = categories.filter(c => !c.archived);
+
+  const { categoryByTxId, categoryByMatchKey } = useMemo(() => {
+    const byTxId = new Map<string, string>();
+    const byKey = new Map<string, string>();
+
+    creditTransactions.forEach((tx) => {
+      if (!tx.category_id) return;
+      byTxId.set(tx.id, tx.category_id);
+      byKey.set(buildExpenseMatchKey(tx.description || '', tx.date, Number(tx.amount) || 0), tx.category_id);
+    });
+
+    return { categoryByTxId: byTxId, categoryByMatchKey: byKey };
+  }, [creditTransactions]);
+
+  const resolveCategoryId = (expense: { category_id: string | null; notes: string | null; description: string; date: string; amount: number }) => {
+    if (expense.category_id) return expense.category_id;
+
+    const marker = parseStructuredCardMarker(expense.notes);
+    if (marker?.transactionId && categoryByTxId.has(marker.transactionId)) {
+      return categoryByTxId.get(marker.transactionId) ?? null;
+    }
+
+    const matchKey = buildExpenseMatchKey(expense.description || '', expense.date, Number(expense.amount) || 0);
+    return categoryByMatchKey.get(matchKey) ?? null;
+  };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,7 +189,7 @@ export default function CategoriesPage() {
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         {activeCategories.map(cat => {
           const spent = expenses
-            .filter(e => e.category_id === cat.id)
+            .filter(e => resolveCategoryId(e) === cat.id)
             .reduce((s, e) => s + Number(e.amount), 0);
           const budgetNum = Number(cat.monthly_budget);
           const pct = budgetNum > 0 ? Math.min((spent / budgetNum) * 100, 100) : 0;

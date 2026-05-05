@@ -113,7 +113,9 @@ export function useAddCreditCardTransaction() {
         const [y, m] = data.bill_month.split('-').map(Number);
         const future = new Date(y, m - 1 + i, 1);
         const futureBill = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, '0')}`;
+        const txId = crypto.randomUUID();
         return {
+          id: txId,
           user_id: user!.id,
           credit_card_id: data.credit_card_id,
           category_id: data.category_id ?? null,
@@ -137,15 +139,12 @@ export function useAddCreditCardTransaction() {
       // Keep budget/discipline tracking in sync by mirroring credit-card purchases in expenses.
       const installmentAmount = +(data.amount / total).toFixed(2);
       const baseDate = new Date(`${data.date}T00:00:00`);
-      const expenseRows = Array.from({ length: total }, (_, i) => {
+      const expenseRows = rows.map((tx, i) => {
         const d = new Date(baseDate);
         d.setMonth(d.getMonth() + i);
         const expenseDate = d.toISOString().split('T')[0];
         const baseNote = data.notes?.trim();
-        const [y, m] = data.bill_month.split('-').map(Number);
-        const billD = new Date(y, m - 1 + i, 1);
-        const futureBill = `${billD.getFullYear()}-${String(billD.getMonth() + 1).padStart(2, '0')}`;
-        const cardMarker = `[Cartao de credito|card:${data.credit_card_id}|bill:${futureBill}]`;
+        const cardMarker = `[Cartao de credito|card:${data.credit_card_id}|bill:${tx.bill_month}|tx:${tx.id}]`;
         return {
           user_id: user!.id,
           date: expenseDate,

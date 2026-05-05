@@ -60,6 +60,7 @@ function ProtectedRoutes() {
           <Route path="/receitas"     element={<IncomePage />} />
           <Route path="/despesas"     element={<ExpensesPage />} />
           <Route path="/categorias"   element={<CategoriesPage />} />
+          <Route path="/planejamento" element={<CategoriesPage />} />
           <Route path="/contas"       element={<AccountsPage />} />
           <Route path="/calendario"   element={<CalendarPage />} />
           <Route path="/configuracoes" element={<SettingsPage />} />
