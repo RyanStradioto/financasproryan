@@ -23,7 +23,7 @@ import { formatWorkTime } from '@/lib/workTime';
 import { cn } from '@/lib/utils';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import PendingExpensesDialog from '@/components/finance/PendingExpensesDialog';
-import { buildExpenseMatchKey, detectCreditCardExpense, parseStructuredCardMarker } from '@/lib/paymentMethod';
+import { buildDescriptionAmountKey, buildExpenseMatchKey, detectCreditCardExpense, parseStructuredCardMarker } from '@/lib/paymentMethod';
 
 const CHART_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
 
@@ -112,17 +112,19 @@ export default function Dashboard() {
   const isCreditCardExpense = (expense: Pick<Expense, 'notes' | 'account_id'>) =>
     detectCreditCardExpense(expense, creditCards, accounts).isCreditCard;
 
-  const { categoryByTxId, categoryByMatchKey } = useMemo(() => {
+  const { categoryByTxId, categoryByMatchKey, categoryByLooseKey } = useMemo(() => {
     const byTxId = new Map<string, string>();
     const byKey = new Map<string, string>();
+    const byLooseKey = new Map<string, string>();
 
     creditTransactions.forEach((tx) => {
       if (!tx.category_id) return;
       byTxId.set(tx.id, tx.category_id);
       byKey.set(buildExpenseMatchKey(tx.description || '', tx.date, Number(tx.amount) || 0), tx.category_id);
+      byLooseKey.set(`${tx.bill_month}|${buildDescriptionAmountKey(tx.description || '', Number(tx.amount) || 0)}`, tx.category_id);
     });
 
-    return { categoryByTxId: byTxId, categoryByMatchKey: byKey };
+    return { categoryByTxId: byTxId, categoryByMatchKey: byKey, categoryByLooseKey: byLooseKey };
   }, [creditTransactions]);
 
   const resolveCategoryId = (expense: Expense) => {
@@ -134,7 +136,9 @@ export default function Dashboard() {
     }
 
     const matchKey = buildExpenseMatchKey(expense.description || '', expense.date, Number(expense.amount) || 0);
-    return categoryByMatchKey.get(matchKey) ?? null;
+    const billMonth = marker?.billMonth ?? expense.date?.slice(0, 7);
+    const looseKey = `${billMonth}|${buildDescriptionAmountKey(expense.description || '', Number(expense.amount) || 0)}`;
+    return categoryByMatchKey.get(matchKey) ?? categoryByLooseKey.get(looseKey) ?? null;
   };
 
   // ── Core numbers ─────────────────────────────────────────────
@@ -171,7 +175,7 @@ export default function Dashboard() {
       }))
       .filter(c => c.value > 0)
       .sort((a, b) => b.value - a.value)
-  , [expenses, categories, categoryByTxId, categoryByMatchKey]);
+  , [expenses, categories, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
 
   // ── Status breakdown bar data ────────────────────────────────
   const statusData = useMemo(() => [
@@ -216,7 +220,7 @@ export default function Dashboard() {
       const budget = Number(cat.monthly_budget);
       return { ...cat, spent, budget };
     }).sort((a, b) => b.budget - a.budget)
-  , [categories, expenses, categoryByTxId, categoryByMatchKey]);
+  , [categories, expenses, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
 
   // ── Recent transactions ──────────────────────────────────────
   const recentTransactions = useMemo(() => [

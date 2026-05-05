@@ -270,7 +270,7 @@ export default function CreditCardsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="hero-card flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="rounded-2xl border border-border/70 bg-card/70 p-5 shadow-sm flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Cartoes de Credito</h1>
           <p className="text-sm text-muted-foreground">Controle visual da fatura com disciplina por categoria</p>
@@ -286,7 +286,7 @@ export default function CreditCardsPage() {
             </span>
           </div>
         </div>
-        <Button className="w-full sm:w-auto" onClick={() => setShowNewCard(true)} data-tutorial-target="new-card">
+        <Button className="w-full sm:w-auto h-11 rounded-xl" onClick={() => setShowNewCard(true)} data-tutorial-target="new-card">
           <Plus className="w-4 h-4 mr-1" /> Novo Cartao
         </Button>
       </div>
@@ -298,7 +298,7 @@ export default function CreditCardsPage() {
           <p className="text-sm text-muted-foreground mt-1">Adicione seus cartoes de credito</p>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {cards.map((card) => {
             const isSelected = selectedCard === card.id;
             return (
@@ -306,15 +306,15 @@ export default function CreditCardsPage() {
                 key={card.id}
                 onClick={() => setSelectedCard(isSelected ? null : card.id)}
                 className={cn(
-                  'relative rounded-2xl p-5 text-left transition-all text-white overflow-hidden min-h-[172px]',
-                  isSelected ? 'ring-2 ring-white/80 scale-[1.02] shadow-2xl' : 'hover:scale-[1.01] opacity-90 hover:opacity-100',
+                  'relative rounded-xl p-4 text-left transition-all text-white overflow-hidden min-h-[140px]',
+                  isSelected ? 'ring-2 ring-white/80 shadow-xl' : 'hover:-translate-y-0.5 opacity-90 hover:opacity-100',
                 )}
                 style={{ background: `linear-gradient(135deg, ${card.color}, ${card.color}aa)` }}
               >
-                <div className="flex justify-between items-start mb-8">
+                <div className="flex justify-between items-start mb-6">
                   <div>
                     <p className="text-white/70 text-xs">Cartao</p>
-                    <p className="font-bold text-lg">{card.name}</p>
+                    <p className="font-bold text-lg leading-tight">{card.name}</p>
                   </div>
                   <div className="flex gap-1">
                     <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold">Dia {card.due_day}</span>
@@ -345,10 +345,10 @@ export default function CreditCardsPage() {
       )}
 
       {selectedCard && currentCard && (
-        <div className="stat-card space-y-4 border-primary/20">
+        <div className="rounded-2xl border border-border/70 bg-card/70 p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <h3 className="font-semibold text-lg">{currentCard.name} - Fatura</h3>
+              <h3 className="font-semibold text-lg leading-tight">{currentCard.name} - Fatura</h3>
               <p className="text-xs text-muted-foreground">Vencimento dia {currentCard.due_day}</p>
               {billDates && (
                 <p className="text-xs text-muted-foreground mt-1">
@@ -357,8 +357,8 @@ export default function CreditCardsPage() {
               )}
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
-              <Button size="sm" variant="outline" onClick={openEditCard}>Editar cartao</Button>
-              <Button size="sm" variant="outline" onClick={handlePayBill} disabled={unpaidTotal <= 0 || togglePaid.isPending}>Pagar fatura</Button>
+              <Button size="sm" variant="outline" className="rounded-xl" onClick={openEditCard}>Editar cartao</Button>
+              <Button size="sm" variant="outline" className="rounded-xl" onClick={handlePayBill} disabled={unpaidTotal <= 0 || togglePaid.isPending}>Pagar fatura</Button>
               <button onClick={() => setBillMonth(prevMonth(billMonth))} className="p-1.5 hover:bg-muted rounded-lg transition-colors">
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -372,17 +372,17 @@ export default function CreditCardsPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="rounded-xl bg-expense/5 border border-expense/20 p-3">
+            <div className="rounded-xl bg-expense/5 border border-expense/20 p-4">
               <p className="text-xs text-muted-foreground">Total fatura</p>
-              <p className="font-bold text-expense">{formatCurrency(billTotal)}</p>
+              <p className="mt-1 text-lg font-extrabold text-expense">{formatCurrency(billTotal)}</p>
             </div>
-            <div className="rounded-xl bg-income/5 border border-income/20 p-3">
+            <div className="rounded-xl bg-income/5 border border-income/20 p-4">
               <p className="text-xs text-muted-foreground">Pago</p>
-              <p className="font-bold text-income">{formatCurrency(paidTotal)}</p>
+              <p className="mt-1 text-lg font-extrabold text-income">{formatCurrency(paidTotal)}</p>
             </div>
-            <div className="rounded-xl bg-muted p-3">
+            <div className="rounded-xl bg-muted/70 p-4">
               <p className="text-xs text-muted-foreground">Disponivel</p>
-              <p className="font-bold">{formatCurrency(Number(currentCard.credit_limit) - billTotal)}</p>
+              <p className="mt-1 text-lg font-extrabold">{formatCurrency(Number(currentCard.credit_limit) - billTotal)}</p>
             </div>
           </div>
 
@@ -403,7 +403,7 @@ export default function CreditCardsPage() {
           </div>
 
           <div className="space-y-4">
-            <div className="rounded-lg border border-border/60 p-3 bg-muted/20">
+            <div className="rounded-xl border border-border/60 p-3 bg-background/35">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <p className="text-xs font-semibold">Fatura por categoria</p>
                 <span className="text-[11px] text-muted-foreground">{byCategory.length} grupos</span>
@@ -413,7 +413,7 @@ export default function CreditCardsPage() {
               ) : (
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {byCategory.map((row) => (
-                    <div key={row.id} className="rounded-md border border-border/50 bg-background/50 p-2.5">
+                    <div key={row.id} className="rounded-lg border border-border/50 bg-card/70 p-3">
                       <div className="flex items-center justify-between text-xs gap-2">
                         <span className="text-muted-foreground truncate">{row.label}</span>
                         <span className="font-semibold currency whitespace-nowrap">{formatCurrency(row.total)}</span>
@@ -429,7 +429,7 @@ export default function CreditCardsPage() {
 
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h4 className="text-sm font-medium">{transactions.length} compras</h4>
+                <h4 className="text-sm font-semibold">{transactions.length} compras</h4>
                 <div className="flex items-center gap-2">
                   <div className="inline-flex items-center gap-1 rounded-lg bg-muted p-1 text-xs">
                     <button
@@ -451,7 +451,7 @@ export default function CreditCardsPage() {
                       Pagas
                     </button>
                   </div>
-                  <Button size="sm" onClick={() => setShowNewTx(true)}>
+                  <Button size="sm" className="rounded-xl" onClick={() => setShowNewTx(true)}>
                     <Plus className="w-4 h-4 mr-1" /> Nova compra
                   </Button>
                 </div>
@@ -460,11 +460,11 @@ export default function CreditCardsPage() {
               {filteredTransactions.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">Nenhuma compra no filtro atual</p>
               ) : (
-                <div className="space-y-1 max-h-[460px] overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-[460px] overflow-y-auto pr-1">
                   {filteredTransactions.map((t) => {
                     const cat = t.category_id ? categoryById[t.category_id] : null;
                     return (
-                      <div key={t.id} className={cn('flex items-center justify-between py-2.5 px-3 rounded-lg transition-colors border', t.paid ? 'bg-income/5 border-income/20' : 'hover:bg-muted/50 border-border/40')}>
+                      <div key={t.id} className={cn('flex items-center justify-between py-3 px-3.5 rounded-xl transition-colors border', t.paid ? 'bg-income/5 border-income/20' : 'bg-background/35 hover:bg-muted/40 border-border/50')}>
                         <div className="flex items-center gap-3 min-w-0">
                           <button
                             onClick={() => togglePaid.mutate({ id: t.id, paid: !t.paid })}

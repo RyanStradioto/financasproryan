@@ -13,6 +13,7 @@ export function normalizeText(value: string) {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[–—]/g, '-')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -87,13 +88,18 @@ export function detectCreditCardExpense(
   };
 }
 
-function normalizeExpenseDescription(description: string) {
+export function normalizeExpenseDescription(description: string) {
   return normalizeText(description)
     .replace(/\(\d+\/\d+\)/g, '')
-    .replace(/- parcela \d+\/\d+/gi, '')
+    .replace(/\s+-\s+parcela\s+\d+\/\d+/gi, '')
+    .replace(/\s+parcela\s+\d+\/\d+/gi, '')
     .trim();
 }
 
 export function buildExpenseMatchKey(description: string, date: string, amount: number) {
   return `${normalizeExpenseDescription(description)}|${date}|${amount.toFixed(2)}`;
+}
+
+export function buildDescriptionAmountKey(description: string, amount: number) {
+  return `${normalizeExpenseDescription(description)}|${amount.toFixed(2)}`;
 }
