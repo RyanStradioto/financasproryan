@@ -15,7 +15,6 @@ const ExpensesPage    = lazy(() => import("./pages/ExpensesPage"));
 const CategoriesPage  = lazy(() => import("./pages/CategoriesPage"));
 const AccountsPage    = lazy(() => import("./pages/AccountsPage"));
 const CalendarPage    = lazy(() => import("./pages/CalendarPage"));
-const PlanningPage    = lazy(() => import("./pages/PlanningPage"));
 const SettingsPage    = lazy(() => import("./pages/SettingsPage"));
 const ImportPage      = lazy(() => import("./pages/ImportPage"));
 const InsightsPage    = lazy(() => import("./pages/InsightsPage"));

@@ -85,12 +85,6 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
     }
   };
 
-  const getCreditCardBillMonth = (purchaseDate: string, closingDay: number) => {
-    const [year, month, day] = purchaseDate.split('-').map(Number);
-    const billDate = day > closingDay ? new Date(year, month, 1) : new Date(year, month - 1, 1);
-    return `${billDate.getFullYear()}-${String(billDate.getMonth() + 1).padStart(2, '0')}`;
-  };
-
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const digits = e.target.value.replace(/\D/g, '');
     if (!digits) { setAmount(''); return; }

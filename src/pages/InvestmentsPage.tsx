@@ -123,28 +123,6 @@ export default function InvestmentsPage() {
 
   const selectedTxns = selectedInvestment ? allTransactions.filter((t) => t.investment_id === selectedInvestment) : allTransactions;
 
-  const openMovimentacao = (id: string, type: 'aporte' | 'resgate' | 'rendimento' | 'taxa' | 'ir') => {
-    setAporteData((p) => ({ ...p, type }));
-    setShowAporte(id);
-  };
-
-  const openEdit = (invId: string) => {
-    const inv = investmentViews.find((i) => i.id === invId);
-    if (!inv) return;
-
-    setEditInv({
-      id: inv.id,
-      name: inv.name,
-      type: inv.type,
-      institution: inv.institution || '',
-      color: inv.color || TYPE_COLORS[inv.type] || TYPE_COLORS.outro,
-      annualRate: String(inv.profile.annualRate),
-      liquidity: inv.profile.liquidity,
-      monthlyContribution: String(inv.profile.monthlyContribution || 0),
-    });
-    setShowEditInvestment(inv.id);
-  };
-
   const pieData = investments
     .filter(i => Number(i.current_value) > 0)
     .map(i => ({
@@ -498,7 +476,7 @@ export default function InvestmentsPage() {
       {selectedTxns.length > 0 && (
         <div className="stat-card">
           <h3 className="font-semibold text-sm mb-4">
-            {selectedInvestment ? `Historico - ${investmentViews.find((i) => i.id === selectedInvestment)?.name}` : 'Historico de movimentacoes'}
+            {selectedInvestment ? `Histórico - ${investments.find((i) => i.id === selectedInvestment)?.name}` : 'Histórico de movimentações'}
           </h3>
           <div className="space-y-2">
             {selectedTxns.slice(0, 20).map((t) => (

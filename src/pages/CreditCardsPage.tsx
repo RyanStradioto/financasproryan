@@ -385,7 +385,7 @@ export default function CreditCardsPage() {
                     </span>
                   </div>
                 )}
-              </div>
+              </button>
             );
           })}
         </div>
@@ -549,7 +549,7 @@ export default function CreditCardsPage() {
                 );
               })}
             </div>
-          </div>
+          )}
         </div>
       )}
 
