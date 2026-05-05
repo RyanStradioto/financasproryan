@@ -74,7 +74,7 @@ function KpiCard({ label, value, sub, color, icon: Icon, trend, sparklineData }:
 
       <div className="flex items-end justify-between mt-1">
         <div className="min-w-0">
-          <p className="text-xl sm:text-2xl font-extrabold currency tracking-tight leading-none whitespace-nowrap overflow-hidden overflow-ellipsis group-hover:-translate-y-0.5 transition-transform duration-300">{displayValue}</p>
+          <p className="text-lg sm:text-xl font-extrabold currency tracking-tight leading-none group-hover:-translate-y-0.5 transition-transform duration-300 break-all">{displayValue}</p>
           {sub && <p className="text-[10px] sm:text-xs text-muted-foreground mt-1.5 leading-tight">{sub}</p>}
         </div>
         {sparklineData && sparklineData.length > 1 && (
@@ -291,18 +291,27 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="rounded-2xl border border-border/60 bg-card/70 px-4 py-3">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">No cartao</p>
-          <p className="text-lg font-extrabold currency text-primary mt-1">{maskCurrency(formatCurrency(totalCCThisMonth))}</p>
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <div className="rounded-2xl border border-[#6366f1]/20 bg-[#6366f1]/5 px-3 py-3 sm:px-4 flex flex-col gap-1">
+          <div className="flex items-center gap-1.5">
+            <CreditCard className="w-3 h-3 text-[#6366f1] shrink-0" />
+            <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">No Cartão</p>
+          </div>
+          <p className="text-base sm:text-lg font-extrabold currency text-[#6366f1] leading-tight break-all">{maskCurrency(formatCurrency(totalCCThisMonth))}</p>
         </div>
-        <div className="rounded-2xl border border-border/60 bg-card/70 px-4 py-3">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Pendencias</p>
-          <p className="text-lg font-extrabold currency text-warning mt-1">{maskCurrency(formatCurrency(pendingAmount))}</p>
+        <div className="rounded-2xl border border-warning/20 bg-warning/5 px-3 py-3 sm:px-4 flex flex-col gap-1">
+          <div className="flex items-center gap-1.5">
+            <Clock className="w-3 h-3 text-warning shrink-0" />
+            <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Pendências</p>
+          </div>
+          <p className="text-base sm:text-lg font-extrabold currency text-warning leading-tight break-all">{maskCurrency(formatCurrency(pendingAmount))}</p>
         </div>
-        <div className="rounded-2xl border border-border/60 bg-card/70 px-4 py-3">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Taxa economia</p>
-          <p className="text-lg font-extrabold mt-1">{savings.toFixed(1)}%</p>
+        <div className="rounded-2xl border border-income/20 bg-income/5 px-3 py-3 sm:px-4 flex flex-col gap-1">
+          <div className="flex items-center gap-1.5">
+            <Zap className="w-3 h-3 text-income shrink-0" />
+            <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Economia</p>
+          </div>
+          <p className="text-base sm:text-lg font-extrabold text-income leading-tight">{savings.toFixed(1)}%</p>
         </div>
       </div>
 
@@ -310,7 +319,7 @@ export default function Dashboard() {
       <SmartAlerts expenses={expenses} income={income} categories={categories} />
 
       {/* ── KPI Cards Premium ──────────────────────────────── */}
-      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 stagger-1 ${totalCCThisMonth > 0 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
+      <div className={`grid grid-cols-2 gap-3 sm:gap-4 stagger-1 ${totalCCThisMonth > 0 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
         <KpiCard
           label="Receitas"
           value={formatCurrency(totalIncome)}
@@ -353,7 +362,7 @@ export default function Dashboard() {
             </a>
           </div>
           <div className="mt-1">
-            <p className="text-xl sm:text-2xl font-extrabold currency tracking-tight leading-none text-info group-hover:-translate-y-0.5 transition-transform duration-300">
+            <p className="text-lg sm:text-xl font-extrabold currency tracking-tight leading-none text-info group-hover:-translate-y-0.5 transition-transform duration-300 break-all">
               {maskCurrency(formatCurrency(netWorth))}
             </p>
             <p className="text-[10px] sm:text-xs text-muted-foreground mt-1.5 leading-tight">
@@ -377,7 +386,7 @@ export default function Dashboard() {
               </a>
             </div>
             <div className="mt-1">
-              <p className="text-xl sm:text-2xl font-extrabold currency tracking-tight leading-none text-[#6366f1] group-hover:-translate-y-0.5 transition-transform duration-300">
+              <p className="text-lg sm:text-xl font-extrabold currency tracking-tight leading-none text-[#6366f1] group-hover:-translate-y-0.5 transition-transform duration-300 break-all">
                 {maskCurrency(formatCurrency(totalCCThisMonth))}
               </p>
               <p className="text-[10px] sm:text-xs text-muted-foreground mt-1.5 leading-tight">

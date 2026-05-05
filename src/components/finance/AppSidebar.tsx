@@ -1,5 +1,5 @@
 ﻿import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, TrendingUp, TrendingDown, Grid3X3, Landmark, CalendarDays, Settings, LogOut, Wallet, Moon, Sun, Upload, Brain, BarChart3, CreditCard, FileText, Trash2, Eye, EyeOff, CalendarClock, Target } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, TrendingDown, Grid3X3, Landmark, CalendarDays, Settings, LogOut, Wallet, Moon, Sun, Upload, Brain, BarChart3, CreditCard, FileText, Trash2, Eye, EyeOff, Target } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { useTrashCount } from '@/hooks/useTrash';
@@ -18,7 +18,6 @@ const mainLinks = [
 const toolLinks = [
   { to: '/categorias', icon: Grid3X3, label: 'Categorias' },
   { to: '/contas', icon: Landmark, label: 'Contas' },
-  { to: '/planejamento', icon: CalendarClock, label: 'Planejamento' },
   { to: '/calendario', icon: CalendarDays, label: 'Calendário' },
   { to: '/relatorio', icon: FileText, label: 'Relatório' },
   { to: '/insights', icon: Brain, label: 'Insights IA' },
