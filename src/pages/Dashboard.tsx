@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import PendingExpensesDialog from '@/components/finance/PendingExpensesDialog';
 import { buildDescriptionAmountKey, buildExpenseMatchKey, detectCreditCardExpense, parseStructuredCardMarker } from '@/lib/paymentMethod';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const CHART_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
 
@@ -118,6 +119,7 @@ function KpiCard({
 export default function Dashboard() {
   const { maskCurrency } = useSensitiveData();
   const [month, setMonth] = useState(getMonthYear());
+  const [accountFocusId, setAccountFocusId] = useState<string>('__all__');
   const { data: profile } = useProfile();
   
   // Previous month string (for MoM comparisons)
@@ -280,6 +282,24 @@ export default function Dashboard() {
   , [income, nonCCExpenses]);
 
   const workTimeTotal = hourlyRate > 0 ? calcWorkTime(totalExpensesPaid) : null;
+  const accountInsights = useMemo(() => {
+    return accounts
+      .filter(a => !a.archived)
+      .map((acc) => {
+        const accIncome = income
+          .filter((i) => i.account_id === acc.id && i.status === 'concluido')
+          .reduce((s, i) => s + Number(i.amount), 0);
+        const accExpenses = nonCCExpenses
+          .filter((e) => e.account_id === acc.id && e.status === 'concluido')
+          .reduce((s, e) => s + Number(e.amount), 0);
+        const accPending = nonCCExpenses
+          .filter((e) => e.account_id === acc.id && e.status !== 'concluido')
+          .reduce((s, e) => s + Number(e.amount), 0);
+        const balance = Number(acc.initial_balance) + accIncome - accExpenses;
+        return { acc, accIncome, accExpenses, accPending, balance };
+      })
+      .sort((a, b) => b.balance - a.balance);
+  }, [accounts, income, nonCCExpenses]);
   
   // Greeting based on time
   const greeting = useMemo(() => {
@@ -468,14 +488,27 @@ export default function Dashboard() {
                 </h1>
               </div>
             </div>
-            <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 sm:w-auto sm:flex sm:shrink-0">
+            <div className="grid w-full grid-cols-1 items-center gap-2 min-[430px]:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:w-auto sm:flex sm:shrink-0">
+              <Select value={accountFocusId} onValueChange={setAccountFocusId}>
+                <SelectTrigger className="h-9 min-[430px]:w-[170px] sm:w-[190px]">
+                  <SelectValue placeholder="Conta foco" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Foco: todas</SelectItem>
+                  {accounts.filter(a => !a.archived).map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.icon} {a.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <MonthSelector month={month} onChange={setMonth} />
-              <TransactionDialog type="income">
+              <TransactionDialog type="income" defaultAccountId={accountFocusId === '__all__' ? undefined : accountFocusId}>
                 <button className="h-9 w-9 rounded-xl bg-income text-income-foreground font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-income/90 hover:shadow-md hover:shadow-income/20 active:scale-[0.97] transition-all sm:w-auto sm:px-3">
                   <ArrowUpRight className="w-4 h-4 shrink-0" /> <span className="hidden sm:inline">Receita</span>
                 </button>
               </TransactionDialog>
-              <TransactionDialog type="expense">
+              <TransactionDialog type="expense" defaultAccountId={accountFocusId === '__all__' ? undefined : accountFocusId}>
                 <button className="h-9 w-9 rounded-xl bg-expense text-expense-foreground font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-expense/90 hover:shadow-md hover:shadow-expense/20 active:scale-[0.97] transition-all sm:w-auto sm:px-3">
                   <ArrowDownRight className="w-4 h-4 shrink-0" /> <span className="hidden sm:inline">Despesa</span>
                 </button>
@@ -532,6 +565,50 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Account-level lens */}
+      {accountInsights.length > 0 && (
+        <div className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm p-5 sm:p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-bold leading-tight">Análise por Conta</h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Visão separada de entradas, saídas e saldo por banco/carteira</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {accountInsights
+              .filter(({ acc }) => accountFocusId === '__all__' || acc.id === accountFocusId)
+              .map(({ acc, accIncome, accExpenses, accPending, balance }) => (
+                <div key={acc.id} className="rounded-2xl border border-border/60 bg-muted/20 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-lg">{acc.icon}</span>
+                    <p className="font-bold truncate">{acc.name}</p>
+                  </div>
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Receitas</span>
+                      <span className="font-semibold text-income currency">{maskCurrency(formatCurrency(accIncome))}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Despesas</span>
+                      <span className="font-semibold text-expense currency">{maskCurrency(formatCurrency(accExpenses))}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Pendentes</span>
+                      <span className="font-semibold text-warning currency">{maskCurrency(formatCurrency(accPending))}</span>
+                    </div>
+                    <div className="pt-2 mt-2 border-t border-border/60 flex items-center justify-between">
+                      <span className="font-semibold">Saldo da conta</span>
+                      <span className={cn('font-extrabold currency', balance >= 0 ? 'text-income' : 'text-expense')}>
+                        {maskCurrency(formatCurrency(balance))}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Alertas ────────────────────────────────────────── */}
       <SmartAlerts expenses={expenses} income={income} categories={categories} />

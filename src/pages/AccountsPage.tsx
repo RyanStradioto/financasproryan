@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, Landmark, TrendingUp, TrendingDown, Wallet, Info } from 'lucide-react';
 import { toast } from 'sonner';
+import { accountBrandFromRow, resolveAccountBrand } from '@/lib/accountBrand';
 
 function getInvestmentAccountImpact(type: string, amount: number) {
   if (!amount) return 0;
@@ -35,7 +36,8 @@ export default function AccountsPage() {
     try {
       await addAccount.mutateAsync({
         name,
-        icon,
+        icon: resolveAccountBrand(name, undefined, icon).icon,
+        color: resolveAccountBrand(name).color,
         initial_balance: parseFloat(initialBalance.replace(',', '.')) || 0,
       });
       toast.success('Conta criada!');
@@ -149,6 +151,7 @@ export default function AccountsPage() {
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {activeAccounts.map(acc => {
+              const brand = accountBrandFromRow(acc);
               const accIncome = income.filter(i => i.account_id === acc.id && i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0);
               const accExpenses = allExpenses.filter(e => e.account_id === acc.id && e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0);
               const accTransfers = allTransactions
@@ -157,9 +160,13 @@ export default function AccountsPage() {
               const currentBalance = Number(acc.initial_balance) + accIncome - accExpenses + accTransfers;
 
               return (
-                <div key={acc.id} className="stat-card">
+                <div key={acc.id} className="stat-card" style={{ borderColor: `${brand.color}35`, background: `linear-gradient(135deg, ${brand.color}12, transparent 35%)` }}>
                   <div className="flex items-center gap-2 mb-4">
-                    <span className="text-xl">{acc.icon}</span>
+                    {brand.logoUrl ? (
+                      <img src={brand.logoUrl} alt={acc.name} className="w-5 h-5 rounded-sm object-contain" />
+                    ) : (
+                      <span className="text-xl">{brand.icon}</span>
+                    )}
                     <h3 className="font-semibold">{acc.name}</h3>
                   </div>
                   <div className="space-y-3">

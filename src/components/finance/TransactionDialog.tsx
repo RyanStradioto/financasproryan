@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,9 +16,10 @@ import { Plus, Paperclip, X, FileText, Sparkles, Loader2, CreditCard } from 'luc
 type Props = {
   type: 'income' | 'expense';
   children?: React.ReactNode;
+  defaultAccountId?: string;
 };
 
-export default function TransactionDialog({ type, children }: Props) {
+export default function TransactionDialog({ type, children, defaultAccountId }: Props) {
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState('');
@@ -100,6 +101,12 @@ export default function TransactionDialog({ type, children }: Props) {
     setPayWithCard(false);
     setSelectedCardId('');
   };
+
+  useEffect(() => {
+    if (!open) return;
+    if (!defaultAccountId) return;
+    setAccountId(defaultAccountId);
+  }, [open, defaultAccountId]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

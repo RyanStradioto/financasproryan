@@ -11,6 +11,7 @@ import EditTransactionDialog from '@/components/finance/EditTransactionDialog';
 import { Trash2, Pencil, Paperclip, Clock, ChevronDown, Filter, Search, X, TrendingDown, Receipt, SlidersHorizontal, Check, ArrowUp, ArrowDown, CreditCard, Landmark } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type ExpenseRow = Expense & { _type: 'expense' };
 type CCRow = CreditCardTransaction & { _type: 'cc' };
@@ -116,6 +117,7 @@ export default function ExpensesPage() {
   const { data: expenses = [], isLoading } = useExpenses(month);
   const { data: categories = [] } = useCategories();
   const { data: accounts = [] } = useAccounts();
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('__all__');
   const { data: ccTransactions = [] } = useCCTransactionsForMonth(month);
   const { data: creditCards = [] } = useCreditCards();
   const deleteExpense = useDeleteExpense();
@@ -177,11 +179,16 @@ export default function ExpensesPage() {
     expenses.filter(e => !detectCreditCardExpense(e, creditCards, accounts).isCreditCard)
   , [expenses, creditCards, accounts]);
 
+  const scopedExpenses = useMemo(() => {
+    if (selectedAccountId === '__all__') return nonCCExpenses;
+    return nonCCExpenses.filter(e => e.account_id === selectedAccountId);
+  }, [nonCCExpenses, selectedAccountId]);
+
   // Merge real expenses (no CC mirrors) + CC transactions
   const allRows: Row[] = useMemo(() => [
-    ...nonCCExpenses.map(e => ({ ...e, _type: 'expense' as const })),
+    ...scopedExpenses.map(e => ({ ...e, _type: 'expense' as const })),
     ...ccTransactions.map(t => ({ ...t, _type: 'cc' as const })),
-  ], [nonCCExpenses, ccTransactions]);
+  ], [scopedExpenses, ccTransactions]);
 
   const filtered: Row[] = useMemo(() => allRows.filter(item => {
     if (showCCOnly && item._type !== 'cc') return false;
@@ -213,15 +220,15 @@ export default function ExpensesPage() {
     return sortDir === 'asc' ? -cmp : cmp;
   }), [allRows, filterSearch, filterCategories, filterAmountMin, filterAmountMax, filterStatuses, filterAccounts, showCCOnly, sortBy, sortDir, categories]);
 
-  const totalExpenses = useMemo(() => nonCCExpenses.reduce((s, e) => s + Number(e.amount), 0), [nonCCExpenses]);
+  const totalExpenses = useMemo(() => scopedExpenses.reduce((s, e) => s + Number(e.amount), 0), [scopedExpenses]);
   const totalCC = useMemo(() => ccTransactions.reduce((s, t) => s + Number(t.amount), 0), [ccTransactions]);
   const total = filtered.reduce((s, r) => s + Number(r.amount), 0);
-  const totalItems = nonCCExpenses.length + ccTransactions.length;
+  const totalItems = scopedExpenses.length + ccTransactions.length;
 
   // Aliases used in summary cards
   const creditTotal = totalCC;
   const accountTotal = totalExpenses;
-  const scheduledTotal = useMemo(() => nonCCExpenses.filter(e => e.status !== 'concluido').reduce((s, e) => s + Number(e.amount), 0), [nonCCExpenses]);
+  const scheduledTotal = useMemo(() => scopedExpenses.filter(e => e.status !== 'concluido').reduce((s, e) => s + Number(e.amount), 0), [scopedExpenses]);
 
   const getCategoryName = (id: string | null) => {
     if (!id) return '—';
@@ -309,8 +316,19 @@ export default function ExpensesPage() {
               </div>
             </div>
             <div className="flex w-full min-w-0 flex-col gap-2 min-[430px]:flex-row sm:w-auto sm:items-center sm:gap-3 sm:shrink-0 sm:flex-nowrap">
+              <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
+                <SelectTrigger className="h-9 min-[430px]:w-[170px] sm:w-[190px]">
+                  <SelectValue placeholder="Conta" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todas as contas</SelectItem>
+                  {accounts.filter(a => !a.archived).map(a => (
+                    <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <MonthSelector month={month} onChange={setMonth} />
-              <TransactionDialog type="expense" />
+              <TransactionDialog type="expense" defaultAccountId={selectedAccountId === '__all__' ? undefined : selectedAccountId} />
             </div>
           </div>
 

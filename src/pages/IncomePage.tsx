@@ -10,6 +10,7 @@ import { Trash2, Pencil, Paperclip, Clock, TrendingUp, ChevronDown, Search, X, F
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type PickerOption = { id: string; name: string; icon?: string | null };
 
@@ -119,6 +120,7 @@ export default function IncomePage() {
   const { data: income = [], isLoading } = useIncome(month);
   const { data: prevIncome = [] } = useIncome(prevMonth);
   const { data: accounts = [] } = useAccounts();
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('__all__');
   const deleteIncome = useDeleteIncome();
   const updateIncome = useUpdateIncome();
   const [editing, setEditing] = useState<(Income & { type: 'income' }) | null>(null);
@@ -163,7 +165,12 @@ export default function IncomePage() {
 
   const STATUS_ORDER: Record<string, number> = { concluido: 0, pendente: 1, agendado: 2 };
 
-  const filtered = income.filter(i => {
+  const scopedIncome = useMemo(() => {
+    if (selectedAccountId === '__all__') return income;
+    return income.filter(i => i.account_id === selectedAccountId);
+  }, [income, selectedAccountId]);
+
+  const filtered = scopedIncome.filter(i => {
     if (filterStatuses.length > 0 && !filterStatuses.includes(i.status)) return false;
     if (filterAccounts.length > 0 && !filterAccounts.includes(i.account_id ?? '')) return false;
     if (filterAmountMin !== '' && Number(i.amount) < Number(filterAmountMin)) return false;
@@ -182,9 +189,9 @@ export default function IncomePage() {
   const total = filtered.reduce((s, i) => s + Number(i.amount), 0);
 
   // ── Stats for hero ─────────────────────────────────────────
-  const totalAll = useMemo(() => income.reduce((s, i) => s + Number(i.amount), 0), [income]);
-  const totalReceived = useMemo(() => income.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0), [income]);
-  const totalPending = useMemo(() => income.filter(i => i.status !== 'concluido').reduce((s, i) => s + Number(i.amount), 0), [income]);
+  const totalAll = useMemo(() => scopedIncome.reduce((s, i) => s + Number(i.amount), 0), [scopedIncome]);
+  const totalReceived = useMemo(() => scopedIncome.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0), [scopedIncome]);
+  const totalPending = useMemo(() => scopedIncome.filter(i => i.status !== 'concluido').reduce((s, i) => s + Number(i.amount), 0), [scopedIncome]);
   const prevTotalAll = useMemo(() => prevIncome.reduce((s, i) => s + Number(i.amount), 0), [prevIncome]);
   const incomeDelta = useMemo(() => {
     if (prevTotalAll === 0) return totalAll > 0 ? 100 : null;
@@ -246,7 +253,7 @@ export default function IncomePage() {
                 <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 flex items-center gap-2 flex-wrap">
                   <span className="inline-flex items-center gap-1.5">
                     <span className="inline-block w-1.5 h-1.5 rounded-full bg-income animate-pulse" />
-                    {hasActiveFilters ? `${filtered.length} de ${income.length}` : income.length} {income.length === 1 ? 'recebimento' : 'recebimentos'}
+                    {hasActiveFilters ? `${filtered.length} de ${scopedIncome.length}` : scopedIncome.length} {scopedIncome.length === 1 ? 'recebimento' : 'recebimentos'}
                   </span>
                   {incomeDelta !== null && incomeDelta !== 0 && (
                     <span className={cn(
@@ -261,8 +268,19 @@ export default function IncomePage() {
               </div>
             </div>
             <div className="flex w-full min-w-0 flex-col gap-2 min-[430px]:flex-row sm:w-auto sm:items-center sm:gap-3 sm:shrink-0 sm:flex-nowrap">
+              <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
+                <SelectTrigger className="h-9 min-[430px]:w-[170px] sm:w-[190px]">
+                  <SelectValue placeholder="Conta" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todas as contas</SelectItem>
+                  {accounts.filter(a => !a.archived).map(a => (
+                    <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <MonthSelector month={month} onChange={setMonth} />
-              <TransactionDialog type="income" />
+              <TransactionDialog type="income" defaultAccountId={selectedAccountId === '__all__' ? undefined : selectedAccountId} />
             </div>
           </div>
 
@@ -501,7 +519,7 @@ export default function IncomePage() {
 
       {/* Mobile card list */}
       <div className="sm:hidden stat-card p-0 overflow-hidden divide-y divide-border/40">
-        {income.length === 0 && !isLoading && (
+        {scopedIncome.length === 0 && !isLoading && (
           <div className="flex flex-col items-center py-16 gap-4 bg-muted/5">
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center shadow-sm border border-border/50">
               <PiggyBank className="w-8 h-8 text-muted-foreground/50" />
@@ -512,7 +530,7 @@ export default function IncomePage() {
             </div>
           </div>
         )}
-        {income.length > 0 && filtered.length === 0 && (
+        {scopedIncome.length > 0 && filtered.length === 0 && (
           <div className="flex flex-col items-center py-12 gap-3">
             <Filter className="w-8 h-8 text-muted-foreground opacity-40" />
             <p className="text-sm font-medium text-muted-foreground">Nenhuma receita encontrada</p>
@@ -642,7 +660,7 @@ export default function IncomePage() {
                   </tr>
                 );
               })}
-              {income.length === 0 && !isLoading && (
+              {scopedIncome.length === 0 && !isLoading && (
                 <tr><td colSpan={hourlyRate ? 6 : 5} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-14 h-14 rounded-2xl bg-muted/50 flex items-center justify-center">
@@ -655,7 +673,7 @@ export default function IncomePage() {
                   </div>
                 </td></tr>
               )}
-              {income.length > 0 && filtered.length === 0 && (
+              {scopedIncome.length > 0 && filtered.length === 0 && (
                 <tr><td colSpan={hourlyRate ? 6 : 5} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <Filter className="w-8 h-8 text-muted-foreground opacity-40" />
