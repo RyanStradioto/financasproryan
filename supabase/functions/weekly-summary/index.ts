@@ -12,7 +12,7 @@ const fmt = (v: number) =>
 const fmtPct = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
 
 function normalizeText(value: string): string {
-  return value.normalize("NFD").replace(/[Ì€-Í¯]/g, "");
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 function formatScheduleDate(date: Date): string {

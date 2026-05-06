@@ -10,7 +10,7 @@ const fmt = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
 function normalizeText(value: string): string {
-  return value.normalize("NFD").replace(/[Ì€-Í¯]/g, "");
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 function formatScheduleDate(date: Date): string {
