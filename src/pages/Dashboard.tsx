@@ -351,11 +351,11 @@ export default function Dashboard() {
         const accPending = nonCCExpenses
           .filter((e) => e.account_id === acc.id && e.status !== 'concluido')
           .reduce((s, e) => s + Number(e.amount), 0);
-        const balance = Number(acc.initial_balance) + accIncome - accExpenses;
+        const balance = accumulatedByAccount[acc.id] || 0;
         return { acc, accIncome, accExpenses, accPending, balance };
       })
       .sort((a, b) => b.balance - a.balance);
-  }, [accounts, income, nonCCExpenses]);
+  }, [accounts, income, nonCCExpenses, accumulatedByAccount]);
 
   const activeAccounts = useMemo(() => accounts.filter((acc) => !acc.archived), [accounts]);
   const focusedAccountInsight = useMemo(
@@ -562,15 +562,18 @@ export default function Dashboard() {
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0 flex-1 flex flex-col sm:flex-row gap-5 items-start sm:items-center">
               <div
-                className="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl border bg-background/80 p-3 shadow-lg backdrop-blur-md transition-transform hover:scale-105"
-                style={{ borderColor: isGlobalView ? 'hsl(var(--border))' : accentBorder }}
+                className="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl border p-3 shadow-lg backdrop-blur-md transition-transform hover:scale-105"
+                style={{ 
+                  borderColor: isGlobalView ? 'hsl(var(--border))' : accentBorder,
+                  backgroundColor: isGlobalView ? 'hsl(var(--background) / 0.8)' : currentAccent
+                }}
               >
                 {focusedBrand?.logoUrl ? (
-                  <img src={focusedBrand.logoUrl} alt={focusLabel} className="h-full w-full object-contain drop-shadow-sm" />
+                  <img src={focusedBrand.logoUrl} alt={focusLabel} className="h-full w-full object-contain drop-shadow-sm" style={{ filter: isGlobalView ? '' : 'brightness(0) invert(1)' }} />
                 ) : isGlobalView ? (
                   <Sparkles className="h-10 w-10 text-primary drop-shadow-sm" />
                 ) : (
-                  <span className="text-4xl drop-shadow-sm">{focusedBrand?.icon || '🏦'}</span>
+                  <span className="text-4xl drop-shadow-sm" style={{ filter: 'brightness(0) invert(1)' }}>{focusedBrand?.icon || '🏦'}</span>
                 )}
               </div>
               <div className="min-w-0">
@@ -650,11 +653,14 @@ export default function Dashboard() {
                     )}
                     style={active ? { borderColor: colorWithOpacity(brand.color, 0.6), backgroundColor: colorWithOpacity(brand.color, 0.15), '--tw-ring-color': colorWithOpacity(brand.color, 0.25) } as React.CSSProperties : undefined}
                   >
-                    <span className={cn("flex h-14 w-14 items-center justify-center rounded-2xl border transition-transform group-hover:scale-110", active ? "bg-background shadow-lg" : "border-border/50 bg-background/80")}>
+                    <span 
+                      className={cn("flex h-14 w-14 items-center justify-center rounded-2xl transition-transform group-hover:scale-110 shadow-sm", !active && "opacity-80")}
+                      style={{ backgroundColor: brand.color }}
+                    >
                       {brand.logoUrl ? (
-                        <img src={brand.logoUrl} alt={account.name} className="h-8 w-8 object-contain" />
+                        <img src={brand.logoUrl} alt={account.name} className="h-8 w-8 object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
                       ) : (
-                        <span className="text-2xl">{brand.icon || account.icon || '🏦'}</span>
+                        <span className="text-2xl" style={{ filter: 'brightness(0) invert(1)' }}>{brand.icon || account.icon || '🏦'}</span>
                       )}
                     </span>
                     <div className="min-w-0 w-full mt-1">
