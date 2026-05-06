@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Plus, Pencil, Trash2, Grid3X3, Sparkles, Wand2, Check, Wallet, X, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import MonthSelector from '@/components/finance/MonthSelector';
-import { buildDescriptionAmountKey, buildExpenseMatchKey, parseStructuredCardMarker } from '@/lib/paymentMethod';
+import { buildDescriptionAmountKey, buildExpenseMatchKey, detectCreditCardExpense, parseStructuredCardMarker } from '@/lib/paymentMethod';
 import { cn } from '@/lib/utils';
 import { accountBrandFromRow, resolveAccountBrand } from '@/lib/accountBrand';
 
@@ -242,6 +242,11 @@ export default function CategoriesPage() {
 
   const activeCategories = categories.filter(c => !c.archived);
 
+  const nonCCExpenses = useMemo(
+    () => expenses.filter((expense) => !detectCreditCardExpense(expense, creditCards, accounts).isCreditCard),
+    [accounts, creditCards, expenses],
+  );
+
   const { categoryByTxId, categoryByMatchKey, categoryByLooseKey } = useMemo(() => {
     const byTxId = new Map<string, string>();
     const byKey = new Map<string, string>();
@@ -309,14 +314,14 @@ export default function CategoriesPage() {
         spentByAccount.set(key, (spentByAccount.get(key) || 0) + amount);
       };
 
-      expenses.forEach((expense) => {
+      nonCCExpenses.forEach((expense) => {
         if (resolveCategoryId({ ...expense, amount: Number(expense.amount) }) !== cat.id) return;
         addSpent(expense.account_id, Number(expense.amount || 0));
       });
 
       ccTransactions.forEach((transaction) => {
         if (transaction.category_id !== cat.id) return;
-        addSpent(cardAccountIdByCardId.get(transaction.card_id) || null, Number(transaction.amount || 0));
+        addSpent(cardAccountIdByCardId.get(transaction.credit_card_id) || null, Number(transaction.amount || 0));
       });
 
       const spent = Array.from(spentByAccount.values()).reduce((sum, value) => sum + value, 0);
@@ -356,7 +361,7 @@ export default function CategoriesPage() {
       const splitOverBudget = accountBreakdown.some((row) => row.overBudget);
       return { ...cat, spent, budgetNum, pct, overBudget: (budgetNum > 0 && spent > budgetNum) || splitOverBudget, accountBreakdown };
     }).sort((a, b) => b.spent - a.spent);
-  }, [accountById, activeCategories, cardAccountIdByCardId, categoryAccountBudgets, ccTransactions, expenses, resolveCategoryId]);
+  }, [accountById, activeCategories, cardAccountIdByCardId, categoryAccountBudgets, ccTransactions, nonCCExpenses, resolveCategoryId]);
 
   const totalBudget = useMemo(() => activeCategories.reduce((s, c) => s + Number(c.monthly_budget || 0), 0), [activeCategories]);
   const totalSpent = useMemo(() => categoriesWithStats.reduce((s, c) => s + c.spent, 0), [categoriesWithStats]);
