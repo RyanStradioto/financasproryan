@@ -1,5 +1,5 @@
 import { useState, useMemo, type ElementType } from 'react';
-import { TrendingUp, TrendingDown, Wallet, PiggyBank, Pencil, BarChart3, ArrowUpRight, ArrowDownRight, Target, Clock, Zap, ChevronRight, BellRing, Sparkles, CreditCard, Activity, CalendarRange, Flame, Trophy, AlertTriangle, Heart } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, PiggyBank, Pencil, BarChart3, ArrowUpRight, ArrowDownRight, Target, Clock, ChevronRight, BellRing, Sparkles, CreditCard, Activity, CalendarRange, Flame, Trophy, AlertTriangle } from 'lucide-react';
 import { useIncome, useExpenses, useAccounts, type Income, type Expense } from '@/hooks/useFinanceData';
 import { useNetWorth } from '@/hooks/useInvestments';
 import { useCCTransactionsForMonth, useCreditCards, useCreditCardTransactions } from '@/hooks/useCreditCards';
@@ -24,9 +24,22 @@ import { cn } from '@/lib/utils';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import PendingExpensesDialog from '@/components/finance/PendingExpensesDialog';
 import { buildDescriptionAmountKey, buildExpenseMatchKey, detectCreditCardExpense, parseStructuredCardMarker } from '@/lib/paymentMethod';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { accountBrandFromRow } from '@/lib/accountBrand';
 
 const CHART_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
+
+function colorWithOpacity(hex: string, opacity: number) {
+  const cleanHex = hex.replace('#', '');
+  const normalized = cleanHex.length === 3
+    ? cleanHex.split('').map((char) => char + char).join('')
+    : cleanHex;
+  const int = Number.parseInt(normalized, 16);
+  if (Number.isNaN(int)) return `rgba(37, 99, 235, ${opacity})`;
+  const r = (int >> 16) & 255;
+  const g = (int >> 8) & 255;
+  const b = int & 255;
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+}
 
 function ChartTooltipCard({
   title,
@@ -120,6 +133,7 @@ export default function Dashboard() {
   const { maskCurrency } = useSensitiveData();
   const [month, setMonth] = useState(getMonthYear());
   const [accountFocusId, setAccountFocusId] = useState<string>('__all__');
+  const [dashboardView, setDashboardView] = useState<'resumo' | 'analises' | 'movimentos'>('resumo');
   const { data: profile } = useProfile();
   
   // Previous month string (for MoM comparisons)
@@ -342,14 +356,33 @@ export default function Dashboard() {
       .sort((a, b) => b.balance - a.balance);
   }, [accounts, income, nonCCExpenses]);
 
+  const activeAccounts = useMemo(() => accounts.filter((acc) => !acc.archived), [accounts]);
   const focusedAccountInsight = useMemo(
     () => (accountFocusId === '__all__' ? null : accountInsights.find(({ acc }) => acc.id === accountFocusId) ?? null),
     [accountInsights, accountFocusId],
   );
 
+  const focusedBrand = useMemo(
+    () => (focusedAccountInsight ? accountBrandFromRow(focusedAccountInsight.acc) : null),
+    [focusedAccountInsight],
+  );
+  const isGlobalView = accountFocusId === '__all__';
+  const currentAccent = focusedBrand?.color || '#2563eb';
+  const accentSoft = colorWithOpacity(currentAccent, 0.12);
+  const accentBorder = colorWithOpacity(currentAccent, 0.45);
+  const accentGlow = colorWithOpacity(currentAccent, 0.2);
+  const focusLabel = isGlobalView ? 'Todas as contas' : focusedAccountInsight?.acc.name || 'Conta foco';
+  const focusSubLabel = isGlobalView
+    ? `${activeAccounts.length} contas ativas`
+    : `Saldo atual: ${maskCurrency(formatCurrency(focusedAccountInsight?.balance || 0))}`;
+
   const balance = accountFocusId === '__all__' ? accumulatedBalance : (focusedAccountInsight?.balance ?? 0);
   const focusedInvestmentTotal = accountFocusId === '__all__' ? investmentTotal : 0;
   const netWorth = balance + focusedInvestmentTotal;
+
+  const showResumo = dashboardView === 'resumo';
+  const showAnalises = dashboardView === 'analises';
+  const showMovimentos = dashboardView === 'movimentos';
   
   // Greeting based on time
   const greeting = useMemo(() => {
@@ -513,107 +546,150 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-fade-in pb-10 w-full max-w-full overflow-x-hidden sm:overflow-visible">
-      {/* ─── Hero Header Premium ─── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.04] p-4 shadow-sm sm:rounded-3xl sm:p-7">
-        <div className="absolute -top-24 -right-32 w-80 h-80 bg-primary/15 blur-3xl rounded-full pointer-events-none" />
-        <div className="absolute -bottom-32 -left-24 w-72 h-72 bg-income/[0.08] blur-3xl rounded-full pointer-events-none" />
+      {/* Hero + account switcher + visual mode */}
+      <div
+        className="relative overflow-hidden rounded-2xl border p-4 shadow-sm sm:rounded-3xl sm:p-7"
+        style={{
+          borderColor: isGlobalView ? 'hsl(var(--border))' : accentBorder,
+          background: isGlobalView
+            ? 'linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--card)) 55%, hsl(var(--primary) / 0.06) 100%)'
+            : `linear-gradient(135deg, ${accentSoft} 0%, hsl(var(--card)) 42%, hsl(var(--card)) 100%)`,
+        }}
+      >
+        <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full blur-3xl" style={{ background: accentGlow }} />
+        <div className="pointer-events-none absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-background/40 blur-3xl" />
 
-        <div className="relative z-10 flex flex-col gap-5">
-          {/* Title row */}
-          <div className="flex items-start justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-primary/25 to-primary/5 flex items-center justify-center shadow-inner border border-primary/15 shrink-0">
-                <Sparkles className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
+        <div className="relative z-10 flex flex-col gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border bg-background/70 p-2 sm:h-14 sm:w-14"
+                  style={{ borderColor: isGlobalView ? 'hsl(var(--border))' : accentBorder }}
+                >
+                  {focusedBrand?.logoUrl ? (
+                    <img src={focusedBrand.logoUrl} alt={focusLabel} className="h-full w-full object-contain" />
+                  ) : isGlobalView ? (
+                    <Sparkles className="h-6 w-6 text-primary" />
+                  ) : (
+                    <span className="text-2xl">{focusedBrand?.icon || '🏦'}</span>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold text-muted-foreground sm:text-xs">
+                    {greeting.icon} {greeting.text}{profile?.first_name ? `, ${profile.first_name}` : ''}!
+                  </p>
+                  <h1 className="truncate text-2xl font-extrabold leading-none tracking-tight sm:text-3xl">
+                    Dashboard • {focusLabel}
+                  </h1>
+                  <p className="mt-1 text-xs text-muted-foreground">{focusSubLabel}</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-[11px] sm:text-xs text-muted-foreground font-semibold flex items-center gap-1.5">
-                  <span>{greeting.icon}</span> {greeting.text}{profile?.first_name ? `, ${profile.first_name}` : ''}!
-                </p>
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-none mt-1 text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/70">
-                  Seu Panorama
-                </h1>
+              <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
+                <span className="rounded-full border border-border/60 bg-background/60 px-2.5 py-1 font-semibold">
+                  Receitas {maskCurrency(formatCurrency(totalIncome))}
+                </span>
+                <span className="rounded-full border border-border/60 bg-background/60 px-2.5 py-1 font-semibold">
+                  Despesas {maskCurrency(formatCurrency(totalExpensesPaid + totalCCThisMonth))}
+                </span>
+                <span className="rounded-full border border-border/60 bg-background/60 px-2.5 py-1 font-semibold">
+                  Saldo {maskCurrency(formatCurrency(balance))}
+                </span>
+                <span
+                  className="rounded-full border px-2.5 py-1 font-semibold"
+                  style={{ borderColor: colorWithOpacity(healthColor, 0.35), backgroundColor: colorWithOpacity(healthColor, 0.12), color: healthColor }}
+                >
+                  Saúde {healthScore}/100 • {healthLabel}
+                </span>
               </div>
             </div>
-            <div className="grid w-full grid-cols-1 items-center gap-2 min-[430px]:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:w-auto sm:flex sm:shrink-0">
-              <Select value={accountFocusId} onValueChange={setAccountFocusId}>
-                <SelectTrigger className="h-9 min-[430px]:w-[170px] sm:w-[190px]">
-                  <SelectValue placeholder="Conta foco" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">Foco: todas</SelectItem>
-                  {accounts.filter(a => !a.archived).map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.icon} {a.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+            <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_auto] gap-2 sm:w-auto sm:grid-cols-[auto_auto_auto]">
               <MonthSelector month={month} onChange={setMonth} />
               <TransactionDialog type="income" defaultAccountId={accountFocusId === '__all__' ? undefined : accountFocusId}>
-                <button className="h-9 w-9 rounded-xl bg-income text-income-foreground font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-income/90 hover:shadow-md hover:shadow-income/20 active:scale-[0.97] transition-all sm:w-auto sm:px-3">
-                  <ArrowUpRight className="w-4 h-4 shrink-0" /> <span className="hidden sm:inline">Receita</span>
+                <button className="h-9 rounded-xl bg-income px-3 text-xs font-semibold text-income-foreground transition-all hover:bg-income/90 hover:shadow-md hover:shadow-income/20">
+                  <ArrowUpRight className="mr-1 inline h-4 w-4" /> Receita
                 </button>
               </TransactionDialog>
               <TransactionDialog type="expense" defaultAccountId={accountFocusId === '__all__' ? undefined : accountFocusId}>
-                <button className="h-9 w-9 rounded-xl bg-expense text-expense-foreground font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-expense/90 hover:shadow-md hover:shadow-expense/20 active:scale-[0.97] transition-all sm:w-auto sm:px-3">
-                  <ArrowDownRight className="w-4 h-4 shrink-0" /> <span className="hidden sm:inline">Despesa</span>
+                <button className="h-9 rounded-xl bg-expense px-3 text-xs font-semibold text-expense-foreground transition-all hover:bg-expense/90 hover:shadow-md hover:shadow-expense/20">
+                  <ArrowDownRight className="mr-1 inline h-4 w-4" /> Despesa
                 </button>
               </TransactionDialog>
             </div>
           </div>
 
-          {/* Health-driven insight strip */}
-          <div className="grid grid-cols-1 gap-2 min-[390px]:grid-cols-2 md:grid-cols-4 md:gap-3">
-            {/* Saúde Financeira */}
-            <div className="rounded-2xl border px-3 py-2.5 relative overflow-hidden" style={{ borderColor: `${healthColor}33`, backgroundColor: `${healthColor}0d` }}>
-              <div className="flex items-center gap-1.5 mb-0.5" style={{ color: healthColor }}>
-                <Heart className="h-3 w-3" />
-                <p className="text-[9px] font-bold uppercase tracking-wider">Saúde</p>
-              </div>
-              <div className="flex items-baseline gap-1.5">
-                <p className="text-base sm:text-lg font-extrabold leading-none" style={{ color: healthColor }}>{healthScore}</p>
-                <span className="text-[9px] uppercase tracking-wider font-bold opacity-70" style={{ color: healthColor }}>/100</span>
-              </div>
-              <p className="text-[10px] font-semibold mt-0.5" style={{ color: healthColor }}>{healthLabel}</p>
+          <div className="rounded-2xl border border-border/60 bg-background/60 p-2">
+            <p className="px-1 pb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              Escolha a conta da Dashboard
+            </p>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              <button
+                onClick={() => setAccountFocusId('__all__')}
+                className={cn(
+                  'flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-left transition-all',
+                  isGlobalView ? 'border-primary/35 bg-primary/10 shadow-sm' : 'border-border/60 bg-background/70 hover:bg-background',
+                )}
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Wallet className="h-4 w-4" />
+                </span>
+                <span className="text-xs font-semibold">Visão Geral</span>
+              </button>
+              {activeAccounts.map((account) => {
+                const brand = accountBrandFromRow(account);
+                const active = accountFocusId === account.id;
+                return (
+                  <button
+                    key={account.id}
+                    onClick={() => setAccountFocusId(account.id)}
+                    className={cn(
+                      'flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-left transition-all',
+                      active ? 'shadow-sm' : 'border-border/60 bg-background/70 hover:bg-background',
+                    )}
+                    style={active ? { borderColor: colorWithOpacity(brand.color, 0.45), backgroundColor: colorWithOpacity(brand.color, 0.12) } : undefined}
+                  >
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/50 bg-background/80 p-1.5">
+                      {brand.logoUrl ? (
+                        <img src={brand.logoUrl} alt={account.name} className="h-full w-full object-contain" />
+                      ) : (
+                        <span className="text-sm">{brand.icon || account.icon || '🏦'}</span>
+                      )}
+                    </span>
+                    <span className="max-w-[120px] truncate text-xs font-semibold">{account.name}</span>
+                  </button>
+                );
+              })}
             </div>
-            {/* No Cartão */}
-            <div className="rounded-2xl border border-[#6366f1]/25 bg-[#6366f1]/[0.06] px-3 py-2.5">
-              <div className="flex items-center gap-1.5 text-[#6366f1] mb-0.5">
-                <CreditCard className="h-3 w-3" />
-                <p className="text-[9px] font-bold uppercase tracking-wider">No Cartão</p>
-              </div>
-              <p className="text-sm sm:text-base font-extrabold currency text-[#6366f1] leading-tight truncate">{maskCurrency(formatCurrency(totalCCThisMonth))}</p>
-              {ccDelta !== null && (
-                <p className={cn('text-[10px] font-semibold mt-0.5 flex items-center gap-0.5', ccDelta > 0 ? 'text-expense' : 'text-income')}>
-                  {ccDelta > 0 ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
-                  {Math.abs(ccDelta).toFixed(0)}% vs anterior
-                </p>
-              )}
-            </div>
-            {/* Pendências */}
-            <div className="rounded-2xl border border-warning/25 bg-warning/[0.06] px-3 py-2.5">
-              <div className="flex items-center gap-1.5 text-warning mb-0.5">
-                <Clock className="h-3 w-3" />
-                <p className="text-[9px] font-bold uppercase tracking-wider">Pendências</p>
-              </div>
-              <p className="text-sm sm:text-base font-extrabold currency text-warning leading-tight truncate">{maskCurrency(formatCurrency(pendingAmount))}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{scopedNonCCExpenses.filter(e => e.status !== 'concluido').length} {scopedNonCCExpenses.filter(e => e.status !== 'concluido').length === 1 ? 'conta' : 'contas'}</p>
-            </div>
-            {/* Economia */}
-            <div className="rounded-2xl border border-income/25 bg-income/[0.06] px-3 py-2.5">
-              <div className="flex items-center gap-1.5 text-income mb-0.5">
-                <Zap className="h-3 w-3" />
-                <p className="text-[9px] font-bold uppercase tracking-wider">Economia</p>
-              </div>
-              <p className="text-sm sm:text-base font-extrabold text-income leading-tight">{savings.toFixed(1)}%</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{savings >= 20 ? '🎯 acima da meta' : savings >= 10 ? 'no caminho' : '⚠️ aumente'}</p>
-            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: 'resumo' as const, label: 'Resumo', icon: Sparkles },
+              { id: 'analises' as const, label: 'Análises', icon: BarChart3 },
+              { id: 'movimentos' as const, label: 'Movimentos', icon: Wallet },
+            ].map(({ id, label, icon: Icon }) => {
+              const active = dashboardView === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => setDashboardView(id)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all',
+                    active ? 'shadow-sm' : 'border-border/60 bg-background/60 hover:bg-background',
+                  )}
+                  style={active ? { borderColor: accentBorder, backgroundColor: accentSoft } : undefined}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
-
       {/* Account-level lens */}
-      {accountInsights.length > 0 && (
+      {showResumo && accountInsights.length > 0 && (
         <div className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm p-5 sm:p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -624,10 +700,22 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {accountInsights
               .filter(({ acc }) => accountFocusId === '__all__' || acc.id === accountFocusId)
-              .map(({ acc, accIncome, accExpenses, accPending, balance }) => (
-                <div key={acc.id} className="rounded-2xl border border-border/60 bg-muted/20 p-4">
+              .map(({ acc, accIncome, accExpenses, accPending, balance }) => {
+                const brand = accountBrandFromRow(acc);
+                return (
+                <div
+                  key={acc.id}
+                  className="rounded-2xl border p-4"
+                  style={{ borderColor: colorWithOpacity(brand.color, 0.35), background: `linear-gradient(135deg, ${colorWithOpacity(brand.color, 0.12)} 0%, hsl(var(--muted) / 0.24) 100%)` }}
+                >
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-lg">{acc.icon}</span>
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-background/70 p-1">
+                      {brand.logoUrl ? (
+                        <img src={brand.logoUrl} alt={acc.name} className="h-full w-full object-contain" />
+                      ) : (
+                        <span className="text-base">{brand.icon || acc.icon}</span>
+                      )}
+                    </span>
                     <p className="font-bold truncate">{acc.name}</p>
                   </div>
                   <div className="space-y-1.5 text-xs">
@@ -651,14 +739,17 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
           </div>
         </div>
       )}
 
       {/* ── Alertas ────────────────────────────────────────── */}
-      <SmartAlerts expenses={scopedNonCCExpenses} income={scopedIncome} categories={categories} />
+      {showResumo && <SmartAlerts expenses={scopedNonCCExpenses} income={scopedIncome} categories={categories} />}
 
+      {showResumo && (
+      <>
       {/* ─── KPI Cards Premium ─── */}
       <div className={`grid grid-cols-1 gap-3 min-[390px]:grid-cols-2 sm:gap-4 stagger-1 ${totalCCThisMonth > 0 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
         <KpiCard
@@ -877,7 +968,11 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      </>
+      )}
 
+      {showAnalises && (
+      <>
       {/* ── Main Charts Grid ───────────────────────────────── */}
       <div className="grid lg:grid-cols-3 gap-6 stagger-2">
         {/* Trend Area Chart (span 2) */}
@@ -1151,8 +1246,11 @@ export default function Dashboard() {
         </div>
       </div>
 
+      </>
+      )}
+
       {/* ─── NEW: Top Movimentos do Mês ─── */}
-      {(topExpenses.length > 0 || topIncomes.length > 0) && (() => {
+      {showMovimentos && (topExpenses.length > 0 || topIncomes.length > 0) && (() => {
         const showAllocationFiller = topExpenses.length > 0 && topIncomes.length === 0 && allocationData.length > 0 && focusedInvestmentTotal > 0;
         const showIncomeFiller = topIncomes.length > 0 && topExpenses.length === 0;
         return (
@@ -1345,7 +1443,7 @@ export default function Dashboard() {
       })()}
 
       {/* ─── Allocation Patrimônio (skip when already shown as filler) ─── */}
-      {allocationData.length > 0 && focusedInvestmentTotal > 0 && !(topExpenses.length > 0 && topIncomes.length === 0) && (
+      {showAnalises && allocationData.length > 0 && focusedInvestmentTotal > 0 && !(topExpenses.length > 0 && topIncomes.length === 0) && (
         <div className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm p-5 sm:p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4 gap-3">
             <div className="flex items-center gap-2.5">
@@ -1409,14 +1507,18 @@ export default function Dashboard() {
       )}
 
       {/* ── Cash Flow Projection ────────────────────────────── */}
+      {showMovimentos && (
       <div className="stagger-5">
         <CashFlowForecast />
       </div>
+      )}
 
       {/* ── Achievements ───────────────────────────────────── */}
+      {showMovimentos && (
       <div className="stagger-6">
         <Achievements expenses={scopedNonCCExpenses} income={scopedIncome} categories={categories} />
       </div>
+      )}
 
       {editing && (
         <EditTransactionDialog
@@ -1434,4 +1536,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
 
