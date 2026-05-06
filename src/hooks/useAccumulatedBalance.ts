@@ -18,10 +18,10 @@ export function useAccumulatedBalance(month: string) {
       const endDate = `${month}-${String(lastDay).padStart(2, '0')}`;
 
       const [incomeData, expenseData] = await Promise.all([
-        queryWithSoftDeleteFallback<{ amount: number }>((supportsSoftDelete) => {
+        queryWithSoftDeleteFallback<{ amount: number; account_id: string }>((supportsSoftDelete) => {
           let query = supabase
             .from('income')
-            .select('amount')
+            .select('amount, account_id')
             .lte('date', endDate)
             .eq('status', 'concluido');
           if (supportsSoftDelete) {
@@ -29,10 +29,10 @@ export function useAccumulatedBalance(month: string) {
           }
           return query;
         }),
-        queryWithSoftDeleteFallback<{ amount: number }>((supportsSoftDelete) => {
+        queryWithSoftDeleteFallback<{ amount: number; account_id: string }>((supportsSoftDelete) => {
           let query = supabase
             .from('expenses')
-            .select('amount')
+            .select('amount, account_id')
             .lte('date', endDate)
             .eq('status', 'concluido');
           if (supportsSoftDelete) {
@@ -44,8 +44,21 @@ export function useAccumulatedBalance(month: string) {
 
       const totalIncome = incomeData.reduce((s, i) => s + Number(i.amount), 0);
       const totalExpenses = expenseData.reduce((s, e) => s + Number(e.amount), 0);
+      
+      const byAccount: Record<string, number> = {};
+      incomeData.forEach(i => {
+        if (!i.account_id) return;
+        byAccount[i.account_id] = (byAccount[i.account_id] || 0) + Number(i.amount);
+      });
+      expenseData.forEach(e => {
+        if (!e.account_id) return;
+        byAccount[e.account_id] = (byAccount[e.account_id] || 0) - Number(e.amount);
+      });
 
-      return totalIncome - totalExpenses;
+      return {
+        total: totalIncome - totalExpenses,
+        byAccount
+      };
     },
     enabled: !!user && !!month,
     staleTime: 2 * 60 * 1000,

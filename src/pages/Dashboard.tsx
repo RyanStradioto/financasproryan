@@ -153,7 +153,9 @@ export default function Dashboard() {
   const { data: creditCards = [] } = useCreditCards();
   const { data: creditTransactions = [] } = useCreditCardTransactions();
   const { investmentTotal } = useNetWorth();
-  const { data: accumulatedBalance = 0 } = useAccumulatedBalance(month);
+  const { data: accumulatedData } = useAccumulatedBalance(month);
+  const accumulatedBalance = accumulatedData?.total || 0;
+  const accumulatedByAccount = accumulatedData?.byAccount || {};
   const { data: ccTransactions = [] } = useCCTransactionsForMonth(month);
   const { calcWorkTime, hourlyRate } = useWorkTimeCalc();
 
@@ -350,11 +352,12 @@ export default function Dashboard() {
         const accPending = nonCCExpenses
           .filter((e) => e.account_id === acc.id && e.status !== 'concluido')
           .reduce((s, e) => s + Number(e.amount), 0);
-        const balance = Number(acc.initial_balance) + accIncome - accExpenses;
+        const accumulated = accumulatedByAccount[acc.id] || 0;
+        const balance = Number(acc.initial_balance) + accumulated;
         return { acc, accIncome, accExpenses, accPending, balance };
       })
       .sort((a, b) => b.balance - a.balance);
-  }, [accounts, income, nonCCExpenses]);
+  }, [accounts, income, nonCCExpenses, accumulatedByAccount]);
 
   const activeAccounts = useMemo(() => accounts.filter((acc) => !acc.archived), [accounts]);
   const focusedAccountInsight = useMemo(
@@ -546,124 +549,120 @@ export default function Dashboard() {
     <div className="space-y-6 sm:space-y-8 animate-fade-in pb-10 w-full max-w-full overflow-x-hidden sm:overflow-visible">
       {/* Hero + account switcher + visual mode */}
       <div
-        className="relative overflow-hidden rounded-2xl border p-4 shadow-sm sm:rounded-3xl sm:p-7"
+        className="relative overflow-hidden rounded-[2.5rem] border shadow-xl sm:rounded-[3rem] p-5 sm:p-8"
         style={{
-          borderColor: isGlobalView ? 'hsl(var(--border))' : accentBorder,
+          borderColor: isGlobalView ? 'hsl(var(--border) / 0.8)' : accentBorder,
           background: isGlobalView
-            ? 'linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--card)) 55%, hsl(var(--primary) / 0.06) 100%)'
-            : `linear-gradient(135deg, ${accentSoft} 0%, hsl(var(--card)) 42%, hsl(var(--card)) 100%)`,
+            ? 'linear-gradient(145deg, hsl(var(--background)) 0%, hsl(var(--card)) 100%)'
+            : `linear-gradient(145deg, ${accentSoft} 0%, hsl(var(--card)) 100%)`,
         }}
       >
-        <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full blur-3xl" style={{ background: accentGlow }} />
-        <div className="pointer-events-none absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-background/40 blur-3xl" />
+        <div className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full blur-[100px]" style={{ background: accentGlow }} />
+        <div className="pointer-events-none absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-primary/10 blur-[100px]" />
 
-        <div className="relative z-10 flex flex-col gap-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-3">
-                <div
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border bg-background/70 p-2 sm:h-14 sm:w-14"
-                  style={{ borderColor: isGlobalView ? 'hsl(var(--border))' : accentBorder }}
-                >
-                  {focusedBrand?.logoUrl ? (
-                    <img src={focusedBrand.logoUrl} alt={focusLabel} className="h-full w-full object-contain" />
-                  ) : isGlobalView ? (
-                    <Sparkles className="h-6 w-6 text-primary" />
-                  ) : (
-                    <span className="text-2xl">{focusedBrand?.icon || '🏦'}</span>
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold text-muted-foreground sm:text-xs">
-                    {greeting.icon} {greeting.text}{profile?.first_name ? `, ${profile.first_name}` : ''}!
-                  </p>
-                  <h1 className="truncate text-2xl font-extrabold leading-none tracking-tight sm:text-3xl">
-                    Dashboard • {focusLabel}
-                  </h1>
-                  <p className="mt-1 text-xs text-muted-foreground">{focusSubLabel}</p>
-                </div>
+        <div className="relative z-10 flex flex-col gap-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0 flex-1 flex flex-col sm:flex-row gap-5 items-start sm:items-center">
+              <div
+                className="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl border bg-background/80 p-3 shadow-lg backdrop-blur-md transition-transform hover:scale-105"
+                style={{ borderColor: isGlobalView ? 'hsl(var(--border))' : accentBorder }}
+              >
+                {focusedBrand?.logoUrl ? (
+                  <img src={focusedBrand.logoUrl} alt={focusLabel} className="h-full w-full object-contain drop-shadow-sm" />
+                ) : isGlobalView ? (
+                  <Sparkles className="h-10 w-10 text-primary drop-shadow-sm" />
+                ) : (
+                  <span className="text-4xl drop-shadow-sm">{focusedBrand?.icon || '🏦'}</span>
+                )}
               </div>
-              <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
-                <span className="rounded-full border border-border/60 bg-background/60 px-2.5 py-1 font-semibold">
-                  Receitas {maskCurrency(formatCurrency(totalIncome))}
-                </span>
-                <span className="rounded-full border border-border/60 bg-background/60 px-2.5 py-1 font-semibold">
-                  Despesas {maskCurrency(formatCurrency(totalExpensesPaid + totalCCThisMonth))}
-                </span>
-                <span className="rounded-full border border-border/60 bg-background/60 px-2.5 py-1 font-semibold">
-                  Saldo {maskCurrency(formatCurrency(balance))}
-                </span>
-                <span
-                  className="rounded-full border px-2.5 py-1 font-semibold"
-                  style={{ borderColor: colorWithOpacity(healthColor, 0.35), backgroundColor: colorWithOpacity(healthColor, 0.12), color: healthColor }}
-                >
-                  Saúde {healthScore}/100 • {healthLabel}
-                </span>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-muted-foreground tracking-wide uppercase">
+                  {greeting.icon} {greeting.text}{profile?.first_name ? `, ${profile.first_name}` : ''}
+                </p>
+                <h1 className="truncate text-3xl font-black leading-tight tracking-tight sm:text-5xl mt-1 drop-shadow-sm">
+                  {focusLabel}
+                </h1>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <span className="text-lg font-bold text-muted-foreground">{focusSubLabel}</span>
+                  <span
+                    className="rounded-xl border px-3 py-1 text-xs font-bold uppercase tracking-wider backdrop-blur-md"
+                    style={{ borderColor: colorWithOpacity(healthColor, 0.4), backgroundColor: colorWithOpacity(healthColor, 0.15), color: healthColor }}
+                  >
+                    Saúde {healthScore}/100
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_auto] gap-2 sm:w-auto sm:grid-cols-[auto_auto_auto]">
-              <MonthSelector month={month} onChange={setMonth} />
+            <div className="grid w-full grid-cols-2 gap-3 sm:w-auto sm:flex">
+              <div className="col-span-2 sm:col-span-1">
+                <MonthSelector month={month} onChange={setMonth} />
+              </div>
               <TransactionDialog type="income" defaultAccountId={accountFocusId === '__all__' ? undefined : accountFocusId}>
-                <button className="h-9 rounded-xl bg-income px-3 text-xs font-semibold text-income-foreground transition-all hover:bg-income/90 hover:shadow-md hover:shadow-income/20">
-                  <ArrowUpRight className="mr-1 inline h-4 w-4" /> Receita
+                <button className="flex h-11 items-center justify-center rounded-2xl bg-income px-5 text-sm font-bold text-income-foreground transition-all hover:bg-income/90 hover:shadow-lg hover:-translate-y-0.5">
+                  <ArrowUpRight className="mr-2 h-5 w-5" /> Receita
                 </button>
               </TransactionDialog>
               <TransactionDialog type="expense" defaultAccountId={accountFocusId === '__all__' ? undefined : accountFocusId}>
-                <button className="h-9 rounded-xl bg-expense px-3 text-xs font-semibold text-expense-foreground transition-all hover:bg-expense/90 hover:shadow-md hover:shadow-expense/20">
-                  <ArrowDownRight className="mr-1 inline h-4 w-4" /> Despesa
+                <button className="flex h-11 items-center justify-center rounded-2xl bg-expense px-5 text-sm font-bold text-expense-foreground transition-all hover:bg-expense/90 hover:shadow-lg hover:-translate-y-0.5">
+                  <ArrowDownRight className="mr-2 h-5 w-5" /> Despesa
                 </button>
               </TransactionDialog>
             </div>
           </div>
 
-          {/* Account Switcher - Bigger cards with balance info */}
-          <div className="rounded-2xl border border-border/60 bg-background/60 p-3">
-            <p className="px-1 pb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-              Escolha a conta da Dashboard
+          {/* Account Switcher - BIGGER and PREMIUM */}
+          <div className="rounded-3xl border border-white/10 bg-background/40 p-4 backdrop-blur-2xl shadow-inner">
+            <p className="px-2 pb-3 text-xs font-black uppercase tracking-widest text-muted-foreground">
+              Escolha a conta
             </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               <button
                 onClick={() => setAccountFocusId('__all__')}
                 className={cn(
-                  'flex flex-col items-center gap-2 rounded-2xl border p-3 sm:p-4 text-center transition-all hover:shadow-md',
-                  isGlobalView ? 'border-primary/35 bg-primary/10 shadow-sm ring-2 ring-primary/20' : 'border-border/60 bg-background/70 hover:bg-background',
+                  'group flex flex-col items-center gap-3 rounded-[1.5rem] border p-4 sm:p-5 text-center transition-all duration-300',
+                  isGlobalView 
+                    ? 'border-primary/50 bg-primary/10 shadow-[0_8px_30px_rgb(0,0,0,0.12)] ring-4 ring-primary/20 scale-[1.02]' 
+                    : 'border-border/40 bg-background/50 hover:bg-background/80 hover:scale-[1.02] hover:shadow-md',
                 )}
               >
-                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Wallet className="h-6 w-6" />
+                <span className={cn("flex h-14 w-14 items-center justify-center rounded-2xl transition-transform group-hover:scale-110", isGlobalView ? "bg-primary text-primary-foreground shadow-lg" : "bg-primary/10 text-primary")}>
+                  <Wallet className="h-7 w-7" />
                 </span>
-                <div className="min-w-0 w-full">
-                  <p className="text-xs font-bold truncate">Visão Geral</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">{activeAccounts.length} contas</p>
-                  <p className="text-xs font-extrabold currency mt-1 tabular-nums truncate">{maskCurrency(formatCurrency(accumulatedBalance))}</p>
+                <div className="min-w-0 w-full mt-1">
+                  <p className="text-sm font-bold truncate">Visão Geral</p>
+                  <p className="text-xs text-muted-foreground font-medium mt-0.5">{activeAccounts.length} contas ativas</p>
+                  <p className="text-base font-black currency mt-2 tabular-nums truncate tracking-tight">{maskCurrency(formatCurrency(accumulatedBalance))}</p>
                 </div>
               </button>
               {activeAccounts.map((account) => {
                 const brand = accountBrandFromRow(account);
                 const active = accountFocusId === account.id;
                 const insight = accountInsights.find(a => a.acc.id === account.id);
+                const bal = insight?.balance ?? 0;
                 return (
                   <button
                     key={account.id}
                     onClick={() => setAccountFocusId(account.id)}
                     className={cn(
-                      'flex flex-col items-center gap-2 rounded-2xl border p-3 sm:p-4 text-center transition-all hover:shadow-md',
-                      active ? 'shadow-sm ring-2' : 'border-border/60 bg-background/70 hover:bg-background',
+                      'group flex flex-col items-center gap-3 rounded-[1.5rem] border p-4 sm:p-5 text-center transition-all duration-300',
+                      active 
+                        ? 'shadow-[0_8px_30px_rgb(0,0,0,0.12)] ring-4 scale-[1.02]' 
+                        : 'border-border/40 bg-background/50 hover:bg-background/80 hover:scale-[1.02] hover:shadow-md',
                     )}
-                    style={active ? { borderColor: colorWithOpacity(brand.color, 0.45), backgroundColor: colorWithOpacity(brand.color, 0.12), '--tw-ring-color': colorWithOpacity(brand.color, 0.25) } as React.CSSProperties : undefined}
+                    style={active ? { borderColor: colorWithOpacity(brand.color, 0.6), backgroundColor: colorWithOpacity(brand.color, 0.15), '--tw-ring-color': colorWithOpacity(brand.color, 0.25) } as React.CSSProperties : undefined}
                   >
-                    <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-border/50 bg-background/80 p-2">
+                    <span className={cn("flex h-14 w-14 items-center justify-center rounded-2xl border transition-transform group-hover:scale-110", active ? "bg-background shadow-lg" : "border-border/50 bg-background/80")}>
                       {brand.logoUrl ? (
-                        <img src={brand.logoUrl} alt={account.name} className="h-full w-full object-contain" />
+                        <img src={brand.logoUrl} alt={account.name} className="h-8 w-8 object-contain" />
                       ) : (
-                        <span className="text-lg">{brand.icon || account.icon || '🏦'}</span>
+                        <span className="text-2xl">{brand.icon || account.icon || '🏦'}</span>
                       )}
                     </span>
-                    <div className="min-w-0 w-full">
-                      <p className="text-xs font-bold truncate">{account.name}</p>
-                      <p className={cn('text-xs font-extrabold currency mt-1 tabular-nums truncate', (insight?.balance ?? 0) >= 0 ? 'text-income' : 'text-expense')}>
-                        {maskCurrency(formatCurrency(insight?.balance ?? 0))}
+                    <div className="min-w-0 w-full mt-1">
+                      <p className="text-sm font-bold truncate">{account.name}</p>
+                      <p className={cn('text-base font-black currency mt-2 tabular-nums truncate tracking-tight', bal >= 0 ? 'text-income' : 'text-expense')}>
+                        {maskCurrency(formatCurrency(bal))}
                       </p>
                     </div>
                   </button>
