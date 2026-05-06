@@ -104,8 +104,11 @@ export default function TransactionDialog({ type, children, defaultAccountId }: 
 
   useEffect(() => {
     if (!open) return;
-    if (!defaultAccountId) return;
-    setAccountId(defaultAccountId);
+    if (defaultAccountId) {
+      setAccountId(defaultAccountId);
+    } else {
+      setAccountId('');
+    }
   }, [open, defaultAccountId]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

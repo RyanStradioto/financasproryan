@@ -1,4 +1,4 @@
-﻿import type { Account } from '@/hooks/useFinanceData';
+import type { Account } from '@/hooks/useFinanceData';
 
 export type AccountBrand = {
   name: string;
@@ -15,7 +15,7 @@ const PRESETS: BrandPreset[] = [
   {
     name: 'nubank',
     aliases: ['nubank', 'nu'],
-    color: '#8A05BE',
+    color: '#6D2177',
     icon: '🟣',
     logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/3/3b/Nubank_logo.svg',
   },

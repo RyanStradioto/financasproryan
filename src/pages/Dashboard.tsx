@@ -133,7 +133,6 @@ export default function Dashboard() {
   const { maskCurrency } = useSensitiveData();
   const [month, setMonth] = useState(getMonthYear());
   const [accountFocusId, setAccountFocusId] = useState<string>('__all__');
-  const [accountAnalysisOpen, setAccountAnalysisOpen] = useState(false);
   const { data: profile } = useProfile();
   
   // Previous month string (for MoM comparisons)
@@ -352,12 +351,11 @@ export default function Dashboard() {
         const accPending = nonCCExpenses
           .filter((e) => e.account_id === acc.id && e.status !== 'concluido')
           .reduce((s, e) => s + Number(e.amount), 0);
-        const accumulated = accumulatedByAccount[acc.id] || 0;
-        const balance = Number(acc.initial_balance) + accumulated;
+        const balance = Number(acc.initial_balance) + accIncome - accExpenses;
         return { acc, accIncome, accExpenses, accPending, balance };
       })
       .sort((a, b) => b.balance - a.balance);
-  }, [accounts, income, nonCCExpenses, accumulatedByAccount]);
+  }, [accounts, income, nonCCExpenses]);
 
   const activeAccounts = useMemo(() => accounts.filter((acc) => !acc.archived), [accounts]);
   const focusedAccountInsight = useMemo(
@@ -672,74 +670,6 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-      {/* Account-level lens — Collapsible */}
-      {accountInsights.length > 0 && (
-        <div className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm shadow-sm overflow-hidden">
-          <button
-            onClick={() => setAccountAnalysisOpen(v => !v)}
-            className="w-full flex items-center justify-between p-5 sm:p-6 hover:bg-muted/20 transition-colors text-left"
-          >
-            <div>
-              <h3 className="text-sm font-bold leading-tight">Análise por Conta</h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Visão separada de entradas, saídas e saldo por banco/carteira</p>
-            </div>
-            <ChevronRight className={cn('w-5 h-5 text-muted-foreground transition-transform duration-300 shrink-0', accountAnalysisOpen && 'rotate-90')} />
-          </button>
-          {accountAnalysisOpen && (
-            <div className="px-5 pb-5 sm:px-6 sm:pb-6 pt-0 animate-fade-in">
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                {accountInsights
-                  .filter(({ acc }) => accountFocusId === '__all__' || acc.id === accountFocusId)
-                  .map(({ acc, accIncome, accExpenses, accPending, balance }) => {
-                    const brand = accountBrandFromRow(acc);
-                    return (
-                      <div
-                        key={acc.id}
-                        className="rounded-2xl border p-4"
-                        style={{ borderColor: colorWithOpacity(brand.color, 0.35), background: `linear-gradient(135deg, ${colorWithOpacity(brand.color, 0.12)} 0%, hsl(var(--muted) / 0.24) 100%)` }}
-                      >
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-background/70 p-1">
-                            {brand.logoUrl ? (
-                              <img src={brand.logoUrl} alt={acc.name} className="h-full w-full object-contain" />
-                            ) : (
-                              <span className="text-base">{brand.icon || acc.icon}</span>
-                            )}
-                          </span>
-                          <p className="font-bold truncate">{acc.name}</p>
-                        </div>
-                        <div className="space-y-1.5 text-xs">
-                          <div className="flex items-center justify-between">
-                            <span className="text-muted-foreground">Receitas</span>
-                            <span className="font-semibold text-income currency">{maskCurrency(formatCurrency(accIncome))}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-muted-foreground">Despesas</span>
-                            <span className="font-semibold text-expense currency">{maskCurrency(formatCurrency(accExpenses))}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-muted-foreground">Pendentes</span>
-                            <span className="font-semibold text-warning currency">{maskCurrency(formatCurrency(accPending))}</span>
-                          </div>
-                          <div className="pt-2 mt-2 border-t border-border/60 flex items-center justify-between">
-                            <span className="font-semibold">Saldo da conta</span>
-                            <span className={cn('font-extrabold currency', balance >= 0 ? 'text-income' : 'text-expense')}>
-                              {maskCurrency(formatCurrency(balance))}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Alertas ────────────────────────────────────────── */}
-      <SmartAlerts expenses={scopedNonCCExpenses} income={scopedIncome} categories={categories} />
-
       {/* ─── KPI Cards Premium ─── */}
       <div className={`grid grid-cols-1 gap-3 min-[390px]:grid-cols-2 sm:gap-4 stagger-1 ${totalCCThisMonth > 0 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
         <KpiCard
