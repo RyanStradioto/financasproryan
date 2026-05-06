@@ -1,18 +1,18 @@
 import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
-import { useCategories, useAddCategory, useUpdateCategory, useDeleteCategory, useExpenses } from '@/hooks/useFinanceData';
-import { useCCTransactionsForMonth } from '@/hooks/useCreditCards';
+import { useCategories, useAddCategory, useUpdateCategory, useDeleteCategory, useExpenses, useAccounts, useCategoryAccountBudgets, useReplaceCategoryAccountBudgets, type Account } from '@/hooks/useFinanceData';
+import { useCCTransactionsForMonth, useCreditCards } from '@/hooks/useCreditCards';
 import { useProfile } from '@/hooks/useProfile';
 import { formatCurrency, getMonthYear } from '@/lib/format';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
-import { Plus, Pencil, Trash2, Grid3X3, Sparkles, Wand2, Check } from 'lucide-react';
+import { Plus, Pencil, Trash2, Grid3X3, Sparkles, Wand2, Check, Wallet, X, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import MonthSelector from '@/components/finance/MonthSelector';
 import { buildDescriptionAmountKey, buildExpenseMatchKey, parseStructuredCardMarker } from '@/lib/paymentMethod';
 import { cn } from '@/lib/utils';
+import { accountBrandFromRow, resolveAccountBrand } from '@/lib/accountBrand';
 
 const ICONS = ['🏠', '🛒', '🚗', '💰', '🎮', '🍔', '📚', '🏋️', '⚕️', '👕', '🎬', '🏷️', '💳', '📱', '✈️', '🐶', '⛽', '🎓', '🍕', '☕', '🎁', '💄', '🪥'];
 
@@ -67,26 +67,172 @@ function CurrencyInput({ value, onChange }: { value: string; onChange: (v: strin
   );
 }
 
+type BudgetSplit = {
+  accountId: string;
+  budget: string;
+};
+
+type AccountBudgetBreakdown = {
+  key: string;
+  accountId: string | null;
+  name: string;
+  icon: string;
+  logoUrl?: string;
+  budget: number;
+  spent: number;
+  remaining: number;
+  pct: number;
+  overBudget: boolean;
+};
+
+function parseCurrencyInput(value: string) {
+  return parseFloat(value.replace(/\./g, '').replace(',', '.')) || 0;
+}
+
+function formatCurrencyInput(value: number) {
+  return Number(value || 0).toFixed(2).replace('.', ',');
+}
+
+function normalizeBudgetSplits(splits: BudgetSplit[]) {
+  const byAccount = new Map<string, number>();
+
+  splits.forEach((split) => {
+    const accountId = split.accountId;
+    const monthlyBudget = parseCurrencyInput(split.budget);
+    if (!accountId || monthlyBudget <= 0) return;
+    byAccount.set(accountId, (byAccount.get(accountId) || 0) + monthlyBudget);
+  });
+
+  return Array.from(byAccount.entries()).map(([account_id, monthly_budget]) => ({
+    account_id,
+    monthly_budget,
+  }));
+}
+
+function getSplitTotal(splits: BudgetSplit[]) {
+  return normalizeBudgetSplits(splits).reduce((sum, split) => sum + split.monthly_budget, 0);
+}
+
+function BudgetSplitEditor({
+  accounts,
+  splits,
+  onChange,
+}: {
+  accounts: Account[];
+  splits: BudgetSplit[];
+  onChange: (splits: BudgetSplit[]) => void;
+}) {
+  const activeAccounts = accounts.filter((account) => !account.archived);
+  const total = splits.reduce((sum, split) => sum + parseCurrencyInput(split.budget), 0);
+
+  const updateSplit = (index: number, patch: Partial<BudgetSplit>) => {
+    onChange(splits.map((split, i) => (i === index ? { ...split, ...patch } : split)));
+  };
+
+  const removeSplit = (index: number) => {
+    onChange(splits.filter((_, i) => i !== index));
+  };
+
+  return (
+    <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <Label className="text-xs">Orçamento por conta</Label>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">Separe o limite da categoria por carteira ou banco.</p>
+        </div>
+        {splits.length > 0 && (
+          <span className="shrink-0 rounded-lg border border-primary/20 bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary">
+            {formatCurrency(total)}
+          </span>
+        )}
+      </div>
+
+      {splits.length > 0 && (
+        <div className="space-y-2">
+          {splits.map((split, index) => {
+            const usedAccountIds = new Set(splits.map((item, i) => (i === index ? '' : item.accountId)).filter(Boolean));
+            const selectedAccount = activeAccounts.find((account) => account.id === split.accountId);
+            return (
+              <div key={`${split.accountId || 'new'}-${index}`} className="grid grid-cols-[minmax(0,1fr)_120px_32px] gap-2">
+                <select
+                  value={split.accountId}
+                  onChange={(event) => updateSplit(index, { accountId: event.target.value })}
+                  className="h-10 min-w-0 rounded-lg border border-input bg-background px-2 text-sm"
+                  required
+                >
+                  <option value="">Conta...</option>
+                  {activeAccounts
+                    .filter((account) => account.id === split.accountId || !usedAccountIds.has(account.id))
+                    .map((account) => {
+                      const brand = accountBrandFromRow(account);
+                      return (
+                        <option key={account.id} value={account.id}>
+                          {brand.name !== 'custom' ? '' : account.icon ? `${account.icon} ` : ''}{account.name}
+                        </option>
+                      );
+                    })}
+                </select>
+                <CurrencyInput value={split.budget} onChange={(value) => updateSplit(index, { budget: value })} />
+                <button
+                  type="button"
+                  onClick={() => removeSplit(index)}
+                  className="flex h-10 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  title={selectedAccount ? `Remover ${selectedAccount.name}` : 'Remover'}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="w-full"
+        disabled={activeAccounts.length === 0 || splits.length >= activeAccounts.length}
+        onClick={() => {
+          const used = new Set(splits.map((split) => split.accountId));
+          const nextAccount = activeAccounts.find((account) => !used.has(account.id));
+          onChange([...splits, { accountId: nextAccount?.id || '', budget: '' }]);
+        }}
+      >
+        <Plus className="mr-1 h-3.5 w-3.5" />
+        Adicionar conta
+      </Button>
+    </div>
+  );
+}
+
 export default function CategoriesPage() {
   const [month, setMonth] = useState(getMonthYear());
   const { data: categories = [] } = useCategories();
+  const { data: accounts = [] } = useAccounts();
+  const { data: categoryAccountBudgets = [] } = useCategoryAccountBudgets();
   const { data: expenses = [] } = useExpenses(month);
   const { data: ccTransactions = [] } = useCCTransactionsForMonth(month);
+  const { data: creditCards = [] } = useCreditCards();
   const { data: profile } = useProfile();
   const addCategory = useAddCategory();
   const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
+  const replaceCategoryAccountBudgets = useReplaceCategoryAccountBudgets();
 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('🏷️');
   const [budget, setBudget] = useState('');
+  const [budgetSplits, setBudgetSplits] = useState<BudgetSplit[]>([]);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState('');
   const [editName, setEditName] = useState('');
   const [editIcon, setEditIcon] = useState('');
   const [editBudget, setEditBudget] = useState('');
+  const [editBudgetSplits, setEditBudgetSplits] = useState<BudgetSplit[]>([]);
+  const [expandedBreakdowns, setExpandedBreakdowns] = useState<Set<string>>(new Set());
 
   const [starterOpen, setStarterOpen] = useState(false);
   const [selectedStarter, setSelectedStarter] = useState<Set<string>>(new Set(STARTER_PACK.map(s => s.name)));
@@ -125,21 +271,92 @@ export default function CategoriesPage() {
     return categoryByMatchKey.get(matchKey) ?? categoryByLooseKey.get(looseKey) ?? null;
   };
 
+  const accountById = useMemo(() => new Map(accounts.map((account) => [account.id, account])), [accounts]);
+
+  const accountIdByBrand = useMemo(() => {
+    const map = new Map<string, string>();
+    accounts.forEach((account) => {
+      const brand = accountBrandFromRow(account);
+      if (brand.name !== 'custom' && !map.has(brand.name)) {
+        map.set(brand.name, account.id);
+      }
+    });
+    return map;
+  }, [accounts]);
+
+  const cardAccountIdByCardId = useMemo(() => {
+    const map = new Map<string, string>();
+    creditCards.forEach((card) => {
+      const brandName = resolveAccountBrand(card.name).name;
+      const accountId = brandName === 'custom' ? null : accountIdByBrand.get(brandName);
+      if (accountId) map.set(card.id, accountId);
+    });
+    return map;
+  }, [accountIdByBrand, creditCards]);
+
   // ── Per-category aggregated totals ─────────────────────────────
   const categoriesWithStats = useMemo(() => {
     return activeCategories.map(cat => {
-      const spentExp = expenses
-        .filter(e => resolveCategoryId({ ...e, amount: Number(e.amount) }) === cat.id)
-        .reduce((s, e) => s + Number(e.amount), 0);
-      const spentCC = ccTransactions
-        .filter(t => t.category_id === cat.id)
-        .reduce((s, t) => s + Number(t.amount), 0);
-      const spent = spentExp + spentCC;
-      const budgetNum = Number(cat.monthly_budget);
+      const budgetRows = categoryAccountBudgets.filter((budgetRow) => budgetRow.category_id === cat.id);
+      const budgetByAccount = new Map<string, number>();
+      budgetRows.forEach((budgetRow) => {
+        budgetByAccount.set(budgetRow.account_id, (budgetByAccount.get(budgetRow.account_id) || 0) + Number(budgetRow.monthly_budget || 0));
+      });
+
+      const spentByAccount = new Map<string, number>();
+      const addSpent = (accountId: string | null | undefined, amount: number) => {
+        const key = accountId || '__none__';
+        spentByAccount.set(key, (spentByAccount.get(key) || 0) + amount);
+      };
+
+      expenses.forEach((expense) => {
+        if (resolveCategoryId({ ...expense, amount: Number(expense.amount) }) !== cat.id) return;
+        addSpent(expense.account_id, Number(expense.amount || 0));
+      });
+
+      ccTransactions.forEach((transaction) => {
+        if (transaction.category_id !== cat.id) return;
+        addSpent(cardAccountIdByCardId.get(transaction.card_id) || null, Number(transaction.amount || 0));
+      });
+
+      const spent = Array.from(spentByAccount.values()).reduce((sum, value) => sum + value, 0);
+      const budgetNum = budgetRows.length > 0
+        ? Array.from(budgetByAccount.values()).reduce((sum, value) => sum + value, 0)
+        : Number(cat.monthly_budget || 0);
+      const breakdownKeys = new Set<string>([
+        ...Array.from(budgetByAccount.keys()),
+        ...Array.from(spentByAccount.keys()),
+      ]);
+
+      const accountBreakdown: AccountBudgetBreakdown[] = Array.from(breakdownKeys).map((key) => {
+        const account = key === '__none__' ? null : accountById.get(key);
+        const brand = account ? accountBrandFromRow(account) : null;
+        const rowBudget = key === '__none__' ? 0 : (budgetByAccount.get(key) || 0);
+        const rowSpent = spentByAccount.get(key) || 0;
+        const rowPct = rowBudget > 0 ? (rowSpent / rowBudget) * 100 : 0;
+        return {
+          key,
+          accountId: key === '__none__' ? null : key,
+          name: account?.name || 'Sem conta',
+          icon: account ? (brand?.icon || account.icon || '💳') : 'Wallet',
+          logoUrl: brand?.logoUrl,
+          budget: rowBudget,
+          spent: rowSpent,
+          remaining: rowBudget - rowSpent,
+          pct: rowPct,
+          overBudget: rowBudget > 0 && rowSpent > rowBudget,
+        };
+      }).sort((a, b) => {
+        if (a.key === '__none__') return 1;
+        if (b.key === '__none__') return -1;
+        return (b.budget + b.spent) - (a.budget + a.spent);
+      });
+
       const pct = budgetNum > 0 ? (spent / budgetNum) * 100 : 0;
-      return { ...cat, spent, budgetNum, pct, overBudget: budgetNum > 0 && spent > budgetNum };
+      const splitOverBudget = accountBreakdown.some((row) => row.overBudget);
+      return { ...cat, spent, budgetNum, pct, overBudget: (budgetNum > 0 && spent > budgetNum) || splitOverBudget, accountBreakdown };
     }).sort((a, b) => b.spent - a.spent);
-  }, [activeCategories, expenses, ccTransactions, resolveCategoryId]);
+  }, [accountById, activeCategories, cardAccountIdByCardId, categoryAccountBudgets, ccTransactions, expenses, resolveCategoryId]);
 
   const totalBudget = useMemo(() => activeCategories.reduce((s, c) => s + Number(c.monthly_budget || 0), 0), [activeCategories]);
   const totalSpent = useMemo(() => categoriesWithStats.reduce((s, c) => s + c.spent, 0), [categoriesWithStats]);
@@ -152,23 +369,34 @@ export default function CategoriesPage() {
       toast.error('Já existe uma categoria com este nome');
       return;
     }
-    const numBudget = parseFloat(budget.replace(',', '.')) || 0;
+    const splitRows = normalizeBudgetSplits(budgetSplits);
+    const numBudget = splitRows.length > 0 ? getSplitTotal(budgetSplits) : parseCurrencyInput(budget);
     if (numBudget < 0) { toast.error('Orçamento não pode ser negativo'); return; }
     try {
-      await addCategory.mutateAsync({ name: trimmed, icon, monthly_budget: numBudget });
+      const newCategory = await addCategory.mutateAsync({ name: trimmed, icon, monthly_budget: numBudget });
+      if (splitRows.length > 0) {
+        await replaceCategoryAccountBudgets.mutateAsync({ categoryId: newCategory.id, budgets: splitRows });
+      }
       toast.success('Categoria criada!');
-      setName(''); setIcon('🏷️'); setBudget(''); setOpen(false);
+      setName(''); setIcon('🏷️'); setBudget(''); setBudgetSplits([]); setOpen(false);
     } catch (err) {
       const error = err as Error;
       toast.error(error.message);
     }
   };
 
-  const openEdit = (cat: typeof activeCategories[0]) => {
+  const openEdit = (cat: typeof categoriesWithStats[0]) => {
+    const existingSplits = categoryAccountBudgets
+      .filter((budgetRow) => budgetRow.category_id === cat.id)
+      .map((budgetRow) => ({
+        accountId: budgetRow.account_id,
+        budget: formatCurrencyInput(Number(budgetRow.monthly_budget || 0)),
+      }));
     setEditId(cat.id);
     setEditName(cat.name);
     setEditIcon(cat.icon);
     setEditBudget(Number(cat.monthly_budget).toFixed(2).replace('.', ','));
+    setEditBudgetSplits(existingSplits);
     setEditOpen(true);
   };
 
@@ -180,10 +408,12 @@ export default function CategoriesPage() {
       toast.error('Já existe uma categoria com este nome');
       return;
     }
-    const numBudget = parseFloat(editBudget.replace(',', '.')) || 0;
+    const splitRows = normalizeBudgetSplits(editBudgetSplits);
+    const numBudget = splitRows.length > 0 ? getSplitTotal(editBudgetSplits) : parseCurrencyInput(editBudget);
     if (numBudget < 0) { toast.error('Orçamento não pode ser negativo'); return; }
     try {
       await updateCategory.mutateAsync({ id: editId, name: trimmed, icon: editIcon, monthly_budget: numBudget });
+      await replaceCategoryAccountBudgets.mutateAsync({ categoryId: editId, budgets: splitRows });
       toast.success('Categoria atualizada!');
       setEditOpen(false);
     } catch (err) {
@@ -359,10 +589,14 @@ export default function CategoriesPage() {
 
       {/* ─── Category grid ─── */}
       <div className="grid grid-cols-1 gap-3 min-[430px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {categoriesWithStats.map(cat => (
-          <button
+        {categoriesWithStats.map(cat => {
+          const expanded = expandedBreakdowns.has(cat.id);
+          const hasBreakdown = cat.accountBreakdown.length > 0;
+          const visibleBreakdown = expanded ? cat.accountBreakdown : cat.accountBreakdown.slice(0, 3);
+
+          return (
+          <div
             key={cat.id}
-            onClick={() => openEdit(cat)}
             className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card/60 backdrop-blur-sm p-4 sm:p-5 shadow-sm hover:shadow-md hover:border-primary/40 transition-all text-left"
           >
             {/* Decorative gradient */}
@@ -387,7 +621,14 @@ export default function CategoriesPage() {
                     )}
                   </div>
                 </div>
-                <Pencil className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0" />
+                <button
+                  type="button"
+                  onClick={() => openEdit(cat)}
+                  className="rounded-lg p-1 text-muted-foreground/40 transition-colors hover:bg-primary/10 hover:text-primary group-hover:text-primary"
+                  title="Editar categoria"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
               </div>
 
               {/* Spent + bar */}
@@ -429,9 +670,72 @@ export default function CategoriesPage() {
                   <p className="text-[10px] text-muted-foreground italic">Sem orçamento definido — clique para configurar</p>
                 )}
               </div>
+
+              {hasBreakdown && (
+                <div className="mt-3 space-y-1.5 rounded-xl border border-border/50 bg-background/35 p-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      <Wallet className="h-3 w-3" />
+                      Por conta
+                    </span>
+                    {cat.accountBreakdown.length > 3 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setExpandedBreakdowns((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(cat.id)) next.delete(cat.id);
+                            else next.add(cat.id);
+                            return next;
+                          });
+                        }}
+                        className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-primary hover:bg-primary/10"
+                      >
+                        {expanded ? 'Ver menos' : `+${cat.accountBreakdown.length - 3}`}
+                        <ChevronDown className={cn('h-3 w-3 transition-transform', expanded && 'rotate-180')} />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {visibleBreakdown.map((row) => (
+                      <div key={row.key} className="rounded-lg bg-card/55 px-2 py-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-bold">
+                              <span className="flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted/60 text-[10px]">
+                                {row.logoUrl ? (
+                                  <img src={row.logoUrl} alt="" className="h-full w-full object-contain p-0.5" />
+                                ) : row.icon === 'Wallet' ? (
+                                  <Wallet className="h-3 w-3" />
+                                ) : row.icon}
+                              </span>
+                            <span className="truncate">{row.name}</span>
+                          </span>
+                          <span className={cn('shrink-0 text-[11px] font-extrabold tabular-nums', row.overBudget ? 'text-expense' : row.remaining >= 0 ? 'text-income' : 'text-warning')}>
+                            {row.budget > 0 ? formatCurrency(Math.max(0, row.remaining)) : formatCurrency(row.spent)}
+                          </span>
+                        </div>
+                        <div className="mt-1 flex items-center justify-between gap-2 text-[9px] text-muted-foreground">
+                          <span>{formatCurrency(row.spent)} gasto</span>
+                          <span>{row.budget > 0 ? `${formatCurrency(row.budget)} limite` : 'sem orçamento'}</span>
+                        </div>
+                        {row.budget > 0 && (
+                          <div className="mt-1 h-1 overflow-hidden rounded-full bg-muted">
+                            <div
+                              className={cn('h-full rounded-full', row.overBudget ? 'bg-expense' : row.pct >= 80 ? 'bg-warning' : 'bg-primary')}
+                              style={{ width: `${Math.min(100, row.pct)}%` }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          </button>
-        ))}
+          </div>
+          );
+        })}
       </div>
 
       {/* ─── Add Dialog ─── */}
@@ -462,12 +766,18 @@ export default function CategoriesPage() {
             <div className="space-y-1.5">
               <Label>Orçamento Mensal</Label>
               <CurrencyInput value={budget} onChange={setBudget} />
+              {budgetSplits.length > 0 && (
+                <p className="text-[11px] text-primary">
+                  Com orçamento por conta, o total será {formatCurrency(getSplitTotal(budgetSplits))}.
+                </p>
+              )}
               {monthlyIncome > 0 && budget && (
                 <p className="text-[11px] text-muted-foreground">
-                  {((parseFloat(budget.replace(',', '.')) / monthlyIncome) * 100).toFixed(1)}% da sua renda
+                  {((parseCurrencyInput(budget) / monthlyIncome) * 100).toFixed(1)}% da sua renda
                 </p>
               )}
             </div>
+            <BudgetSplitEditor accounts={accounts} splits={budgetSplits} onChange={setBudgetSplits} />
             <Button type="submit" className="w-full" disabled={addCategory.isPending || !isAddValid}>Criar</Button>
           </form>
         </DialogContent>
@@ -501,7 +811,13 @@ export default function CategoriesPage() {
             <div className="space-y-1.5">
               <Label>Orçamento Mensal</Label>
               <CurrencyInput value={editBudget} onChange={setEditBudget} />
+              {editBudgetSplits.length > 0 && (
+                <p className="text-[11px] text-primary">
+                  Com orçamento por conta, o total será {formatCurrency(getSplitTotal(editBudgetSplits))}.
+                </p>
+              )}
             </div>
+            <BudgetSplitEditor accounts={accounts} splits={editBudgetSplits} onChange={setEditBudgetSplits} />
             <div className="flex gap-2">
               <Button type="submit" className="flex-1" disabled={updateCategory.isPending}>Salvar</Button>
               <Button type="button" variant="destructive" onClick={handleDelete} disabled={deleteCategory.isPending}>

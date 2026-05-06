@@ -11,6 +11,7 @@ import {
 } from '@/lib/softDeleteCompat';
 
 export type Category = Tables<'categories'>;
+export type CategoryAccountBudget = Tables<'category_account_budgets'>;
 export type Account = Tables<'accounts'>;
 export type Income = Tables<'income'>;
 export type Expense = Tables<'expenses'>;
@@ -45,6 +46,26 @@ export function useAccounts() {
         .order('name');
       if (error) throw error;
       return data as Account[];
+    },
+    enabled: !!user,
+  });
+}
+
+export function useCategoryAccountBudgets() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['category-account-budgets', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('category_account_budgets')
+        .select('*')
+        .order('created_at');
+      if (!error) return data as CategoryAccountBudget[];
+      if (isMissingRelationError(error, 'category_account_budgets')) {
+        console.warn('[schema-compat] category_account_budgets ausente; usando orçamento legado por categoria');
+        return [] as CategoryAccountBudget[];
+      }
+      throw error;
     },
     enabled: !!user,
   });
@@ -456,6 +477,46 @@ export function useUpdateCategory() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['categories'] }),
+  });
+}
+
+export function useReplaceCategoryAccountBudgets() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async ({
+      categoryId,
+      budgets,
+    }: {
+      categoryId: string;
+      budgets: Array<{ account_id: string; monthly_budget: number }>;
+    }) => {
+      const { error: deleteError } = await supabase
+        .from('category_account_budgets')
+        .delete()
+        .eq('category_id', categoryId);
+      if (deleteError) {
+        if (isMissingRelationError(deleteError, 'category_account_budgets')) return;
+        throw deleteError;
+      }
+
+      const rows = budgets
+        .filter((budget) => budget.account_id && budget.monthly_budget > 0)
+        .map((budget) => ({
+          category_id: categoryId,
+          account_id: budget.account_id,
+          monthly_budget: budget.monthly_budget,
+          user_id: user!.id,
+        }));
+
+      if (rows.length === 0) return;
+
+      const { error: insertError } = await supabase
+        .from('category_account_budgets')
+        .insert(rows as TablesInsert<'category_account_budgets'>[]);
+      if (insertError) throw insertError;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['category-account-budgets'] }),
   });
 }
 

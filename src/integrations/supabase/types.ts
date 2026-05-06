@@ -86,6 +86,51 @@ export type Database = {
         }
         Relationships: []
       }
+      category_account_budgets: {
+        Row: {
+          account_id: string
+          category_id: string
+          created_at: string
+          id: string
+          monthly_budget: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          category_id: string
+          created_at?: string
+          id?: string
+          monthly_budget?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          category_id?: string
+          created_at?: string
+          id?: string
+          monthly_budget?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "category_account_budgets_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "category_account_budgets_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       credit_card_transactions: {
         Row: {
           amount: number
