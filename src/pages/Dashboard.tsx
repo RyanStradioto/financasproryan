@@ -153,6 +153,31 @@ export default function Dashboard() {
     expenses.filter(e => !isCreditCardExpense(e))
   , [expenses, creditCards, accounts]);
 
+  const scopedIncome = useMemo(
+    () => (accountFocusId === '__all__' ? income : income.filter(i => i.account_id === accountFocusId)),
+    [income, accountFocusId],
+  );
+  const scopedNonCCExpenses = useMemo(
+    () => (accountFocusId === '__all__' ? nonCCExpenses : nonCCExpenses.filter(e => e.account_id === accountFocusId)),
+    [nonCCExpenses, accountFocusId],
+  );
+  const scopedCCTransactions = useMemo(
+    () => (accountFocusId === '__all__' ? ccTransactions : []),
+    [ccTransactions, accountFocusId],
+  );
+  const scopedPrevIncome = useMemo(
+    () => (accountFocusId === '__all__' ? prevIncome : prevIncome.filter(i => i.account_id === accountFocusId)),
+    [prevIncome, accountFocusId],
+  );
+  const scopedPrevNonCCExpenses = useMemo(() => {
+    const base = prevExpenses.filter(e => !isCreditCardExpense(e));
+    return accountFocusId === '__all__' ? base : base.filter(e => e.account_id === accountFocusId);
+  }, [prevExpenses, accountFocusId, creditCards, accounts]);
+  const scopedPrevCCTransactions = useMemo(
+    () => (accountFocusId === '__all__' ? prevCCTransactions : []),
+    [prevCCTransactions, accountFocusId],
+  );
+
   const { categoryByTxId, categoryByMatchKey, categoryByLooseKey } = useMemo(() => {
     const byTxId = new Map<string, string>();
     const byKey = new Map<string, string>();
@@ -184,36 +209,33 @@ export default function Dashboard() {
 
   // ── Core numbers ─────────────────────────────────────────────
   const totalIncome = useMemo(() =>
-    income.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0)
-  , [income]);
+    scopedIncome.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0)
+  , [scopedIncome]);
 
   const totalExpensesPaid = useMemo(() =>
-    nonCCExpenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0)
-  , [nonCCExpenses]);
+    scopedNonCCExpenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0)
+  , [scopedNonCCExpenses]);
 
   const totalExpensesAll = useMemo(() =>
-    nonCCExpenses.reduce((s, e) => s + Number(e.amount), 0)
-  , [nonCCExpenses]);
+    scopedNonCCExpenses.reduce((s, e) => s + Number(e.amount), 0)
+  , [scopedNonCCExpenses]);
 
   const pendingAmount = useMemo(() =>
-    nonCCExpenses.filter(e => e.status !== 'concluido').reduce((s, e) => s + Number(e.amount), 0)
-  , [nonCCExpenses]);
-
-  const balance = accumulatedBalance;
-  const netWorth = accumulatedBalance + investmentTotal;
+    scopedNonCCExpenses.filter(e => e.status !== 'concluido').reduce((s, e) => s + Number(e.amount), 0)
+  , [scopedNonCCExpenses]);
 
   // CC totals for the current bill month
   const totalCCThisMonth = useMemo(() =>
-    ccTransactions.reduce((s, t) => s + Number(t.amount), 0)
-  , [ccTransactions]);
+    scopedCCTransactions.reduce((s, t) => s + Number(t.amount), 0)
+  , [scopedCCTransactions]);
 
   const savings = totalIncome > 0 ? ((totalIncome - totalExpensesPaid) / totalIncome) * 100 : 0;
 
   // ── Category breakdown: nonCC expenses + CC transactions (sem dupla contagem) ───
   const catBreakdown = useMemo(() => {
     const allItems = [
-      ...nonCCExpenses.map(e => ({ category_id: resolveCategoryId(e), amount: Number(e.amount) })),
-      ...ccTransactions.map(t => ({ category_id: t.category_id, amount: Number(t.amount) })),
+      ...scopedNonCCExpenses.map(e => ({ category_id: resolveCategoryId(e), amount: Number(e.amount) })),
+      ...scopedCCTransactions.map(t => ({ category_id: t.category_id, amount: Number(t.amount) })),
     ];
     return categories
       .map(cat => ({
@@ -224,15 +246,15 @@ export default function Dashboard() {
       }))
       .filter(c => c.value > 0)
       .sort((a, b) => b.value - a.value);
-  }, [nonCCExpenses, ccTransactions, categories, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
+  }, [scopedNonCCExpenses, scopedCCTransactions, categories, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
 
   // ── Status breakdown: apenas despesas normais (sem espelhos CC) + Fatura CC ───
   const statusData = useMemo(() => [
-    { name: 'Concluído', value: nonCCExpenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0), fill: 'hsl(160, 84%, 39%)' },
-    { name: 'Pendente',  value: nonCCExpenses.filter(e => e.status === 'pendente').reduce((s, e) => s + Number(e.amount), 0),  fill: 'hsl(38, 92%, 50%)' },
-    { name: 'Agendado',  value: nonCCExpenses.filter(e => e.status === 'agendado').reduce((s, e) => s + Number(e.amount), 0),  fill: 'hsl(217, 91%, 60%)' },
+    { name: 'Concluído', value: scopedNonCCExpenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0), fill: 'hsl(160, 84%, 39%)' },
+    { name: 'Pendente',  value: scopedNonCCExpenses.filter(e => e.status === 'pendente').reduce((s, e) => s + Number(e.amount), 0),  fill: 'hsl(38, 92%, 50%)' },
+    { name: 'Agendado',  value: scopedNonCCExpenses.filter(e => e.status === 'agendado').reduce((s, e) => s + Number(e.amount), 0),  fill: 'hsl(217, 91%, 60%)' },
     ...(totalCCThisMonth > 0 ? [{ name: 'Fatura CC', value: totalCCThisMonth, fill: '#6366f1' }] : []),
-  ].filter(s => s.value > 0), [nonCCExpenses, totalCCThisMonth]);
+  ].filter(s => s.value > 0), [scopedNonCCExpenses, totalCCThisMonth]);
 
   // ── Sparkline data (Last 30 days of the selected month) ─────
   const getDailyTrend = (data: any[], dateField = 'date') => {
@@ -247,39 +269,58 @@ export default function Dashboard() {
     return vals;
   };
 
-  const incomeSparkline = useMemo(() => getDailyTrend(income.filter(i => i.status === 'concluido')), [income]);
-  const expenseSparkline = useMemo(() => getDailyTrend(expenses.filter(e => e.status === 'concluido')), [expenses]);
+  const incomeSparkline = useMemo(() => getDailyTrend(scopedIncome.filter(i => i.status === 'concluido')), [scopedIncome]);
+  const expenseSparkline = useMemo(() => {
+    const items = [
+      ...scopedNonCCExpenses.filter(e => e.status === 'concluido').map(e => ({ date: e.date, amount: Number(e.amount) })),
+      ...scopedCCTransactions.map(t => ({ date: t.date, amount: Number(t.amount) })),
+    ];
+    return getDailyTrend(items);
+  }, [scopedNonCCExpenses, scopedCCTransactions]);
   
   // Balance sparkline (running total)
   const balanceSparkline = useMemo(() => {
-    const all = [...income.map(i => ({...i, amount: Number(i.amount)})), ...expenses.map(e => ({...e, amount: -Number(e.amount)}))]
-      .filter(t => t.status === 'concluido')
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const all = [
+      ...scopedIncome
+        .filter(i => i.status === 'concluido')
+        .map(i => ({ date: i.date, amount: Number(i.amount) })),
+      ...scopedNonCCExpenses
+        .filter(e => e.status === 'concluido')
+        .map(e => ({ date: e.date, amount: -Number(e.amount) })),
+      ...scopedCCTransactions.map(t => ({ date: t.date, amount: -Number(t.amount) })),
+    ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
     let run = 0;
     const vals = all.map(t => { run += t.amount; return run; });
     if (vals.length === 0) return [0, 0];
     if (vals.length === 1) return [0, vals[0]];
     return vals;
-  }, [income, expenses]);
+  }, [scopedIncome, scopedNonCCExpenses, scopedCCTransactions]);
 
   // ── Budget progress for Rings: nonCC expenses + CC transactions por categoria ──
   const budgetsWithData = useMemo(() =>
     categories.filter(c => Number(c.monthly_budget) > 0).map(cat => {
-      const spentRegular = nonCCExpenses.filter(e => resolveCategoryId(e) === cat.id).reduce((s, e) => s + Number(e.amount), 0);
-      const spentCC = ccTransactions.filter(t => t.category_id === cat.id).reduce((s, t) => s + Number(t.amount), 0);
+      const spentRegular = scopedNonCCExpenses.filter(e => resolveCategoryId(e) === cat.id).reduce((s, e) => s + Number(e.amount), 0);
+      const spentCC = scopedCCTransactions.filter(t => t.category_id === cat.id).reduce((s, t) => s + Number(t.amount), 0);
       const spent = spentRegular + spentCC;
       const budget = Number(cat.monthly_budget);
       return { ...cat, spent, budget };
     }).sort((a, b) => b.budget - a.budget)
-  , [categories, nonCCExpenses, ccTransactions, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
+  , [categories, scopedNonCCExpenses, scopedCCTransactions, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
 
   // ── Recent transactions (sem espelhos CC) ───────────────────
   const recentTransactions = useMemo(() => [
-    ...income.map(i => ({ ...i, type: 'income' as const })),
-    ...nonCCExpenses.map(e => ({ ...e, type: 'expense' as const })),
+    ...scopedIncome.map(i => ({ ...i, type: 'income' as const })),
+    ...scopedNonCCExpenses.map(e => ({ ...e, type: 'expense' as const })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5)
-  , [income, nonCCExpenses]);
+  , [scopedIncome, scopedNonCCExpenses]);
+
+  const scopedExpenseHeatmapData = useMemo(() => [
+    ...scopedNonCCExpenses
+      .filter(e => e.status === 'concluido')
+      .map(e => ({ date: e.date, amount: Number(e.amount) })),
+    ...scopedCCTransactions.map(t => ({ date: t.date, amount: Number(t.amount) })),
+  ], [scopedNonCCExpenses, scopedCCTransactions]);
 
   const workTimeTotal = hourlyRate > 0 ? calcWorkTime(totalExpensesPaid) : null;
   const accountInsights = useMemo(() => {
@@ -300,6 +341,15 @@ export default function Dashboard() {
       })
       .sort((a, b) => b.balance - a.balance);
   }, [accounts, income, nonCCExpenses]);
+
+  const focusedAccountInsight = useMemo(
+    () => (accountFocusId === '__all__' ? null : accountInsights.find(({ acc }) => acc.id === accountFocusId) ?? null),
+    [accountInsights, accountFocusId],
+  );
+
+  const balance = accountFocusId === '__all__' ? accumulatedBalance : (focusedAccountInsight?.balance ?? 0);
+  const focusedInvestmentTotal = accountFocusId === '__all__' ? investmentTotal : 0;
+  const netWorth = balance + focusedInvestmentTotal;
   
   // Greeting based on time
   const greeting = useMemo(() => {
@@ -316,20 +366,16 @@ export default function Dashboard() {
 
   // ── Previous month totals (for MoM deltas) ─────────────────────
   const prevTotalIncome = useMemo(() =>
-    prevIncome.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0)
-  , [prevIncome]);
-
-  const prevNonCCExpenses = useMemo(() =>
-    prevExpenses.filter(e => !isCreditCardExpense(e))
-  , [prevExpenses, creditCards, accounts]);
+    scopedPrevIncome.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0)
+  , [scopedPrevIncome]);
 
   const prevTotalExpensesPaid = useMemo(() =>
-    prevNonCCExpenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0)
-  , [prevNonCCExpenses]);
+    scopedPrevNonCCExpenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0)
+  , [scopedPrevNonCCExpenses]);
 
   const prevTotalCC = useMemo(() =>
-    prevCCTransactions.reduce((s, t) => s + Number(t.amount), 0)
-  , [prevCCTransactions]);
+    scopedPrevCCTransactions.reduce((s, t) => s + Number(t.amount), 0)
+  , [scopedPrevCCTransactions]);
 
   const prevTotalAll = prevTotalExpensesPaid + prevTotalCC;
   const currentTotalAll = totalExpensesPaid + totalCCThisMonth;
@@ -362,8 +408,8 @@ export default function Dashboard() {
         const d = new Date(e.date + 'T00:00:00');
         return d.getDate() <= dayOfMonth;
       });
-      const exp = filterByDay(prevNonCCExpenses).filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0);
-      const cc = filterByDay(prevCCTransactions).reduce((s, t) => s + Number(t.amount), 0);
+      const exp = filterByDay(scopedPrevNonCCExpenses).filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0);
+      const cc = filterByDay(scopedPrevCCTransactions).reduce((s, t) => s + Number(t.amount), 0);
       return exp + cc;
     })();
     const paceVsPrev = pctDelta(currentTotalAll, prevSameDayTotal);
@@ -378,7 +424,7 @@ export default function Dashboard() {
       paceVsPrev,
       onTrack: totalBudget > 0 ? spendProgress <= monthProgress + 5 : null,
     };
-  }, [month, categories, currentTotalAll, prevNonCCExpenses, prevCCTransactions]);
+  }, [month, categories, currentTotalAll, scopedPrevNonCCExpenses, scopedPrevCCTransactions]);
 
   // ── Saúde Financeira: 0–100 score combinando vários sinais ─────
   const healthScore = useMemo(() => {
@@ -422,15 +468,15 @@ export default function Dashboard() {
   // ── Top Movimentos do Mês ──────────────────────────────────────
   const topExpenses = useMemo(() => {
     const allExpenses = [
-      ...nonCCExpenses.map(e => ({ id: e.id, description: e.description || 'Despesa', amount: Number(e.amount), date: e.date, category_id: resolveCategoryId(e), kind: 'expense' as const })),
-      ...ccTransactions.map(t => ({ id: t.id, description: t.description || 'Compra', amount: Number(t.amount), date: t.date, category_id: t.category_id, kind: 'cc' as const })),
+      ...scopedNonCCExpenses.map(e => ({ id: e.id, description: e.description || 'Despesa', amount: Number(e.amount), date: e.date, category_id: resolveCategoryId(e), kind: 'expense' as const })),
+      ...scopedCCTransactions.map(t => ({ id: t.id, description: t.description || 'Compra', amount: Number(t.amount), date: t.date, category_id: t.category_id, kind: 'cc' as const })),
     ];
     return allExpenses.sort((a, b) => b.amount - a.amount).slice(0, 5);
-  }, [nonCCExpenses, ccTransactions, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
+  }, [scopedNonCCExpenses, scopedCCTransactions, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
 
   const topIncomes = useMemo(() =>
-    [...income].sort((a, b) => Number(b.amount) - Number(a.amount)).slice(0, 5)
-  , [income]);
+    [...scopedIncome].sort((a, b) => Number(b.amount) - Number(a.amount)).slice(0, 5)
+  , [scopedIncome]);
 
   // ── Comparativo Mensal: bars ───────────────────────────────────
   const monthCompareData = useMemo(() => [
@@ -461,9 +507,9 @@ export default function Dashboard() {
   const allocationData = useMemo(() => {
     const items = [];
     if (balance > 0) items.push({ name: 'Contas', value: balance, fill: 'hsl(160, 84%, 39%)' });
-    if (investmentTotal > 0) items.push({ name: 'Investimentos', value: investmentTotal, fill: 'hsl(217, 91%, 60%)' });
+    if (focusedInvestmentTotal > 0) items.push({ name: 'Investimentos', value: focusedInvestmentTotal, fill: 'hsl(217, 91%, 60%)' });
     return items;
-  }, [balance, investmentTotal]);
+  }, [balance, focusedInvestmentTotal]);
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-fade-in pb-10 w-full max-w-full overflow-x-hidden sm:overflow-visible">
@@ -551,7 +597,7 @@ export default function Dashboard() {
                 <p className="text-[9px] font-bold uppercase tracking-wider">Pendências</p>
               </div>
               <p className="text-sm sm:text-base font-extrabold currency text-warning leading-tight truncate">{maskCurrency(formatCurrency(pendingAmount))}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{nonCCExpenses.filter(e => e.status !== 'concluido').length} {nonCCExpenses.filter(e => e.status !== 'concluido').length === 1 ? 'conta' : 'contas'}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{scopedNonCCExpenses.filter(e => e.status !== 'concluido').length} {scopedNonCCExpenses.filter(e => e.status !== 'concluido').length === 1 ? 'conta' : 'contas'}</p>
             </div>
             {/* Economia */}
             <div className="rounded-2xl border border-income/25 bg-income/[0.06] px-3 py-2.5">
@@ -611,7 +657,7 @@ export default function Dashboard() {
       )}
 
       {/* ── Alertas ────────────────────────────────────────── */}
-      <SmartAlerts expenses={expenses} income={income} categories={categories} />
+      <SmartAlerts expenses={scopedNonCCExpenses} income={scopedIncome} categories={categories} />
 
       {/* ─── KPI Cards Premium ─── */}
       <div className={`grid grid-cols-1 gap-3 min-[390px]:grid-cols-2 sm:gap-4 stagger-1 ${totalCCThisMonth > 0 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
@@ -665,7 +711,9 @@ export default function Dashboard() {
                   {maskCurrency(formatCurrency(netWorth))}
                 </p>
                 <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1.5 leading-tight line-clamp-2">
-                  Contas {maskCurrency(formatCurrency(balance))} · Invest. {maskCurrency(formatCurrency(investmentTotal))}
+                  {accountFocusId === '__all__'
+                    ? `Contas ${maskCurrency(formatCurrency(balance))} · Invest. ${maskCurrency(formatCurrency(focusedInvestmentTotal))}`
+                    : `Conta foco: ${focusedAccountInsight?.acc.name || 'Conta selecionada'}`}
                 </p>
               </div>
             </div>
@@ -692,7 +740,7 @@ export default function Dashboard() {
                     {maskCurrency(formatCurrency(totalCCThisMonth))}
                   </p>
                   <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1.5 leading-tight">
-                    {ccTransactions.filter(t => t.paid).length}/{ccTransactions.length} itens pagos
+                    {scopedCCTransactions.filter(t => t.paid).length}/{scopedCCTransactions.length} itens pagos
                   </p>
                 </div>
               </div>
@@ -900,10 +948,10 @@ export default function Dashboard() {
           </h3>
           <div className="flex-1 flex flex-col items-center justify-center">
             <div className="w-full max-w-[280px]">
-              {expenses.length > 0 ? (
+              {scopedExpenseHeatmapData.length > 0 ? (
                 <WeeklyHeatmap 
                   month={currentMonthDate} 
-                  data={expenses.filter(e => e.status === 'concluido').map(e => ({ date: e.date, amount: Number(e.amount) }))} 
+                  data={scopedExpenseHeatmapData} 
                 />
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
@@ -1105,7 +1153,7 @@ export default function Dashboard() {
 
       {/* ─── NEW: Top Movimentos do Mês ─── */}
       {(topExpenses.length > 0 || topIncomes.length > 0) && (() => {
-        const showAllocationFiller = topExpenses.length > 0 && topIncomes.length === 0 && allocationData.length > 0 && investmentTotal > 0;
+        const showAllocationFiller = topExpenses.length > 0 && topIncomes.length === 0 && allocationData.length > 0 && focusedInvestmentTotal > 0;
         const showIncomeFiller = topIncomes.length > 0 && topExpenses.length === 0;
         return (
         <div className="grid lg:grid-cols-2 gap-6 stagger-4">
@@ -1297,7 +1345,7 @@ export default function Dashboard() {
       })()}
 
       {/* ─── Allocation Patrimônio (skip when already shown as filler) ─── */}
-      {allocationData.length > 0 && investmentTotal > 0 && !(topExpenses.length > 0 && topIncomes.length === 0) && (
+      {allocationData.length > 0 && focusedInvestmentTotal > 0 && !(topExpenses.length > 0 && topIncomes.length === 0) && (
         <div className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm p-5 sm:p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4 gap-3">
             <div className="flex items-center gap-2.5">
@@ -1367,7 +1415,7 @@ export default function Dashboard() {
 
       {/* ── Achievements ───────────────────────────────────── */}
       <div className="stagger-6">
-        <Achievements expenses={expenses} income={income} categories={categories} />
+        <Achievements expenses={scopedNonCCExpenses} income={scopedIncome} categories={categories} />
       </div>
 
       {editing && (
@@ -1381,8 +1429,9 @@ export default function Dashboard() {
       <PendingExpensesDialog 
         open={pendingModalOpen} 
         onOpenChange={setPendingModalOpen} 
-        expenses={expenses} 
+        expenses={scopedNonCCExpenses} 
       />
     </div>
   );
 }
+
