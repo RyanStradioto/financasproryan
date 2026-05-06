@@ -1,4 +1,4 @@
-﻿import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -80,8 +80,8 @@ function getImportedMonths(rows: ParsedRow[]): string[] {
 // â”€â”€ CC payment detection (used in both CSV and OFX parsers) â”€â”€â”€â”€â”€
 
 const CC_PAYMENT_KEYWORDS = [
-  'pagamento de fatura', 'pag fatura', 'fatura cartao', 'fatura cartÃ£o',
-  'pagto fatura', 'pgto cartao', 'pgto cartÃ£o', 'pag cartao', 'pag cartÃ£o',
+  'pagamento de fatura', 'pag fatura', 'fatura cartao', 'fatura cartão',
+  'pagto fatura', 'pgto cartao', 'pgto cartão', 'pag cartao', 'pag cartão',
   'pagamento nubank', 'debito automatico cartao',
 ];
 
@@ -127,15 +127,15 @@ function parseCSV(text: string, rules: ClassificationRule[], source: 'bank' | 'c
   const allLines = text.split(/\r?\n/);
   if (allLines.length < 2) return [];
 
-  // Find the real header line â€” some banks prepend account info rows before the actual header
+  // Find the real header line — some banks prepend account info rows before the actual header
   let headerIdx = 0;
   for (let i = 0; i < Math.min(allLines.length, 10); i++) {
     const lower = allLines[i].toLowerCase();
     if (
       (lower.includes('data') || lower.includes('date')) &&
-      (lower.includes('valor') || lower.includes('histÃ³rico') || lower.includes('historico') ||
-       lower.includes('descriÃ§Ã£o') || lower.includes('descricao') ||
-       lower.includes('crÃ©dito') || lower.includes('credito') || lower.includes('dÃ©bito') || lower.includes('debito'))
+      (lower.includes('valor') || lower.includes('histórico') || lower.includes('historico') ||
+       lower.includes('descrição') || lower.includes('descricao') ||
+       lower.includes('crédito') || lower.includes('credito') || lower.includes('débito') || lower.includes('debito'))
     ) {
       headerIdx = i;
       break;
@@ -147,19 +147,19 @@ function parseCSV(text: string, rules: ClassificationRule[], source: 'bank' | 'c
 
   const headerCols = splitCsvLine(lines[0]).map(c => c.toLowerCase().replace(/\s+/g, ' ').trim());
 
-  // Detect split credit/debit format (Bradesco, ItaÃº, CEF, Santander, etc.)
-  const creditIdx = headerCols.findIndex(c => c.startsWith('crÃ©dito') || c.startsWith('credito') || c === 'cr');
-  const debitIdx  = headerCols.findIndex(c => c.startsWith('dÃ©bito')  || c.startsWith('debito')  || c === 'db');
+  // Detect split credit/debit format (Bradesco, Itaú, CEF, Santander, etc.)
+  const creditIdx = headerCols.findIndex(c => c.startsWith('crédito') || c.startsWith('credito') || c === 'cr');
+  const debitIdx  = headerCols.findIndex(c => c.startsWith('débito')  || c.startsWith('debito')  || c === 'db');
   const dateIdx   = headerCols.findIndex(c => c === 'data' || c === 'date' || c === 'dt' || c.startsWith('data'));
   const descIdx   = headerCols.findIndex(c =>
-    c.includes('histÃ³rico') || c.includes('historico') ||
-    c.includes('descriÃ§Ã£o') || c.includes('descricao') ||
-    c.includes('memo') || c.includes('lanÃ§amento') || c.includes('lancamento')
+    c.includes('histórico') || c.includes('historico') ||
+    c.includes('descrição') || c.includes('descricao') ||
+    c.includes('memo') || c.includes('lançamento') || c.includes('lancamento')
   );
 
   const isSplitFormat = creditIdx !== -1 && debitIdx !== -1;
   const isNubank = headerCols.some(c => c.includes('valor')) &&
-    (headerCols.some(c => c.includes('identificador')) || headerCols.some(c => c.includes('tÃ­tulo') || c.includes('titulo')));
+    (headerCols.some(c => c.includes('identificador')) || headerCols.some(c => c.includes('título') || c.includes('titulo')));
 
   const rows: ParsedRow[] = [];
 
@@ -180,12 +180,12 @@ function parseCSV(text: string, rules: ClassificationRule[], source: 'bank' | 'c
     let isIncomeRow = false;
 
     if (isSplitFormat) {
-      // Bradesco / ItaÃº / CEF style: Date | Desc | [Docto] | CrÃ©dito | DÃ©bito | Saldo
+      // Bradesco / Itaú / CEF style: Date | Desc | [Docto] | Crédito | Débito | Saldo
       const dIdx = dateIdx >= 0 ? dateIdx : 0;
       const hIdx = descIdx >= 0 ? descIdx : (dIdx === 0 ? 1 : 0);
 
       date = parseDateStr(cols[dIdx] ?? '');
-      description = (cols[hIdx] ?? '').trim() || 'TransaÃ§Ã£o';
+      description = (cols[hIdx] ?? '').trim() || 'Transação';
 
       const creditVal = parseMoney(cols[creditIdx] ?? '');
       const debitVal  = parseMoney(cols[debitIdx]  ?? '');
@@ -202,19 +202,19 @@ function parseCSV(text: string, rules: ClassificationRule[], source: 'bank' | 'c
     } else if (isNubank) {
       date = parseDateStr(cols[0]);
       rawAmount = cols[1];
-      description = (cols.length >= 4 ? cols[3] : cols[2]) || 'TransaÃ§Ã£o';
+      description = (cols.length >= 4 ? cols[3] : cols[2]) || 'Transação';
     } else {
-      // Generic fallback â€” only accept values that have a decimal separator (avoids picking up doc/transaction IDs)
+      // Generic fallback — only accept values that have a decimal separator (avoids picking up doc/transaction IDs)
       date = new Date().toISOString().split('T')[0];
       rawAmount = '0';
-      description = 'TransaÃ§Ã£o importada';
+      description = 'Transação importada';
       let gotAmount = false;
       for (const col of cols) {
         if (!col) continue;
         if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(col) || /^\d{4}-\d{2}-\d{2}/.test(col)) {
           date = parseDateStr(col); continue;
         }
-        // Must contain comma or period acting as decimal â€” pure integers are likely doc numbers
+        // Must contain comma or period acting as decimal — pure integers are likely doc numbers
         if (!gotAmount && /[,.]/.test(col) && col.length <= 15) {
           const n = parseMoney(col);
           if (n !== null) { rawAmount = col; gotAmount = true; continue; }
@@ -250,7 +250,7 @@ function parseCSV(text: string, rules: ClassificationRule[], source: 'bank' | 'c
       creditCardId: '',
       selected: true,
       confidence: result.confidence,
-      classificationReason: source === 'cc' ? 'Fatura do cartÃ£o' : result.reason,
+      classificationReason: source === 'cc' ? 'Fatura do cartão' : result.reason,
       isDuplicate: false,
       source,
     });
@@ -261,7 +261,7 @@ function parseCSV(text: string, rules: ClassificationRule[], source: 'bank' | 'c
 // â”€â”€ OFX parser â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const CC_CREDIT_SKIP_KEYWORDS = [
-  'pagamento recebido', 'ajuste a crÃ©dito',
+  'pagamento recebido', 'ajuste a crédito',
 ];
 
 function shouldSkipCCCredit(description: string): boolean {
@@ -290,13 +290,13 @@ function parseOFX(text: string, rules: ClassificationRule[], categories: Array<{
       : new Date().toISOString().split('T')[0];
     const rawAmount = parseFloat(get('TRNAMT')) || 0;
     if (rawAmount === 0) continue;
-    const description = get('MEMO') || get('NAME') || 'TransaÃ§Ã£o OFX';
+    const description = get('MEMO') || get('NAME') || 'Transação OFX';
     const fitId = get('FITID');
     const trnType = get('TRNTYPE').toUpperCase();
 
     // For credit card OFX: skip "Pagamento recebido" and other credits (they're not purchases)
     if (isCreditCard && trnType === 'CREDIT' && shouldSkipCCCredit(description)) {
-      console.log('[OFX] Ignorando crÃ©dito no cartÃ£o:', description, rawAmount);
+      console.log('[OFX] Ignorando crédito no cartão:', description, rawAmount);
       continue;
     }
 
@@ -308,7 +308,7 @@ function parseOFX(text: string, rules: ClassificationRule[], categories: Array<{
     
     if (isCreditCard) {
       rowType = 'expense';
-      classReason = 'Fatura do cartÃ£o';
+      classReason = 'Fatura do cartão';
     } else if (detectCCPayment(description)) {
       rowType = 'cc_payment';
       classReason = 'Pagamento de fatura detectado';
@@ -356,7 +356,7 @@ const TYPE_LABELS: Record<RowType, string> = {
   income: 'Receita',
   expense: 'Despesa',
   investment: 'Investimento',
-  cc_payment: 'Fatura CartÃ£o',
+  cc_payment: 'Fatura Cartão',
 };
 
 const TYPE_COLORS: Record<RowType, string> = {
@@ -416,7 +416,7 @@ export default function ImportPage() {
         ...row,
         isDuplicate,
         selected: !isDuplicate,
-        classificationReason: isDuplicate ? 'âš ï¸ JÃ¡ importado no mesmo perÃ­odo' : row.classificationReason,
+        classificationReason: isDuplicate ? '� ️ Já importado no mesmo período' : row.classificationReason,
         confidence: isDuplicate ? 'low' : row.confidence,
       };
     });
@@ -426,7 +426,7 @@ export default function ImportPage() {
     setForceImport(true);
     setBankRows(prev => prev.map(r => r.isDuplicate ? { ...r, selected: true } : r));
     setCcRows(prev => prev.map(r => r.isDuplicate ? { ...r, selected: true } : r));
-    toast.info('Todas as transaÃ§Ãµes foram marcadas. Revise e clique Importar.');
+    toast.info('Todas as transações foram marcadas. Revise e clique Importar.');
   }, []);
 
   const handleFileUpload = useCallback((slot: 'bank' | 'cc') => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -439,7 +439,7 @@ export default function ImportPage() {
       const result = parseFile(text, file.name, classificationRules, undefined, categories);
       
       if (result.rows.length === 0) {
-        toast.error('Nenhuma transaÃ§Ã£o encontrada no arquivo');
+        toast.error('Nenhuma transação encontrada no arquivo');
         return;
       }
 
@@ -450,8 +450,8 @@ export default function ImportPage() {
         setCcFileName(file.name);
         setCcRows(result.rows);
         if (result.billMonth) setCcBillMonth(result.billMonth);
-        setAutoDetectedInfo(`ðŸ“‹ "${file.name}" foi detectado como fatura de cartÃ£o de crÃ©dito e movido para o slot correto.`);
-        toast.success(`${result.rows.length} transaÃ§Ãµes da fatura lidas (auto-detectado como cartÃ£o de crÃ©dito)`);
+        setAutoDetectedInfo(`📋 "${file.name}" foi detectado como fatura de cartão de crédito e movido para o slot correto.`);
+        toast.success(`${result.rows.length} transações da fatura lidas (auto-detectado como cartão de crédito)`);
         e.target.value = '';
         return;
       }
@@ -461,10 +461,10 @@ export default function ImportPage() {
         setBankFileName(file.name);
         const marked = markRows(result.rows);
         setBankRows(marked);
-        setAutoDetectedInfo(`ðŸ“‹ "${file.name}" foi detectado como extrato bancÃ¡rio e movido para o slot correto.`);
+        setAutoDetectedInfo(`📋 "${file.name}" foi detectado como extrato bancário e movido para o slot correto.`);
         const dupes = marked.filter(r => r.isDuplicate).length;
         const ccPay = marked.filter(r => r.type === 'cc_payment').length;
-        toast.success(`${result.rows.length} transaÃ§Ãµes lidas (auto-detectado como extrato bancÃ¡rio)${dupes > 0 ? ` (${dupes} duplicadas)` : ''}${ccPay > 0 ? ` â€” ${ccPay} pagamento(s) de fatura` : ''}`);
+        toast.success(`${result.rows.length} transações lidas (auto-detectado como extrato bancário)${dupes > 0 ? ` (${dupes} duplicadas)` : ''}${ccPay > 0 ? ` — ${ccPay} pagamento(s) de fatura` : ''}`);
         e.target.value = '';
         return;
       }
@@ -474,14 +474,14 @@ export default function ImportPage() {
         setCcFileName(file.name);
         setCcRows(result.rows);
         if (result.billMonth) setCcBillMonth(result.billMonth);
-        toast.success(`${result.rows.length} transaÃ§Ãµes da fatura lidas`);
+        toast.success(`${result.rows.length} transações da fatura lidas`);
       } else {
         setBankFileName(file.name);
         const marked = markRows(result.rows);
         setBankRows(marked);
         const dupes = marked.filter(r => r.isDuplicate).length;
         const ccPay = marked.filter(r => r.type === 'cc_payment').length;
-        toast.success(`${result.rows.length} transaÃ§Ãµes lidas${dupes > 0 ? ` (${dupes} duplicadas)` : ''}${ccPay > 0 ? ` â€” ${ccPay} pagamento(s) de fatura` : ''}`);
+        toast.success(`${result.rows.length} transações lidas${dupes > 0 ? ` (${dupes} duplicadas)` : ''}${ccPay > 0 ? ` — ${ccPay} pagamento(s) de fatura` : ''}`);
       }
       
       setAutoDetectedInfo('');
@@ -507,7 +507,7 @@ export default function ImportPage() {
     const ccSelected = ccRows.filter(r => r.selected);
     const allSelected = [...bankSelected, ...ccSelected];
 
-    if (allSelected.length === 0) { toast.error('Selecione ao menos uma transaÃ§Ã£o'); return; }
+    if (allSelected.length === 0) { toast.error('Selecione ao menos uma transação'); return; }
 
     const expenseRows = bankSelected.filter(r => r.type === 'expense');
     const incomeRows  = bankSelected.filter(r => r.type === 'income');
@@ -563,7 +563,7 @@ export default function ImportPage() {
       }
     }
 
-    // â”€â”€ Fatura do cartÃ£o â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Fatura do cartão ──────────────────────────────────────────
     if (ccSelected.length > 0) {
       const defaultCardId = ccSelected[0]?.creditCardId || creditCards[0]?.id;
       if (defaultCardId) {
@@ -587,7 +587,7 @@ export default function ImportPage() {
           paid: false,
         }));
         
-        console.log('[Import] Inserindo transaÃ§Ãµes CC em lote:', ccPayload.length, 'bill_month:', effectiveBillMonth);
+        console.log('[Import] Inserindo transações CC em lote:', ccPayload.length, 'bill_month:', effectiveBillMonth);
         const { error } = await sb.from('credit_card_transactions').insert(ccPayload);
         if (error) { 
           console.error('[Import] Erro CC:', error); 
@@ -615,13 +615,13 @@ export default function ImportPage() {
           console.log('[Import] CC OK');
         }
       } else {
-        // No credit card registered â€” save as regular expenses
+        // No credit card registered — save as regular expenses
         const payload = ccSelected.map(r => ({
           date: r.date, description: r.description, amount: r.amount,
           category_id: r.categoryId || null, status: 'concluido', user_id: user!.id,
         }));
         const { error } = await sb.from('expenses').insert(payload);
-        if (error) errorMessages.push(`Fatura (sem cartÃ£o): ${error.message}`);
+        if (error) errorMessages.push(`Fatura (sem cartão): ${error.message}`);
         else successCount += ccSelected.length;
       }
     }
@@ -630,7 +630,7 @@ export default function ImportPage() {
     if (errorMessages.length > 0) {
       console.error('[Import] Erros:', errorMessages);
       toast.error(
-        `âš ï¸ ${successCount}/${allSelected.length} importadas. Erro: ${errorMessages[0]}`,
+        `⚠️ ${successCount}/${allSelected.length} importadas. Erro: ${errorMessages[0]}`,
         { duration: 10000 }
       );
     }
@@ -648,7 +648,7 @@ export default function ImportPage() {
         const [y, mo] = m.split('-');
         return `${['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][+mo-1]}/${y}`;
       }).join(', ');
-      toast.success(`âœ… ${successCount} transaÃ§Ãµes salvas! PerÃ­odo: ${monthsLabel}.`, { duration: 8000 });
+      toast.success(`✅ ${successCount} transações salvas! Período: ${monthsLabel}.`, { duration: 8000 });
       setBankRows([]); setCcRows([]); setBankFileName(''); setCcFileName(''); setCcBillMonth(''); setForceImport(false); setAutoDetectedInfo('');
     }
   };
@@ -696,11 +696,11 @@ export default function ImportPage() {
                 className="accent-primary" />
             </th>
             <th className="text-left py-3 px-2 font-medium text-muted-foreground">Data</th>
-            <th className="text-left py-3 px-2 font-medium text-muted-foreground">DescriÃ§Ã£o</th>
+            <th className="text-left py-3 px-2 font-medium text-muted-foreground">Descrição</th>
             <th className="text-left py-3 px-2 font-medium text-muted-foreground">Tipo</th>
             <th className="text-right py-3 px-2 font-medium text-muted-foreground">Valor</th>
             <th className="text-left py-3 px-2 font-medium text-muted-foreground">
-              {showCCColumn ? 'CartÃ£o / Categoria' : 'Categoria / Ativo'}
+              {showCCColumn ? 'Cartão / Categoria' : 'Categoria / Ativo'}
             </th>
           </tr>
         </thead>
@@ -714,7 +714,7 @@ export default function ImportPage() {
             }`}>
               <td className="py-2 px-2">
                 {isCCPaymentReplaced
-                  ? <span className="block w-4 h-4 text-center text-warning/50 text-xs leading-4">â€”</span>
+                  ? <span className="block w-4 h-4 text-center text-warning/50 text-xs leading-4">—</span>
                   : <input type="checkbox" checked={row.selected} onChange={() => toggleRow(setter, i)} className="accent-primary" />
                 }
               </td>
@@ -722,10 +722,10 @@ export default function ImportPage() {
               <td className="py-2 px-2 max-w-[180px]">
                 <p className="font-medium truncate">{row.description}</p>
                 {isCCPaymentReplaced ? (
-                  <p className="text-[10px] text-warning/70">â†© substituÃ­do pelos itens da fatura</p>
+                  <p className="text-[10px] text-warning/70">↩ substituído pelos itens da fatura</p>
                 ) : (
                   <p className={`text-[10px] ${CONFIDENCE_COLORS[row.confidence]}`}>
-                    {row.isDuplicate ? 'ðŸ”' : row.confidence === 'high' ? 'âœ…' : row.confidence === 'medium' ? 'âš ï¸' : 'â“'} {row.classificationReason}
+                    {row.isDuplicate ? '🔁' : row.confidence === 'high' ? '✅' : row.confidence === 'medium' ? '� ️' : '❓'} {row.classificationReason}
                   </p>
                 )}
               </td>
@@ -738,7 +738,7 @@ export default function ImportPage() {
                     <SelectItem value="expense">Despesa</SelectItem>
                     <SelectItem value="income">Receita</SelectItem>
                     <SelectItem value="investment">Investimento</SelectItem>
-                    {!showCCColumn && <SelectItem value="cc_payment">Fatura CartÃ£o</SelectItem>}
+                    {!showCCColumn && <SelectItem value="cc_payment">Fatura Cartão</SelectItem>}
                   </SelectContent>
                 </Select>
               </td>
@@ -751,7 +751,7 @@ export default function ImportPage() {
                 {showCCColumn ? (
                   <div className="space-y-1">
                     <Select value={row.creditCardId} onValueChange={v => updateRow(setter, i, 'creditCardId', v)}>
-                      <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="CartÃ£o..." /></SelectTrigger>
+                      <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Cartão..." /></SelectTrigger>
                       <SelectContent>
                         {creditCards.map(cc => <SelectItem key={cc.id} value={cc.id}>{cc.icon} {cc.name}</SelectItem>)}
                       </SelectContent>
@@ -767,7 +767,7 @@ export default function ImportPage() {
                   <>
                     {(row.type === 'expense' || row.type === 'cc_payment') && (
                       <Select value={row.categoryId} onValueChange={v => updateRow(setter, i, 'categoryId', v)}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="â€”" /></SelectTrigger>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
                         <SelectContent>
                           {activeCategories.map(c => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
                         </SelectContent>
@@ -796,7 +796,7 @@ export default function ImportPage() {
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Importar Extrato</h1>
-        <p className="text-sm text-muted-foreground">Importe o extrato do banco e a fatura do cartÃ£o â€” o app detecta automaticamente o tipo do arquivo OFX</p>
+        <p className="text-sm text-muted-foreground">Importe o extrato do banco e a fatura do cartão — o app detecta automaticamente o tipo do arquivo OFX</p>
       </div>
 
       {/* Instructions */}
@@ -806,10 +806,10 @@ export default function ImportPage() {
         </div>
         <ol className="text-xs text-muted-foreground space-y-1 ml-6 list-decimal">
           <li><strong>Extrato do banco:</strong> Exporte o OFX/CSV do seu banco (conta corrente)</li>
-          <li><strong>Fatura do cartÃ£o:</strong> Exporte o OFX/CSV da fatura do cartÃ£o de crÃ©dito</li>
-          <li>O app <strong>detecta automaticamente</strong> se o arquivo Ã© extrato ou fatura (pode soltar em qualquer slot!)</li>
-          <li>"Pagamento de fatura" no extrato Ã© <strong>substituÃ­do pelos itens detalhados</strong> da fatura</li>
-          <li>TransaÃ§Ãµes duplicadas sÃ£o identificadas e desmarcadas automaticamente</li>
+          <li><strong>Fatura do cartão:</strong> Exporte o OFX/CSV da fatura do cartão de crédito</li>
+          <li>O app <strong>detecta automaticamente</strong> se o arquivo é extrato ou fatura (pode soltar em qualquer slot!)</li>
+          <li>"Pagamento de fatura" no extrato é <strong>substituído pelos itens detalhados</strong> da fatura</li>
+          <li>Transações duplicadas são identificadas e desmarcadas automaticamente</li>
         </ol>
       </div>
 
@@ -824,19 +824,19 @@ export default function ImportPage() {
       {/* Upload areas */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {renderUploadArea(
-          bankFileName ? 'Extrato carregado âœ“' : 'Extrato do Banco',
+          bankFileName ? 'Extrato carregado ✓' : 'Extrato do Banco',
           <Building2 className={`w-6 h-6 ${bankFileName ? 'text-primary' : 'text-muted-foreground'}`} />,
           bankFileName,
           handleFileUpload('bank'),
-          'CSV ou OFX do extrato bancÃ¡rio do mÃªs',
+          'CSV ou OFX do extrato bancário do mês',
           !!bankFileName
         )}
         {renderUploadArea(
-          ccFileName ? 'Fatura carregada âœ“' : 'Fatura do CartÃ£o',
+          ccFileName ? 'Fatura carregada ✓' : 'Fatura do Cartão',
           <CreditCard className={`w-6 h-6 ${ccFileName ? 'text-primary' : 'text-muted-foreground'}`} />,
           ccFileName,
           handleFileUpload('cc'),
-          'CSV ou OFX da fatura do cartÃ£o de crÃ©dito',
+          'CSV ou OFX da fatura do cartão de crédito',
           !!ccFileName
         )}
       </div>
@@ -847,7 +847,7 @@ export default function ImportPage() {
           {ccBillMonth && (
             <div className="rounded-lg bg-muted/40 border border-border px-4 py-2 text-sm flex items-center gap-2">
               <CreditCard className="w-4 h-4 text-muted-foreground" />
-              <span>MÃªs da fatura detectado: <strong>{ccBillMonth.split('-').reverse().join('/')}</strong></span>
+              <span>Mês da fatura detectado: <strong>{ccBillMonth.split('-').reverse().join('/')}</strong></span>
             </div>
           )}
 
@@ -860,20 +860,20 @@ export default function ImportPage() {
               </div>
               <div className="grid grid-cols-1 gap-2 mb-3 min-[430px]:grid-cols-2">
                 <div className="bg-background/60 rounded-lg p-2.5 border border-border/50">
-                  <p className="text-[11px] text-muted-foreground mb-0.5">ðŸ’³ Fatura do cartÃ£o</p>
+                  <p className="text-[11px] text-muted-foreground mb-0.5">💳 Fatura do cartão</p>
                   <p className="font-semibold text-foreground">{formatCurrency(ccTotal)}</p>
                   <p className="text-[11px] text-muted-foreground">{ccItemCount} compra{ccItemCount !== 1 ? 's' : ''}</p>
                 </div>
                 <div className="bg-background/60 rounded-lg p-2.5 border border-border/50">
-                  <p className="text-[11px] text-muted-foreground mb-0.5">ðŸ¦ Pago no extrato</p>
+                  <p className="text-[11px] text-muted-foreground mb-0.5">🏦 Pago no extrato</p>
                   <p className="font-semibold text-warning">{formatCurrency(bankCCPayment)}</p>
-                  <p className="text-[11px] text-muted-foreground">{ccPaymentCount} lanÃ§amento{ccPaymentCount !== 1 ? 's' : ''} â€” excluÃ­do{ccPaymentCount !== 1 ? 's' : ''}</p>
+                  <p className="text-[11px] text-muted-foreground">{ccPaymentCount} lançamento{ccPaymentCount !== 1 ? 's' : ''} — excluído{ccPaymentCount !== 1 ? 's' : ''}</p>
                 </div>
               </div>
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                âœ… Os itens da fatura serÃ£o importados individualmente. Os pagamentos genÃ©ricos do extrato sÃ£o ignorados para evitar duplicaÃ§Ã£o.
+                ✅ Os itens da fatura serão importados individualmente. Os pagamentos genéricos do extrato são ignorados para evitar duplicação.
                 {Math.abs(ccTotal - bankCCPayment) > 1 && (
-                  <> A diferenÃ§a de <span className="text-foreground font-medium">{formatCurrency(Math.abs(ccTotal - bankCCPayment))}</span> Ã© normal â€” pode incluir parcelas de meses anteriores ou coberturas de ciclos diferentes.</>
+                  <> A diferença de <span className="text-foreground font-medium">{formatCurrency(Math.abs(ccTotal - bankCCPayment))}</span> é normal — pode incluir parcelas de meses anteriores ou coberturas de ciclos diferentes.</>
                 )}
               </p>
             </div>
@@ -884,13 +884,13 @@ export default function ImportPage() {
             <div className="rounded-lg bg-warning/5 border border-warning/20 px-4 py-3 text-sm flex items-start gap-3 text-warning">
               <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p><strong>{bankRows.filter(r => r.isDuplicate).length} transaÃ§Ã£o(Ãµes) detectada(s) como jÃ¡ importadas</strong> e desmarcadas automaticamente.</p>
-                <p className="text-xs mt-1 text-muted-foreground">Se tiver certeza que <strong>nÃ£o estÃ£o no banco</strong>, clique abaixo para forÃ§ar a importaÃ§Ã£o.</p>
+                <p><strong>{bankRows.filter(r => r.isDuplicate).length} transação(ões) detectada(s) como já importadas</strong> e desmarcadas automaticamente.</p>
+                <p className="text-xs mt-1 text-muted-foreground">Se tiver certeza que <strong>não estão no banco</strong>, clique abaixo para forçar a importação.</p>
                 <button
                   onClick={handleForceImport}
                   className="mt-2 text-xs underline text-warning hover:text-warning/80 transition-colors"
                 >
-                  ForÃ§ar reimportaÃ§Ã£o de todas (ignorar dedup)
+                  Forçar reimportação de todas (ignorar dedup)
                 </button>
               </div>
             </div>
@@ -899,8 +899,8 @@ export default function ImportPage() {
           {/* Summary + actions */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-col gap-1 text-sm text-muted-foreground sm:flex-row sm:flex-wrap sm:gap-4">
-              {bankFileName && <span>ðŸ¦ <span className="font-medium text-foreground">{bankFileName}</span> ({bankRows.length})</span>}
-              {ccFileName && <span>ðŸ’³ <span className="font-medium text-foreground">{ccFileName}</span> ({ccRows.length})</span>}
+              {bankFileName && <span>🏦 <span className="font-medium text-foreground">{bankFileName}</span> ({bankRows.length})</span>}
+              {ccFileName && <span>💳 <span className="font-medium text-foreground">{ccFileName}</span> ({ccRows.length})</span>}
               <span className="font-medium text-foreground">{totalSelected} selecionadas</span>
             </div>
             <div className="grid grid-cols-2 gap-2 sm:flex">
@@ -928,7 +928,7 @@ export default function ImportPage() {
                 {bankRows.length > 0 ? renderTable(bankRows, setBankRows, false) : (
                   <div className="stat-card flex flex-col items-center py-8 text-muted-foreground">
                     <Building2 className="w-8 h-8 mb-2 opacity-40" />
-                    <p className="text-sm">Nenhum extrato carregado â€” use a Ã¡rea acima</p>
+                    <p className="text-sm">Nenhum extrato carregado — use a área acima</p>
                   </div>
                 )}
               </TabsContent>

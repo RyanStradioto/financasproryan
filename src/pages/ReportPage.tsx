@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useIncome, useExpenses, useCategories, useAccounts } from '@/hooks/useFinanceData';
 import { useCreditCardTransactions } from '@/hooks/useCreditCards';
 import { formatCurrency, getMonthLabel } from '@/lib/format';
@@ -87,7 +87,7 @@ export default function ReportPage() {
     return m && m >= startMonth && m <= endMonth;
   });
 
-  // Filter out CC mirror rows and bill payment markers â€” the actual CC charges come in via
+  // Filter out CC mirror rows and bill payment markers — the actual CC charges come in via
   // allCCTransactions grouped by bill_month. Without this, CC purchases get double-counted
   // (mirror in expenses + tx in cc_transactions).
   const isCCMirror = (notes: string | null | undefined) =>
@@ -144,7 +144,7 @@ export default function ReportPage() {
     };
   });
 
-  // Top 10 â€” combine biggest individual movements from both sources
+  // Top 10 — combine biggest individual movements from both sources
   const topExpenses = [
     ...expensesInRange.filter(e => e.status === 'concluido').map(e => ({
       id: e.id,
@@ -188,7 +188,7 @@ export default function ReportPage() {
 
   const periodLabel = startMonth === endMonth
     ? getMonthLabel(startMonth)
-    : `${getMonthLabel(startMonth)} â€” ${getMonthLabel(endMonth)}`;
+    : `${getMonthLabel(startMonth)} — ${getMonthLabel(endMonth)}`;
 
   const handleExportPDF = () => {
     const doc = new jsPDF();
@@ -335,10 +335,10 @@ export default function ReportPage() {
               <FileText className="w-6 h-6 sm:w-7 sm:h-7 text-info" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-none">RelatÃ³rio Financeiro</h1>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-none">Relatório Financeiro</h1>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 flex items-center gap-2 flex-wrap">
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-info animate-pulse" />
-                Resumo detalhado e exportÃ¡vel em PDF
+                Resumo detalhado e exportável em PDF
               </p>
             </div>
           </div>
@@ -352,14 +352,14 @@ export default function ReportPage() {
             <Calendar className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <h3 className="text-sm font-bold leading-tight">Selecionar PerÃ­odo</h3>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Escolha o intervalo de meses para anÃ¡lise</p>
+            <h3 className="text-sm font-bold leading-tight">Selecionar Período</h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Escolha o intervalo de meses para análise</p>
           </div>
         </div>
 
         <div className="grid sm:grid-cols-[1fr_1fr_auto_auto] items-end gap-3">
           <div className="space-y-1.5">
-            <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">MÃªs Inicial</Label>
+            <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Mês Inicial</Label>
             <Select value={startMonth} onValueChange={setStartMonth}>
               <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -370,7 +370,7 @@ export default function ReportPage() {
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">MÃªs Final</Label>
+            <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Mês Final</Label>
             <Select value={endMonth} onValueChange={setEndMonth}>
               <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -382,7 +382,7 @@ export default function ReportPage() {
           </div>
           <Button onClick={() => setGenerated(true)} className="h-10 rounded-xl gap-2 bg-primary hover:bg-primary/90">
             <Sparkles className="w-4 h-4" />
-            Gerar RelatÃ³rio
+            Gerar Relatório
           </Button>
           {generated && (
             <Button onClick={handleExportPDF} variant="outline" className="h-10 rounded-xl gap-2 border-info/30 text-info hover:bg-info/10">
@@ -400,8 +400,8 @@ export default function ReportPage() {
           <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-info/15 to-info/5 flex items-center justify-center mx-auto mb-4 border border-info/15 shadow-inner">
             <BarChart3 className="w-10 h-10 text-info/50" />
           </div>
-          <p className="font-extrabold text-lg mb-1">Pronto para gerar seu relatÃ³rio</p>
-          <p className="text-sm text-muted-foreground max-w-sm mx-auto">Escolha o perÃ­odo acima e clique em <span className="font-semibold text-foreground">Gerar RelatÃ³rio</span> para visualizar anÃ¡lises completas</p>
+          <p className="font-extrabold text-lg mb-1">Pronto para gerar seu relatório</p>
+          <p className="text-sm text-muted-foreground max-w-sm mx-auto">Escolha o período acima e clique em <span className="font-semibold text-foreground">Gerar Relatório</span> para visualizar análises completas</p>
         </div>
       )}
 
@@ -417,13 +417,13 @@ export default function ReportPage() {
                   <FileText className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">PerÃ­odo analisado</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Período analisado</p>
                   <p className="text-base sm:text-lg font-extrabold capitalize">{periodLabel}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-card/70 border border-border/60 text-[11px] font-semibold">
-                  <Calendar className="w-3 h-3" /> {monthsInRange.length} {monthsInRange.length === 1 ? 'mÃªs' : 'meses'}
+                  <Calendar className="w-3 h-3" /> {monthsInRange.length} {monthsInRange.length === 1 ? 'mês' : 'meses'}
                 </span>
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-income/10 border border-income/20 text-income text-[11px] font-semibold">
                   <TrendingUp className="w-3 h-3" /> {incomeInRange.length} receitas
@@ -482,7 +482,7 @@ export default function ReportPage() {
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Saldo</span>
                 </div>
                 <p className={cn('text-lg sm:text-xl font-extrabold currency tabular-nums whitespace-nowrap truncate', balance >= 0 ? 'text-info' : 'text-expense')}>{formatCurrency(balance)}</p>
-                <p className="text-[10px] text-muted-foreground mt-1.5">{balance >= 0 ? 'âœ… PerÃ­odo positivo' : 'âš ï¸ PerÃ­odo negativo'}</p>
+                <p className="text-[10px] text-muted-foreground mt-1.5">{balance >= 0 ? '✅ Período positivo' : '⚠️ Período negativo'}</p>
               </div>
             </div>
 
@@ -496,7 +496,7 @@ export default function ReportPage() {
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Economia</span>
                 </div>
                 <p className={cn('text-lg sm:text-xl font-extrabold tabular-nums', savingsRate >= 0 ? 'text-income' : 'text-expense')}>{savingsRate.toFixed(1)}%</p>
-                <p className="text-[10px] text-muted-foreground mt-1.5">{savingsRate >= 20 ? 'ðŸŽ¯ Acima da meta' : savingsRate >= 10 ? 'ðŸ‘ No caminho' : 'âš ï¸ Aumente'}</p>
+                <p className="text-[10px] text-muted-foreground mt-1.5">{savingsRate >= 20 ? '🎯 Acima da meta' : savingsRate >= 10 ? '👍 No caminho' : '⚠️ Aumente'}</p>
               </div>
             </div>
           </div>
@@ -507,14 +507,14 @@ export default function ReportPage() {
               <div className="rounded-2xl border border-border/60 bg-card/50 p-3.5">
                 <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
                   <ArrowUpRight className="w-3 h-3 text-income" />
-                  <p className="text-[10px] font-bold uppercase tracking-wider">Receita mÃ©dia/mÃªs</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider">Receita média/mês</p>
                 </div>
                 <p className="text-base font-extrabold currency text-income tabular-nums whitespace-nowrap truncate">{formatCurrency(avgIncome)}</p>
               </div>
               <div className="rounded-2xl border border-border/60 bg-card/50 p-3.5">
                 <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
                   <ArrowDownRight className="w-3 h-3 text-expense" />
-                  <p className="text-[10px] font-bold uppercase tracking-wider">Despesa mÃ©dia/mÃªs</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider">Despesa média/mês</p>
                 </div>
                 <p className="text-base font-extrabold currency text-expense tabular-nums whitespace-nowrap truncate">{formatCurrency(avgExpense)}</p>
               </div>
@@ -522,7 +522,7 @@ export default function ReportPage() {
                 <div className="rounded-2xl border border-income/25 bg-income/[0.04] p-3.5">
                   <div className="flex items-center gap-1.5 text-income mb-1">
                     <Award className="w-3 h-3" />
-                    <p className="text-[10px] font-bold uppercase tracking-wider">Melhor mÃªs</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider">Melhor mês</p>
                   </div>
                   <p className="text-sm font-extrabold capitalize">{bestMonth.month}</p>
                   <p className="text-[10px] currency font-semibold text-income tabular-nums">{formatCurrency(bestMonth.saldo)}</p>
@@ -532,7 +532,7 @@ export default function ReportPage() {
                 <div className="rounded-2xl border border-expense/25 bg-expense/[0.04] p-3.5">
                   <div className="flex items-center gap-1.5 text-expense mb-1">
                     <Flame className="w-3 h-3" />
-                    <p className="text-[10px] font-bold uppercase tracking-wider">Pior mÃªs</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider">Pior mês</p>
                   </div>
                   <p className="text-sm font-extrabold capitalize">{worstMonth.month}</p>
                   <p className="text-[10px] currency font-semibold text-expense tabular-nums">{formatCurrency(worstMonth.saldo)}</p>
@@ -541,7 +541,7 @@ export default function ReportPage() {
             </div>
           )}
 
-          {/* Charts: Categoria Pie + EvoluÃ§Ã£o */}
+          {/* Charts: Categoria Pie + Evolução */}
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Categoria */}
             <div className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm p-5 sm:p-6 shadow-sm">
@@ -596,21 +596,21 @@ export default function ReportPage() {
               ) : (
                 <div className="flex flex-col items-center py-8 text-muted-foreground">
                   <Target className="w-10 h-10 opacity-30 mb-2" />
-                  <p className="text-sm">Nenhuma despesa categorizada no perÃ­odo</p>
+                  <p className="text-sm">Nenhuma despesa categorizada no período</p>
                 </div>
               )}
             </div>
 
-            {/* EvoluÃ§Ã£o / Single Month Visualization */}
+            {/* Evolução / Single Month Visualization */}
             <div className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm p-5 sm:p-6 shadow-sm">
               <div className="flex items-center gap-2.5 mb-5">
                 <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/15">
                   <BarChart3 className="w-4 h-4 text-primary" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold leading-tight">{monthsInRange.length > 1 ? 'EvoluÃ§Ã£o Mensal' : 'Receitas vs Despesas'}</h3>
+                  <h3 className="text-sm font-bold leading-tight">{monthsInRange.length > 1 ? 'Evolução Mensal' : 'Receitas vs Despesas'}</h3>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    {monthsInRange.length > 1 ? `${monthsInRange.length} meses` : 'Comparativo do mÃªs'}
+                    {monthsInRange.length > 1 ? `${monthsInRange.length} meses` : 'Comparativo do mês'}
                   </p>
                 </div>
               </div>
@@ -661,7 +661,7 @@ export default function ReportPage() {
                   </div>
                   <div>
                     <h3 className="text-sm font-bold leading-tight">Top 10 Maiores Despesas</h3>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Os maiores gastos do perÃ­odo</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Os maiores gastos do período</p>
                   </div>
                 </div>
                 <span className="text-[11px] text-muted-foreground font-semibold">
@@ -691,14 +691,14 @@ export default function ReportPage() {
                             <div className="flex items-center gap-1.5 min-w-0">
                               <p className="text-sm font-semibold truncate">{e.description || 'Despesa'}</p>
                               {e.isCC && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-[#6366f1]/10 text-[#6366f1] border border-[#6366f1]/20 font-bold shrink-0">CARTÃƒO</span>
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-[#6366f1]/10 text-[#6366f1] border border-[#6366f1]/20 font-bold shrink-0">CARTÃO</span>
                               )}
                             </div>
                             <span className="text-sm font-extrabold currency text-expense tabular-nums whitespace-nowrap shrink-0">{formatCurrency(Number(e.amount))}</span>
                           </div>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             {cat && <span className="text-[10px] text-muted-foreground font-medium">{cat.icon} {cat.name}</span>}
-                            <span className="text-[10px] text-muted-foreground">Â·  {e.date}</span>
+                            <span className="text-[10px] text-muted-foreground">·  {e.date}</span>
                             <span className="text-[10px] text-expense font-bold ml-auto sm:ml-0">{pct.toFixed(1)}% do total</span>
                           </div>
                         </div>
@@ -722,7 +722,7 @@ export default function ReportPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold leading-tight">Resumo por Conta</h3>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">MovimentaÃ§Ã£o em cada conta</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Movimentação em cada conta</p>
                 </div>
               </div>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -741,7 +741,7 @@ export default function ReportPage() {
                       </div>
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-                          <ArrowDownRight className="w-3 h-3 text-expense" /> SaÃ­das
+                          <ArrowDownRight className="w-3 h-3 text-expense" /> Saídas
                         </span>
                         <span className="text-xs font-bold text-expense currency tabular-nums whitespace-nowrap">{formatCurrency(acc.expense)}</span>
                       </div>
@@ -765,8 +765,8 @@ export default function ReportPage() {
                   <Sparkles className="w-4 h-4 text-primary" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold leading-tight">Insights do PerÃ­odo</h3>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">ConclusÃµes automÃ¡ticas dos seus dados</p>
+                  <h3 className="text-sm font-bold leading-tight">Insights do Período</h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Conclusões automáticas dos seus dados</p>
                 </div>
               </div>
               <div className="space-y-2.5">
@@ -776,7 +776,7 @@ export default function ReportPage() {
                       <Award className="w-4 h-4" />
                     </div>
                     <p className="text-sm leading-relaxed">
-                      VocÃª economizou <span className="font-extrabold currency text-income">{formatCurrency(balance)}</span> no perÃ­odo <span className="text-muted-foreground">({savingsRate.toFixed(1)}% da renda)</span>.
+                      Você economizou <span className="font-extrabold currency text-income">{formatCurrency(balance)}</span> no período <span className="text-muted-foreground">({savingsRate.toFixed(1)}% da renda)</span>.
                     </p>
                   </div>
                 ) : (
@@ -785,7 +785,7 @@ export default function ReportPage() {
                       <Flame className="w-4 h-4" />
                     </div>
                     <p className="text-sm leading-relaxed">
-                      Gastou <span className="font-extrabold currency text-expense">{formatCurrency(Math.abs(balance))}</span> a mais do que ganhou no perÃ­odo.
+                      Gastou <span className="font-extrabold currency text-expense">{formatCurrency(Math.abs(balance))}</span> a mais do que ganhou no período.
                     </p>
                   </div>
                 )}

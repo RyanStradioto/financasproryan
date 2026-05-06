@@ -1,4 +1,4 @@
-﻿import {
+import {
   createContext, useCallback, useContext, useEffect,
   useMemo, useRef, useState,
 } from 'react';
@@ -39,26 +39,26 @@ const tutorialSteps: TutorialStep[] = [
     title: 'Configure seu app agora',
     description: '',
     icon: Rocket,
-    badge: 'InÃ­cio',
+    badge: 'Início',
     color: 'from-violet-500 to-primary',
   },
   {
-    title: 'ConfiguraÃ§Ãµes',
-    description: 'Preencha seu salÃ¡rio mensal e jornada de trabalho. Clique no campo destacado abaixo.',
+    title: 'Configurações',
+    description: 'Preencha seu salário mensal e jornada de trabalho. Clique no campo destacado abaixo.',
     icon: Settings,
     badge: 'Passo 1 de 7',
     color: 'from-blue-500 to-cyan-500',
     route: '/configuracoes',
     highlightTarget: 'salary-input',
     checklist: [
-      { label: 'Preenchi meu salÃ¡rio mensal', required: true },
+      { label: 'Preenchi meu salário mensal', required: true },
       { label: 'Preenchi horas por dia e dias por semana' },
-      { label: 'Cliquei em Salvar ConfiguraÃ§Ãµes' },
+      { label: 'Cliquei em Salvar Configurações' },
     ],
   },
   {
     title: 'Categorias',
-    description: 'Clique em "Nova Categoria" (destacado) e crie categorias como AlimentaÃ§Ã£o, Casa, Lazer.',
+    description: 'Clique em "Nova Categoria" (destacado) e crie categorias como Alimentação, Casa, Lazer.',
     icon: Grid3X3,
     badge: 'Passo 2 de 7',
     color: 'from-emerald-500 to-teal-500',
@@ -66,7 +66,7 @@ const tutorialSteps: TutorialStep[] = [
     highlightTarget: 'new-category',
     checklist: [
       { label: 'Criei pelo menos uma categoria', required: true },
-      { label: 'Defini orÃ§amento em pelo menos uma categoria' },
+      { label: 'Defini orçamento em pelo menos uma categoria' },
     ],
   },
   {
@@ -83,16 +83,16 @@ const tutorialSteps: TutorialStep[] = [
     ],
   },
   {
-    title: 'CartÃµes de crÃ©dito',
-    description: 'Clique em "Novo CartÃ£o" para cadastrar seus cartÃµes e controlar faturas.',
+    title: 'Cartões de crédito',
+    description: 'Clique em "Novo Cartão" para cadastrar seus cartões e controlar faturas.',
     icon: CreditCard,
     badge: 'Passo 4 de 7',
     color: 'from-pink-500 to-rose-500',
     route: '/cartoes',
     highlightTarget: 'new-card',
     checklist: [
-      { label: 'NÃ£o uso cartÃ£o de crÃ©dito (pode avanÃ§ar)' },
-      { label: 'Cadastrei meu cartÃ£o com limite e vencimento' },
+      { label: 'Não uso cartão de crédito (pode avançar)' },
+      { label: 'Cadastrei meu cartão com limite e vencimento' },
     ],
   },
   {
@@ -104,20 +104,20 @@ const tutorialSteps: TutorialStep[] = [
     route: '/investimentos',
     highlightTarget: 'new-investment',
     checklist: [
-      { label: 'NÃ£o tenho investimentos ainda (pode avanÃ§ar)' },
+      { label: 'Não tenho investimentos ainda (pode avançar)' },
       { label: 'Cadastrei pelo menos um investimento ou meta' },
     ],
   },
   {
     title: 'Receitas',
-    description: 'Clique em "Nova Receita" e registre seu salÃ¡rio ou renda do mÃªs.',
+    description: 'Clique em "Nova Receita" e registre seu salário ou renda do mês.',
     icon: TrendingUp,
     badge: 'Passo 6 de 7',
     color: 'from-green-500 to-emerald-500',
     route: '/receitas',
     highlightTarget: 'new-income',
     checklist: [
-      { label: 'Registrei meu salÃ¡rio ou renda deste mÃªs', required: true },
+      { label: 'Registrei meu salário ou renda deste mês', required: true },
       { label: 'Escolhi a conta que recebeu o dinheiro' },
     ],
   },
@@ -407,10 +407,10 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
                 <Rocket className="w-9 h-9 text-white" />
               </div>
               <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-widest text-primary">ConfiguraÃ§Ã£o guiada</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-primary">Configuração guiada</p>
                 <h2 className="text-2xl font-extrabold tracking-tight">Configure seu app agora</h2>
                 <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
-                  Vamos te guiar em <strong className="text-foreground">7 passos rÃ¡pidos</strong>. Cada passo destaca exatamente o botÃ£o que vocÃª precisa clicar â€” e o progresso Ã© detectado automaticamente.
+                  Vamos te guiar em <strong className="text-foreground">7 passos rápidos</strong>. Cada passo destaca exatamente o botão que você precisa clicar — e o progresso é detectado automaticamente.
                 </p>
               </div>
               <div className="grid grid-cols-4 gap-2">
@@ -428,10 +428,10 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
                   onClick={handleNext}
                   className="w-full h-12 rounded-2xl bg-gradient-to-r from-primary to-violet-600 text-white font-bold text-sm shadow-lg shadow-primary/30 hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                 >
-                  ComeÃ§ar agora <ArrowRight className="w-4 h-4" />
+                  Começar agora <ArrowRight className="w-4 h-4" />
                 </button>
                 <button onClick={closeTutorial} className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1">
-                  Pular â€” jÃ¡ sei configurar
+                  Pular — já sei configurar
                 </button>
               </div>
             </div>
@@ -493,7 +493,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
                   </span>
                   {!isDone && item.required && (
                     <span className="mt-1 inline-flex items-center text-[10px] font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-full">
-                      obrigatÃ³rio
+                      obrigatório
                     </span>
                   )}
                   {isDone && isAuto && (
@@ -519,7 +519,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
             disabled={stepIndex <= 1}
             className="h-8 px-3 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-all disabled:opacity-30"
           >
-            â†
+            ←
           </button>
           <button
             onClick={handleNext}
@@ -530,7 +530,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
                 : 'bg-muted text-muted-foreground cursor-not-allowed'
             }`}
           >
-            {isLast ? 'ðŸŽ‰ Concluir' : 'PrÃ³ximo'}{!isLast && <ChevronRight className="w-3.5 h-3.5" />}
+            {isLast ? '🎉 Concluir' : 'Próximo'}{!isLast && <ChevronRight className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
@@ -710,7 +710,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
                             <span className="text-[8px] font-bold text-amber-500 bg-amber-500/10 px-1 py-0.5 rounded-full">obrig.</span>
                           )}
                           {isDone && isAuto && (
-                            <span className="text-[8px] font-bold text-primary/70 bg-primary/10 px-1 py-0.5 rounded-full">âœ“ auto</span>
+                            <span className="text-[8px] font-bold text-primary/70 bg-primary/10 px-1 py-0.5 rounded-full">✓ auto</span>
                           )}
                         </span>
                       </button>
@@ -742,7 +742,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
                     disabled={stepIndex <= 1}
                     className="h-7 px-2.5 rounded-lg border border-border text-[11px] font-medium hover:bg-muted transition-all disabled:opacity-30"
                   >
-                    â†
+                    ←
                   </button>
                   <button
                     onClick={handleNext}
@@ -753,7 +753,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
                         : 'bg-muted text-muted-foreground cursor-not-allowed'
                     }`}
                   >
-                    {isLast ? 'ðŸŽ‰' : 'PrÃ³ximo'}{!isLast && <ChevronRight className="w-3 h-3" />}
+                    {isLast ? '🎉' : 'Próximo'}{!isLast && <ChevronRight className="w-3 h-3" />}
                   </button>
                 </div>
               </div>

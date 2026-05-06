@@ -1,4 +1,4 @@
-﻿import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import type { Tables, TablesInsert } from '@/integrations/supabase/types';
@@ -163,7 +163,7 @@ export function useDeleteInvestment() {
 }
 
 /** 
- * PATRIMONIAL TRANSFER â€” records investment and updates the investment balance.
+ * PATRIMONIAL TRANSFER — records investment and updates the investment balance.
  * This is NOT an expense. Transfers money from account to investment.
  */
 export function useAddInvestmentTransaction() {
@@ -227,14 +227,14 @@ export function useAddInvestmentTransaction() {
             .insert({
               user_id: user!.id,
               date: data.date,
-              description: `ðŸ“Š Aporte: ${inv.name}`,
+              description: `📊 Aporte: ${inv.name}`,
               amount: data.amount,
               account_id: data.account_id,
               status: 'concluido',
-              notes: `[INVESTIMENTO] TransferÃªncia patrimonial para ${inv.name}. NÃ£o Ã© um gasto real.`,
+              notes: `[INVESTIMENTO] Transferência patrimonial para ${inv.name}. Não é um gasto real.`,
               is_recurring: false,
             });
-          if (expError) console.warn('Falha ao registrar saÃ­da de conta:', expError);
+          if (expError) console.warn('Falha ao registrar saída de conta:', expError);
         } else if (data.type === 'resgate') {
           // Resgate = money returns to the account -> create an income record
           const { error: incError } = await supabase
@@ -242,7 +242,7 @@ export function useAddInvestmentTransaction() {
             .insert({
               user_id: user!.id,
               date: data.date,
-              description: `ðŸ“Š Resgate: ${inv.name}`,
+              description: `📊 Resgate: ${inv.name}`,
               amount: data.amount,
               account_id: data.account_id,
               status: 'concluido',

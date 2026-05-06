@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useProfile, useUpsertProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -129,7 +129,7 @@ export default function SettingsPage() {
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error('As senhas nÃ£o coincidem');
+      toast.error('As senhas não coincidem');
       return;
     }
     setSavingPassword(true);
@@ -201,7 +201,7 @@ export default function SettingsPage() {
       return;
     }
     if (selectedMonths.length === 0) {
-      toast.error('Selecione ao menos um mÃªs');
+      toast.error('Selecione ao menos um mês');
       return;
     }
     setIsDeleting(true);
@@ -221,7 +221,7 @@ export default function SettingsPage() {
       }
       await queryClient.invalidateQueries();
       const label = selectedMonths.map(formatMonthLabel).join(', ');
-      toast.success(`âœ… Dados de ${label} excluÃ­dos!`);
+      toast.success(`✅ Dados de ${label} excluídos!`);
       setDeleteMonthsOpen(false);
     } catch (e) {
       const error = e as Error;
@@ -303,7 +303,7 @@ export default function SettingsPage() {
       const jwt = session?.access_token;
       if (!jwt) throw new Error('Sessao expirada. Faca login novamente e tente de novo.');
       await callTestFunction('monthly-summary', jwt);
-      toast.success('RelatÃ³rio mensal enviado! Verifique sua caixa de entrada.');
+      toast.success('Relatório mensal enviado! Verifique sua caixa de entrada.');
     } catch (e) {
       const err = e as Error;
       toast.error(`Erro: ${err.message}`);
@@ -322,8 +322,8 @@ export default function SettingsPage() {
   return (
     <div className="w-full max-w-2xl space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">ConfiguraÃ§Ãµes</h1>
-        <p className="text-sm text-muted-foreground">Seus dados pessoais e preferÃªncias</p>
+        <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
+        <p className="text-sm text-muted-foreground">Seus dados pessoais e preferências</p>
       </div>
 
       <div className="stat-card space-y-6">
@@ -404,7 +404,7 @@ export default function SettingsPage() {
                 type={showNewPassword ? 'text' : 'password'}
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
-                placeholder="MÃ­nimo 6 caracteres"
+                placeholder="Mínimo 6 caracteres"
                 className="flex h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
               <button
@@ -453,7 +453,7 @@ export default function SettingsPage() {
         </div>
         <div className="grid gap-4 pl-0 sm:pl-6">
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">SalÃ¡rio Mensal (R$)</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Salário Mensal (R$)</label>
             <input
               type="number"
               value={salary}
@@ -493,7 +493,7 @@ export default function SettingsPage() {
 
         {hourlyRate > 0 && (
           <div className="ml-0 sm:ml-6 p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-3">
-            <p className="text-xs font-semibold text-primary flex items-center gap-1.5">ðŸ“Š Seus Coeficientes</p>
+            <p className="text-xs font-semibold text-primary flex items-center gap-1.5">📊 Seus Coeficientes</p>
             <div className="flex flex-col gap-2 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Valor/hora</span>
@@ -511,7 +511,7 @@ export default function SettingsPage() {
       <div className="stat-card space-y-4">
         <div className="flex items-center gap-2 text-sm font-semibold">
           <Mail className="w-4 h-4 text-primary" />
-          NotificaÃ§Ãµes
+          Notificações
         </div>
         <div className="space-y-4 pl-0 sm:pl-6">
           <label className="flex items-center gap-3 cursor-pointer">
@@ -523,7 +523,7 @@ export default function SettingsPage() {
             </div>
             <div>
               <p className="text-sm font-medium">Resumo Semanal por Email</p>
-              <p className="text-xs text-muted-foreground">Receba toda segunda-feira um resumo das suas finanÃ§as</p>
+              <p className="text-xs text-muted-foreground">Receba toda segunda-feira um resumo das suas finanças</p>
             </div>
           </label>
           <label className="flex items-center gap-3 cursor-pointer">
@@ -534,20 +534,20 @@ export default function SettingsPage() {
               <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${monthlyEmail ? 'translate-x-5' : 'translate-x-1'}`} />
             </div>
             <div>
-              <p className="text-sm font-medium">RelatÃ³rio Mensal por Email</p>
-              <p className="text-xs text-muted-foreground">Receba no dia 1 um consolidado completo do mÃªs anterior</p>
+              <p className="text-sm font-medium">Relatório Mensal por Email</p>
+              <p className="text-xs text-muted-foreground">Receba no dia 1 um consolidado completo do mês anterior</p>
             </div>
           </label>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-border bg-muted/30 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">PrÃ³ximo semanal</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Próximo semanal</p>
               <p className="mt-1 text-sm font-medium text-foreground">{nextWeeklySend}</p>
-              <p className="mt-1 text-xs text-muted-foreground">Envio automÃ¡tico toda segunda-feira Ã s 09:00.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Envio automático toda segunda-feira � s 09:00.</p>
             </div>
             <div className="rounded-xl border border-border bg-muted/30 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">PrÃ³ximo mensal</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Próximo mensal</p>
               <p className="mt-1 text-sm font-medium text-foreground">{nextMonthlySend}</p>
-              <p className="mt-1 text-xs text-muted-foreground">Envio automÃ¡tico no dia 1 de cada mÃªs Ã s 09:00.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Envio automático no dia 1 de cada mês � s 09:00.</p>
             </div>
           </div>
           <div className="grid gap-2 sm:flex sm:flex-wrap">
@@ -565,7 +565,7 @@ export default function SettingsPage() {
               className="flex h-9 items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 text-sm font-medium transition-all hover:bg-primary/20 disabled:opacity-50"
             >
               <Send className="w-3.5 h-3.5" />
-              {sendingMonthly ? 'Enviando...' : 'Testar RelatÃ³rio Mensal'}
+              {sendingMonthly ? 'Enviando...' : 'Testar Relatório Mensal'}
             </button>
           </div>
         </div>
@@ -577,7 +577,7 @@ export default function SettingsPage() {
         className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-50"
       >
         <Save className="w-4 h-4" />
-        {upsert.isPending ? 'Salvando...' : 'Salvar ConfiguraÃ§Ãµes'}
+        {upsert.isPending ? 'Salvando...' : 'Salvar Configurações'}
       </button>
 
       <div className="stat-card space-y-4">
@@ -604,18 +604,18 @@ export default function SettingsPage() {
       <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5 space-y-4">
         <div className="flex items-center gap-2 text-destructive font-semibold text-sm">
           <AlertTriangle className="w-4 h-4" />
-          Zona de Perigo â€” Limpeza de Dados
+          Zona de Perigo — Limpeza de Dados
         </div>
         <p className="text-xs text-muted-foreground">
-          Exclui <strong>todas as receitas, despesas e lanÃ§amentos de cartÃ£o</strong> dos meses selecionados.
-          Esta aÃ§Ã£o Ã© <strong>irreversÃ­vel</strong>.
+          Exclui <strong>todas as receitas, despesas e lançamentos de cartão</strong> dos meses selecionados.
+          Esta ação é <strong>irreversível</strong>.
         </p>
         <button
           onClick={handleOpenDeleteMonths}
           className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-destructive text-destructive-foreground rounded-xl text-sm font-semibold hover:bg-destructive/90 active:scale-[0.98] transition-all"
         >
           <Trash2 className="w-4 h-4" />
-          Excluir dados por mÃªs
+          Excluir dados por mês
         </button>
       </div>
 
@@ -625,13 +625,13 @@ export default function SettingsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <Trash2 className="w-4 h-4" />
-              Excluir dados por mÃªs
+              Excluir dados por mês
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
             <p className="text-xs text-muted-foreground">
-              Selecione os meses cujos dados vocÃª quer excluir permanentemente (receitas, despesas e fatura do cartÃ£o).
+              Selecione os meses cujos dados você quer excluir permanentemente (receitas, despesas e fatura do cartão).
             </p>
 
             {/* Month checklist */}
@@ -650,7 +650,7 @@ export default function SettingsPage() {
                       className="accent-destructive w-4 h-4 shrink-0"
                     />
                     <span className="flex-1 text-sm font-medium">{formatMonthLabel(month)}</span>
-                    <span className="text-xs text-muted-foreground">{count} lanÃ§amento{count !== 1 ? 's' : ''}</span>
+                    <span className="text-xs text-muted-foreground">{count} lançamento{count !== 1 ? 's' : ''}</span>
                   </label>
                 ))
               )}
@@ -666,16 +666,16 @@ export default function SettingsPage() {
                 >
                   Selecionar todos
                 </button>
-                <span className="text-xs text-muted-foreground">Â·</span>
+                <span className="text-xs text-muted-foreground">·</span>
                 <button
                   type="button"
                   onClick={() => setSelectedMonths([])}
                   className="text-xs text-muted-foreground hover:text-foreground underline transition-colors"
                 >
-                  Limpar seleÃ§Ã£o
+                  Limpar seleção
                 </button>
                 {selectedMonths.length > 0 && (
-                  <span className="text-xs text-destructive font-medium ml-auto">{selectedMonths.length} mÃªs(es) selecionado(s)</span>
+                  <span className="text-xs text-destructive font-medium ml-auto">{selectedMonths.length} mês(es) selecionado(s)</span>
                 )}
               </div>
             )}
@@ -699,7 +699,7 @@ export default function SettingsPage() {
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-destructive text-destructive-foreground rounded-xl text-sm font-semibold hover:bg-destructive/90 active:scale-[0.98] transition-all disabled:opacity-40"
                 >
                   <Trash2 className="w-4 h-4" />
-                  {isDeleting ? 'Excluindo...' : `Excluir ${selectedMonths.length} mÃªs(es)`}
+                  {isDeleting ? 'Excluindo...' : `Excluir ${selectedMonths.length} mês(es)`}
                 </button>
               </div>
             )}
