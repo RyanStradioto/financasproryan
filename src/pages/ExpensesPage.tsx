@@ -185,11 +185,10 @@ export default function ExpensesPage() {
     return nonCCExpenses.filter(e => e.account_id === selectedAccountId);
   }, [nonCCExpenses, selectedAccountId]);
 
-  // When viewing a specific account, don't include CC transactions (they're not account-specific)
+  // Always show CC transactions regardless of account filter — they represent real spending
   const scopedCCTransactions = useMemo(() => {
-    if (selectedAccountId === '__all__') return ccTransactions;
-    return []; // CC transactions are not tied to bank accounts
-  }, [ccTransactions, selectedAccountId]);
+    return ccTransactions;
+  }, [ccTransactions]);
 
   // Merge real expenses (no CC mirrors) + CC transactions
   const allRows: Row[] = useMemo(() => [

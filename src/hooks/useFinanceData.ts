@@ -482,6 +482,20 @@ export function useAddAccount() {
   });
 }
 
+export function useUpdateAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...data }: { id: string } & Partial<TablesInsert<'accounts'>>) => {
+      const { error } = await supabase.from('accounts').update(data as TablesInsert<'accounts'>).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['accounts'] });
+      qc.invalidateQueries({ queryKey: ['accumulated-balance'] });
+    },
+  });
+}
+
 export function useUpdateExpense() {
   const qc = useQueryClient();
   return useMutation({

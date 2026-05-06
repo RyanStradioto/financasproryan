@@ -67,8 +67,8 @@ const renderCustomBarLabel = (props: any) => {
   );
 };
 
-export default function CashFlowForecast() {
-  const { data: history = [] } = useFinanceHistory(6);
+export default function CashFlowForecast({ accountId = '__all__' }: { accountId?: string }) {
+  const { data: history = [] } = useFinanceHistory(6, accountId);
 
   const chartData = useMemo(() => {
     const shortMonthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];

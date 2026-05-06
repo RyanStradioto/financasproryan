@@ -899,7 +899,7 @@ export default function Dashboard() {
       <div className="grid lg:grid-cols-3 gap-6 stagger-2">
         {/* Trend Area Chart (span 2) */}
         <div className="lg:col-span-2 relative z-10">
-          <TrendChart />
+          <TrendChart accountId={accountFocusId} />
         </div>
 
         {/* Economy Gauge & Mini Stats */}
@@ -1428,7 +1428,7 @@ export default function Dashboard() {
 
       {/* ── Cash Flow Projection ────────────────────────────── */}
       <div className="stagger-5">
-        <CashFlowForecast />
+        <CashFlowForecast accountId={accountFocusId} />
       </div>
 
       {/* ── Achievements ───────────────────────────────────── */}

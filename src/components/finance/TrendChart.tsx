@@ -37,9 +37,9 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   );
 };
 
-export default function TrendChart() {
+export default function TrendChart({ accountId = '__all__' }: { accountId?: string }) {
   const { maskCurrency } = useSensitiveData();
-  const { data: history = [], isLoading } = useFinanceHistory(6);
+  const { data: history = [], isLoading } = useFinanceHistory(6, accountId);
 
   if (isLoading) {
     return (

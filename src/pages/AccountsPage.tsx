@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { useAccounts, useAddAccount, useIncome, useExpenses } from '@/hooks/useFinanceData';
+import { useAccounts, useAddAccount, useUpdateAccount, useIncome, useExpenses } from '@/hooks/useFinanceData';
 import { useInvestmentTransactions } from '@/hooks/useInvestments';
 import { formatCurrency } from '@/lib/format';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Landmark, TrendingUp, TrendingDown, Wallet, Info } from 'lucide-react';
+import { Plus, Landmark, TrendingUp, TrendingDown, Wallet, Info, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { accountBrandFromRow, resolveAccountBrand } from '@/lib/accountBrand';
 
@@ -19,15 +19,21 @@ function getInvestmentAccountImpact(type: string, amount: number) {
 
 export default function AccountsPage() {
   const { data: accounts = [] } = useAccounts();
-  // Busca TODAS as receitas e despesas sem filtro de mês (saldo acumulado total)
   const { data: income = [] } = useIncome();
   const { data: allExpenses = [] } = useExpenses();
   const { data: allTransactions = [] } = useInvestmentTransactions();
   const addAccount = useAddAccount();
+  const updateAccount = useUpdateAccount();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('🏦');
   const [initialBalance, setInitialBalance] = useState('');
+
+  // Edit state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editId, setEditId] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editInitialBalance, setEditInitialBalance] = useState('');
 
   const ICONS = ['🏦', '💳', '💰', '🏧', '📱', '🏛️'];
 
@@ -51,9 +57,34 @@ export default function AccountsPage() {
     }
   };
 
+  const openEdit = (acc: typeof accounts[0]) => {
+    setEditId(acc.id);
+    setEditName(acc.name);
+    setEditInitialBalance(String(Number(acc.initial_balance) || 0).replace('.', ','));
+    setEditOpen(true);
+  };
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const newBalance = parseFloat(editInitialBalance.replace(',', '.'));
+      await updateAccount.mutateAsync({
+        id: editId,
+        name: editName,
+        initial_balance: isNaN(newBalance) ? 0 : newBalance,
+        color: resolveAccountBrand(editName).color,
+        icon: resolveAccountBrand(editName).icon,
+      });
+      toast.success('Conta atualizada!');
+      setEditOpen(false);
+    } catch (err) {
+      const error = err as Error;
+      toast.error(error.message);
+    }
+  };
+
   const activeAccounts = accounts.filter(a => !a.archived);
 
-  // ── Saldo Global (todas as receitas e despesas, independente de conta) ──
   const totalIncomeAll = income.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0);
   const totalExpensesAll = allExpenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0);
   const totalInitialBalance = activeAccounts.reduce((s, a) => s + Number(a.initial_balance), 0);
@@ -100,6 +131,27 @@ export default function AccountsPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Edit Account Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Editar Conta</DialogTitle></DialogHeader>
+          <form onSubmit={handleEdit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Nome</Label>
+              <Input value={editName} onChange={e => setEditName(e.target.value)} required />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Saldo Inicial (R$)</Label>
+              <Input value={editInitialBalance} onChange={e => setEditInitialBalance(e.target.value)} placeholder="0,00" className="font-mono" />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                💡 Ajuste este valor para corrigir o saldo acumulado exibido na Dashboard. Se o saldo está mais alto do que deveria, diminua este número.
+              </p>
+            </div>
+            <Button type="submit" className="w-full" disabled={updateAccount.isPending}>Salvar Alterações</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Card de Saldo Global ── */}
       <div className="rounded-xl bg-primary/5 border border-primary/20 p-5">
@@ -160,7 +212,14 @@ export default function AccountsPage() {
               const currentBalance = Number(acc.initial_balance) + accIncome - accExpenses + accTransfers;
 
               return (
-                <div key={acc.id} className="stat-card" style={{ borderColor: `${brand.color}35`, background: `linear-gradient(135deg, ${brand.color}12, transparent 35%)` }}>
+                <div key={acc.id} className="stat-card relative group" style={{ borderColor: `${brand.color}35`, background: `linear-gradient(135deg, ${brand.color}12, transparent 35%)` }}>
+                  <button
+                    onClick={() => openEdit(acc)}
+                    className="absolute top-3 right-3 p-2 rounded-lg bg-muted/50 text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-muted hover:text-foreground transition-all"
+                    title="Editar conta"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
                   <div className="flex items-center gap-2 mb-4">
                     {brand.logoUrl ? (
                       <img src={brand.logoUrl} alt={acc.name} className="w-5 h-5 rounded-sm object-contain" />

@@ -24,7 +24,7 @@ const PRESETS: BrandPreset[] = [
     aliases: ['alelo'],
     color: '#0A8E69',
     icon: '🟢',
-    logoUrl: 'https://www.alelo.com.br/content/dam/alelo/logos/thumbnail.png',
+    logoUrl: 'https://logospng.org/download/alelo/logo-alelo-icon-256.png',
   },
   {
     name: 'vr',
@@ -100,6 +100,11 @@ export function resolveAccountBrand(name: string, fallbackColor?: string, fallba
 
 export function accountBrandFromRow(account: Pick<Account, 'name' | 'color' | 'icon'>): AccountBrand {
   const preset = resolveAccountBrand(account.name, account.color, account.icon);
+  // For known brands, always use the preset's canonical color and logo.
+  // Only use the DB color for unknown/custom accounts.
+  if (preset.name !== 'custom') {
+    return preset;
+  }
   return {
     ...preset,
     color: account.color || preset.color,

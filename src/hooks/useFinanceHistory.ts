@@ -12,11 +12,11 @@ export type MonthSummary = {
   balance: number;
 };
 
-export function useFinanceHistory(monthsBack = 6) {
+export function useFinanceHistory(monthsBack = 6, accountId: string = '__all__') {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['finance-history', user?.id, monthsBack],
+    queryKey: ['finance-history', user?.id, monthsBack, accountId],
     queryFn: async () => {
       const months: string[] = [];
       const now = new Date();
@@ -38,6 +38,9 @@ export function useFinanceHistory(monthsBack = 6) {
             .select('date, amount, status')
             .gte('date', startDate)
             .lte('date', endDate);
+          if (accountId !== '__all__') {
+            query = query.eq('account_id', accountId);
+          }
           if (supportsSoftDelete) {
             query = query.is('deleted_at', null);
           }
@@ -51,6 +54,9 @@ export function useFinanceHistory(monthsBack = 6) {
             .select('date, amount, status, notes')
             .gte('date', startDate)
             .lte('date', endDate);
+          if (accountId !== '__all__') {
+            query = query.eq('account_id', accountId);
+          }
           if (supportsSoftDelete) {
             query = query.is('deleted_at', null);
           }
