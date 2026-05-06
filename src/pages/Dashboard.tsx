@@ -689,7 +689,7 @@ export default function Dashboard() {
         </div>
       </div>
       {/* ─── KPI Cards Premium ─── */}
-      <div className={`grid grid-cols-1 gap-3 min-[390px]:grid-cols-2 sm:gap-4 stagger-1 ${totalCCThisMonth > 0 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
+      <div className={`grid grid-cols-1 gap-3 min-[390px]:grid-cols-2 sm:gap-4 stagger-1 ${totalCCThisMonth > 0 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
         <KpiCard
           label="Receitas"
           value={formatCurrency(totalIncome)}
@@ -711,43 +711,7 @@ export default function Dashboard() {
           delta={expenseDelta}
           deltaInverted
         />
-        <KpiCard
-          label="Saldo Acumulado"
-          value={formatCurrency(balance)}
-          sub="disponível em contas"
-          color={balance >= 0 ? 'border-l-[3px] border-l-primary' : 'border-l-[3px] border-l-expense'}
-          icon={Wallet}
-          trend={balance >= 0 ? 'up' : 'down'}
-          sparklineData={balanceSparkline}
-        />
 
-        {/* Patrimônio Líquido = Saldo + Investimentos */}
-        <a href="/investimentos" className="block">
-          <div className="relative rounded-2xl border border-info/20 bg-card/70 backdrop-blur-sm p-4 sm:p-5 shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden animate-slide-up border-l-[3px] border-l-info h-full">
-            <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-[0.06] group-hover:opacity-[0.12] group-hover:scale-110 transition-all duration-500 pointer-events-none" style={{ background: 'radial-gradient(circle, hsl(217, 91%, 60%) 0%, transparent 70%)' }} />
-            <div className="relative z-10 flex flex-col gap-2.5 h-full">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl items-center justify-center flex shrink-0 bg-info/10 text-info">
-                    <BarChart3 className="w-4 h-4" />
-                  </div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.1em]">Patrimônio</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-info group-hover:translate-x-0.5 transition-all" />
-              </div>
-              <div className="mt-1 min-w-0">
-                <p className="text-base sm:text-lg lg:text-xl font-extrabold currency tracking-tight leading-none text-info whitespace-nowrap tabular-nums truncate">
-                  {maskCurrency(formatCurrency(netWorth))}
-                </p>
-                <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1.5 leading-tight line-clamp-2">
-                  {accountFocusId === '__all__'
-                    ? `Contas ${maskCurrency(formatCurrency(balance))} · Invest. ${maskCurrency(formatCurrency(focusedInvestmentTotal))}`
-                    : `Conta foco: ${focusedAccountInsight?.acc.name || 'Conta selecionada'}`}
-                </p>
-              </div>
-            </div>
-          </div>
-        </a>
 
         {/* Fatura CC — só aparece quando há transações de cartão no mês */}
         {totalCCThisMonth > 0 && (
@@ -1441,6 +1405,48 @@ export default function Dashboard() {
       {/* ── Cash Flow Projection ────────────────────────────── */}
       <div className="stagger-5">
         <CashFlowForecast accountId={accountFocusId} />
+      </div>
+
+      {/* ── Saldo, Patrimônio e Alertas ──────────────────────── */}
+      <div className="stagger-6 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <KpiCard
+            label="Saldo Acumulado"
+            value={formatCurrency(balance)}
+            sub="disponível em contas"
+            color={balance >= 0 ? 'border-l-[3px] border-l-primary' : 'border-l-[3px] border-l-expense'}
+            icon={Wallet}
+            trend={balance >= 0 ? 'up' : 'down'}
+            sparklineData={balanceSparkline}
+          />
+          <a href="/investimentos" className="block">
+            <div className="relative rounded-2xl border border-info/20 bg-card/70 backdrop-blur-sm p-4 sm:p-5 shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden animate-slide-up border-l-[3px] border-l-info h-full">
+              <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-[0.06] group-hover:opacity-[0.12] group-hover:scale-110 transition-all duration-500 pointer-events-none" style={{ background: 'radial-gradient(circle, hsl(217, 91%, 60%) 0%, transparent 70%)' }} />
+              <div className="relative z-10 flex flex-col gap-2.5 h-full">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl items-center justify-center flex shrink-0 bg-info/10 text-info">
+                      <BarChart3 className="w-4 h-4" />
+                    </div>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.1em]">Patrimônio</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-info group-hover:translate-x-0.5 transition-all" />
+                </div>
+                <div className="mt-1 min-w-0">
+                  <p className="text-base sm:text-lg lg:text-xl font-extrabold currency tracking-tight leading-none text-info whitespace-nowrap tabular-nums truncate">
+                    {maskCurrency(formatCurrency(netWorth))}
+                  </p>
+                  <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1.5 leading-tight line-clamp-2">
+                    {accountFocusId === '__all__'
+                      ? `Contas ${maskCurrency(formatCurrency(balance))} · Invest. ${maskCurrency(formatCurrency(focusedInvestmentTotal))}`
+                      : `Conta foco: ${focusedAccountInsight?.acc.name || 'Conta selecionada'}`}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </a>
+        </div>
+        <SmartAlerts expenses={scopedNonCCExpenses} income={scopedIncome} categories={categories} />
       </div>
 
       {/* ── Achievements ───────────────────────────────────── */}
