@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { accountBrandFromRow } from '@/lib/accountBrand';
 
 type PickerOption = { id: string; name: string; icon?: string | null };
 
@@ -274,9 +275,21 @@ export default function IncomePage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__">Todas as contas</SelectItem>
-                  {accounts.filter(a => !a.archived).map(a => (
-                    <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
-                  ))}
+                  {accounts.filter(a => !a.archived).map(a => {
+                    const brand = accountBrandFromRow(a);
+                    return (
+                      <SelectItem key={a.id} value={a.id}>
+                        <span className="inline-flex items-center gap-2">
+                          {brand.logoUrl ? (
+                            <img src={brand.logoUrl} alt={a.name} className="h-4 w-4 object-contain inline-block" />
+                          ) : (
+                            <span>{a.icon}</span>
+                          )}
+                          {a.name}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
               <MonthSelector month={month} onChange={setMonth} />

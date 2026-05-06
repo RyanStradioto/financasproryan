@@ -3,6 +3,7 @@ import { useExpenses, useDeleteExpense, useUpdateExpense, useCategories, useAcco
 import { useCCTransactionsForMonth, useCreditCards, type CreditCardTransaction } from '@/hooks/useCreditCards';
 import { getMonthYear, formatCurrency, formatDate, getStatusColor, getStatusLabel } from '@/lib/format';
 import { detectCreditCardExpense } from '@/lib/paymentMethod';
+import { accountBrandFromRow } from '@/lib/accountBrand';
 import { formatWorkTime } from '@/lib/workTime';
 import { useWorkTimeCalc } from '@/hooks/useProfile';
 import MonthSelector from '@/components/finance/MonthSelector';
@@ -184,11 +185,17 @@ export default function ExpensesPage() {
     return nonCCExpenses.filter(e => e.account_id === selectedAccountId);
   }, [nonCCExpenses, selectedAccountId]);
 
+  // When viewing a specific account, don't include CC transactions (they're not account-specific)
+  const scopedCCTransactions = useMemo(() => {
+    if (selectedAccountId === '__all__') return ccTransactions;
+    return []; // CC transactions are not tied to bank accounts
+  }, [ccTransactions, selectedAccountId]);
+
   // Merge real expenses (no CC mirrors) + CC transactions
   const allRows: Row[] = useMemo(() => [
     ...scopedExpenses.map(e => ({ ...e, _type: 'expense' as const })),
-    ...ccTransactions.map(t => ({ ...t, _type: 'cc' as const })),
-  ], [scopedExpenses, ccTransactions]);
+    ...scopedCCTransactions.map(t => ({ ...t, _type: 'cc' as const })),
+  ], [scopedExpenses, scopedCCTransactions]);
 
   const filtered: Row[] = useMemo(() => allRows.filter(item => {
     if (showCCOnly && item._type !== 'cc') return false;
@@ -221,9 +228,9 @@ export default function ExpensesPage() {
   }), [allRows, filterSearch, filterCategories, filterAmountMin, filterAmountMax, filterStatuses, filterAccounts, showCCOnly, sortBy, sortDir, categories]);
 
   const totalExpenses = useMemo(() => scopedExpenses.reduce((s, e) => s + Number(e.amount), 0), [scopedExpenses]);
-  const totalCC = useMemo(() => ccTransactions.reduce((s, t) => s + Number(t.amount), 0), [ccTransactions]);
+  const totalCC = useMemo(() => scopedCCTransactions.reduce((s, t) => s + Number(t.amount), 0), [scopedCCTransactions]);
   const total = filtered.reduce((s, r) => s + Number(r.amount), 0);
-  const totalItems = scopedExpenses.length + ccTransactions.length;
+  const totalItems = scopedExpenses.length + scopedCCTransactions.length;
 
   // Aliases used in summary cards
   const creditTotal = totalCC;
@@ -322,9 +329,21 @@ export default function ExpensesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__">Todas as contas</SelectItem>
-                  {accounts.filter(a => !a.archived).map(a => (
-                    <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
-                  ))}
+                  {accounts.filter(a => !a.archived).map(a => {
+                    const brand = accountBrandFromRow(a);
+                    return (
+                      <SelectItem key={a.id} value={a.id}>
+                        <span className="inline-flex items-center gap-2">
+                          {brand.logoUrl ? (
+                            <img src={brand.logoUrl} alt={a.name} className="h-4 w-4 object-contain inline-block" />
+                          ) : (
+                            <span>{a.icon}</span>
+                          )}
+                          {a.name}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
               <MonthSelector month={month} onChange={setMonth} />

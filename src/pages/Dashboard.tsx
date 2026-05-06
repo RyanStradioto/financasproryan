@@ -133,7 +133,7 @@ export default function Dashboard() {
   const { maskCurrency } = useSensitiveData();
   const [month, setMonth] = useState(getMonthYear());
   const [accountFocusId, setAccountFocusId] = useState<string>('__all__');
-  const [dashboardView, setDashboardView] = useState<'resumo' | 'analises' | 'movimentos'>('resumo');
+  const [accountAnalysisOpen, setAccountAnalysisOpen] = useState(false);
   const { data: profile } = useProfile();
   
   // Previous month string (for MoM comparisons)
@@ -380,9 +380,7 @@ export default function Dashboard() {
   const focusedInvestmentTotal = accountFocusId === '__all__' ? investmentTotal : 0;
   const netWorth = balance + focusedInvestmentTotal;
 
-  const showResumo = dashboardView === 'resumo';
-  const showAnalises = dashboardView === 'analises';
-  const showMovimentos = dashboardView === 'movimentos';
+  // All sections visible in single-page layout
   
   // Greeting based on time
   const greeting = useMemo(() => {
@@ -619,137 +617,130 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border/60 bg-background/60 p-2">
-            <p className="px-1 pb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+          {/* Account Switcher - Bigger cards with balance info */}
+          <div className="rounded-2xl border border-border/60 bg-background/60 p-3">
+            <p className="px-1 pb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
               Escolha a conta da Dashboard
             </p>
-            <div className="flex gap-2 overflow-x-auto pb-1">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
               <button
                 onClick={() => setAccountFocusId('__all__')}
                 className={cn(
-                  'flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-left transition-all',
-                  isGlobalView ? 'border-primary/35 bg-primary/10 shadow-sm' : 'border-border/60 bg-background/70 hover:bg-background',
+                  'flex flex-col items-center gap-2 rounded-2xl border p-3 sm:p-4 text-center transition-all hover:shadow-md',
+                  isGlobalView ? 'border-primary/35 bg-primary/10 shadow-sm ring-2 ring-primary/20' : 'border-border/60 bg-background/70 hover:bg-background',
                 )}
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <Wallet className="h-4 w-4" />
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Wallet className="h-6 w-6" />
                 </span>
-                <span className="text-xs font-semibold">Visão Geral</span>
+                <div className="min-w-0 w-full">
+                  <p className="text-xs font-bold truncate">Visão Geral</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{activeAccounts.length} contas</p>
+                  <p className="text-xs font-extrabold currency mt-1 tabular-nums truncate">{maskCurrency(formatCurrency(accumulatedBalance))}</p>
+                </div>
               </button>
               {activeAccounts.map((account) => {
                 const brand = accountBrandFromRow(account);
                 const active = accountFocusId === account.id;
+                const insight = accountInsights.find(a => a.acc.id === account.id);
                 return (
                   <button
                     key={account.id}
                     onClick={() => setAccountFocusId(account.id)}
                     className={cn(
-                      'flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-left transition-all',
-                      active ? 'shadow-sm' : 'border-border/60 bg-background/70 hover:bg-background',
+                      'flex flex-col items-center gap-2 rounded-2xl border p-3 sm:p-4 text-center transition-all hover:shadow-md',
+                      active ? 'shadow-sm ring-2' : 'border-border/60 bg-background/70 hover:bg-background',
                     )}
-                    style={active ? { borderColor: colorWithOpacity(brand.color, 0.45), backgroundColor: colorWithOpacity(brand.color, 0.12) } : undefined}
+                    style={active ? { borderColor: colorWithOpacity(brand.color, 0.45), backgroundColor: colorWithOpacity(brand.color, 0.12), '--tw-ring-color': colorWithOpacity(brand.color, 0.25) } as React.CSSProperties : undefined}
                   >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/50 bg-background/80 p-1.5">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-border/50 bg-background/80 p-2">
                       {brand.logoUrl ? (
                         <img src={brand.logoUrl} alt={account.name} className="h-full w-full object-contain" />
                       ) : (
-                        <span className="text-sm">{brand.icon || account.icon || '🏦'}</span>
+                        <span className="text-lg">{brand.icon || account.icon || '🏦'}</span>
                       )}
                     </span>
-                    <span className="max-w-[120px] truncate text-xs font-semibold">{account.name}</span>
+                    <div className="min-w-0 w-full">
+                      <p className="text-xs font-bold truncate">{account.name}</p>
+                      <p className={cn('text-xs font-extrabold currency mt-1 tabular-nums truncate', (insight?.balance ?? 0) >= 0 ? 'text-income' : 'text-expense')}>
+                        {maskCurrency(formatCurrency(insight?.balance ?? 0))}
+                      </p>
+                    </div>
                   </button>
                 );
               })}
             </div>
           </div>
-
-          <div className="flex flex-wrap gap-2">
-            {[
-              { id: 'resumo' as const, label: 'Resumo', icon: Sparkles },
-              { id: 'analises' as const, label: 'Análises', icon: BarChart3 },
-              { id: 'movimentos' as const, label: 'Movimentos', icon: Wallet },
-            ].map(({ id, label, icon: Icon }) => {
-              const active = dashboardView === id;
-              return (
-                <button
-                  key={id}
-                  onClick={() => setDashboardView(id)}
-                  className={cn(
-                    'inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all',
-                    active ? 'shadow-sm' : 'border-border/60 bg-background/60 hover:bg-background',
-                  )}
-                  style={active ? { borderColor: accentBorder, backgroundColor: accentSoft } : undefined}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {label}
-                </button>
-              );
-            })}
-          </div>
         </div>
       </div>
-      {/* Account-level lens */}
-      {showResumo && accountInsights.length > 0 && (
-        <div className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm p-5 sm:p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
+      {/* Account-level lens — Collapsible */}
+      {accountInsights.length > 0 && (
+        <div className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm shadow-sm overflow-hidden">
+          <button
+            onClick={() => setAccountAnalysisOpen(v => !v)}
+            className="w-full flex items-center justify-between p-5 sm:p-6 hover:bg-muted/20 transition-colors text-left"
+          >
             <div>
               <h3 className="text-sm font-bold leading-tight">Análise por Conta</h3>
               <p className="text-[11px] text-muted-foreground mt-0.5">Visão separada de entradas, saídas e saldo por banco/carteira</p>
             </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {accountInsights
-              .filter(({ acc }) => accountFocusId === '__all__' || acc.id === accountFocusId)
-              .map(({ acc, accIncome, accExpenses, accPending, balance }) => {
-                const brand = accountBrandFromRow(acc);
-                return (
-                <div
-                  key={acc.id}
-                  className="rounded-2xl border p-4"
-                  style={{ borderColor: colorWithOpacity(brand.color, 0.35), background: `linear-gradient(135deg, ${colorWithOpacity(brand.color, 0.12)} 0%, hsl(var(--muted) / 0.24) 100%)` }}
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-background/70 p-1">
-                      {brand.logoUrl ? (
-                        <img src={brand.logoUrl} alt={acc.name} className="h-full w-full object-contain" />
-                      ) : (
-                        <span className="text-base">{brand.icon || acc.icon}</span>
-                      )}
-                    </span>
-                    <p className="font-bold truncate">{acc.name}</p>
-                  </div>
-                  <div className="space-y-1.5 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Receitas</span>
-                      <span className="font-semibold text-income currency">{maskCurrency(formatCurrency(accIncome))}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Despesas</span>
-                      <span className="font-semibold text-expense currency">{maskCurrency(formatCurrency(accExpenses))}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Pendentes</span>
-                      <span className="font-semibold text-warning currency">{maskCurrency(formatCurrency(accPending))}</span>
-                    </div>
-                    <div className="pt-2 mt-2 border-t border-border/60 flex items-center justify-between">
-                      <span className="font-semibold">Saldo da conta</span>
-                      <span className={cn('font-extrabold currency', balance >= 0 ? 'text-income' : 'text-expense')}>
-                        {maskCurrency(formatCurrency(balance))}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                );
-              })}
-          </div>
+            <ChevronRight className={cn('w-5 h-5 text-muted-foreground transition-transform duration-300 shrink-0', accountAnalysisOpen && 'rotate-90')} />
+          </button>
+          {accountAnalysisOpen && (
+            <div className="px-5 pb-5 sm:px-6 sm:pb-6 pt-0 animate-fade-in">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {accountInsights
+                  .filter(({ acc }) => accountFocusId === '__all__' || acc.id === accountFocusId)
+                  .map(({ acc, accIncome, accExpenses, accPending, balance }) => {
+                    const brand = accountBrandFromRow(acc);
+                    return (
+                      <div
+                        key={acc.id}
+                        className="rounded-2xl border p-4"
+                        style={{ borderColor: colorWithOpacity(brand.color, 0.35), background: `linear-gradient(135deg, ${colorWithOpacity(brand.color, 0.12)} 0%, hsl(var(--muted) / 0.24) 100%)` }}
+                      >
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-background/70 p-1">
+                            {brand.logoUrl ? (
+                              <img src={brand.logoUrl} alt={acc.name} className="h-full w-full object-contain" />
+                            ) : (
+                              <span className="text-base">{brand.icon || acc.icon}</span>
+                            )}
+                          </span>
+                          <p className="font-bold truncate">{acc.name}</p>
+                        </div>
+                        <div className="space-y-1.5 text-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Receitas</span>
+                            <span className="font-semibold text-income currency">{maskCurrency(formatCurrency(accIncome))}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Despesas</span>
+                            <span className="font-semibold text-expense currency">{maskCurrency(formatCurrency(accExpenses))}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Pendentes</span>
+                            <span className="font-semibold text-warning currency">{maskCurrency(formatCurrency(accPending))}</span>
+                          </div>
+                          <div className="pt-2 mt-2 border-t border-border/60 flex items-center justify-between">
+                            <span className="font-semibold">Saldo da conta</span>
+                            <span className={cn('font-extrabold currency', balance >= 0 ? 'text-income' : 'text-expense')}>
+                              {maskCurrency(formatCurrency(balance))}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* ── Alertas ────────────────────────────────────────── */}
-      {showResumo && <SmartAlerts expenses={scopedNonCCExpenses} income={scopedIncome} categories={categories} />}
+      <SmartAlerts expenses={scopedNonCCExpenses} income={scopedIncome} categories={categories} />
 
-      {showResumo && (
-      <>
       {/* ─── KPI Cards Premium ─── */}
       <div className={`grid grid-cols-1 gap-3 min-[390px]:grid-cols-2 sm:gap-4 stagger-1 ${totalCCThisMonth > 0 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
         <KpiCard
@@ -968,11 +959,7 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-      </>
-      )}
 
-      {showAnalises && (
-      <>
       {/* ── Main Charts Grid ───────────────────────────────── */}
       <div className="grid lg:grid-cols-3 gap-6 stagger-2">
         {/* Trend Area Chart (span 2) */}
@@ -1246,11 +1233,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      </>
-      )}
 
-      {/* ─── NEW: Top Movimentos do Mês ─── */}
-      {showMovimentos && (topExpenses.length > 0 || topIncomes.length > 0) && (() => {
+      {/* ─── Top Movimentos do Mês ─── */}
+      {(topExpenses.length > 0 || topIncomes.length > 0) && (() => {
         const showAllocationFiller = topExpenses.length > 0 && topIncomes.length === 0 && allocationData.length > 0 && focusedInvestmentTotal > 0;
         const showIncomeFiller = topIncomes.length > 0 && topExpenses.length === 0;
         return (
@@ -1443,7 +1428,7 @@ export default function Dashboard() {
       })()}
 
       {/* ─── Allocation Patrimônio (skip when already shown as filler) ─── */}
-      {showAnalises && allocationData.length > 0 && focusedInvestmentTotal > 0 && !(topExpenses.length > 0 && topIncomes.length === 0) && (
+      {allocationData.length > 0 && focusedInvestmentTotal > 0 && !(topExpenses.length > 0 && topIncomes.length === 0) && (
         <div className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm p-5 sm:p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4 gap-3">
             <div className="flex items-center gap-2.5">
@@ -1507,18 +1492,14 @@ export default function Dashboard() {
       )}
 
       {/* ── Cash Flow Projection ────────────────────────────── */}
-      {showMovimentos && (
       <div className="stagger-5">
         <CashFlowForecast />
       </div>
-      )}
 
       {/* ── Achievements ───────────────────────────────────── */}
-      {showMovimentos && (
       <div className="stagger-6">
         <Achievements expenses={scopedNonCCExpenses} income={scopedIncome} categories={categories} />
       </div>
-      )}
 
       {editing && (
         <EditTransactionDialog
