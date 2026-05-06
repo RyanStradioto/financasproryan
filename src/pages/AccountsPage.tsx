@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, Landmark, TrendingUp, TrendingDown, Wallet, Info, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
-import { accountBrandFromRow, resolveAccountBrand } from '@/lib/accountBrand';
+import { accountBrandFromRow, getAccountBrandPresets, resolveAccountBrand } from '@/lib/accountBrand';
 
 function getInvestmentAccountImpact(type: string, amount: number) {
   if (!amount) return 0;
@@ -34,6 +34,18 @@ export default function AccountsPage() {
   const [editId, setEditId] = useState('');
   const [editName, setEditName] = useState('');
   const [editInitialBalance, setEditInitialBalance] = useState('');
+  const BRAND_PRESETS = getAccountBrandPresets().filter((preset) =>
+    ['nubank', 'alelo', 'vr', 'caju', 'itau', 'bradesco', 'santander'].includes(preset.name),
+  );
+  const PRESET_LABELS: Record<string, string> = {
+    nubank: 'Nubank',
+    alelo: 'Alelo',
+    vr: 'VR',
+    caju: 'Caju',
+    itau: 'Itaú',
+    bradesco: 'Bradesco',
+    santander: 'Santander',
+  };
 
   const ICONS = ['🏦', '💳', '💰', '🏧', '📱', '🏛️'];
 
@@ -115,6 +127,31 @@ export default function AccountsPage() {
                       onClick={() => setIcon(i)}
                       className={`w-10 h-10 rounded-lg text-lg flex items-center justify-center transition-all ${icon === i ? 'bg-primary/10 ring-2 ring-primary' : 'bg-muted hover:bg-muted/80'}`}
                     >{i}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Banco/Carteira</Label>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {BRAND_PRESETS.map((preset) => (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      onClick={() => {
+                        setName(PRESET_LABELS[preset.name] || preset.name);
+                        setIcon(preset.icon);
+                      }}
+                      className="flex items-center gap-2 rounded-xl border border-border/70 bg-card px-2.5 py-2 text-left transition-all hover:border-primary/40 hover:bg-primary/5"
+                    >
+                      <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-md border border-border/60 bg-background/70 p-1">
+                        {preset.logoUrl ? (
+                          <img src={preset.logoUrl} alt={preset.name} className="h-full w-full object-contain" />
+                        ) : (
+                          <span className="text-sm">{preset.icon}</span>
+                        )}
+                      </span>
+                      <span className="truncate text-xs font-semibold">{PRESET_LABELS[preset.name] || preset.name}</span>
+                    </button>
                   ))}
                 </div>
               </div>

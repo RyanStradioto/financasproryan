@@ -66,6 +66,10 @@ const PRESETS: BrandPreset[] = [
   { name: 'picpay', aliases: ['picpay'], color: '#21C25E', icon: '🟢' },
 ];
 
+export function getAccountBrandPresets(): AccountBrand[] {
+  return PRESETS.map(({ aliases: _aliases, ...brand }) => brand);
+}
+
 function normalizeText(value: string) {
   return value
     .toLowerCase()
