@@ -22,9 +22,9 @@ const PRESETS: BrandPreset[] = [
   {
     name: 'alelo',
     aliases: ['alelo'],
-    color: '#0A8E69',
+    color: '#007858',
     icon: '🟢',
-    logoUrl: 'https://www.google.com/s2/favicons?domain=alelo.com.br&sz=256',
+    logoUrl: 'https://static.cdnlogo.com/logos/a/93/alelo.svg',
   },
   {
     name: 'vr',

@@ -86,11 +86,11 @@ function KpiCard({
   const sparkColor = trend === 'up' ? 'hsl(160, 84%, 39%)' : trend === 'down' ? 'hsl(0, 72%, 51%)' : 'hsl(217, 91%, 60%)';
 
   return (
-    <div className={cn('relative rounded-2xl border border-border/60 bg-card/70 backdrop-blur-sm p-4 sm:p-5 shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden animate-slide-up', color)}>
+    <div className={cn('relative min-h-[122px] rounded-3xl border border-border/60 bg-gradient-to-br from-card/95 via-card/75 to-background/55 p-4 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-border hover:shadow-xl hover:shadow-black/5 sm:p-5 group overflow-hidden animate-slide-up', color)}>
       {/* Decorative gradient blob */}
       <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-[0.06] group-hover:opacity-[0.10] group-hover:scale-110 transition-all duration-500 pointer-events-none" style={{ background: `radial-gradient(circle, ${sparkColor} 0%, transparent 70%)` }} />
 
-      <div className="relative z-10 flex flex-col gap-2.5 h-full">
+      <div className="relative z-10 flex h-full flex-col justify-between gap-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -126,6 +126,62 @@ function KpiCard({
         </div>
       </div>
     </div>
+  );
+}
+
+function BrandLogoBadge({
+  logoUrl,
+  label,
+  color,
+  icon,
+  active = false,
+  global = false,
+  size = 'md',
+}: {
+  logoUrl?: string;
+  label: string;
+  color: string;
+  icon?: string;
+  active?: boolean;
+  global?: boolean;
+  size?: 'md' | 'lg';
+}) {
+  const isLg = size === 'lg';
+  const shellSize = isLg ? 'h-20 w-20 rounded-[1.5rem]' : 'h-12 w-12 rounded-2xl';
+  const logoSize = isLg ? 'h-12 w-12' : 'h-8 w-8';
+  const iconSize = isLg ? 'h-9 w-9' : 'h-6 w-6';
+
+  if (global) {
+    return (
+      <span className={cn(
+        'relative flex shrink-0 items-center justify-center border border-primary/25 bg-primary/10 text-primary shadow-lg shadow-primary/10',
+        shellSize,
+      )}>
+        <Wallet className={iconSize} />
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={cn(
+        'relative flex shrink-0 items-center justify-center border shadow-lg transition-transform group-hover:scale-105',
+        shellSize,
+        active ? 'border-white/20' : 'border-border/50',
+      )}
+      style={{
+        background: `linear-gradient(145deg, ${colorWithOpacity(color, active ? 0.24 : 0.14)}, hsl(var(--card) / 0.92))`,
+        boxShadow: active ? `0 18px 44px -24px ${color}` : undefined,
+      }}
+    >
+      {logoUrl ? (
+        <span className={cn('flex items-center justify-center rounded-xl bg-white p-1.5 shadow-sm', isLg ? 'h-14 w-14' : 'h-9 w-9')}>
+          <img src={logoUrl} alt={label} className={cn('object-contain', logoSize)} />
+        </span>
+      ) : (
+        <span className="text-2xl">{icon || '$'}</span>
+      )}
+    </span>
   );
 }
 
@@ -559,46 +615,40 @@ export default function Dashboard() {
     <div className="space-y-6 sm:space-y-8 animate-fade-in pb-10 w-full max-w-full overflow-x-hidden sm:overflow-visible">
       {/* Hero + account switcher + visual mode */}
       <div
-        className="relative overflow-hidden rounded-[2.5rem] border shadow-xl sm:rounded-[3rem] p-5 sm:p-8"
+        className="relative overflow-hidden rounded-[2rem] border p-4 shadow-2xl shadow-black/10 sm:rounded-[2.5rem] sm:p-6"
         style={{
-          borderColor: isGlobalView ? 'hsl(var(--border) / 0.8)' : accentBorder,
+          borderColor: isGlobalView ? 'hsl(var(--border) / 0.7)' : accentBorder,
           background: isGlobalView
-            ? 'linear-gradient(145deg, hsl(var(--background)) 0%, hsl(var(--card)) 100%)'
-            : `linear-gradient(145deg, ${accentSoft} 0%, hsl(var(--card)) 100%)`,
+            ? 'linear-gradient(145deg, hsl(var(--card) / 0.96) 0%, hsl(var(--background)) 48%, hsl(217 91% 60% / 0.10) 100%)'
+            : `linear-gradient(145deg, ${accentSoft} 0%, hsl(var(--card) / 0.96) 52%, hsl(var(--background)) 100%)`,
         }}
       >
         <div className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full blur-[100px]" style={{ background: accentGlow }} />
         <div className="pointer-events-none absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-primary/10 blur-[100px]" />
 
-        <div className="relative z-10 flex flex-col gap-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative z-10 flex flex-col gap-5">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0 flex-1 flex flex-col sm:flex-row gap-5 items-start sm:items-center">
-              <div
-                className="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl border p-3 shadow-lg backdrop-blur-md transition-transform hover:scale-105"
-                style={{ 
-                  borderColor: isGlobalView ? 'hsl(var(--border))' : accentBorder,
-                  backgroundColor: isGlobalView ? 'hsl(var(--background) / 0.8)' : currentAccent
-                }}
-              >
-                {focusedBrand?.logoUrl ? (
-                  <img src={focusedBrand.logoUrl} alt={focusLabel} className="h-full w-full object-contain drop-shadow-sm" style={{ filter: isGlobalView ? '' : 'brightness(0) invert(1)' }} />
-                ) : isGlobalView ? (
-                  <Sparkles className="h-10 w-10 text-primary drop-shadow-sm" />
-                ) : (
-                  <span className="text-4xl drop-shadow-sm" style={{ filter: 'brightness(0) invert(1)' }}>{focusedBrand?.icon || '🏦'}</span>
-                )}
-              </div>
+              <BrandLogoBadge
+                logoUrl={focusedBrand?.logoUrl}
+                label={focusLabel}
+                color={currentAccent}
+                icon={focusedBrand?.icon}
+                active={!isGlobalView}
+                global={isGlobalView}
+                size="lg"
+              />
               <div className="min-w-0">
-                <p className="text-sm font-bold text-muted-foreground tracking-wide uppercase">
+                <p className="text-xs font-black text-muted-foreground tracking-[0.22em] uppercase">
                   {greeting.icon} {greeting.text}{profile?.first_name ? `, ${profile.first_name}` : ''}
                 </p>
-                <h1 className="truncate text-3xl font-black leading-tight tracking-tight sm:text-5xl mt-1 drop-shadow-sm">
+                <h1 className="truncate text-3xl font-black leading-tight tracking-tight sm:text-5xl mt-1">
                   {focusLabel}
                 </h1>
                 <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <span className="text-lg font-bold text-muted-foreground">{focusSubLabel}</span>
+                  <span className="text-sm font-bold text-muted-foreground sm:text-base">{focusSubLabel}</span>
                   <span
-                    className="rounded-xl border px-3 py-1 text-xs font-bold uppercase tracking-wider backdrop-blur-md"
+                    className="rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-wider backdrop-blur-md"
                     style={{ borderColor: colorWithOpacity(healthColor, 0.4), backgroundColor: colorWithOpacity(healthColor, 0.15), color: healthColor }}
                   >
                     Saúde {healthScore}/100
@@ -624,28 +674,31 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Account Switcher - BIGGER and PREMIUM */}
-          <div className="rounded-3xl border border-white/10 bg-background/40 p-4 backdrop-blur-2xl shadow-inner">
-            <p className="px-2 pb-3 text-xs font-black uppercase tracking-widest text-muted-foreground">
-              Escolha a conta
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          {/* Account Switcher */}
+          <div className="rounded-[1.75rem] border border-border/60 bg-background/35 p-3 backdrop-blur-2xl shadow-inner">
+            <div className="mb-3 flex items-center justify-between gap-3 px-1">
+              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-muted-foreground">
+                Escolha a conta
+              </p>
+              <span className="rounded-full border border-border/60 bg-card/60 px-2.5 py-1 text-[10px] font-bold text-muted-foreground">
+                {activeAccounts.length + 1} visões
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 xl:grid-cols-4">
               <button
                 onClick={() => setAccountFocusId('__all__')}
                 className={cn(
-                  'group flex flex-col items-center gap-3 rounded-[1.5rem] border p-4 sm:p-5 text-center transition-all duration-300',
-                  isGlobalView 
-                    ? 'border-primary/50 bg-primary/10 shadow-[0_8px_30px_rgb(0,0,0,0.12)] ring-4 ring-primary/20 scale-[1.02]' 
-                    : 'border-border/40 bg-background/50 hover:bg-background/80 hover:scale-[1.02] hover:shadow-md',
+                  'group flex items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition-all duration-300',
+                  isGlobalView
+                    ? 'border-primary/45 bg-primary/10 shadow-lg shadow-primary/10 ring-2 ring-primary/15'
+                    : 'border-border/40 bg-background/45 hover:border-primary/25 hover:bg-background/80 hover:shadow-md',
                 )}
               >
-                <span className={cn("flex h-14 w-14 items-center justify-center rounded-2xl transition-transform group-hover:scale-110", isGlobalView ? "bg-primary text-primary-foreground shadow-lg" : "bg-primary/10 text-primary")}>
-                  <Wallet className="h-7 w-7" />
-                </span>
+                <BrandLogoBadge label="Visão Geral" color="#10b981" global active={isGlobalView} />
                 <div className="min-w-0 w-full mt-1">
                   <p className="text-sm font-bold truncate">Visão Geral</p>
-                  <p className="text-xs text-muted-foreground font-medium mt-0.5">{activeAccounts.length} contas ativas</p>
-                  <p className="text-base font-black currency mt-2 tabular-nums truncate tracking-tight">{maskCurrency(formatCurrency(accumulatedBalance))}</p>
+                  <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{activeAccounts.length} contas ativas</p>
+                  <p className="text-sm font-black currency mt-1 tabular-nums truncate tracking-tight">{maskCurrency(formatCurrency(accumulatedBalance))}</p>
                 </div>
               </button>
               {activeAccounts.map((account) => {
@@ -658,26 +711,23 @@ export default function Dashboard() {
                     key={account.id}
                     onClick={() => setAccountFocusId(account.id)}
                     className={cn(
-                      'group flex flex-col items-center gap-3 rounded-[1.5rem] border p-4 sm:p-5 text-center transition-all duration-300',
-                      active 
-                        ? 'shadow-[0_8px_30px_rgb(0,0,0,0.12)] ring-4 scale-[1.02]' 
-                        : 'border-border/40 bg-background/50 hover:bg-background/80 hover:scale-[1.02] hover:shadow-md',
-                    )}
+                        'group flex items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition-all duration-300',
+                        active
+                          ? 'shadow-lg ring-2'
+                          : 'border-border/40 bg-background/45 hover:bg-background/80 hover:shadow-md',
+                      )}
                     style={active ? { borderColor: colorWithOpacity(brand.color, 0.6), backgroundColor: colorWithOpacity(brand.color, 0.15), '--tw-ring-color': colorWithOpacity(brand.color, 0.25) } as React.CSSProperties : undefined}
                   >
-                    <span 
-                      className={cn("flex h-14 w-14 items-center justify-center rounded-2xl transition-transform group-hover:scale-110 shadow-sm", !active && "opacity-80")}
-                      style={{ backgroundColor: brand.color }}
-                    >
-                      {brand.logoUrl ? (
-                        <img src={brand.logoUrl} alt={account.name} className="h-8 w-8 object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
-                      ) : (
-                        <span className="text-2xl" style={{ filter: 'brightness(0) invert(1)' }}>{brand.icon || account.icon || '🏦'}</span>
-                      )}
-                    </span>
+                    <BrandLogoBadge
+                      logoUrl={brand.logoUrl}
+                      label={account.name}
+                      color={brand.color}
+                      icon={brand.icon || account.icon}
+                      active={active}
+                    />
                     <div className="min-w-0 w-full mt-1">
                       <p className="text-sm font-bold truncate">{account.name}</p>
-                      <p className={cn('text-base font-black currency mt-2 tabular-nums truncate tracking-tight', bal >= 0 ? 'text-income' : 'text-expense')}>
+                      <p className={cn('text-sm font-black currency mt-1 tabular-nums truncate tracking-tight', bal >= 0 ? 'text-income' : 'text-expense')}>
                         {maskCurrency(formatCurrency(bal))}
                       </p>
                     </div>
