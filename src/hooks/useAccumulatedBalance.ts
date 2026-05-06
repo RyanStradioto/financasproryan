@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { queryWithSoftDeleteFallback } from '@/lib/softDeleteCompat';
+import { resolveAccountBrand } from '@/lib/accountBrand';
 
 /**
  * Returns the accumulated balance (all income - all expenses)
@@ -17,7 +18,7 @@ export function useAccumulatedBalance(month: string) {
       const lastDay = new Date(y, m, 0).getDate();
       const endDate = `${month}-${String(lastDay).padStart(2, '0')}`;
 
-      const [incomeData, expenseData, accountsData] = await Promise.all([
+      const [incomeData, expenseData, accountsData, creditCardsData] = await Promise.all([
         queryWithSoftDeleteFallback<{ amount: number; account_id: string }>((supportsSoftDelete) => {
           let query = supabase
             .from('income')
@@ -29,10 +30,10 @@ export function useAccumulatedBalance(month: string) {
           }
           return query;
         }),
-        queryWithSoftDeleteFallback<{ amount: number; account_id: string }>((supportsSoftDelete) => {
+        queryWithSoftDeleteFallback<{ amount: number; account_id: string; notes: string | null }>((supportsSoftDelete) => {
           let query = supabase
             .from('expenses')
-            .select('amount, account_id')
+            .select('amount, account_id, notes')
             .lte('date', endDate)
             .eq('status', 'concluido');
           if (supportsSoftDelete) {
@@ -40,7 +41,8 @@ export function useAccumulatedBalance(month: string) {
           }
           return query;
         }),
-        supabase.from('accounts').select('id, initial_balance').eq('archived', false),
+        supabase.from('accounts').select('id, name, initial_balance').eq('archived', false),
+        supabase.from('credit_cards').select('id, name').eq('archived', false),
       ]);
 
       const byAccount: Record<string, number> = {};
@@ -62,8 +64,24 @@ export function useAccumulatedBalance(month: string) {
         byAccount[i.account_id] = (byAccount[i.account_id] || 0) + Number(i.amount);
       });
       expenseData.forEach(e => {
-        if (!e.account_id) return;
-        byAccount[e.account_id] = (byAccount[e.account_id] || 0) - Number(e.amount);
+        if (e.account_id) {
+          byAccount[e.account_id] = (byAccount[e.account_id] || 0) - Number(e.amount);
+        } else if (e.notes?.includes('[Cartao de credito|card:')) {
+          // Identify the credit card ID from the notes
+          const match = e.notes.match(/\[Cartao de credito\|card:([^|]+)\|/);
+          if (match && match[1]) {
+            const cardId = match[1];
+            const card = creditCardsData.data?.find(c => c.id === cardId);
+            if (card) {
+              const cardBrand = resolveAccountBrand(card.name).name;
+              // Find matching account
+              const matchingAccount = accountsData.data?.find(a => resolveAccountBrand(a.name).name === cardBrand);
+              if (matchingAccount) {
+                byAccount[matchingAccount.id] = (byAccount[matchingAccount.id] || 0) - Number(e.amount);
+              }
+            }
+          }
+        }
       });
 
       return {

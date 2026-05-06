@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import PendingExpensesDialog from '@/components/finance/PendingExpensesDialog';
 import { buildDescriptionAmountKey, buildExpenseMatchKey, detectCreditCardExpense, parseStructuredCardMarker } from '@/lib/paymentMethod';
-import { accountBrandFromRow } from '@/lib/accountBrand';
+import { accountBrandFromRow, resolveAccountBrand } from '@/lib/accountBrand';
 
 const CHART_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
 
@@ -176,10 +176,16 @@ export default function Dashboard() {
     () => (accountFocusId === '__all__' ? nonCCExpenses : nonCCExpenses.filter(e => e.account_id === accountFocusId)),
     [nonCCExpenses, accountFocusId],
   );
-  const scopedCCTransactions = useMemo(
-    () => (accountFocusId === '__all__' ? ccTransactions : []),
-    [ccTransactions, accountFocusId],
-  );
+  const scopedCCTransactions = useMemo(() => {
+    if (accountFocusId === '__all__') return ccTransactions;
+    const account = accounts.find(a => a.id === accountFocusId);
+    if (!account) return [];
+    const accBrand = resolveAccountBrand(account.name).name;
+    const matchingCardIds = creditCards
+      .filter(c => resolveAccountBrand(c.name).name === accBrand)
+      .map(c => c.id);
+    return ccTransactions.filter(t => matchingCardIds.includes(t.credit_card_id));
+  }, [ccTransactions, accountFocusId, accounts, creditCards]);
   const scopedPrevIncome = useMemo(
     () => (accountFocusId === '__all__' ? prevIncome : prevIncome.filter(i => i.account_id === accountFocusId)),
     [prevIncome, accountFocusId],
@@ -188,10 +194,16 @@ export default function Dashboard() {
     const base = prevExpenses.filter(e => !isCreditCardExpense(e));
     return accountFocusId === '__all__' ? base : base.filter(e => e.account_id === accountFocusId);
   }, [prevExpenses, accountFocusId, creditCards, accounts]);
-  const scopedPrevCCTransactions = useMemo(
-    () => (accountFocusId === '__all__' ? prevCCTransactions : []),
-    [prevCCTransactions, accountFocusId],
-  );
+  const scopedPrevCCTransactions = useMemo(() => {
+    if (accountFocusId === '__all__') return prevCCTransactions;
+    const account = accounts.find(a => a.id === accountFocusId);
+    if (!account) return [];
+    const accBrand = resolveAccountBrand(account.name).name;
+    const matchingCardIds = creditCards
+      .filter(c => resolveAccountBrand(c.name).name === accBrand)
+      .map(c => c.id);
+    return prevCCTransactions.filter(t => matchingCardIds.includes(t.credit_card_id));
+  }, [prevCCTransactions, accountFocusId, accounts, creditCards]);
 
   const { categoryByTxId, categoryByMatchKey, categoryByLooseKey } = useMemo(() => {
     const byTxId = new Map<string, string>();

@@ -24,7 +24,6 @@ const PRESETS: BrandPreset[] = [
     aliases: ['alelo'],
     color: '#0A8E69',
     icon: '🟢',
-    logoUrl: 'https://logospng.org/download/alelo/logo-alelo-icon-256.png',
   },
   {
     name: 'vr',

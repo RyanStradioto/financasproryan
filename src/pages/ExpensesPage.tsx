@@ -3,7 +3,7 @@ import { useExpenses, useDeleteExpense, useUpdateExpense, useCategories, useAcco
 import { useCCTransactionsForMonth, useCreditCards, type CreditCardTransaction } from '@/hooks/useCreditCards';
 import { getMonthYear, formatCurrency, formatDate, getStatusColor, getStatusLabel } from '@/lib/format';
 import { detectCreditCardExpense } from '@/lib/paymentMethod';
-import { accountBrandFromRow } from '@/lib/accountBrand';
+import { accountBrandFromRow, resolveAccountBrand } from '@/lib/accountBrand';
 import { formatWorkTime } from '@/lib/workTime';
 import { useWorkTimeCalc } from '@/hooks/useProfile';
 import MonthSelector from '@/components/finance/MonthSelector';
@@ -185,10 +185,17 @@ export default function ExpensesPage() {
     return nonCCExpenses.filter(e => e.account_id === selectedAccountId);
   }, [nonCCExpenses, selectedAccountId]);
 
-  // Always show CC transactions regardless of account filter — they represent real spending
+  // Show CC transactions if the card's brand matches the selected account's brand
   const scopedCCTransactions = useMemo(() => {
-    return ccTransactions;
-  }, [ccTransactions]);
+    if (selectedAccountId === '__all__') return ccTransactions;
+    const account = accounts.find(a => a.id === selectedAccountId);
+    if (!account) return [];
+    const accBrand = resolveAccountBrand(account.name).name;
+    const matchingCardIds = creditCards
+      .filter(c => resolveAccountBrand(c.name).name === accBrand)
+      .map(c => c.id);
+    return ccTransactions.filter(t => matchingCardIds.includes(t.credit_card_id));
+  }, [ccTransactions, selectedAccountId, accounts, creditCards]);
 
   // Merge real expenses (no CC mirrors) + CC transactions
   const allRows: Row[] = useMemo(() => [

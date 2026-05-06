@@ -4,6 +4,8 @@ import { useAuth } from './useAuth';
 import { getMonthYear } from '@/lib/format';
 import { queryWithSoftDeleteFallback } from '@/lib/softDeleteCompat';
 
+import { resolveAccountBrand } from '@/lib/accountBrand';
+
 export type MonthSummary = {
   month: string;
   label: string;
@@ -31,7 +33,7 @@ export function useFinanceHistory(monthsBack = 6, accountId: string = '__all__')
       const [ly, lm] = lastMonth.split('-').map(Number);
       const endDate = `${lastMonth}-${String(new Date(ly, lm, 0).getDate()).padStart(2, '0')}`;
 
-      const [incomeData, expenseData, ccData] = await Promise.all([
+      const [incomeData, expenseData, ccDataRaw, accountsRes, cardsRes] = await Promise.all([
         queryWithSoftDeleteFallback<{ date: string; amount: number; status: string }>((supportsSoftDelete) => {
           let query = supabase
             .from('income')
@@ -67,13 +69,29 @@ export function useFinanceHistory(monthsBack = 6, accountId: string = '__all__')
         (async () => {
           const { data, error } = await supabase
             .from('credit_card_transactions')
-            .select('bill_month, amount')
+            .select('bill_month, amount, credit_card_id')
             .gte('bill_month', firstMonth)
             .lte('bill_month', lastMonth);
           if (error) throw error;
-          return (data ?? []) as { bill_month: string; amount: number }[];
+          return (data ?? []) as { bill_month: string; amount: number; credit_card_id: string }[];
         })(),
+        supabase.from('accounts').select('id, name').eq('archived', false),
+        supabase.from('credit_cards').select('id, name').eq('archived', false)
       ]);
+
+      let ccData = ccDataRaw;
+      if (accountId !== '__all__') {
+        const account = accountsRes.data?.find(a => a.id === accountId);
+        if (account) {
+          const accBrand = resolveAccountBrand(account.name).name;
+          const matchingCardIds = (cardsRes.data || [])
+            .filter(c => resolveAccountBrand(c.name).name === accBrand)
+            .map(c => c.id);
+          ccData = ccData.filter(t => matchingCardIds.includes(t.credit_card_id));
+        } else {
+          ccData = [];
+        }
+      }
 
       const isCCMirror = (notes: string | null | undefined) =>
         !!notes && /\[Cartao de credito\b/i.test(notes);
