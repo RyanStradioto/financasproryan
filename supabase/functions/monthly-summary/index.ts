@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+﻿import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,7 +10,7 @@ const fmt = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
 function normalizeText(value: string): string {
-  return value.normalize("NFD").replace(/[̀-ͯ]/g, "");
+  return value.normalize("NFD").replace(/[Ì€-Í¯]/g, "");
 }
 
 function formatScheduleDate(date: Date): string {
@@ -80,7 +80,7 @@ function generateMonthlyInsights(
 ): string[] {
   const tips: string[] = [];
 
-  /* Balanço geral */
+  /* BalanÃ§o geral */
   if (balance < 0) {
     tips.push(`O mes fechou no negativo em ${fmt(Math.abs(balance))}. Para o proximo mes, defina limites por categoria antes de gastar.`);
   } else if (savingsRate >= 20) {
@@ -163,7 +163,7 @@ function buildMonthlyHtml(p: {
     ? ((p.totalIncome - p.prevIncome) / p.prevIncome) * 100
     : null;
 
-  /* ── Category rows ── */
+  /* â”€â”€ Category rows â”€â”€ */
   const catRows = p.categories.slice(0, 8).map((c) => {
     const pct      = p.totalExpenses > 0 ? Math.round((c.value / p.totalExpenses) * 100) : 0;
     const budgetPct = c.budget > 0 ? Math.min(Math.round((c.value / c.budget) * 100), 100) : 0;
@@ -194,7 +194,7 @@ function buildMonthlyHtml(p: {
       </tr>`;
   }).join("");
 
-  /* ── Top expense rows ── */
+  /* â”€â”€ Top expense rows â”€â”€ */
   const txRows = p.topExpenses.slice(0, 5).map((t, i) => `
     <tr style="background:${i % 2 === 0 ? "#f9fafb" : "#ffffff"};">
       <td style="padding:8px 12px;font-size:13px;color:#111827;">${t.description || "Sem descricao"}</td>
@@ -205,14 +205,14 @@ function buildMonthlyHtml(p: {
       <td style="padding:8px 12px;font-size:13px;font-weight:700;color:#dc2626;text-align:right;white-space:nowrap;">${fmt(t.amount)}</td>
     </tr>`).join("");
 
-  /* ── Account rows ── */
+  /* â”€â”€ Account rows â”€â”€ */
   const accRows = p.accounts.slice(0, 5).map((a) => `
     <tr>
       <td style="padding:6px 0;font-size:13px;color:#1f2937;">${a.icon}&nbsp;&nbsp;${a.name}</td>
       <td style="padding:6px 0;font-size:13px;font-weight:700;color:${a.balance >= 0 ? "#166534" : "#dc2626"};text-align:right;">${fmt(a.balance)}</td>
     </tr>`).join("");
 
-  /* ── Insight rows ── */
+  /* â”€â”€ Insight rows â”€â”€ */
   const insightRows = p.insights.map((t) => `
     <tr>
       <td style="padding:3px 0 3px 4px;vertical-align:top;width:1%;">
@@ -224,10 +224,10 @@ function buildMonthlyHtml(p: {
   const greeting = p.firstName ? `Ola, ${p.firstName}!` : "Ola!";
 
   const deltaExpHtml = prevDeltaExp !== null
-    ? `<span style="font-size:11px;color:${prevDeltaExp > 0 ? "#dc2626" : "#16a34a"};font-weight:700;">${prevDeltaExp > 0 ? "▲" : "▼"} ${Math.abs(prevDeltaExp).toFixed(1)}% vs. mes ant.</span>`
+    ? `<span style="font-size:11px;color:${prevDeltaExp > 0 ? "#dc2626" : "#16a34a"};font-weight:700;">${prevDeltaExp > 0 ? "â–²" : "â–¼"} ${Math.abs(prevDeltaExp).toFixed(1)}% vs. mes ant.</span>`
     : "";
   const deltaIncHtml = prevDeltaInc !== null
-    ? `<span style="font-size:11px;color:${prevDeltaInc >= 0 ? "#16a34a" : "#dc2626"};font-weight:700;">${prevDeltaInc >= 0 ? "▲" : "▼"} ${Math.abs(prevDeltaInc).toFixed(1)}% vs. mes ant.</span>`
+    ? `<span style="font-size:11px;color:${prevDeltaInc >= 0 ? "#16a34a" : "#dc2626"};font-weight:700;">${prevDeltaInc >= 0 ? "â–²" : "â–¼"} ${Math.abs(prevDeltaInc).toFixed(1)}% vs. mes ant.</span>`
     : "";
 
   return `<!DOCTYPE html>
@@ -330,7 +330,7 @@ function buildMonthlyHtml(p: {
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;">
           <table width="100%" cellpadding="0" cellspacing="0" border="0">
             <tr>
-              <td style="font-size:12px;font-weight:600;color:#374151;">Orcamento do mes — Despesas x Receitas</td>
+              <td style="font-size:12px;font-weight:600;color:#374151;">Orcamento do mes â€” Despesas x Receitas</td>
               <td align="right" style="font-size:12px;font-weight:700;color:${ratioExpPct > 90 ? "#dc2626" : ratioExpPct > 70 ? "#d97706" : "#16a34a"};">${ratioExpPct}% comprometido</td>
             </tr>
           </table>
@@ -531,15 +531,15 @@ Deno.serve(async (req) => {
       const cardTx     = cardEqRes.data || [];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const totalIncome    = income.reduce((s: number, i: any)   => s + Number(i.amount), 0);
+      const totalIncome    = income.reduce((s: number, i: Record<string, unknown>)   => s + Number(i.amount), 0);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const totalExpenses  = expenses.reduce((s: number, e: any) => s + Number(e.amount), 0)
+      const totalExpenses  = expenses.reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0)
                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                           + cardTx.reduce((s: number, e: any)   => s + Number(e.amount), 0);
+                           + cardTx.reduce((s: number, e: Record<string, unknown>)   => s + Number(e.amount), 0);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const prevTotalInc   = prevIncome.reduce((s: number, i: any) => s + Number(i.amount), 0);
+      const prevTotalInc   = prevIncome.reduce((s: number, i: Record<string, unknown>) => s + Number(i.amount), 0);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const prevTotalExp   = prevExp.reduce((s: number, e: any)    => s + Number(e.amount), 0);
+      const prevTotalExp   = prevExp.reduce((s: number, e: Record<string, unknown>)    => s + Number(e.amount), 0);
       const balance        = totalIncome - totalExpenses;
       const savingsRate    = totalIncome > 0 ? (balance / totalIncome) * 100 : 0;
       const avgDaily       = reportRange.daysInMonth > 0 ? totalExpenses / reportRange.daysInMonth : 0;
@@ -548,7 +548,7 @@ Deno.serve(async (req) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const catMap = new Map<string, CatItem>();
       for (const cat of categories) {
-        catMap.set(String(cat.id), { name: String(cat.name), icon: String(cat.icon || "🏷️"), budget: Number(cat.monthly_budget) || 0, value: 0 });
+        catMap.set(String(cat.id), { name: String(cat.name), icon: String(cat.icon || "ðŸ·ï¸"), budget: Number(cat.monthly_budget) || 0, value: 0 });
       }
       const allExp = [...expenses, ...cardTx];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -561,24 +561,24 @@ Deno.serve(async (req) => {
 
       /* Top expenses */
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const catNameMap = new Map(categories.map((c: any) => [String(c.id), `${c.icon || ""} ${c.name}`]));
+      const catNameMap = new Map(categories.map((c: Record<string, unknown>) => [String(c.id), `${c.icon || ""} ${c.name}`]));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const topExpenses: TxItem[] = [...allExp]
-        .sort((a: any, b: any) => Number(b.amount) - Number(a.amount))
+        .sort((a: Record<string, unknown>, b: Record<string, unknown>) => Number(b.amount) - Number(a.amount))
         .slice(0, 5)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .map((e: any) => ({
+        .map((e: Record<string, unknown>) => ({
           description: String(e.description || ""),
           amount: Number(e.amount),
           category: String(catNameMap.get(String(e.category_id)) || "Sem categoria"),
           date: String(e.date),
         }));
 
-      /* Account balances (initial_balance as proxy — good enough for summary) */
+      /* Account balances (initial_balance as proxy â€” good enough for summary) */
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const accItems: AccItem[] = accounts.map((a: any) => ({
         name: String(a.name),
-        icon: String(a.icon || "🏦"),
+        icon: String(a.icon || "ðŸ¦"),
         balance: Number(a.initial_balance) || 0,
       })).sort((a: AccItem, b: AccItem) => b.balance - a.balance);
 
@@ -611,7 +611,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             sender: { name: "FinancasPro", email: "amaralstradiotoryan@gmail.com" },
             to: [{ email: profile.email }],
-            subject: `📅 Relatorio Mensal | ${reportRange.label}`,
+            subject: `ðŸ“… Relatorio Mensal | ${reportRange.label}`,
             htmlContent: html,
           }),
         });
@@ -630,3 +630,4 @@ Deno.serve(async (req) => {
     });
   }
 });
+

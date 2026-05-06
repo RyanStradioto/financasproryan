@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+﻿import { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, LabelList, Cell } from 'recharts';
 import { useFinanceHistory } from '@/hooks/useFinanceHistory';
 import { formatCurrency } from '@/lib/format';
@@ -7,6 +7,8 @@ import { useSensitiveData } from '@/components/finance/SensitiveData';
 
 interface TooltipPayload {
   value: number;
+  color?: string;
+  name?: string;
   payload?: { forecast?: boolean };
 }
 
@@ -25,7 +27,7 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
     <div className="bg-popover/95 backdrop-blur-sm border border-border rounded-xl shadow-xl p-3 min-w-[140px]">
       <p className="font-bold text-xs mb-2 pb-2 border-b border-border/50">{label}</p>
       <div className="space-y-1.5">
-        {payload.map((entry: any, index: number) => (
+        {payload.map((entry, index: number) => (
           <div key={index} className="flex justify-between items-center gap-4 text-xs">
             <span className="flex items-center gap-1.5 text-muted-foreground">
               <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
@@ -42,8 +44,8 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
 };
 
 // Custom label renderer to avoid overlap and format nicely
-const renderCustomBarLabel = (props: any) => {
-  const { x, y, width, value, fill } = props;
+const renderCustomBarLabel = (props: { x?: number; y?: number; width?: number; value?: number; fill?: string }) => {
+  const { x = 0, y = 0, width = 0, value = 0, fill = "currentColor" } = props;
   if (!value || value < 10) return null; 
   
   // Format to full value without cents (e.g. 4.606)
@@ -151,3 +153,4 @@ export default function CashFlowForecast({ accountId = '__all__' }: { accountId?
     </div>
   );
 }
+

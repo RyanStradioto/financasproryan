@@ -1,4 +1,4 @@
-﻿-- Catch-up migration: ensure new investment customization fields exist
+-- Catch-up migration: ensure new investment customization fields exist
 alter table public.investments
   add column if not exists annual_rate numeric(7,2) not null default 0,
   add column if not exists liquidity text not null default 'diaria',

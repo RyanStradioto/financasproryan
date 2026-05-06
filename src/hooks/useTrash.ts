@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+﻿import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { isMissingDeletedAtError } from '@/lib/softDeleteCompat';
@@ -86,7 +86,7 @@ export function useRestoreItem() {
     mutationFn: async ({ id, table }: { id: string; table: 'income' | 'expenses' }) => {
       const { error } = await supabase
         .from(table)
-        .update({ deleted_at: null } as any)
+        .update({ deleted_at: null })
         .eq('id', id);
       if (error) throw error;
     },
@@ -116,3 +116,4 @@ export function useTrashCount() {
   const { data: items = [] } = useTrash();
   return items.length;
 }
+

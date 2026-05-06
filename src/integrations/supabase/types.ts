@@ -469,9 +469,82 @@ export type Database = {
         }
         Relationships: []
       }
+      planning_fixed_costs: {
+        Row: {
+          account_id: string | null
+          active: boolean
+          amount: number
+          category_id: string | null
+          created_at: string
+          day: number
+          description: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          active?: boolean
+          amount?: number
+          category_id?: string | null
+          created_at?: string
+          day?: number
+          description: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          active?: boolean
+          amount?: number
+          category_id?: string | null
+          created_at?: string
+          day?: number
+          description?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      planning_salary_configs: {
+        Row: {
+          account_id: string | null
+          created_at: string
+          description: string
+          first_split_pct: number
+          gross_override: number
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          created_at?: string
+          description?: string
+          first_split_pct?: number
+          gross_override?: number
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          created_at?: string
+          description?: string
+          first_split_pct?: number
+          gross_override?: number
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
+          first_name: string | null
           id: string
           monthly_salary: number
           monthly_summary_enabled: boolean
@@ -483,6 +556,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          first_name?: string | null
           id?: string
           monthly_salary?: number
           monthly_summary_enabled?: boolean
@@ -494,6 +568,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          first_name?: string | null
           id?: string
           monthly_salary?: number
           monthly_summary_enabled?: boolean

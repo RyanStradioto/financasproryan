@@ -1,4 +1,4 @@
-import {
+﻿import {
   createContext, useCallback, useContext, useEffect,
   useMemo, useRef, useState,
 } from 'react';
@@ -39,26 +39,26 @@ const tutorialSteps: TutorialStep[] = [
     title: 'Configure seu app agora',
     description: '',
     icon: Rocket,
-    badge: 'Início',
+    badge: 'InÃ­cio',
     color: 'from-violet-500 to-primary',
   },
   {
-    title: 'Configurações',
-    description: 'Preencha seu salário mensal e jornada de trabalho. Clique no campo destacado abaixo.',
+    title: 'ConfiguraÃ§Ãµes',
+    description: 'Preencha seu salÃ¡rio mensal e jornada de trabalho. Clique no campo destacado abaixo.',
     icon: Settings,
     badge: 'Passo 1 de 7',
     color: 'from-blue-500 to-cyan-500',
     route: '/configuracoes',
     highlightTarget: 'salary-input',
     checklist: [
-      { label: 'Preenchi meu salário mensal', required: true },
+      { label: 'Preenchi meu salÃ¡rio mensal', required: true },
       { label: 'Preenchi horas por dia e dias por semana' },
-      { label: 'Cliquei em Salvar Configurações' },
+      { label: 'Cliquei em Salvar ConfiguraÃ§Ãµes' },
     ],
   },
   {
     title: 'Categorias',
-    description: 'Clique em "Nova Categoria" (destacado) e crie categorias como Alimentação, Casa, Lazer.',
+    description: 'Clique em "Nova Categoria" (destacado) e crie categorias como AlimentaÃ§Ã£o, Casa, Lazer.',
     icon: Grid3X3,
     badge: 'Passo 2 de 7',
     color: 'from-emerald-500 to-teal-500',
@@ -66,7 +66,7 @@ const tutorialSteps: TutorialStep[] = [
     highlightTarget: 'new-category',
     checklist: [
       { label: 'Criei pelo menos uma categoria', required: true },
-      { label: 'Defini orçamento em pelo menos uma categoria' },
+      { label: 'Defini orÃ§amento em pelo menos uma categoria' },
     ],
   },
   {
@@ -83,16 +83,16 @@ const tutorialSteps: TutorialStep[] = [
     ],
   },
   {
-    title: 'Cartões de crédito',
-    description: 'Clique em "Novo Cartão" para cadastrar seus cartões e controlar faturas.',
+    title: 'CartÃµes de crÃ©dito',
+    description: 'Clique em "Novo CartÃ£o" para cadastrar seus cartÃµes e controlar faturas.',
     icon: CreditCard,
     badge: 'Passo 4 de 7',
     color: 'from-pink-500 to-rose-500',
     route: '/cartoes',
     highlightTarget: 'new-card',
     checklist: [
-      { label: 'Não uso cartão de crédito (pode avançar)' },
-      { label: 'Cadastrei meu cartão com limite e vencimento' },
+      { label: 'NÃ£o uso cartÃ£o de crÃ©dito (pode avanÃ§ar)' },
+      { label: 'Cadastrei meu cartÃ£o com limite e vencimento' },
     ],
   },
   {
@@ -104,20 +104,20 @@ const tutorialSteps: TutorialStep[] = [
     route: '/investimentos',
     highlightTarget: 'new-investment',
     checklist: [
-      { label: 'Não tenho investimentos ainda (pode avançar)' },
+      { label: 'NÃ£o tenho investimentos ainda (pode avanÃ§ar)' },
       { label: 'Cadastrei pelo menos um investimento ou meta' },
     ],
   },
   {
     title: 'Receitas',
-    description: 'Clique em "Nova Receita" e registre seu salário ou renda do mês.',
+    description: 'Clique em "Nova Receita" e registre seu salÃ¡rio ou renda do mÃªs.',
     icon: TrendingUp,
     badge: 'Passo 6 de 7',
     color: 'from-green-500 to-emerald-500',
     route: '/receitas',
     highlightTarget: 'new-income',
     checklist: [
-      { label: 'Registrei meu salário ou renda deste mês', required: true },
+      { label: 'Registrei meu salÃ¡rio ou renda deste mÃªs', required: true },
       { label: 'Escolhi a conta que recebeu o dinheiro' },
     ],
   },
@@ -150,7 +150,7 @@ function loadPos() {
   try { const s = localStorage.getItem(POS_KEY); return s ? JSON.parse(s) : null; } catch { return null; }
 }
 function savePos(p: { x: number; y: number }) {
-  try { localStorage.setItem(POS_KEY, JSON.stringify(p)); } catch {}
+  try { localStorage.setItem(POS_KEY, JSON.stringify(p)); } catch { return; }
 }
 function clampPos(p: { x: number; y: number }) {
   return {
@@ -246,7 +246,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     try {
       const s = localStorage.getItem(getChecksKey(user.id));
       if (s) setManualChecks(JSON.parse(s));
-    } catch {}
+    } catch { return; }
   }, [user?.id]);
 
   const saveManualChecks = useCallback((next: Record<number, number[]>) => {
@@ -343,7 +343,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     if (isMobile) setMobileSheetOpen(false);
   }, [navigate, stepIndex, isMobile]);
 
-  // ── Drag handlers (desktop only) ────────────────────────────────────────────
+  // â”€â”€ Drag handlers (desktop only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const startDrag = useCallback((clientX: number, clientY: number) => {
     setIsDragging(true);
     dragRef.current = { startX: clientX, startY: clientY, origX: pos?.x ?? 0, origY: pos?.y ?? 0 };
@@ -385,13 +385,13 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('touchend', onEnd);
     };
   }, [isDragging]);
-  // ───────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const contextValue = useMemo<TutorialContextValue>(() => ({ openTutorial }), [openTutorial]);
 
   if (!open) return <TutorialContext.Provider value={contextValue}>{children}</TutorialContext.Provider>;
 
-  // ── Welcome screen (full-screen modal) ─────────────────────────────────────
+  // â”€â”€ Welcome screen (full-screen modal) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (isWelcome) {
     return (
       <TutorialContext.Provider value={contextValue}>
@@ -407,10 +407,10 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
                 <Rocket className="w-9 h-9 text-white" />
               </div>
               <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-widest text-primary">Configuração guiada</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-primary">ConfiguraÃ§Ã£o guiada</p>
                 <h2 className="text-2xl font-extrabold tracking-tight">Configure seu app agora</h2>
                 <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
-                  Vamos te guiar em <strong className="text-foreground">7 passos rápidos</strong>. Cada passo destaca exatamente o botão que você precisa clicar — e o progresso é detectado automaticamente.
+                  Vamos te guiar em <strong className="text-foreground">7 passos rÃ¡pidos</strong>. Cada passo destaca exatamente o botÃ£o que vocÃª precisa clicar â€” e o progresso Ã© detectado automaticamente.
                 </p>
               </div>
               <div className="grid grid-cols-4 gap-2">
@@ -428,10 +428,10 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
                   onClick={handleNext}
                   className="w-full h-12 rounded-2xl bg-gradient-to-r from-primary to-violet-600 text-white font-bold text-sm shadow-lg shadow-primary/30 hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                 >
-                  Começar agora <ArrowRight className="w-4 h-4" />
+                  ComeÃ§ar agora <ArrowRight className="w-4 h-4" />
                 </button>
                 <button onClick={closeTutorial} className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1">
-                  Pular — já sei configurar
+                  Pular â€” jÃ¡ sei configurar
                 </button>
               </div>
             </div>
@@ -441,7 +441,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // ── Checklist content (shared between mobile sheet and desktop widget) ──────
+  // â”€â”€ Checklist content (shared between mobile sheet and desktop widget) â”€â”€â”€â”€â”€â”€
   const ChecklistContent = () => (
     <>
       {/* Progress bar */}
@@ -493,7 +493,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
                   </span>
                   {!isDone && item.required && (
                     <span className="mt-1 inline-flex items-center text-[10px] font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-full">
-                      obrigatório
+                      obrigatÃ³rio
                     </span>
                   )}
                   {isDone && isAuto && (
@@ -519,7 +519,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
             disabled={stepIndex <= 1}
             className="h-8 px-3 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-all disabled:opacity-30"
           >
-            ←
+            â†
           </button>
           <button
             onClick={handleNext}
@@ -530,14 +530,14 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
                 : 'bg-muted text-muted-foreground cursor-not-allowed'
             }`}
           >
-            {isLast ? '🎉 Concluir' : 'Próximo'}{!isLast && <ChevronRight className="w-3.5 h-3.5" />}
+            {isLast ? 'ðŸŽ‰ Concluir' : 'PrÃ³ximo'}{!isLast && <ChevronRight className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
     </>
   );
 
-  // ── MOBILE: FAB pill + bottom sheet ────────────────────────────────────────
+  // â”€â”€ MOBILE: FAB pill + bottom sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (isMobile) {
     return (
       <TutorialContext.Provider value={contextValue}>
@@ -608,7 +608,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // ── DESKTOP: draggable floating widget ─────────────────────────────────────
+  // â”€â”€ DESKTOP: draggable floating widget â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const widgetStyle = {
     position: 'fixed' as const,
     left: pos?.x ?? 0,
@@ -710,7 +710,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
                             <span className="text-[8px] font-bold text-amber-500 bg-amber-500/10 px-1 py-0.5 rounded-full">obrig.</span>
                           )}
                           {isDone && isAuto && (
-                            <span className="text-[8px] font-bold text-primary/70 bg-primary/10 px-1 py-0.5 rounded-full">✓ auto</span>
+                            <span className="text-[8px] font-bold text-primary/70 bg-primary/10 px-1 py-0.5 rounded-full">âœ“ auto</span>
                           )}
                         </span>
                       </button>
@@ -742,7 +742,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
                     disabled={stepIndex <= 1}
                     className="h-7 px-2.5 rounded-lg border border-border text-[11px] font-medium hover:bg-muted transition-all disabled:opacity-30"
                   >
-                    ←
+                    â†
                   </button>
                   <button
                     onClick={handleNext}
@@ -753,7 +753,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
                         : 'bg-muted text-muted-foreground cursor-not-allowed'
                     }`}
                   >
-                    {isLast ? '🎉' : 'Próximo'}{!isLast && <ChevronRight className="w-3 h-3" />}
+                    {isLast ? 'ðŸŽ‰' : 'PrÃ³ximo'}{!isLast && <ChevronRight className="w-3 h-3" />}
                   </button>
                 </div>
               </div>
@@ -770,3 +770,4 @@ export function useTutorial() {
   if (!ctx) throw new Error('useTutorial must be used within TutorialProvider');
   return ctx;
 }
+

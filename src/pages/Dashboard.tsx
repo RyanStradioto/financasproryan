@@ -1,4 +1,4 @@
-import { useState, useMemo, type ElementType } from 'react';
+﻿import { useState, useMemo, type ElementType } from 'react';
 import { TrendingUp, TrendingDown, Wallet, PiggyBank, Pencil, BarChart3, ArrowUpRight, ArrowDownRight, Target, Clock, ChevronRight, BellRing, Sparkles, CreditCard, Activity, CalendarRange, Flame, Trophy, AlertTriangle } from 'lucide-react';
 import { useIncome, useExpenses, useAccounts, type Income, type Expense } from '@/hooks/useFinanceData';
 import { useNetWorth } from '@/hooks/useInvestments';
@@ -219,7 +219,7 @@ export default function Dashboard() {
   const isCreditCardExpense = (expense: Pick<Expense, 'notes' | 'account_id'>) =>
     detectCreditCardExpense(expense, creditCards, accounts).isCreditCard;
 
-  // Despesas que NÃO são espelho de cartão de crédito (evitar dupla contagem)
+  // Despesas que NÃƒO sÃ£o espelho de cartÃ£o de crÃ©dito (evitar dupla contagem)
   const nonCCExpenses = useMemo(() =>
     expenses.filter(e => !isCreditCardExpense(e))
   , [expenses, creditCards, accounts]);
@@ -290,7 +290,7 @@ export default function Dashboard() {
     return categoryByMatchKey.get(matchKey) ?? categoryByLooseKey.get(looseKey) ?? null;
   };
 
-  // ── Core numbers ─────────────────────────────────────────────
+  // â”€â”€ Core numbers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const totalIncome = useMemo(() =>
     scopedIncome.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0)
   , [scopedIncome]);
@@ -314,7 +314,7 @@ export default function Dashboard() {
 
   const savings = totalIncome > 0 ? ((totalIncome - totalExpensesPaid) / totalIncome) * 100 : 0;
 
-  // ── Category breakdown: nonCC expenses + CC transactions (sem dupla contagem) ───
+  // â”€â”€ Category breakdown: nonCC expenses + CC transactions (sem dupla contagem) â”€â”€â”€
   const catBreakdown = useMemo(() => {
     const allItems = [
       ...scopedNonCCExpenses.map(e => ({ category_id: resolveCategoryId(e), amount: Number(e.amount) })),
@@ -331,20 +331,20 @@ export default function Dashboard() {
       .sort((a, b) => b.value - a.value);
   }, [scopedNonCCExpenses, scopedCCTransactions, categories, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
 
-  // ── Status breakdown: apenas despesas normais (sem espelhos CC) + Fatura CC ───
+  // â”€â”€ Status breakdown: apenas despesas normais (sem espelhos CC) + Fatura CC â”€â”€â”€
   const statusData = useMemo(() => [
-    { name: 'Concluído', value: scopedNonCCExpenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0), fill: 'hsl(160, 84%, 39%)' },
+    { name: 'ConcluÃ­do', value: scopedNonCCExpenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0), fill: 'hsl(160, 84%, 39%)' },
     { name: 'Pendente',  value: scopedNonCCExpenses.filter(e => e.status === 'pendente').reduce((s, e) => s + Number(e.amount), 0),  fill: 'hsl(38, 92%, 50%)' },
     { name: 'Agendado',  value: scopedNonCCExpenses.filter(e => e.status === 'agendado').reduce((s, e) => s + Number(e.amount), 0),  fill: 'hsl(217, 91%, 60%)' },
     ...(totalCCThisMonth > 0 ? [{ name: 'Fatura CC', value: totalCCThisMonth, fill: '#6366f1' }] : []),
   ].filter(s => s.value > 0), [scopedNonCCExpenses, totalCCThisMonth]);
 
-  // ── Sparkline data (Last 30 days of the selected month) ─────
-  const getDailyTrend = (data: any[], dateField = 'date') => {
+  // â”€â”€ Sparkline data (Last 30 days of the selected month) â”€â”€â”€â”€â”€
+  const getDailyTrend = (data: Array<Record<string, string | number | null>>, dateField = 'date') => {
     // Basic grouping for the visual sparkline
-    const sorted = [...data].sort((a, b) => new Date(a[dateField]).getTime() - new Date(b[dateField]).getTime());
+    const sorted = [...data].sort((a, b) => new Date(String(a[dateField] ?? "")).getTime() - new Date(String(b[dateField] ?? "")).getTime());
     const daily: Record<string, number> = {};
-    sorted.forEach(item => { daily[item[dateField]] = (daily[item[dateField]] || 0) + Number(item.amount); });
+    sorted.forEach(item => { const key = String(item[dateField] ?? ""); daily[key] = (daily[key] || 0) + Number(item.amount); });
     const vals = Object.values(daily);
     // Pad to look like a chart if very few days
     if (vals.length === 1) return [0, vals[0]];
@@ -380,7 +380,7 @@ export default function Dashboard() {
     return vals;
   }, [scopedIncome, scopedNonCCExpenses, scopedCCTransactions]);
 
-  // ── Budget progress for Rings: nonCC expenses + CC transactions por categoria ──
+  // â”€â”€ Budget progress for Rings: nonCC expenses + CC transactions por categoria â”€â”€
   const budgetsWithData = useMemo(() =>
     categories.filter(c => Number(c.monthly_budget) > 0).map(cat => {
       const spentRegular = scopedNonCCExpenses.filter(e => resolveCategoryId(e) === cat.id).reduce((s, e) => s + Number(e.amount), 0);
@@ -391,7 +391,7 @@ export default function Dashboard() {
     }).sort((a, b) => b.budget - a.budget)
   , [categories, scopedNonCCExpenses, scopedCCTransactions, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
 
-  // ── Recent transactions (sem espelhos CC) ───────────────────
+  // â”€â”€ Recent transactions (sem espelhos CC) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const recentTransactions = useMemo(() => [
     ...scopedIncome.map(i => ({ ...i, type: 'income' as const })),
     ...scopedNonCCExpenses.map(e => ({ ...e, type: 'expense' as const })),
@@ -454,9 +454,9 @@ export default function Dashboard() {
   // Greeting based on time
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
-    if (hour < 12) return { text: 'Bom dia', icon: '☀️' };
-    if (hour < 18) return { text: 'Boa tarde', icon: '🌤️' };
-    return { text: 'Boa noite', icon: '🌙' };
+    if (hour < 12) return { text: 'Bom dia', icon: 'â˜€ï¸' };
+    if (hour < 18) return { text: 'Boa tarde', icon: 'ðŸŒ¤ï¸' };
+    return { text: 'Boa noite', icon: 'ðŸŒ™' };
   }, []);
 
   const currentMonthDate = useMemo(() => {
@@ -464,7 +464,7 @@ export default function Dashboard() {
     return new Date(parseInt(year), parseInt(m) - 1, 1);
   }, [month]);
 
-  // ── Previous month totals (for MoM deltas) ─────────────────────
+  // â”€â”€ Previous month totals (for MoM deltas) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const prevTotalIncome = useMemo(() =>
     scopedPrevIncome.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0)
   , [scopedPrevIncome]);
@@ -490,7 +490,7 @@ export default function Dashboard() {
   const expenseDelta = pctDelta(currentTotalAll, prevTotalAll);
   const ccDelta = pctDelta(totalCCThisMonth, prevTotalCC);
 
-  // ── Visão do Mês: Pace tracker ─────────────────────────────────
+  // â”€â”€ VisÃ£o do MÃªs: Pace tracker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const monthPace = useMemo(() => {
     const today = new Date();
     const [y, m] = month.split('-').map(Number);
@@ -526,7 +526,7 @@ export default function Dashboard() {
     };
   }, [month, categories, currentTotalAll, scopedPrevNonCCExpenses, scopedPrevCCTransactions]);
 
-  // ── Saúde Financeira: 0–100 score combinando vários sinais ─────
+  // â”€â”€ SaÃºde Financeira: 0â€“100 score combinando vÃ¡rios sinais â”€â”€â”€â”€â”€
   const healthScore = useMemo(() => {
     let score = 50; // baseline
 
@@ -543,7 +543,7 @@ export default function Dashboard() {
       else if (monthPace.spendProgress > monthPace.monthProgress + 25) score -= 15;
     }
 
-    // Pendências: poucas = +10, muitas = -10
+    // PendÃªncias: poucas = +10, muitas = -10
     const pendingRatio = totalIncome > 0 ? pendingAmount / totalIncome : 0;
     if (pendingRatio < 0.1) score += 10;
     else if (pendingRatio > 0.3) score -= 10;
@@ -562,10 +562,10 @@ export default function Dashboard() {
     return Math.max(0, Math.min(100, Math.round(score)));
   }, [savings, monthPace, pendingAmount, totalIncome, totalCCThisMonth, netWorth]);
 
-  const healthLabel = healthScore >= 80 ? 'Excelente' : healthScore >= 60 ? 'Saudável' : healthScore >= 40 ? 'Atenção' : 'Crítica';
+  const healthLabel = healthScore >= 80 ? 'Excelente' : healthScore >= 60 ? 'SaudÃ¡vel' : healthScore >= 40 ? 'AtenÃ§Ã£o' : 'CrÃ­tica';
   const healthColor = healthScore >= 80 ? 'hsl(160, 84%, 39%)' : healthScore >= 60 ? 'hsl(195, 70%, 50%)' : healthScore >= 40 ? 'hsl(38, 92%, 50%)' : 'hsl(0, 72%, 51%)';
 
-  // ── Top Movimentos do Mês ──────────────────────────────────────
+  // â”€â”€ Top Movimentos do MÃªs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const topExpenses = useMemo(() => {
     const allExpenses = [
       ...scopedNonCCExpenses.map(e => ({ id: e.id, description: e.description || 'Despesa', amount: Number(e.amount), date: e.date, category_id: resolveCategoryId(e), kind: 'expense' as const })),
@@ -578,7 +578,7 @@ export default function Dashboard() {
     [...scopedIncome].sort((a, b) => Number(b.amount) - Number(a.amount)).slice(0, 5)
   , [scopedIncome]);
 
-  // ── Comparativo Mensal: bars ───────────────────────────────────
+  // â”€â”€ Comparativo Mensal: bars â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const monthCompareData = useMemo(() => [
     {
       name: 'Receitas',
@@ -603,7 +603,7 @@ export default function Dashboard() {
     },
   ], [prevTotalIncome, totalIncome, prevTotalAll, currentTotalAll]);
 
-  // ── Allocation: Contas vs Investimentos ────────────────────────
+  // â”€â”€ Allocation: Contas vs Investimentos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const allocationData = useMemo(() => {
     const items = [];
     if (balance > 0) items.push({ name: 'Contas', value: balance, fill: 'hsl(160, 84%, 39%)' });
@@ -651,7 +651,7 @@ export default function Dashboard() {
                     className="rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-wider backdrop-blur-md"
                     style={{ borderColor: colorWithOpacity(healthColor, 0.4), backgroundColor: colorWithOpacity(healthColor, 0.15), color: healthColor }}
                   >
-                    Saúde {healthScore}/100
+                    SaÃºde {healthScore}/100
                   </span>
                 </div>
               </div>
@@ -681,7 +681,7 @@ export default function Dashboard() {
                 Escolha a conta
               </p>
               <span className="rounded-full border border-border/60 bg-card/60 px-2.5 py-1 text-[10px] font-bold text-muted-foreground">
-                {activeAccounts.length + 1} visões
+                {activeAccounts.length + 1} visÃµes
               </span>
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 xl:grid-cols-4">
@@ -694,9 +694,9 @@ export default function Dashboard() {
                     : 'border-border/40 bg-background/45 hover:border-primary/25 hover:bg-background/80 hover:shadow-md',
                 )}
               >
-                <BrandLogoBadge label="Visão Geral" color="#10b981" global active={isGlobalView} />
+                <BrandLogoBadge label="VisÃ£o Geral" color="#10b981" global active={isGlobalView} />
                 <div className="min-w-0 w-full mt-1">
-                  <p className="text-sm font-bold truncate">Visão Geral</p>
+                  <p className="text-sm font-bold truncate">VisÃ£o Geral</p>
                   <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{activeAccounts.length} contas ativas</p>
                   <p className="text-sm font-black currency mt-1 tabular-nums truncate tracking-tight">{maskCurrency(formatCurrency(accumulatedBalance))}</p>
                 </div>
@@ -738,12 +738,12 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-      {/* ─── KPI Cards Premium ─── */}
+      {/* â”€â”€â”€ KPI Cards Premium â”€â”€â”€ */}
       <div className={`grid grid-cols-1 gap-3 min-[390px]:grid-cols-2 sm:gap-4 stagger-1 ${totalCCThisMonth > 0 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
         <KpiCard
           label="Receitas"
           value={formatCurrency(totalIncome)}
-          sub="concluídas neste mês"
+          sub="concluÃ­das neste mÃªs"
           color="border-l-[3px] border-l-income"
           icon={TrendingUp}
           trend="up"
@@ -753,7 +753,7 @@ export default function Dashboard() {
         <KpiCard
           label="Despesas"
           value={formatCurrency(totalExpensesPaid + totalCCThisMonth)}
-          sub={`${formatCurrency(totalExpensesPaid)} contas + ${formatCurrency(totalCCThisMonth)} cartão`}
+          sub={`${formatCurrency(totalExpensesPaid)} contas + ${formatCurrency(totalCCThisMonth)} cartÃ£o`}
           color="border-l-[3px] border-l-expense"
           icon={TrendingDown}
           trend="down"
@@ -763,7 +763,7 @@ export default function Dashboard() {
         />
 
 
-        {/* Fatura CC — só aparece quando há transações de cartão no mês */}
+        {/* Fatura CC â€” sÃ³ aparece quando hÃ¡ transaÃ§Ãµes de cartÃ£o no mÃªs */}
         {totalCCThisMonth > 0 && (
           <a href="/cartoes" className="block">
             <div className="relative rounded-2xl border border-[#6366f1]/25 bg-card/70 backdrop-blur-sm p-4 sm:p-5 shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden animate-slide-up border-l-[3px] border-l-[#6366f1] h-full">
@@ -792,7 +792,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* ─── NEW: Visão do Mês + Comparativo Mensal ─── */}
+      {/* â”€â”€â”€ NEW: VisÃ£o do MÃªs + Comparativo Mensal â”€â”€â”€ */}
       <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 stagger-1">
         {/* Pace Tracker */}
         <div className="lg:col-span-2 relative overflow-hidden rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm p-5 sm:p-6 shadow-sm">
@@ -804,8 +804,8 @@ export default function Dashboard() {
                   <Activity className="w-4 h-4 text-primary" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold leading-tight">Visão do Mês</h3>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Ritmo do mês × ritmo dos gastos</p>
+                  <h3 className="text-sm font-bold leading-tight">VisÃ£o do MÃªs</h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Ritmo do mÃªs Ã— ritmo dos gastos</p>
                 </div>
               </div>
               <div className="flex items-center gap-1.5 text-[11px]">
@@ -819,7 +819,7 @@ export default function Dashboard() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-semibold text-muted-foreground flex items-center gap-1.5">
-                    <CalendarRange className="w-3 h-3" /> Avanço do mês
+                    <CalendarRange className="w-3 h-3" /> AvanÃ§o do mÃªs
                   </span>
                   <span className="font-bold tabular-nums">{monthPace.monthProgress.toFixed(0)}%</span>
                 </div>
@@ -831,18 +831,18 @@ export default function Dashboard() {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="font-semibold text-muted-foreground flex items-center gap-1.5">
-                      <Flame className={cn('w-3 h-3', monthPace.onTrack ? 'text-income' : 'text-expense')} /> Gastos do mês
+                      <Flame className={cn('w-3 h-3', monthPace.onTrack ? 'text-income' : 'text-expense')} /> Gastos do mÃªs
                     </span>
                     <span className={cn('font-bold tabular-nums', monthPace.onTrack ? 'text-income' : 'text-expense')}>{monthPace.spendProgress.toFixed(0)}%</span>
                   </div>
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
                     <div className={cn('h-full rounded-full transition-all duration-1000', monthPace.onTrack ? 'bg-gradient-to-r from-income/70 to-income' : 'bg-gradient-to-r from-expense/70 to-expense')} style={{ width: `${Math.min(100, monthPace.spendProgress)}%` }} />
                   </div>
-                  <p className="text-[10px] text-muted-foreground">{maskCurrency(formatCurrency(currentTotalAll))} de {maskCurrency(formatCurrency(monthPace.totalBudget))} de orçamento</p>
+                  <p className="text-[10px] text-muted-foreground">{maskCurrency(formatCurrency(currentTotalAll))} de {maskCurrency(formatCurrency(monthPace.totalBudget))} de orÃ§amento</p>
                 </div>
               ) : (
                 <div className="rounded-xl border border-dashed border-border bg-muted/30 px-3 py-2.5 text-center">
-                  <p className="text-[11px] text-muted-foreground">Defina <a href="/categorias" className="text-primary font-semibold hover:underline">orçamentos por categoria</a> para acompanhar o ritmo de gastos</p>
+                  <p className="text-[11px] text-muted-foreground">Defina <a href="/categorias" className="text-primary font-semibold hover:underline">orÃ§amentos por categoria</a> para acompanhar o ritmo de gastos</p>
                 </div>
               )}
             </div>
@@ -862,7 +862,7 @@ export default function Dashboard() {
                   monthPace.paceVsPrev > 0 ? 'bg-warning/10 text-warning border-warning/20' : 'bg-income/10 text-income border-income/20',
                 )}>
                   {monthPace.paceVsPrev > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                  {Math.abs(monthPace.paceVsPrev).toFixed(0)}% {monthPace.paceVsPrev > 0 ? 'mais rápido' : 'mais lento'} que mês anterior
+                  {Math.abs(monthPace.paceVsPrev).toFixed(0)}% {monthPace.paceVsPrev > 0 ? 'mais rÃ¡pido' : 'mais lento'} que mÃªs anterior
                 </div>
               )}
               {workTimeTotal && (
@@ -874,15 +874,15 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Comparativo Mês Anterior */}
+        {/* Comparativo MÃªs Anterior */}
         <div className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm p-5 sm:p-6 shadow-sm flex flex-col">
           <div className="flex items-center gap-2.5 mb-4">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-info/20 to-info/5 flex items-center justify-center border border-info/15">
               <BarChart3 className="w-4 h-4 text-info" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-sm font-bold leading-tight">Mês a Mês</h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5 truncate">vs mês anterior</p>
+              <h3 className="text-sm font-bold leading-tight">MÃªs a MÃªs</h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5 truncate">vs mÃªs anterior</p>
             </div>
           </div>
           <div className="flex-1 min-h-[180px]">
@@ -921,7 +921,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Main Charts Grid ───────────────────────────────── */}
+      {/* â”€â”€ Main Charts Grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="grid lg:grid-cols-3 gap-6 stagger-2">
         {/* Trend Area Chart (span 2) */}
         <div className="lg:col-span-2 relative z-10">
@@ -961,12 +961,12 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Row 3: Visual Analytics ────────────────────────── */}
+      {/* â”€â”€ Row 3: Visual Analytics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="grid lg:grid-cols-3 gap-6 stagger-3">
         {/* Budget Rings */}
         <div className="stat-card flex flex-col">
           <h3 className="text-sm font-semibold mb-6 flex items-center gap-2">
-            <Target className="w-4 h-4 text-primary" /> Orçamentos Principais
+            <Target className="w-4 h-4 text-primary" /> OrÃ§amentos Principais
             <a href="/planejamento" className="ml-auto text-xs text-primary hover:underline flex items-center gap-0.5 font-normal">
               Ver todos <ChevronRight className="w-3 h-3" />
             </a>
@@ -977,7 +977,7 @@ export default function Dashboard() {
             ) : (
               <div className="flex flex-col items-center justify-center text-center py-8 text-muted-foreground">
                 <Target className="w-10 h-10 mb-3 opacity-20" />
-                <p className="text-sm">Nenhum orçamento definido</p>
+                <p className="text-sm">Nenhum orÃ§amento definido</p>
                 <p className="text-xs mt-1">Configure limites nas suas categorias para acompanhar aqui.</p>
               </div>
             )}
@@ -998,7 +998,7 @@ export default function Dashboard() {
                 />
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  <p className="text-sm">Sem gastos neste mês</p>
+                  <p className="text-sm">Sem gastos neste mÃªs</p>
                 </div>
               )}
             </div>
@@ -1009,7 +1009,7 @@ export default function Dashboard() {
         <div className="stat-card flex flex-col">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Wallet className="w-4 h-4 text-primary" /> Transações Recentes
+              <Wallet className="w-4 h-4 text-primary" /> TransaÃ§Ãµes Recentes
             </h3>
           </div>
           {recentTransactions.length > 0 ? (
@@ -1045,7 +1045,7 @@ export default function Dashboard() {
                         {t.type === 'income' ? '+' : '-'}{maskCurrency(formatCurrency(Number(t.amount)))}
                       </span>
                       <button
-                        onClick={() => setEditing(t as any)}
+                        onClick={() => setEditing(t)}
                         className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-all"
                       >
                         <Pencil className="w-3 h-3" />
@@ -1058,18 +1058,18 @@ export default function Dashboard() {
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
               <Wallet className="w-8 h-8 opacity-20 mb-2" />
-              <p className="text-sm">Nenhuma transação</p>
+              <p className="text-sm">Nenhuma transaÃ§Ã£o</p>
             </div>
           )}
           <div className="mt-4 pt-4 border-t flex justify-center">
              <a href="/despesas" className="text-xs font-medium text-primary hover:text-primary/80 transition-colors">
-               Ver extrato completo →
+               Ver extrato completo â†’
              </a>
           </div>
         </div>
       </div>
 
-      {/* ── Category & Status Breakdown (Added Back) ────────── */}
+      {/* â”€â”€ Category & Status Breakdown (Added Back) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="grid lg:grid-cols-2 gap-6 stagger-4">
         {/* Category Donut */}
         <div className="stat-card">
@@ -1195,7 +1195,7 @@ export default function Dashboard() {
       </div>
 
 
-      {/* ─── Top Movimentos do Mês ─── */}
+      {/* â”€â”€â”€ Top Movimentos do MÃªs â”€â”€â”€ */}
       {(topExpenses.length > 0 || topIncomes.length > 0) && (() => {
         const showAllocationFiller = topExpenses.length > 0 && topIncomes.length === 0 && allocationData.length > 0 && focusedInvestmentTotal > 0;
         const showIncomeFiller = topIncomes.length > 0 && topExpenses.length === 0;
@@ -1211,7 +1211,7 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <h3 className="text-sm font-bold leading-tight">Maiores Despesas</h3>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Top 5 do mês</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Top 5 do mÃªs</p>
                   </div>
                 </div>
                 <a href="/despesas" className="text-[11px] text-primary hover:underline font-medium flex items-center gap-0.5">
@@ -1239,11 +1239,11 @@ export default function Dashboard() {
                             <div className="flex items-center gap-1.5 min-w-0">
                               <p className="text-[13px] font-semibold truncate min-w-0 flex-1">{tx.description}</p>
                               {tx.kind === 'cc' && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-[#6366f1]/10 text-[#6366f1] border border-[#6366f1]/20 font-bold shrink-0">CARTÃO</span>
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-[#6366f1]/10 text-[#6366f1] border border-[#6366f1]/20 font-bold shrink-0">CARTÃƒO</span>
                               )}
                             </div>
                             <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                              {cat ? `${cat.icon} ${cat.name}` : 'Sem categoria'} · {formatDate(tx.date)}
+                              {cat ? `${cat.icon} ${cat.name}` : 'Sem categoria'} Â· {formatDate(tx.date)}
                             </p>
                           </div>
                         </div>
@@ -1268,7 +1268,7 @@ export default function Dashboard() {
                     <PiggyBank className="w-4 h-4 text-info" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold leading-tight">Alocação do Patrimônio</h3>
+                    <h3 className="text-sm font-bold leading-tight">AlocaÃ§Ã£o do PatrimÃ´nio</h3>
                     <p className="text-[11px] text-muted-foreground mt-0.5">Contas vs Investimentos</p>
                   </div>
                 </div>
@@ -1327,8 +1327,8 @@ export default function Dashboard() {
           {showIncomeFiller && (
             <div className="rounded-3xl border border-dashed border-border/40 bg-muted/10 p-10 flex flex-col items-center justify-center text-center">
               <Trophy className="w-10 h-10 text-income/40 mb-3" />
-              <p className="text-sm font-bold text-foreground">Nenhuma despesa neste mês</p>
-              <p className="text-xs text-muted-foreground mt-1">Continue assim — sua economia agradece!</p>
+              <p className="text-sm font-bold text-foreground">Nenhuma despesa neste mÃªs</p>
+              <p className="text-xs text-muted-foreground mt-1">Continue assim â€” sua economia agradece!</p>
             </div>
           )}
 
@@ -1342,7 +1342,7 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <h3 className="text-sm font-bold leading-tight">Maiores Receitas</h3>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Top 5 do mês</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Top 5 do mÃªs</p>
                   </div>
                 </div>
                 <a href="/receitas" className="text-[11px] text-primary hover:underline font-medium flex items-center gap-0.5">
@@ -1351,7 +1351,6 @@ export default function Dashboard() {
               </div>
               <div className="space-y-2.5">
                 {topIncomes.map((tx, idx) => {
-                  const cat = categories.find(c => c.id === tx.category_id);
                   const maxValue = Number(topIncomes[0].amount);
                   const pct = maxValue > 0 ? (Number(tx.amount) / maxValue) * 100 : 0;
                   return (
@@ -1369,7 +1368,7 @@ export default function Dashboard() {
                           <div className="min-w-0 flex-1">
                             <p className="text-[13px] font-semibold truncate">{tx.description || 'Receita'}</p>
                             <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                              {cat ? `${cat.icon} ${cat.name}` : 'Sem categoria'} · {formatDate(tx.date)}
+                              Receita Â· {formatDate(tx.date)}
                             </p>
                           </div>
                         </div>
@@ -1388,7 +1387,7 @@ export default function Dashboard() {
         );
       })()}
 
-      {/* ─── Allocation Patrimônio (skip when already shown as filler) ─── */}
+      {/* â”€â”€â”€ Allocation PatrimÃ´nio (skip when already shown as filler) â”€â”€â”€ */}
       {allocationData.length > 0 && focusedInvestmentTotal > 0 && !(topExpenses.length > 0 && topIncomes.length === 0) && (
         <div className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm p-5 sm:p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4 gap-3">
@@ -1397,8 +1396,8 @@ export default function Dashboard() {
                 <PiggyBank className="w-4 h-4 text-info" />
               </div>
               <div>
-                <h3 className="text-sm font-bold leading-tight">Alocação do Patrimônio</h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Como seu dinheiro está distribuído</p>
+                <h3 className="text-sm font-bold leading-tight">AlocaÃ§Ã£o do PatrimÃ´nio</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Como seu dinheiro estÃ¡ distribuÃ­do</p>
               </div>
             </div>
             <a href="/investimentos" className="text-[11px] text-primary hover:underline font-medium flex items-center gap-0.5">
@@ -1452,18 +1451,18 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── Cash Flow Projection ────────────────────────────── */}
+      {/* â”€â”€ Cash Flow Projection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="stagger-5">
         <CashFlowForecast accountId={accountFocusId} />
       </div>
 
-      {/* ── Saldo, Patrimônio e Alertas ──────────────────────── */}
+      {/* â”€â”€ Saldo, PatrimÃ´nio e Alertas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="stagger-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <KpiCard
             label="Saldo Acumulado"
             value={formatCurrency(balance)}
-            sub="disponível em contas"
+            sub="disponÃ­vel em contas"
             color={balance >= 0 ? 'border-l-[3px] border-l-primary' : 'border-l-[3px] border-l-expense'}
             icon={Wallet}
             trend={balance >= 0 ? 'up' : 'down'}
@@ -1478,7 +1477,7 @@ export default function Dashboard() {
                     <div className="w-8 h-8 rounded-xl items-center justify-center flex shrink-0 bg-info/10 text-info">
                       <BarChart3 className="w-4 h-4" />
                     </div>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.1em]">Patrimônio</p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.1em]">PatrimÃ´nio</p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-info group-hover:translate-x-0.5 transition-all" />
                 </div>
@@ -1488,7 +1487,7 @@ export default function Dashboard() {
                   </p>
                   <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1.5 leading-tight line-clamp-2">
                     {accountFocusId === '__all__'
-                      ? `Contas ${maskCurrency(formatCurrency(balance))} · Invest. ${maskCurrency(formatCurrency(focusedInvestmentTotal))}`
+                      ? `Contas ${maskCurrency(formatCurrency(balance))} Â· Invest. ${maskCurrency(formatCurrency(focusedInvestmentTotal))}`
                       : `Conta foco: ${focusedAccountInsight?.acc.name || 'Conta selecionada'}`}
                   </p>
                 </div>
@@ -1499,7 +1498,7 @@ export default function Dashboard() {
         <SmartAlerts expenses={scopedNonCCExpenses} income={scopedIncome} categories={categories} />
       </div>
 
-      {/* ── Achievements ───────────────────────────────────── */}
+      {/* â”€â”€ Achievements â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="stagger-6">
         <Achievements expenses={scopedNonCCExpenses} income={scopedIncome} categories={categories} />
       </div>
@@ -1520,5 +1519,7 @@ export default function Dashboard() {
     </div>
   );
 }
+
+
 
 

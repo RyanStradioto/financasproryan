@@ -64,7 +64,6 @@ function ProtectedRoutes() {
           <Route path="/planejamento" element={<PlanningPage />} />
           <Route path="/contas"       element={<AccountsPage />} />
           <Route path="/calendario"   element={<CalendarPage />} />
-          <Route path="/planejamento" element={<PlanningPage />} />
           <Route path="/configuracoes" element={<SettingsPage />} />
           <Route path="/importar"     element={<ImportPage />} />
           <Route path="/insights"     element={<InsightsPage />} />

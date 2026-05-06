@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+﻿import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import type { Tables, TablesInsert } from '@/integrations/supabase/types';
@@ -10,7 +10,7 @@ const OPTIONAL_INVESTMENT_COLUMNS = ['annual_rate', 'liquidity', 'photo_url'] as
 
 function stripUnsupportedColumns<T extends Record<string, unknown>>(payload: T, message?: string): Partial<T> {
   if (!message) return payload;
-  let next: Record<string, unknown> = { ...payload };
+  const next: Record<string, unknown> = { ...payload };
 
   for (const key of OPTIONAL_INVESTMENT_COLUMNS) {
     if (message.includes(`'${key}'`) || message.includes(`"${key}"`) || message.includes(key)) {
@@ -163,7 +163,7 @@ export function useDeleteInvestment() {
 }
 
 /** 
- * PATRIMONIAL TRANSFER — records investment and updates the investment balance.
+ * PATRIMONIAL TRANSFER â€” records investment and updates the investment balance.
  * This is NOT an expense. Transfers money from account to investment.
  */
 export function useAddInvestmentTransaction() {
@@ -181,9 +181,10 @@ export function useAddInvestmentTransaction() {
       skipLedgerSync?: boolean;
     }) => {
       // 1. Insert transaction record
+      const { skipLedgerSync, ...txPayload } = data;
       const { error: txError } = await supabase
         .from('investment_transactions')
-        .insert({ ...data, user_id: user!.id, description: data.description ?? '' });
+        .insert({ ...txPayload, user_id: user!.id, description: data.description ?? '' });
       if (txError) throw txError;
 
       // 2. Update investment current_value and total_invested
@@ -217,7 +218,7 @@ export function useAddInvestmentTransaction() {
 
       // 3. INTEGRATION: Deduct/add from account balance via expense/income records
       // This makes investments "talk" to the rest of the financial system
-      if (!data.skipLedgerSync && data.account_id && (data.type === 'aporte' || data.type === 'resgate')) {
+      if (!skipLedgerSync && data.account_id && (data.type === 'aporte' || data.type === 'resgate')) {
         if (data.type === 'aporte') {
           // Aporte = money leaves the account -> create an expense marked as investment transfer
           // We use a special note so it's identifiable as patrimonial transfer
@@ -226,14 +227,14 @@ export function useAddInvestmentTransaction() {
             .insert({
               user_id: user!.id,
               date: data.date,
-              description: `📊 Aporte: ${inv.name}`,
+              description: `ðŸ“Š Aporte: ${inv.name}`,
               amount: data.amount,
               account_id: data.account_id,
               status: 'concluido',
-              notes: `[INVESTIMENTO] Transferência patrimonial para ${inv.name}. Não é um gasto real.`,
+              notes: `[INVESTIMENTO] TransferÃªncia patrimonial para ${inv.name}. NÃ£o Ã© um gasto real.`,
               is_recurring: false,
             });
-          if (expError) console.warn('Falha ao registrar saída de conta:', expError);
+          if (expError) console.warn('Falha ao registrar saÃ­da de conta:', expError);
         } else if (data.type === 'resgate') {
           // Resgate = money returns to the account -> create an income record
           const { error: incError } = await supabase
@@ -241,7 +242,7 @@ export function useAddInvestmentTransaction() {
             .insert({
               user_id: user!.id,
               date: data.date,
-              description: `📊 Resgate: ${inv.name}`,
+              description: `ðŸ“Š Resgate: ${inv.name}`,
               amount: data.amount,
               account_id: data.account_id,
               status: 'concluido',
@@ -261,3 +262,6 @@ export function useAddInvestmentTransaction() {
     },
   });
 }
+
+
+

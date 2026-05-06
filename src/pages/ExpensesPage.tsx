@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+﻿import { useState, useMemo } from 'react';
 import { useExpenses, useDeleteExpense, useUpdateExpense, useCategories, useAccounts, type Expense } from '@/hooks/useFinanceData';
 import { useCCTransactionsForMonth, useCreditCards, type CreditCardTransaction } from '@/hooks/useCreditCards';
 import { getMonthYear, formatCurrency, formatDate, getStatusColor, getStatusLabel } from '@/lib/format';
@@ -62,7 +62,7 @@ function OptionPicker({ value, options, placeholder, onChange, hideIcon }: {
           onClick={() => onChange(null)}
           className={`w-full text-left px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors hover:bg-muted ${!value ? 'opacity-40 cursor-default' : ''}`}
         >
-          — Nenhum
+          â€” Nenhum
         </button>
         {options.map(o => (
           <button
@@ -79,7 +79,7 @@ function OptionPicker({ value, options, placeholder, onChange, hideIcon }: {
 }
 
 const STATUSES = [
-  { value: 'concluido', label: 'Concluído', color: 'bg-success' },
+  { value: 'concluido', label: 'ConcluÃ­do', color: 'bg-success' },
   { value: 'pendente',  label: 'Pendente',  color: 'bg-warning' },
   { value: 'agendado',  label: 'Agendado',  color: 'bg-info'    },
 ];
@@ -244,20 +244,20 @@ export default function ExpensesPage() {
   const scheduledTotal = useMemo(() => scopedExpenses.filter(e => e.status !== 'concluido').reduce((s, e) => s + Number(e.amount), 0), [scopedExpenses]);
 
   const getCategoryName = (id: string | null) => {
-    if (!id) return '—';
+    if (!id) return 'â€”';
     const cat = categories.find(c => c.id === id);
-    return cat ? `${cat.icon} ${cat.name}` : '—';
+    return cat ? `${cat.icon} ${cat.name}` : 'â€”';
   };
 
   const getAccountName = (id: string | null, hideIcon = false) => {
-    if (!id) return '—';
+    if (!id) return 'â€”';
     const acc = accounts.find(a => a.id === id);
-    return acc ? (hideIcon ? acc.name : `${acc.icon} ${acc.name}`) : '—';
+    return acc ? (hideIcon ? acc.name : `${acc.icon} ${acc.name}`) : 'â€”';
   };
 
   const getCardName = (cardId: string) => {
     const card = creditCards.find(c => c.id === cardId);
-    return card ? card.name : 'Cartão';
+    return card ? card.name : 'CartÃ£o';
   };
 
   const getCardColor = (cardId: string) => {
@@ -271,7 +271,7 @@ export default function ExpensesPage() {
       const result = await deleteExpense.mutateAsync(id);
       if (result.softDeleted) {
         toast.success('Despesa movida para lixeira', {
-          description: item ? `"${item.description || 'Despesa'}" pode ser restaurada em até 30 dias` : undefined,
+          description: item ? `"${item.description || 'Despesa'}" pode ser restaurada em atÃ© 30 dias` : undefined,
           duration: 5000,
           action: {
             label: 'Desfazer',
@@ -279,7 +279,7 @@ export default function ExpensesPage() {
               try {
                 const { error } = await (await import('@/integrations/supabase/client')).supabase
                   .from('expenses')
-                  .update({ deleted_at: null } as any)
+                  .update({ deleted_at: null })
                   .eq('id', id);
                 if (!error) { toast.success('Despesa restaurada!'); window.location.reload(); }
               } catch { /* silent */ }
@@ -287,8 +287,8 @@ export default function ExpensesPage() {
           },
         });
       } else {
-        toast.success('Despesa excluída', {
-          description: 'A lixeira ainda não está habilitada neste banco, então a exclusão foi permanente.',
+        toast.success('Despesa excluÃ­da', {
+          description: 'A lixeira ainda nÃ£o estÃ¡ habilitada neste banco, entÃ£o a exclusÃ£o foi permanente.',
           duration: 4000,
         });
       }
@@ -301,7 +301,7 @@ export default function ExpensesPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* ─── Hero Header ─── */}
+      {/* â”€â”€â”€ Hero Header â”€â”€â”€ */}
       <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-expense/[0.04] p-4 shadow-sm sm:rounded-3xl sm:p-7">
         <div className="absolute -top-24 -right-24 w-72 h-72 bg-expense/15 blur-3xl rounded-full pointer-events-none" />
         <div className="absolute -bottom-32 -left-20 w-64 h-64 bg-expense/[0.06] blur-3xl rounded-full pointer-events-none" />
@@ -318,11 +318,11 @@ export default function ExpensesPage() {
                 <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 flex items-center gap-2 flex-wrap">
                   <span className="inline-flex items-center gap-1.5">
                     <span className="inline-block w-1.5 h-1.5 rounded-full bg-expense animate-pulse" />
-                    {hasActiveFilters ? `${filtered.length} de ${totalItems}` : totalItems} {totalItems === 1 ? 'lançamento' : 'lançamentos'}
+                    {hasActiveFilters ? `${filtered.length} de ${totalItems}` : totalItems} {totalItems === 1 ? 'lanÃ§amento' : 'lanÃ§amentos'}
                   </span>
                   {ccTransactions.length > 0 && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#6366f1]/10 text-[#6366f1] border border-[#6366f1]/20 font-semibold text-[10px] uppercase tracking-wide">
-                      <CreditCard className="w-3 h-3" />{ccTransactions.length} cartão
+                      <CreditCard className="w-3 h-3" />{ccTransactions.length} cartÃ£o
                     </span>
                   )}
                 </p>
@@ -360,23 +360,23 @@ export default function ExpensesPage() {
           {/* Total + breakdown */}
           <div className="flex flex-col md:flex-row items-stretch md:items-end justify-between gap-5 pt-1">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80 mb-1.5">Total no mês</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80 mb-1.5">Total no mÃªs</p>
               <p className="text-3xl min-[390px]:text-4xl sm:text-5xl font-black text-expense currency leading-none tracking-tight truncate max-w-full">{formatCurrency(totalExpenses + totalCC)}</p>
             </div>
 
-            {/* Inline split chips: Débito | Crédito | Em aberto */}
+            {/* Inline split chips: DÃ©bito | CrÃ©dito | Em aberto */}
             <div className="grid grid-cols-1 gap-2 min-[430px]:grid-cols-3 md:gap-3 md:max-w-md w-full">
               <div className="rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm px-3 py-2.5">
                 <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
                   <Landmark className="h-3 w-3" />
-                  <p className="text-[9px] font-bold uppercase tracking-wider">Débito/PIX</p>
+                  <p className="text-[9px] font-bold uppercase tracking-wider">DÃ©bito/PIX</p>
                 </div>
                 <p className="text-sm sm:text-base font-extrabold currency truncate">{formatCurrency(accountTotal)}</p>
               </div>
               <div className="rounded-xl border border-[#6366f1]/25 bg-[#6366f1]/[0.06] px-3 py-2.5">
                 <div className="flex items-center gap-1.5 text-[#6366f1] mb-0.5">
                   <CreditCard className="h-3 w-3" />
-                  <p className="text-[9px] font-bold uppercase tracking-wider">Cartão</p>
+                  <p className="text-[9px] font-bold uppercase tracking-wider">CartÃ£o</p>
                 </div>
                 <p className="text-sm sm:text-base font-extrabold currency text-[#6366f1] truncate">{formatCurrency(creditTotal)}</p>
               </div>
@@ -400,7 +400,7 @@ export default function ExpensesPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <input
               type="text"
-              placeholder="Buscar por descrição..."
+              placeholder="Buscar por descriÃ§Ã£o..."
               value={filterSearch}
               onChange={e => setFilterSearch(e.target.value)}
               className="h-10 w-full rounded-xl border border-border/60 bg-card/50 backdrop-blur-sm pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all shadow-sm"
@@ -418,10 +418,10 @@ export default function ExpensesPage() {
             <button
               onClick={() => setShowCCOnly(v => !v)}
               className={`h-10 flex items-center gap-2 px-3.5 rounded-xl border text-sm font-medium transition-colors shadow-sm shrink-0 ${showCCOnly ? 'border-[#6366f1]/50 bg-[#6366f1]/10 text-[#6366f1]' : 'border-border/60 bg-card/50 text-foreground hover:bg-muted/50'}`}
-              title="Mostrar apenas cartão de crédito"
+              title="Mostrar apenas cartÃ£o de crÃ©dito"
             >
               <CreditCard className="w-4 h-4" />
-              <span className="hidden sm:inline">Só Cartão</span>
+              <span className="hidden sm:inline">SÃ³ CartÃ£o</span>
             </button>
           )}
 
@@ -532,16 +532,16 @@ export default function ExpensesPage() {
                     <input
                       type="number"
                       min={0}
-                      placeholder="Mínimo"
+                      placeholder="MÃ­nimo"
                       value={filterAmountMin}
                       onChange={e => setFilterAmountMin(e.target.value)}
                       className="h-8 w-full rounded-lg border border-border/60 bg-muted/30 px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
-                    <span className="text-muted-foreground text-sm shrink-0">—</span>
+                    <span className="text-muted-foreground text-sm shrink-0">â€”</span>
                     <input
                       type="number"
                       min={0}
-                      placeholder="Máximo"
+                      placeholder="MÃ¡ximo"
                       value={filterAmountMax}
                       onChange={e => setFilterAmountMax(e.target.value)}
                       className="h-8 w-full rounded-lg border border-border/60 bg-muted/30 px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -560,7 +560,7 @@ export default function ExpensesPage() {
                     >
                       <option value="date">Data</option>
                       <option value="amount">Valor</option>
-                      <option value="description">Descrição</option>
+                      <option value="description">DescriÃ§Ã£o</option>
                       <option value="category">Categoria</option>
                       <option value="status">Status</option>
                     </select>
@@ -594,7 +594,7 @@ export default function ExpensesPage() {
           <div className="flex items-center gap-2 flex-wrap px-1">
             {showCCOnly && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#6366f1]/10 border border-[#6366f1]/20 text-[#6366f1] text-xs font-medium">
-                <CreditCard className="w-3 h-3" /> Só Cartão
+                <CreditCard className="w-3 h-3" /> SÃ³ CartÃ£o
                 <button onClick={() => setShowCCOnly(false)} className="hover:opacity-70 ml-0.5 transition-opacity">
                   <X className="w-3 h-3" />
                 </button>
@@ -636,7 +636,7 @@ export default function ExpensesPage() {
             })}
             {(filterAmountMin !== '' || filterAmountMax !== '') && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted border border-border/60 text-xs font-medium">
-                R$ {filterAmountMin || '0'} — {filterAmountMax ? `R$ ${filterAmountMax}` : '∞'}
+                R$ {filterAmountMin || '0'} â€” {filterAmountMax ? `R$ ${filterAmountMax}` : 'âˆž'}
                 <button onClick={() => { setFilterAmountMin(''); setFilterAmountMax(''); }} className="text-muted-foreground hover:text-foreground ml-0.5 transition-colors">
                   <X className="w-3 h-3" />
                 </button>
@@ -655,7 +655,7 @@ export default function ExpensesPage() {
             </div>
             <div className="text-center">
               <p className="text-base font-bold text-foreground mb-1">Nenhuma despesa</p>
-              <p className="text-xs text-muted-foreground">Clique em "Nova Despesa" para começar</p>
+              <p className="text-xs text-muted-foreground">Clique em "Nova Despesa" para comeÃ§ar</p>
             </div>
           </div>
         )}
@@ -686,7 +686,7 @@ export default function ExpensesPage() {
                     className={`w-11 h-11 rounded-full flex items-center justify-center text-xl shrink-0 shadow-sm border ${isCC ? 'border-[#6366f1]/20' : 'border-border/60 bg-muted/40'}`}
                     style={isCC ? { backgroundColor: `${cardColor}20` } : undefined}
                   >
-                    {isCC ? <CreditCard className="w-5 h-5" style={{ color: cardColor }} /> : (cat?.icon || '🛒')}
+                    {isCC ? <CreditCard className="w-5 h-5" style={{ color: cardColor }} /> : (cat?.icon || 'ðŸ›’')}
                   </div>
                   <div className="min-w-0 flex flex-col justify-center">
                     <div className="flex items-center gap-1.5 mb-1">
@@ -764,14 +764,14 @@ export default function ExpensesPage() {
         )}
       </div>
 
-      {/* ─── Desktop table ─── */}
+      {/* â”€â”€â”€ Desktop table â”€â”€â”€ */}
       <div className="hidden sm:block rounded-2xl border border-border/60 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted/30 border-b border-border/60">
                 <th className="text-left py-3 px-5 font-semibold text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80 w-[110px]">Data</th>
-                <th className="text-left py-3 px-3 font-semibold text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80">Descrição</th>
+                <th className="text-left py-3 px-3 font-semibold text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80">DescriÃ§Ã£o</th>
                 <th className="text-left py-3 px-3 font-semibold text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80 w-[150px]">Categoria</th>
                 <th className="text-left py-3 px-3 font-semibold text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80 w-[140px]">Pagamento</th>
                 <th className="text-right py-3 px-3 font-semibold text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80 w-[120px]">Valor</th>
@@ -823,7 +823,7 @@ export default function ExpensesPage() {
                       )}
                       <td className="py-3 px-3">
                         <a href="/cartoes" className="text-[10px] text-muted-foreground hover:text-[#6366f1] transition-colors flex items-center gap-1 opacity-0 group-hover:opacity-100 whitespace-nowrap font-medium">
-                          Ver fatura →
+                          Ver fatura â†’
                         </a>
                       </td>
                     </tr>
@@ -852,16 +852,16 @@ export default function ExpensesPage() {
                       </div>
                     </td>
                     <td className="py-3 px-3">
-                      <OptionPicker value={exp.category_id} options={categories} placeholder="—" onChange={v => handleCategoryChange(exp.id, v)} />
+                      <OptionPicker value={exp.category_id} options={categories} placeholder="â€”" onChange={v => handleCategoryChange(exp.id, v)} />
                     </td>
                     <td className="py-3 px-3">
                       <div className="flex flex-col gap-1 items-start">
                         <StatusPicker status={exp.status} onChange={s => handleStatusChange(exp.id, s)} />
                         {exp.account_id && (
-                          <OptionPicker value={exp.account_id} options={accounts} placeholder="—" onChange={v => handleAccountChange(exp.id, v)} />
+                          <OptionPicker value={exp.account_id} options={accounts} placeholder="â€”" onChange={v => handleAccountChange(exp.id, v)} />
                         )}
                         {!exp.account_id && (
-                          <OptionPicker value={exp.account_id} options={accounts} placeholder="conta…" onChange={v => handleAccountChange(exp.id, v)} />
+                          <OptionPicker value={exp.account_id} options={accounts} placeholder="contaâ€¦" onChange={v => handleAccountChange(exp.id, v)} />
                         )}
                       </div>
                     </td>
@@ -893,8 +893,8 @@ export default function ExpensesPage() {
                       <Receipt className="w-6 h-6 text-muted-foreground" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Nenhuma despesa neste mês</p>
-                      <p className="text-xs text-muted-foreground/70 mt-1">Adicione uma despesa para começar a acompanhar</p>
+                      <p className="text-sm font-medium text-muted-foreground">Nenhuma despesa neste mÃªs</p>
+                      <p className="text-xs text-muted-foreground/70 mt-1">Adicione uma despesa para comeÃ§ar a acompanhar</p>
                     </div>
                   </div>
                 </td></tr>
@@ -948,3 +948,4 @@ export default function ExpensesPage() {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+﻿import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,7 +12,7 @@ const fmt = (v: number) =>
 const fmtPct = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
 
 function normalizeText(value: string): string {
-  return value.normalize("NFD").replace(/[̀-ͯ]/g, "");
+  return value.normalize("NFD").replace(/[Ì€-Í¯]/g, "");
 }
 
 function formatScheduleDate(date: Date): string {
@@ -128,7 +128,7 @@ function buildWeeklyHtml(p: {
   const headerBg   = "#0d1b2a";
   const accentBlue = "#3b82f6";
 
-  /* ── Category rows ── */
+  /* â”€â”€ Category rows â”€â”€ */
   const catRows = p.categories.slice(0, 6).map((c) => {
     const pct    = p.totalExpenses > 0 ? Math.round((c.value / p.totalExpenses) * 100) : 0;
     const barPct = Math.min(pct, 100);
@@ -148,7 +148,7 @@ function buildWeeklyHtml(p: {
       </tr>`;
   }).join("");
 
-  /* ── Top expense rows ── */
+  /* â”€â”€ Top expense rows â”€â”€ */
   const txRows = p.topExpenses.slice(0, 5).map((t, i) => `
     <tr style="background:${i % 2 === 0 ? "#f9fafb" : "#ffffff"};">
       <td style="padding:8px 12px;font-size:13px;color:#111827;">${t.description || "Sem descricao"}</td>
@@ -157,7 +157,7 @@ function buildWeeklyHtml(p: {
       <td style="padding:8px 12px;font-size:13px;font-weight:700;color:#dc2626;text-align:right;white-space:nowrap;">${fmt(t.amount)}</td>
     </tr>`).join("");
 
-  /* ── Insight rows ── */
+  /* â”€â”€ Insight rows â”€â”€ */
   const insightRows = p.insights.map((t) => `
     <tr>
       <td style="padding:3px 0 3px 6px;vertical-align:top;">
@@ -225,7 +225,7 @@ function buildWeeklyHtml(p: {
               <div style="border-radius:12px;background:${balancePositive ? "#f0fdf4" : "#fef2f2"};border:1px solid ${balancePositive ? "#bbf7d0" : "#fecaca"};padding:14px 16px;">
                 <div style="font-size:10px;color:${balancePositive ? "#15803d" : "#b91c1c"};font-weight:700;text-transform:uppercase;letter-spacing:1px;">Saldo</div>
                 <div style="font-size:22px;color:${balancePositive ? "#166534" : "#991b1b"};font-weight:800;margin-top:6px;letter-spacing:-0.5px;">${fmt(p.balance)}</div>
-                <div style="font-size:11px;color:${balancePositive ? "#16a34a" : "#dc2626"};margin-top:4px;">${balancePositive ? "Semana positiva ✓" : "Semana negativa"}</div>
+                <div style="font-size:11px;color:${balancePositive ? "#16a34a" : "#dc2626"};margin-top:4px;">${balancePositive ? "Semana positiva âœ“" : "Semana negativa"}</div>
               </div>
             </td>
           </tr>
@@ -404,7 +404,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    /* ── Date range: last 7 days ── */
+    /* â”€â”€ Date range: last 7 days â”€â”€ */
     const now      = new Date();
     const rangeEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     const rangeStart = new Date(rangeEnd);
@@ -447,18 +447,18 @@ Deno.serve(async (req) => {
       const categories = catRes.data  || [];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const totalIncome   = income.reduce((s: number, i: any)   => s + Number(i.amount), 0);
+      const totalIncome   = income.reduce((s: number, i: Record<string, unknown>)   => s + Number(i.amount), 0);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const totalExpenses = expenses.reduce((s: number, e: any) => s + Number(e.amount), 0);
+      const totalExpenses = expenses.reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0);
       const balance       = totalIncome - totalExpenses;
-      const avgDaily      = 7 > 0 ? totalExpenses / 7 : 0;
+      const avgDaily      = totalExpenses / 7;
       const projectedMonthly = avgDaily * 30;
 
       /* Category breakdown */
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const catMap = new Map<string, CatItem>();
       for (const cat of categories) {
-        catMap.set(String(cat.id), { name: String(cat.name), icon: String(cat.icon || "🏷️"), budget: Number(cat.monthly_budget) || 0, value: 0 });
+        catMap.set(String(cat.id), { name: String(cat.name), icon: String(cat.icon || "ðŸ·ï¸"), budget: Number(cat.monthly_budget) || 0, value: 0 });
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       for (const e of expenses) {
@@ -470,13 +470,13 @@ Deno.serve(async (req) => {
         .sort((a, b) => b.value - a.value);
 
       /* Top expenses */
-      const catNameMap = new Map(categories.map((c: any) => [String(c.id), `${c.icon || ""} ${c.name}`]));
+      const catNameMap = new Map(categories.map((c: Record<string, unknown>) => [String(c.id), `${c.icon || ""} ${c.name}`]));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const topExpenses: TxItem[] = [...expenses]
-        .sort((a: any, b: any) => Number(b.amount) - Number(a.amount))
+        .sort((a: Record<string, unknown>, b: Record<string, unknown>) => Number(b.amount) - Number(a.amount))
         .slice(0, 5)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .map((e: any) => ({
+        .map((e: Record<string, unknown>) => ({
           description: String(e.description || ""),
           amount: Number(e.amount),
           category: String(catNameMap.get(String(e.category_id)) || "Sem categoria"),
@@ -510,7 +510,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             sender: { name: "FinancasPro", email: "amaralstradiotoryan@gmail.com" },
             to: [{ email: profile.email }],
-            subject: `📊 Resumo da Semana | ${weekLabel}`,
+            subject: `ðŸ“Š Resumo da Semana | ${weekLabel}`,
             htmlContent: html,
           }),
         });
@@ -529,3 +529,4 @@ Deno.serve(async (req) => {
     });
   }
 });
+
