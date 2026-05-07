@@ -3,6 +3,7 @@ import { AlertTriangle, Clock, TrendingDown, CheckCircle, Bell, ChevronDown, Fla
 import { formatCurrency } from '@/lib/format';
 import type { Category, Expense, Income } from '@/hooks/useFinanceData';
 import { cn } from '@/lib/utils';
+import { useSensitiveData } from '@/components/finance/SensitiveData';
 
 type Alert = {
   id: string;
@@ -19,6 +20,8 @@ type Props = {
 };
 
 export default function SmartAlerts({ expenses, income, categories }: Props) {
+  const { maskCurrency } = useSensitiveData();
+  const fmt = (v: number) => maskCurrency(formatCurrency(v));
   const [open, setOpen] = useState(true);
   const alerts: Alert[] = [];
 
@@ -35,7 +38,7 @@ export default function SmartAlerts({ expenses, income, categories }: Props) {
         id: `over-${cat.id}`,
         icon: <AlertTriangle className="w-4 h-4 animate-pulse" />,
         title: `${cat.name} estourou`,
-        description: `Gasto ${formatCurrency(spent)} de ${formatCurrency(budget)} (${Math.round(pct)}%)`,
+        description: `Gasto ${fmt(spent)} de ${fmt(budget)} (${Math.round(pct)}%)`,
         type: 'danger',
       });
     } else if (pct >= 85) {
@@ -43,7 +46,7 @@ export default function SmartAlerts({ expenses, income, categories }: Props) {
         id: `near-${cat.id}`,
         icon: <TrendingDown className="w-4 h-4" />,
         title: `${cat.name} no limite`,
-        description: `${Math.round(pct)}% do orçamento. Restam ${formatCurrency(budget - spent)}`,
+        description: `${Math.round(pct)}% do orçamento. Restam ${fmt(budget - spent)}`,
         type: 'warning',
       });
     }
@@ -57,7 +60,7 @@ export default function SmartAlerts({ expenses, income, categories }: Props) {
       id: 'pending-bills',
       icon: <Clock className="w-4 h-4" />,
       title: `${upcoming.length} contas pendentes`,
-      description: `Total de ${formatCurrency(totalPending)} a pagar ou agendadas`,
+      description: `Total de ${fmt(totalPending)} a pagar ou agendadas`,
       type: 'info',
     });
   }
@@ -77,7 +80,7 @@ export default function SmartAlerts({ expenses, income, categories }: Props) {
         id: `spike-${date}`,
         icon: <Flame className="w-4 h-4 text-orange-500" />,
         title: 'Gasto atípico',
-        description: `${formatCurrency(amount)} em ${new Date(date + 'T00:00:00').toLocaleDateString('pt-BR', {day:'numeric', month:'short'})} (${Math.round(amount / avgDaily)}x a média)`,
+        description: `${fmt(amount)} em ${new Date(date + 'T00:00:00').toLocaleDateString('pt-BR', {day:'numeric', month:'short'})} (${Math.round(amount / avgDaily)}x a média)`,
         type: 'warning',
       });
     }

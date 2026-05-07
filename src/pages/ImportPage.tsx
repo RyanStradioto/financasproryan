@@ -7,6 +7,7 @@ import { useInvestments, useAddInvestmentTransaction } from '@/hooks/useInvestme
 import { useCreditCards, useAddCreditCardTransaction } from '@/hooks/useCreditCards';
 import { useClassificationRules, classifyDescription, type ClassificationRule } from '@/hooks/useClassification';
 import { formatCurrency } from '@/lib/format';
+import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { toast } from 'sonner';
 import { Upload, Trash2, Check, TrendingUp, TrendingDown, BarChart3, Info, CreditCard, Building2, Link2, AlertTriangle, FileText } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -378,6 +379,8 @@ const CONFIDENCE_COLORS: Record<string, string> = {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 export default function ImportPage() {
+  const { maskCurrency } = useSensitiveData();
+  const fmt = (v: number) => maskCurrency(formatCurrency(v));
   const [bankRows, setBankRows] = useState<ParsedRow[]>([]);
   const [ccRows, setCcRows] = useState<ParsedRow[]>([]);
   const [bankFileName, setBankFileName] = useState('');
@@ -746,7 +749,7 @@ export default function ImportPage() {
               <td className={`py-2 px-2 text-right currency font-semibold ${
                 row.type === 'income' ? 'text-income' : row.type === 'investment' ? 'text-primary' : row.type === 'cc_payment' ? 'text-warning' : 'text-expense'
               }`}>
-                {formatCurrency(row.amount)}
+                {fmt(row.amount)}
               </td>
               <td className="py-2 px-2">
                 {showCCColumn ? (
@@ -878,19 +881,19 @@ export default function ImportPage() {
               <div className="grid grid-cols-1 gap-2 mb-3 min-[430px]:grid-cols-2">
                 <div className="bg-background/60 rounded-lg p-2.5 border border-border/50">
                   <p className="text-[11px] text-muted-foreground mb-0.5">💳 Fatura do cartão</p>
-                  <p className="font-semibold text-foreground">{formatCurrency(ccTotal)}</p>
+                  <p className="font-semibold text-foreground">{fmt(ccTotal)}</p>
                   <p className="text-[11px] text-muted-foreground">{ccItemCount} compra{ccItemCount !== 1 ? 's' : ''}</p>
                 </div>
                 <div className="bg-background/60 rounded-lg p-2.5 border border-border/50">
                   <p className="text-[11px] text-muted-foreground mb-0.5">🏦 Pago no extrato</p>
-                  <p className="font-semibold text-warning">{formatCurrency(bankCCPayment)}</p>
+                  <p className="font-semibold text-warning">{fmt(bankCCPayment)}</p>
                   <p className="text-[11px] text-muted-foreground">{ccPaymentCount} lançamento{ccPaymentCount !== 1 ? 's' : ''} — excluído{ccPaymentCount !== 1 ? 's' : ''}</p>
                 </div>
               </div>
               <p className="text-[11px] text-muted-foreground leading-relaxed">
                 ✅ Os itens da fatura serão importados individualmente. Os pagamentos genéricos do extrato são ignorados para evitar duplicação.
                 {Math.abs(ccTotal - bankCCPayment) > 1 && (
-                  <> A diferença de <span className="text-foreground font-medium">{formatCurrency(Math.abs(ccTotal - bankCCPayment))}</span> é normal — pode incluir parcelas de meses anteriores ou coberturas de ciclos diferentes.</>
+                  <> A diferença de <span className="text-foreground font-medium">{fmt(Math.abs(ccTotal - bankCCPayment))}</span> é normal — pode incluir parcelas de meses anteriores ou coberturas de ciclos diferentes.</>
                 )}
               </p>
             </div>

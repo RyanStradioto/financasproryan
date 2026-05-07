@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { useTrash, useRestoreItem, usePermanentDelete, type TrashedItem } from '@/hooks/useTrash';
 import { formatCurrency, formatDate } from '@/lib/format';
+import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { Trash2, RotateCcw, AlertTriangle, Clock, TrendingUp, TrendingDown, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
 export default function TrashPage() {
+  const { maskCurrency } = useSensitiveData();
+  const fmt = (v: number) => maskCurrency(formatCurrency(v));
   const { data: items = [], isLoading } = useTrash();
   const restoreItem = useRestoreItem();
   const permanentDelete = usePermanentDelete();
@@ -155,6 +158,8 @@ function TrashItemCard({
   onDelete: () => void;
   isPending: boolean;
 }) {
+  const { maskCurrency } = useSensitiveData();
+  const fmt = (v: number) => maskCurrency(formatCurrency(v));
   const isIncome = item.table === 'income';
   const urgencyClass =
     item.days_remaining <= 5 ? 'text-destructive' : item.days_remaining <= 10 ? 'text-warning' : 'text-muted-foreground';
@@ -180,7 +185,7 @@ function TrashItemCard({
             </div>
 
             <div className={`inline-flex w-fit items-center rounded-2xl px-3 py-2 text-base font-bold tabular-nums ${isIncome ? 'bg-income/10 text-income' : 'bg-expense/10 text-expense'}`}>
-              {formatCurrency(item.amount)}
+              {fmt(item.amount)}
             </div>
           </div>
 

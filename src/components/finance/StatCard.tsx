@@ -1,6 +1,7 @@
 import { LucideIcon } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { useSensitiveData } from '@/components/finance/SensitiveData';
 
 type Props = {
   label: string;
@@ -12,6 +13,7 @@ type Props = {
 };
 
 export default function StatCard({ label, value, icon: Icon, trend, suffix, className }: Props) {
+  const { maskCurrency } = useSensitiveData();
   const gradientClass = trend === 'up' ? 'gradient-income' : trend === 'down' ? 'gradient-expense' : 'gradient-primary';
 
   return (
@@ -33,7 +35,7 @@ export default function StatCard({ label, value, icon: Icon, trend, suffix, clas
         'text-xl sm:text-2xl',
         trend === 'up' ? 'text-income' : trend === 'down' ? 'text-expense' : ''
       )}>
-        {suffix ? `${value.toFixed(1)}${suffix}` : formatCurrency(value)}
+        {suffix ? `${value.toFixed(1)}${suffix}` : maskCurrency(formatCurrency(value))}
       </p>
     </div>
   );

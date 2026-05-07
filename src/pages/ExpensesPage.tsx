@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useExpenses, useDeleteExpense, useUpdateExpense, useCategories, useAccounts, type Expense } from '@/hooks/useFinanceData';
 import { useCCTransactionsForMonth, useCreditCards, type CreditCardTransaction } from '@/hooks/useCreditCards';
 import { getMonthYear, formatCurrency, formatDate, getStatusColor, getStatusLabel } from '@/lib/format';
+import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { detectCreditCardExpense } from '@/lib/paymentMethod';
 import { accountBrandFromRow, resolveAccountBrand } from '@/lib/accountBrand';
 import { formatWorkTime } from '@/lib/workTime';
@@ -114,6 +115,8 @@ function StatusPicker({ status, onChange }: { status: string; onChange: (s: stri
 }
 
 export default function ExpensesPage() {
+  const { maskCurrency } = useSensitiveData();
+  const fmt = (v: number) => maskCurrency(formatCurrency(v));
   const [month, setMonth] = useState(getMonthYear());
   const { data: expenses = [], isLoading } = useExpenses(month);
   const { data: categories = [] } = useCategories();
@@ -361,31 +364,31 @@ export default function ExpensesPage() {
           <div className="flex flex-col md:flex-row items-stretch md:items-end justify-between gap-5 pt-1">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80 mb-1.5">Total no mês</p>
-              <p className="text-3xl min-[390px]:text-4xl sm:text-5xl font-black text-expense currency leading-none tracking-tight truncate max-w-full">{formatCurrency(totalExpenses + totalCC)}</p>
+              <p className="text-3xl min-[390px]:text-4xl sm:text-5xl font-black text-expense currency leading-none tracking-tight truncate max-w-full">{fmt(totalExpenses + totalCC)}</p>
             </div>
 
             {/* Inline split chips: Débito | Crédito | Em aberto */}
-            <div className="grid grid-cols-1 gap-2 min-[430px]:grid-cols-3 md:gap-3 md:max-w-md w-full">
+            <div className="grid grid-cols-2 gap-2 min-[430px]:grid-cols-3 md:gap-3 md:max-w-md w-full">
               <div className="rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm px-3 py-2.5">
                 <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
                   <Landmark className="h-3 w-3" />
                   <p className="text-[9px] font-bold uppercase tracking-wider">Débito/PIX</p>
                 </div>
-                <p className="text-sm sm:text-base font-extrabold currency truncate">{formatCurrency(accountTotal)}</p>
+                <p className="text-sm sm:text-base font-extrabold currency truncate">{fmt(accountTotal)}</p>
               </div>
               <div className="rounded-xl border border-[#6366f1]/25 bg-[#6366f1]/[0.06] px-3 py-2.5">
                 <div className="flex items-center gap-1.5 text-[#6366f1] mb-0.5">
                   <CreditCard className="h-3 w-3" />
                   <p className="text-[9px] font-bold uppercase tracking-wider">Cartão</p>
                 </div>
-                <p className="text-sm sm:text-base font-extrabold currency text-[#6366f1] truncate">{formatCurrency(creditTotal)}</p>
+                <p className="text-sm sm:text-base font-extrabold currency text-[#6366f1] truncate">{fmt(creditTotal)}</p>
               </div>
               <div className="rounded-xl border border-warning/25 bg-warning/[0.06] px-3 py-2.5">
                 <div className="flex items-center gap-1.5 text-warning mb-0.5">
                   <Clock className="h-3 w-3" />
                   <p className="text-[9px] font-bold uppercase tracking-wider">Em aberto</p>
                 </div>
-                <p className="text-sm sm:text-base font-extrabold currency text-warning truncate">{formatCurrency(scheduledTotal)}</p>
+                <p className="text-sm sm:text-base font-extrabold currency text-warning truncate">{fmt(scheduledTotal)}</p>
               </div>
             </div>
           </div>
@@ -715,7 +718,7 @@ export default function ExpensesPage() {
                   </div>
                 </div>
                 <div className="shrink-0 flex flex-col items-end gap-1.5">
-                  <p className="mobile-card-value font-extrabold text-expense text-base min-[390px]:text-lg tabular-nums tracking-tight">{formatCurrency(Number(item.amount))}</p>
+                  <p className="mobile-card-value font-extrabold text-expense text-base min-[390px]:text-lg tabular-nums tracking-tight">{fmt(Number(item.amount))}</p>
                   {isCC ? (
                     <span
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border"
@@ -759,7 +762,7 @@ export default function ExpensesPage() {
         {filtered.length > 0 && (
           <div className="flex items-center justify-between px-4 py-3 bg-expense/5 border-t border-expense/10">
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total filtrado</span>
-            <span className="font-extrabold text-expense currency">{formatCurrency(total)}</span>
+            <span className="font-extrabold text-expense currency">{fmt(total)}</span>
           </div>
         )}
       </div>
@@ -813,7 +816,7 @@ export default function ExpensesPage() {
                           {getCardName(cc.credit_card_id)}
                         </span>
                       </td>
-                      <td className="py-3 px-3 text-right currency font-bold text-expense tabular-nums">{formatCurrency(Number(cc.amount))}</td>
+                      <td className="py-3 px-3 text-right currency font-bold text-expense tabular-nums">{fmt(Number(cc.amount))}</td>
                       {hourlyRate && (
                         <td className="py-3 px-3 text-center">
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-accent/40 text-[11px] font-semibold text-accent-foreground/90">
@@ -865,7 +868,7 @@ export default function ExpensesPage() {
                         )}
                       </div>
                     </td>
-                    <td className="py-3 px-3 text-right currency font-bold text-expense tabular-nums">{formatCurrency(Number(exp.amount))}</td>
+                    <td className="py-3 px-3 text-right currency font-bold text-expense tabular-nums">{fmt(Number(exp.amount))}</td>
                     {hourlyRate && (
                       <td className="py-3 px-3 text-center">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-accent/40 text-[11px] font-semibold text-accent-foreground/90">
@@ -918,11 +921,11 @@ export default function ExpensesPage() {
                     Total filtrado
                     {ccTransactions.length > 0 && (
                       <span className="ml-2 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-[#6366f1]/10 text-[#6366f1] font-semibold">
-                        <CreditCard className="w-2.5 h-2.5" /> {formatCurrency(totalCC)}
+                        <CreditCard className="w-2.5 h-2.5" /> {fmt(totalCC)}
                       </span>
                     )}
                   </td>
-                  <td className="py-3.5 px-3 text-right currency font-black text-expense text-base tabular-nums">{formatCurrency(total)}</td>
+                  <td className="py-3.5 px-3 text-right currency font-black text-expense text-base tabular-nums">{fmt(total)}</td>
                   {hourlyRate && (
                     <td className="py-3.5 px-3 text-center">
                       <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-accent/50 text-[11px] font-bold text-accent-foreground">

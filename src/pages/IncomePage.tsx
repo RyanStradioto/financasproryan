@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useIncome, useDeleteIncome, useUpdateIncome, useAccounts, type Income } from '@/hooks/useFinanceData';
 import { getMonthYear, formatCurrency, formatDate, getStatusColor, getStatusLabel } from '@/lib/format';
+import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { formatWorkTime } from '@/lib/workTime';
 import { useWorkTimeCalc } from '@/hooks/useProfile';
 import MonthSelector from '@/components/finance/MonthSelector';
@@ -110,6 +111,8 @@ function StatusPicker({ status, onChange }: { status: string; onChange: (s: stri
 }
 
 export default function IncomePage() {
+  const { maskCurrency } = useSensitiveData();
+  const fmt = (v: number) => maskCurrency(formatCurrency(v));
   const [month, setMonth] = useState(getMonthYear());
   // Previous month for MoM delta
   const prevMonth = useMemo(() => {
@@ -301,24 +304,24 @@ export default function IncomePage() {
           <div className="flex flex-col md:flex-row items-stretch md:items-end justify-between gap-5 pt-1">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80 mb-1.5">Total no mês</p>
-              <p className="text-3xl min-[390px]:text-4xl sm:text-5xl font-black text-income currency leading-none tracking-tight truncate max-w-full">{formatCurrency(totalAll)}</p>
+              <p className="text-3xl min-[390px]:text-4xl sm:text-5xl font-black text-income currency leading-none tracking-tight truncate max-w-full">{fmt(totalAll)}</p>
             </div>
 
             {/* Stats chips: Recebido | Pendente | Trabalho equivalente */}
-            <div className="grid grid-cols-1 gap-2 min-[430px]:grid-cols-3 md:gap-3 md:max-w-md w-full">
+            <div className="grid grid-cols-2 gap-2 min-[430px]:grid-cols-3 md:gap-3 md:max-w-md w-full">
               <div className="rounded-xl border border-income/25 bg-income/[0.06] px-3 py-2.5">
                 <div className="flex items-center gap-1.5 text-income mb-0.5">
                   <Check className="h-3 w-3" />
                   <p className="text-[9px] font-bold uppercase tracking-wider">Recebido</p>
                 </div>
-                <p className="text-sm sm:text-base font-extrabold currency text-income tabular-nums whitespace-nowrap truncate">{formatCurrency(totalReceived)}</p>
+                <p className="text-sm sm:text-base font-extrabold currency text-income tabular-nums whitespace-nowrap truncate">{fmt(totalReceived)}</p>
               </div>
               <div className="rounded-xl border border-warning/25 bg-warning/[0.06] px-3 py-2.5">
                 <div className="flex items-center gap-1.5 text-warning mb-0.5">
                   <Clock className="h-3 w-3" />
                   <p className="text-[9px] font-bold uppercase tracking-wider">A receber</p>
                 </div>
-                <p className="text-sm sm:text-base font-extrabold currency text-warning tabular-nums whitespace-nowrap truncate">{formatCurrency(totalPending)}</p>
+                <p className="text-sm sm:text-base font-extrabold currency text-warning tabular-nums whitespace-nowrap truncate">{fmt(totalPending)}</p>
               </div>
               {hourlyRate > 0 ? (
                 <div className="rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm px-3 py-2.5">
@@ -573,7 +576,7 @@ export default function IncomePage() {
                 </div>
               </div>
               <div className="shrink-0 flex flex-col items-end gap-1.5">
-                <p className="mobile-card-value font-extrabold text-income text-base min-[390px]:text-lg tabular-nums tracking-tight">+{formatCurrency(Number(item.amount))}</p>
+                <p className="mobile-card-value font-extrabold text-income text-base min-[390px]:text-lg tabular-nums tracking-tight">+{fmt(Number(item.amount))}</p>
                 <StatusPicker status={item.status} onChange={s => handleStatusChange(item.id, s)} />
               </div>
             </div>
@@ -604,7 +607,7 @@ export default function IncomePage() {
         {filtered.length > 0 && (
           <div className="flex items-center justify-between px-4 py-3 rounded-2xl bg-income/8 border border-income/15">
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total</span>
-            <span className="font-extrabold text-income currency">{formatCurrency(total)}</span>
+            <span className="font-extrabold text-income currency">{fmt(total)}</span>
           </div>
         )}
       </div>
@@ -652,7 +655,7 @@ export default function IncomePage() {
                         <OptionPicker value={item.account_id} options={accounts} placeholder="conta…" onChange={v => handleAccountChange(item.id, v)} />
                       </div>
                     </td>
-                    <td className="py-3 px-3 text-right currency font-bold text-income tabular-nums whitespace-nowrap">+{formatCurrency(Number(item.amount))}</td>
+                    <td className="py-3 px-3 text-right currency font-bold text-income tabular-nums whitespace-nowrap">+{fmt(Number(item.amount))}</td>
                     {hourlyRate && (
                       <td className="py-3 px-3 text-center">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-accent/40 text-[11px] font-semibold text-accent-foreground/90">
@@ -704,7 +707,7 @@ export default function IncomePage() {
                   <td colSpan={3} className="py-3.5 pl-5 pr-3 font-bold text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
                     Total filtrado
                   </td>
-                  <td className="py-3.5 px-3 text-right currency font-black text-income text-base tabular-nums whitespace-nowrap">+{formatCurrency(total)}</td>
+                  <td className="py-3.5 px-3 text-right currency font-black text-income text-base tabular-nums whitespace-nowrap">+{fmt(total)}</td>
                   {hourlyRate && (
                     <td className="py-3.5 px-3 text-center">
                       <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-accent/50 text-[11px] font-bold text-accent-foreground">

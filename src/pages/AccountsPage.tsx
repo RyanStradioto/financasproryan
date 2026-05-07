@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAccounts, useAddAccount, useUpdateAccount, useIncome, useExpenses } from '@/hooks/useFinanceData';
 import { useInvestmentTransactions } from '@/hooks/useInvestments';
 import { formatCurrency } from '@/lib/format';
+import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +19,8 @@ function getInvestmentAccountImpact(type: string, amount: number) {
 }
 
 export default function AccountsPage() {
+  const { maskCurrency } = useSensitiveData();
+  const fmt = (v: number) => maskCurrency(formatCurrency(v));
   const { data: accounts = [] } = useAccounts();
   const { data: income = [] } = useIncome();
   const { data: allExpenses = [] } = useExpenses();
@@ -205,14 +208,14 @@ export default function AccountsPage() {
               <TrendingUp className="w-4 h-4" />
               <span className="text-xs font-medium">Receitas pagas</span>
             </div>
-            <p className="currency font-bold text-income text-lg">{formatCurrency(totalIncomeAll)}</p>
+            <p className="currency font-bold text-income text-lg">{fmt(totalIncomeAll)}</p>
           </div>
           <div className="text-center">
             <div className="flex items-center justify-center gap-1 text-expense mb-1">
               <TrendingDown className="w-4 h-4" />
               <span className="text-xs font-medium">Despesas pagas</span>
             </div>
-            <p className="currency font-bold text-expense text-lg">{formatCurrency(totalExpensesAll)}</p>
+            <p className="currency font-bold text-expense text-lg">{fmt(totalExpensesAll)}</p>
           </div>
           <div className="text-center">
             <div className="flex items-center justify-center gap-1 text-foreground mb-1">
@@ -220,13 +223,13 @@ export default function AccountsPage() {
               <span className="text-xs font-medium">Saldo atual</span>
             </div>
             <p className={`currency font-bold text-lg ${globalBalance >= 0 ? 'text-income' : 'text-expense'}`}>
-              {formatCurrency(globalBalance)}
+              {fmt(globalBalance)}
             </p>
           </div>
         </div>
         {activeAccounts.length > 0 && (
           <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-primary/10">
-            Inclui saldo inicial total de {formatCurrency(totalInitialBalance)} das {activeAccounts.length} conta(s) cadastrada(s)
+            Inclui saldo inicial total de {fmt(totalInitialBalance)} das {activeAccounts.length} conta(s) cadastrada(s)
           </p>
         )}
       </div>
@@ -268,21 +271,21 @@ export default function AccountsPage() {
                   <div className="space-y-3">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Receitas vinculadas</span>
-                      <span className="currency font-medium text-income">{formatCurrency(accIncome)}</span>
+                      <span className="currency font-medium text-income">{fmt(accIncome)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Despesas vinculadas</span>
-                      <span className="currency font-medium text-expense">{formatCurrency(accExpenses)}</span>
+                      <span className="currency font-medium text-expense">{fmt(accExpenses)}</span>
                     </div>
                     <div className="border-t border-border pt-3">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Saldo inicial</span>
-                        <span className="currency">{formatCurrency(Number(acc.initial_balance))}</span>
+                        <span className="currency">{fmt(Number(acc.initial_balance))}</span>
                       </div>
                       <div className="flex justify-between mt-1">
                         <span className="font-semibold">Saldo</span>
                         <span className={`currency font-bold ${currentBalance >= 0 ? 'text-income' : 'text-expense'}`}>
-                          {formatCurrency(currentBalance)}
+                          {fmt(currentBalance)}
                         </span>
                       </div>
                     </div>

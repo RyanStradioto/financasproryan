@@ -3,6 +3,7 @@ import { useCategories, useAddCategory, useUpdateCategory, useDeleteCategory, us
 import { useCCTransactionsForMonth, useCreditCards } from '@/hooks/useCreditCards';
 import { useProfile } from '@/hooks/useProfile';
 import { formatCurrency, getMonthYear } from '@/lib/format';
+import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -127,6 +128,8 @@ function BudgetSplitEditor({
   splits: BudgetSplit[];
   onChange: (splits: BudgetSplit[]) => void;
 }) {
+  const { maskCurrency } = useSensitiveData();
+  const fmt = (v: number) => maskCurrency(formatCurrency(v));
   const activeAccounts = accounts.filter((account) => !account.archived);
   const total = splits.reduce((sum, split) => sum + parseCurrencyInput(split.budget), 0);
 
@@ -147,7 +150,7 @@ function BudgetSplitEditor({
         </div>
         {splits.length > 0 && (
           <span className="shrink-0 rounded-lg border border-primary/20 bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary">
-            {formatCurrency(total)}
+            {fmt(total)}
           </span>
         )}
       </div>
@@ -223,6 +226,8 @@ function BudgetSplitEditor({
 }
 
 export default function CategoriesPage() {
+  const { maskCurrency } = useSensitiveData();
+  const fmt = (v: number) => maskCurrency(formatCurrency(v));
   const [month, setMonth] = useState(getMonthYear());
   const { data: categories = [] } = useCategories();
   const { data: accounts = [] } = useAccounts();
@@ -517,7 +522,7 @@ export default function CategoriesPage() {
                   </span>
                   {totalBudget > 0 && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-info/10 text-info border border-info/20 font-semibold text-[10px] uppercase tracking-wide">
-                      Orçamento total {formatCurrency(totalBudget)}
+                      Orçamento total {fmt(totalBudget)}
                     </span>
                   )}
                 </p>
@@ -557,7 +562,7 @@ export default function CategoriesPage() {
                   <Sparkles className="h-3 w-3" />
                   <p className="text-[9px] font-bold uppercase tracking-wider">Orçamento</p>
                 </div>
-                <p className="text-sm sm:text-base font-extrabold currency text-info tabular-nums whitespace-nowrap truncate">{formatCurrency(totalBudget)}</p>
+                <p className="text-sm sm:text-base font-extrabold currency text-info tabular-nums whitespace-nowrap truncate">{fmt(totalBudget)}</p>
               </div>
               <div className={cn(
                 'col-span-2 md:col-span-1 rounded-xl border px-3 py-2.5',
@@ -572,7 +577,7 @@ export default function CategoriesPage() {
                 </div>
                 <p className={cn('text-sm sm:text-base font-extrabold currency tabular-nums whitespace-nowrap truncate',
                   totalBudget > 0 && totalSpent > totalBudget ? 'text-expense' : 'text-income',
-                )}>{formatCurrency(totalSpent)}</p>
+                )}>{fmt(totalSpent)}</p>
                 {totalBudget > 0 && (
                   <p className="text-[10px] mt-0.5 font-semibold opacity-70">{((totalSpent / totalBudget) * 100).toFixed(0)}% do orçamento</p>
                 )}
@@ -593,7 +598,7 @@ export default function CategoriesPage() {
             <h3 className="text-lg font-extrabold mb-1">Comece com um pacote pronto</h3>
             <p className="text-sm text-muted-foreground mb-5">
               {monthlyIncome > 0
-                ? `Vamos criar 12 categorias inteligentes com orçamentos sugeridos baseados na sua renda de ${formatCurrency(monthlyIncome)}.`
+                ? `Vamos criar 12 categorias inteligentes com orçamentos sugeridos baseados na sua renda de ${fmt(monthlyIncome)}.`
                 : 'Vamos criar 12 categorias inteligentes que cobrem moradia, alimentação, lazer, investimentos e mais.'}
             </p>
             <div className="flex flex-wrap items-center justify-center gap-2">
@@ -638,7 +643,7 @@ export default function CategoriesPage() {
                   <div className="min-w-0">
                     <h3 className="font-bold text-sm leading-tight truncate">{cat.name}</h3>
                     {cat.budgetNum > 0 && (
-                      <p className="text-[10px] text-muted-foreground mt-0.5">Orçamento {formatCurrency(cat.budgetNum)}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Orçamento {fmt(cat.budgetNum)}</p>
                     )}
                   </div>
                 </div>
@@ -659,7 +664,7 @@ export default function CategoriesPage() {
                   <span className={cn(
                     'text-base font-extrabold currency tabular-nums whitespace-nowrap',
                     cat.overBudget ? 'text-expense' : cat.budgetNum > 0 ? 'text-foreground' : 'text-muted-foreground',
-                  )}>{formatCurrency(cat.spent)}</span>
+                  )}>{fmt(cat.spent)}</span>
                 </div>
                 {cat.budgetNum > 0 ? (
                   <>
@@ -682,8 +687,8 @@ export default function CategoriesPage() {
                       )}>{cat.pct.toFixed(0)}% usado</span>
                       <span className="text-muted-foreground">
                         {cat.overBudget
-                          ? `+${formatCurrency(cat.spent - cat.budgetNum)}`
-                          : `${formatCurrency(Math.max(0, cat.budgetNum - cat.spent))} restante`}
+                          ? `+${fmt(cat.spent - cat.budgetNum)}`
+                          : `${fmt(Math.max(0, cat.budgetNum - cat.spent))} restante`}
                       </span>
                     </div>
                   </>
@@ -733,12 +738,12 @@ export default function CategoriesPage() {
                             <span className="truncate">{row.name}</span>
                           </span>
                           <span className={cn('shrink-0 text-[11px] font-extrabold tabular-nums', row.overBudget ? 'text-expense' : row.remaining >= 0 ? 'text-income' : 'text-warning')}>
-                            {row.budget > 0 ? formatCurrency(Math.max(0, row.remaining)) : formatCurrency(row.spent)}
+                            {row.budget > 0 ? fmt(Math.max(0, row.remaining)) : fmt(row.spent)}
                           </span>
                         </div>
                         <div className="mt-1 flex items-center justify-between gap-2 text-[9px] text-muted-foreground">
-                          <span>{formatCurrency(row.spent)} gasto</span>
-                          <span>{row.budget > 0 ? `${formatCurrency(row.budget)} limite` : 'sem orçamento'}</span>
+                          <span>{fmt(row.spent)} gasto</span>
+                          <span>{row.budget > 0 ? `${fmt(row.budget)} limite` : 'sem orçamento'}</span>
                         </div>
                         {row.budget > 0 && (
                           <div className="mt-1 h-1 overflow-hidden rounded-full bg-muted">
@@ -789,7 +794,7 @@ export default function CategoriesPage() {
               <CurrencyInput value={budget} onChange={setBudget} />
               {budgetSplits.length > 0 && (
                 <p className="text-[11px] text-primary">
-                  Com orçamento por conta, o total será {formatCurrency(getSplitTotal(budgetSplits))}.
+                  Com orçamento por conta, o total será {fmt(getSplitTotal(budgetSplits))}.
                 </p>
               )}
               {monthlyIncome > 0 && budget && (
@@ -834,7 +839,7 @@ export default function CategoriesPage() {
               <CurrencyInput value={editBudget} onChange={setEditBudget} />
               {editBudgetSplits.length > 0 && (
                 <p className="text-[11px] text-primary">
-                  Com orçamento por conta, o total será {formatCurrency(getSplitTotal(editBudgetSplits))}.
+                  Com orçamento por conta, o total será {fmt(getSplitTotal(editBudgetSplits))}.
                 </p>
               )}
             </div>
@@ -859,7 +864,7 @@ export default function CategoriesPage() {
             </DialogTitle>
             <p className="text-xs text-muted-foreground mt-1">
               {monthlyIncome > 0
-                ? `Orçamentos calculados a partir da sua renda de ${formatCurrency(monthlyIncome)} (regra 50/30/20)`
+                ? `Orçamentos calculados a partir da sua renda de ${fmt(monthlyIncome)} (regra 50/30/20)`
                 : 'Defina sua renda mensal nas Configurações para receber sugestões de orçamento personalizadas.'}
             </p>
           </DialogHeader>
@@ -904,7 +909,7 @@ export default function CategoriesPage() {
                             <p className="text-sm font-bold truncate">{s.name}</p>
                             <p className="text-[10px] text-muted-foreground">
                               {s.budgetPct}% da renda
-                              {budgetVal > 0 && ` · ${formatCurrency(budgetVal)}`}
+                              {budgetVal > 0 && ` · ${fmt(budgetVal)}`}
                               {exists && ' · já existe'}
                             </p>
                           </div>

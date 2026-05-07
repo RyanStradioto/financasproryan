@@ -1,10 +1,13 @@
 import { useState, useMemo } from 'react';
 import { useIncome, useExpenses, useCategories } from '@/hooks/useFinanceData';
 import { formatCurrency, getMonthYear } from '@/lib/format';
+import { useSensitiveData } from '@/components/finance/SensitiveData';
 import MonthSelector from '@/components/finance/MonthSelector';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function CalendarPage() {
+  const { maskCurrency } = useSensitiveData();
+  const fmt = (v: number) => maskCurrency(formatCurrency(v));
   const [month, setMonth] = useState(getMonthYear());
   const { data: income = [] } = useIncome(month);
   const { data: expenses = [] } = useExpenses(month);
@@ -73,12 +76,12 @@ export default function CalendarPage() {
                   <div className="space-y-0.5">
                     {data.income > 0 && (
                       <div className="bg-income/10 text-income rounded px-1 py-0.5 truncate currency text-[10px] font-medium">
-                        +{formatCurrency(data.income)}
+                        +{fmt(data.income)}
                       </div>
                     )}
                     {data.expenses.slice(0, 2).map((e, ei) => (
                       <div key={ei} className="bg-expense/10 text-expense rounded px-1 py-0.5 truncate text-[10px]">
-                        {e.cat} {formatCurrency(e.amount)}
+                        {e.cat} {fmt(e.amount)}
                       </div>
                     ))}
                     {data.expenses.length > 2 && (

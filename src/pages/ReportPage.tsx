@@ -2,6 +2,7 @@ import { useState, useRef, useMemo } from 'react';
 import { useIncome, useExpenses, useCategories, useAccounts } from '@/hooks/useFinanceData';
 import { useCreditCardTransactions } from '@/hooks/useCreditCards';
 import { formatCurrency, getMonthLabel } from '@/lib/format';
+import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -54,6 +55,8 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
 }
 
 export default function ReportPage() {
+  const { maskCurrency } = useSensitiveData();
+  const fmt = (v: number) => maskCurrency(formatCurrency(v));
   const monthOptions = getMonthOptions();
   const currentMonth = monthOptions[monthOptions.length - 1].value;
   const [startMonth, setStartMonth] = useState(currentMonth);
@@ -446,9 +449,9 @@ export default function ReportPage() {
                   </div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Receitas</span>
                 </div>
-                <p className="text-lg sm:text-xl font-extrabold currency text-income tabular-nums whitespace-nowrap truncate">{formatCurrency(totalIncome)}</p>
+                <p className="text-lg sm:text-xl font-extrabold currency text-income tabular-nums whitespace-nowrap truncate">{fmt(totalIncome)}</p>
                 {pendingIncome > 0 && (
-                  <p className="text-[10px] text-muted-foreground mt-1.5 line-clamp-1">+ {formatCurrency(pendingIncome)} pendente</p>
+                  <p className="text-[10px] text-muted-foreground mt-1.5 line-clamp-1">+ {fmt(pendingIncome)} pendente</p>
                 )}
               </div>
             </div>
@@ -462,9 +465,9 @@ export default function ReportPage() {
                   </div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Despesas</span>
                 </div>
-                <p className="text-lg sm:text-xl font-extrabold currency text-expense tabular-nums whitespace-nowrap truncate">{formatCurrency(totalExpenses)}</p>
+                <p className="text-lg sm:text-xl font-extrabold currency text-expense tabular-nums whitespace-nowrap truncate">{fmt(totalExpenses)}</p>
                 {pendingExpenses > 0 && (
-                  <p className="text-[10px] text-muted-foreground mt-1.5 line-clamp-1">+ {formatCurrency(pendingExpenses)} pendente</p>
+                  <p className="text-[10px] text-muted-foreground mt-1.5 line-clamp-1">+ {fmt(pendingExpenses)} pendente</p>
                 )}
               </div>
             </div>
@@ -481,7 +484,7 @@ export default function ReportPage() {
                   </div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Saldo</span>
                 </div>
-                <p className={cn('text-lg sm:text-xl font-extrabold currency tabular-nums whitespace-nowrap truncate', balance >= 0 ? 'text-info' : 'text-expense')}>{formatCurrency(balance)}</p>
+                <p className={cn('text-lg sm:text-xl font-extrabold currency tabular-nums whitespace-nowrap truncate', balance >= 0 ? 'text-info' : 'text-expense')}>{fmt(balance)}</p>
                 <p className="text-[10px] text-muted-foreground mt-1.5">{balance >= 0 ? '✅ Período positivo' : '⚠️ Período negativo'}</p>
               </div>
             </div>
@@ -509,14 +512,14 @@ export default function ReportPage() {
                   <ArrowUpRight className="w-3 h-3 text-income" />
                   <p className="text-[10px] font-bold uppercase tracking-wider">Receita média/mês</p>
                 </div>
-                <p className="text-base font-extrabold currency text-income tabular-nums whitespace-nowrap truncate">{formatCurrency(avgIncome)}</p>
+                <p className="text-base font-extrabold currency text-income tabular-nums whitespace-nowrap truncate">{fmt(avgIncome)}</p>
               </div>
               <div className="rounded-2xl border border-border/60 bg-card/50 p-3.5">
                 <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
                   <ArrowDownRight className="w-3 h-3 text-expense" />
                   <p className="text-[10px] font-bold uppercase tracking-wider">Despesa média/mês</p>
                 </div>
-                <p className="text-base font-extrabold currency text-expense tabular-nums whitespace-nowrap truncate">{formatCurrency(avgExpense)}</p>
+                <p className="text-base font-extrabold currency text-expense tabular-nums whitespace-nowrap truncate">{fmt(avgExpense)}</p>
               </div>
               {bestMonth && (
                 <div className="rounded-2xl border border-income/25 bg-income/[0.04] p-3.5">
@@ -525,7 +528,7 @@ export default function ReportPage() {
                     <p className="text-[10px] font-bold uppercase tracking-wider">Melhor mês</p>
                   </div>
                   <p className="text-sm font-extrabold capitalize">{bestMonth.month}</p>
-                  <p className="text-[10px] currency font-semibold text-income tabular-nums">{formatCurrency(bestMonth.saldo)}</p>
+                  <p className="text-[10px] currency font-semibold text-income tabular-nums">{fmt(bestMonth.saldo)}</p>
                 </div>
               )}
               {worstMonth && bestMonth && worstMonth.month !== bestMonth.month && (
@@ -535,7 +538,7 @@ export default function ReportPage() {
                     <p className="text-[10px] font-bold uppercase tracking-wider">Pior mês</p>
                   </div>
                   <p className="text-sm font-extrabold capitalize">{worstMonth.month}</p>
-                  <p className="text-[10px] currency font-semibold text-expense tabular-nums">{formatCurrency(worstMonth.saldo)}</p>
+                  <p className="text-[10px] currency font-semibold text-expense tabular-nums">{fmt(worstMonth.saldo)}</p>
                 </div>
               )}
             </div>
@@ -567,7 +570,7 @@ export default function ReportPage() {
                     </ResponsiveContainer>
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                       <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Total</p>
-                      <p className="text-sm font-extrabold currency tabular-nums whitespace-nowrap">{formatCurrency(totalExpenses)}</p>
+                      <p className="text-sm font-extrabold currency tabular-nums whitespace-nowrap">{fmt(totalExpenses)}</p>
                     </div>
                   </div>
                   <div className="flex-1 w-full space-y-2">
@@ -582,7 +585,7 @@ export default function ReportPage() {
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               <span className="text-[10px] text-muted-foreground font-semibold w-7 text-right tabular-nums">{pct.toFixed(0)}%</span>
-                              <span className="font-bold currency tabular-nums whitespace-nowrap">{formatCurrency(cat.value)}</span>
+                              <span className="font-bold currency tabular-nums whitespace-nowrap">{fmt(cat.value)}</span>
                             </div>
                           </div>
                           <div className="h-1 bg-muted rounded-full overflow-hidden">
@@ -694,7 +697,7 @@ export default function ReportPage() {
                                 <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-[#6366f1]/10 text-[#6366f1] border border-[#6366f1]/20 font-bold shrink-0">CARTÃO</span>
                               )}
                             </div>
-                            <span className="text-sm font-extrabold currency text-expense tabular-nums whitespace-nowrap shrink-0">{formatCurrency(Number(e.amount))}</span>
+                            <span className="text-sm font-extrabold currency text-expense tabular-nums whitespace-nowrap shrink-0">{fmt(Number(e.amount))}</span>
                           </div>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             {cat && <span className="text-[10px] text-muted-foreground font-medium">{cat.icon} {cat.name}</span>}
@@ -737,17 +740,17 @@ export default function ReportPage() {
                         <span className="text-[11px] text-muted-foreground flex items-center gap-1">
                           <ArrowUpRight className="w-3 h-3 text-income" /> Entradas
                         </span>
-                        <span className="text-xs font-bold text-income currency tabular-nums whitespace-nowrap">{formatCurrency(acc.income)}</span>
+                        <span className="text-xs font-bold text-income currency tabular-nums whitespace-nowrap">{fmt(acc.income)}</span>
                       </div>
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-[11px] text-muted-foreground flex items-center gap-1">
                           <ArrowDownRight className="w-3 h-3 text-expense" /> Saídas
                         </span>
-                        <span className="text-xs font-bold text-expense currency tabular-nums whitespace-nowrap">{formatCurrency(acc.expense)}</span>
+                        <span className="text-xs font-bold text-expense currency tabular-nums whitespace-nowrap">{fmt(acc.expense)}</span>
                       </div>
                       <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/40">
                         <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Saldo</span>
-                        <span className={cn('text-sm font-extrabold currency tabular-nums whitespace-nowrap', acc.balance >= 0 ? 'text-income' : 'text-expense')}>{formatCurrency(acc.balance)}</span>
+                        <span className={cn('text-sm font-extrabold currency tabular-nums whitespace-nowrap', acc.balance >= 0 ? 'text-income' : 'text-expense')}>{fmt(acc.balance)}</span>
                       </div>
                     </div>
                   </div>
@@ -776,7 +779,7 @@ export default function ReportPage() {
                       <Award className="w-4 h-4" />
                     </div>
                     <p className="text-sm leading-relaxed">
-                      Você economizou <span className="font-extrabold currency text-income">{formatCurrency(balance)}</span> no período <span className="text-muted-foreground">({savingsRate.toFixed(1)}% da renda)</span>.
+                      Você economizou <span className="font-extrabold currency text-income">{fmt(balance)}</span> no período <span className="text-muted-foreground">({savingsRate.toFixed(1)}% da renda)</span>.
                     </p>
                   </div>
                 ) : (
@@ -785,7 +788,7 @@ export default function ReportPage() {
                       <Flame className="w-4 h-4" />
                     </div>
                     <p className="text-sm leading-relaxed">
-                      Gastou <span className="font-extrabold currency text-expense">{formatCurrency(Math.abs(balance))}</span> a mais do que ganhou no período.
+                      Gastou <span className="font-extrabold currency text-expense">{fmt(Math.abs(balance))}</span> a mais do que ganhou no período.
                     </p>
                   </div>
                 )}
@@ -795,7 +798,7 @@ export default function ReportPage() {
                       <Target className="w-4 h-4 text-muted-foreground" />
                     </div>
                     <p className="text-sm leading-relaxed">
-                      Maior categoria: <span className="font-bold">{catBreakdown[0].icon} {catBreakdown[0].name}</span> com <span className="currency font-bold">{formatCurrency(catBreakdown[0].value)}</span> <span className="text-muted-foreground">({totalExpenses > 0 ? ((catBreakdown[0].value / totalExpenses) * 100).toFixed(0) : 0}% das despesas)</span>.
+                      Maior categoria: <span className="font-bold">{catBreakdown[0].icon} {catBreakdown[0].name}</span> com <span className="currency font-bold">{fmt(catBreakdown[0].value)}</span> <span className="text-muted-foreground">({totalExpenses > 0 ? ((catBreakdown[0].value / totalExpenses) * 100).toFixed(0) : 0}% das despesas)</span>.
                     </p>
                   </div>
                 )}
@@ -805,7 +808,7 @@ export default function ReportPage() {
                       <Flame className="w-4 h-4 text-muted-foreground" />
                     </div>
                     <p className="text-sm leading-relaxed">
-                      Maior gasto individual: <span className="font-bold">"{topExpenses[0].description || 'Despesa'}"</span> de <span className="currency font-bold text-expense">{formatCurrency(Number(topExpenses[0].amount))}</span>.
+                      Maior gasto individual: <span className="font-bold">"{topExpenses[0].description || 'Despesa'}"</span> de <span className="currency font-bold text-expense">{fmt(Number(topExpenses[0].amount))}</span>.
                     </p>
                   </div>
                 )}
@@ -815,7 +818,7 @@ export default function ReportPage() {
                       <BarChart3 className="w-4 h-4" />
                     </div>
                     <p className="text-sm leading-relaxed">
-                      Melhor performance em <span className="font-bold capitalize">{bestMonth.month}</span>, com saldo de <span className="currency font-bold text-income">{formatCurrency(bestMonth.saldo)}</span>.
+                      Melhor performance em <span className="font-bold capitalize">{bestMonth.month}</span>, com saldo de <span className="currency font-bold text-income">{fmt(bestMonth.saldo)}</span>.
                     </p>
                   </div>
                 )}

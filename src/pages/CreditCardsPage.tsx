@@ -24,6 +24,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useCategories, useAccounts, useAddExpense } from '@/hooks/useFinanceData';
 import { getMonthYear, formatCurrency, formatDate, calcBillMonth } from '@/lib/format';
+import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -49,6 +50,8 @@ const CARD_COLORS = ['#6366f1', '#ec4899', '#f97316', '#10b981', '#3b82f6', '#8b
 type TxFilter = 'all' | 'pending' | 'paid';
 
 export default function CreditCardsPage() {
+  const { maskCurrency } = useSensitiveData();
+  const fmt = (v: number) => maskCurrency(formatCurrency(v));
   const [billMonth, setBillMonth] = useState(getMonthYear());
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [showNewCard, setShowNewCard] = useState(false);
@@ -415,7 +418,7 @@ export default function CreditCardsPage() {
         markedCount = unpaid.length;
       }
       setDefaultPayAccount(currentCard.id, payBillAccountId);
-      toast.success(`Fatura paga! ${formatCurrency(amount)} debitado${markedCount > 0 ? ` · ${markedCount} item(ns) marcado(s)` : ''}.`);
+      toast.success(`Fatura paga! ${fmt(amount)} debitado${markedCount > 0 ? ` · ${markedCount} item(ns) marcado(s)` : ''}.`);
       setShowPayBill(false);
     } catch (e) { toast.error((e as Error).message); }
   };
@@ -456,7 +459,7 @@ export default function CreditCardsPage() {
       });
       await togglePaid.mutateAsync({ id: payItem.id, paid: true });
       setDefaultPayAccount(currentCard.id, payItemAccountId);
-      toast.success(`Pago: ${formatCurrency(payItem.amount)} debitado da conta`);
+      toast.success(`Pago: ${fmt(payItem.amount)} debitado da conta`);
       setPayItem(null);
     } catch (e) { toast.error((e as Error).message); }
   };
@@ -530,27 +533,27 @@ export default function CreditCardsPage() {
             const totalAvailable = Math.max(0, totalLimit - futureTotal);
             const usagePct = totalLimit > 0 ? (futureTotal / totalLimit) * 100 : 0;
             return (
-              <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
                 <div className="rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm px-3 py-2.5">
                   <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
                     <Wallet className="h-3 w-3" />
                     <p className="text-[9px] font-bold uppercase tracking-wider">Limite total</p>
                   </div>
-                  <p className="text-sm sm:text-base font-extrabold currency tabular-nums whitespace-nowrap truncate">{formatCurrency(totalLimit)}</p>
+                  <p className="text-sm sm:text-base font-extrabold currency tabular-nums whitespace-nowrap truncate">{fmt(totalLimit)}</p>
                 </div>
                 <div className="rounded-xl border border-income/25 bg-income/[0.06] px-3 py-2.5">
                   <div className="flex items-center gap-1.5 text-income mb-0.5">
                     <Sparkles className="h-3 w-3" />
                     <p className="text-[9px] font-bold uppercase tracking-wider">Disponível</p>
                   </div>
-                  <p className="text-sm sm:text-base font-extrabold currency text-income tabular-nums whitespace-nowrap truncate">{formatCurrency(totalAvailable)}</p>
+                  <p className="text-sm sm:text-base font-extrabold currency text-income tabular-nums whitespace-nowrap truncate">{fmt(totalAvailable)}</p>
                 </div>
                 <div className="rounded-xl border border-[#6366f1]/25 bg-[#6366f1]/[0.06] px-3 py-2.5">
                   <div className="flex items-center gap-1.5 text-[#6366f1] mb-0.5">
                     <TrendingUp className="h-3 w-3" />
                     <p className="text-[9px] font-bold uppercase tracking-wider">Comprometido</p>
                   </div>
-                  <p className="text-sm sm:text-base font-extrabold currency text-[#6366f1] tabular-nums whitespace-nowrap truncate">{formatCurrency(futureTotal)}</p>
+                  <p className="text-sm sm:text-base font-extrabold currency text-[#6366f1] tabular-nums whitespace-nowrap truncate">{fmt(futureTotal)}</p>
                   <p className="text-[10px] text-[#6366f1]/70 mt-0.5 font-semibold">{usagePct.toFixed(0)}% do limite</p>
                 </div>
                 <div className="rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm px-3 py-2.5">
@@ -582,7 +585,7 @@ export default function CreditCardsPage() {
             </div>
             <div className="shrink-0 sm:text-right">
               <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/80">Total</p>
-              <p className="text-sm sm:text-base font-extrabold currency text-[#6366f1] tabular-nums">{formatCurrency(futureTotal)}</p>
+              <p className="text-sm sm:text-base font-extrabold currency text-[#6366f1] tabular-nums">{fmt(futureTotal)}</p>
             </div>
           </div>
 
@@ -648,7 +651,7 @@ export default function CreditCardsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-sm sm:text-base font-extrabold currency text-expense tabular-nums">{formatCurrency(monthTotal)}</span>
+                      <span className="text-sm sm:text-base font-extrabold currency text-expense tabular-nums">{fmt(monthTotal)}</span>
                       <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', isExpanded ? 'rotate-0' : '-rotate-90')} />
                     </div>
                   </button>
@@ -661,8 +664,8 @@ export default function CreditCardsPage() {
                           const cat = categories.find(c => c.id === t.category_id);
                           const cardColor = card?.color ?? '#6366f1';
                           return (
-                            <div key={t.id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors group/tx">
-                              <div className="flex items-center gap-3 min-w-0">
+                            <div key={t.id} className="flex items-center gap-3 justify-between px-4 py-3 hover:bg-muted/30 transition-colors group/tx">
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
                                 <div className="w-1 h-10 rounded-full shrink-0" style={{ backgroundColor: cardColor }} />
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-center gap-2 flex-wrap">
@@ -687,7 +690,7 @@ export default function CreditCardsPage() {
                                   </div>
                                 </div>
                               </div>
-                              <span className={cn('text-sm font-bold currency shrink-0 ml-3 tabular-nums', t.paid ? 'text-muted-foreground' : 'text-expense')}>{formatCurrency(Number(t.amount))}</span>
+                              <span className={cn('text-sm font-bold currency shrink-0 ml-3 tabular-nums', t.paid ? 'text-muted-foreground' : 'text-expense')}>{fmt(Number(t.amount))}</span>
                             </div>
                           );
                         })}
@@ -770,11 +773,11 @@ export default function CreditCardsPage() {
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider mb-0.5">Comprometido</p>
-                        <p className="font-extrabold text-sm tracking-tight tabular-nums whitespace-nowrap truncate">{formatCurrency(cardFutureTotal)}</p>
+                        <p className="font-extrabold text-sm tracking-tight tabular-nums whitespace-nowrap truncate">{fmt(cardFutureTotal)}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider mb-0.5">Disponível</p>
-                        <p className="font-extrabold text-sm tracking-tight tabular-nums whitespace-nowrap truncate">{formatCurrency(Math.max(0, Number(card.credit_limit) - cardFutureTotal))}</p>
+                        <p className="font-extrabold text-sm tracking-tight tabular-nums whitespace-nowrap truncate">{fmt(Math.max(0, Number(card.credit_limit) - cardFutureTotal))}</p>
                       </div>
                     </div>
                     <div className="space-y-1">
@@ -782,7 +785,7 @@ export default function CreditCardsPage() {
                         <div className="h-full bg-white/80 rounded-full transition-all" style={{ width: `${cardLimitUsage}%` }} />
                       </div>
                       <div className="flex items-center justify-between text-[9px] font-semibold gap-2">
-                        <span className="text-white/60 uppercase tracking-wider truncate">Limite {formatCurrency(Number(card.credit_limit))}</span>
+                        <span className="text-white/60 uppercase tracking-wider truncate">Limite {fmt(Number(card.credit_limit))}</span>
                         <span className="text-white/90 whitespace-nowrap">Fecha {String(card.closing_day).padStart(2,'0')} · {cardLimitUsage.toFixed(0)}%</span>
                       </div>
                     </div>
@@ -894,26 +897,26 @@ export default function CreditCardsPage() {
           </div>
 
           {/* Bill Stats */}
-          <div className="grid grid-cols-1 gap-3 min-[430px]:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 min-[430px]:grid-cols-3">
             <div className="rounded-xl border p-3 space-y-1" style={{ borderColor: `${currentCard.color}30`, backgroundColor: `${currentCard.color}08` }}>
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Total fatura</p>
-              <p className="font-extrabold text-lg currency text-expense">{formatCurrency(billTotal)}</p>
+              <p className="font-extrabold text-lg currency text-expense">{fmt(billTotal)}</p>
             </div>
             <div className="rounded-xl border border-income/20 bg-income/5 p-3 space-y-1">
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Pago</p>
-              <p className="font-extrabold text-lg currency text-income">{formatCurrency(paidTotal)}</p>
+              <p className="font-extrabold text-lg currency text-income">{fmt(paidTotal)}</p>
             </div>
             <div className="rounded-xl border border-border/60 bg-muted/30 p-3 space-y-1">
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Em aberto</p>
-              <p className={`font-extrabold text-lg currency ${unpaidTotal > 0 ? 'text-warning' : 'text-muted-foreground'}`}>{formatCurrency(unpaidTotal)}</p>
+              <p className={`font-extrabold text-lg currency ${unpaidTotal > 0 ? 'text-warning' : 'text-muted-foreground'}`}>{fmt(unpaidTotal)}</p>
             </div>
           </div>
 
           {/* Limit Usage Bar */}
           <div className="space-y-1.5">
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Uso do limite — {formatCurrency(billTotal)} de {formatCurrency(Number(currentCard.credit_limit))}</span>
-              <span className={`font-bold ${limitUsagePercent > 80 ? 'text-expense' : limitUsagePercent > 50 ? 'text-warning' : 'text-income'}`}>
+            <div className="flex flex-wrap justify-between gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+              <span className="truncate">Uso do limite — <span className="font-semibold">{fmt(billTotal)}</span> de {fmt(Number(currentCard.credit_limit))}</span>
+              <span className={`font-bold shrink-0 ${limitUsagePercent > 80 ? 'text-expense' : limitUsagePercent > 50 ? 'text-warning' : 'text-income'}`}>
                 {limitUsagePercent.toFixed(0)}%
               </span>
             </div>
@@ -938,7 +941,7 @@ export default function CreditCardsPage() {
                     <span className="text-lg shrink-0">{cat!.icon}</span>
                     <div className="min-w-0">
                       <p className="text-[10px] text-muted-foreground truncate">{cat!.name}</p>
-                      <p className="text-sm font-bold currency">{formatCurrency(total)}</p>
+                      <p className="text-sm font-bold currency">{fmt(total)}</p>
                     </div>
                   </div>
                 ))}
@@ -953,7 +956,7 @@ export default function CreditCardsPage() {
               {unpaidTotal > 0 && (
                 <Button size="sm" variant="outline" className="border-income/30 text-income hover:bg-income/5 gap-1.5" onClick={openPayBill}>
                   <Wallet className="w-3.5 h-3.5" />
-                  Pagar {formatCurrency(unpaidTotal)}
+                  Pagar {fmt(unpaidTotal)}
                 </Button>
               )}
               <Button size="sm" className="gap-1.5" style={{ backgroundColor: currentCard.color }} onClick={() => setShowNewTx(true)}>
@@ -1020,7 +1023,7 @@ export default function CreditCardsPage() {
                       </div>
                     </div>
                     <div className="flex w-full items-center justify-between gap-2 sm:ml-2 sm:w-auto sm:shrink-0">
-                      <span className={`text-sm font-bold currency ${t.paid ? 'text-muted-foreground' : ''}`}>{formatCurrency(Number(t.amount))}</span>
+                      <span className={`text-sm font-bold currency ${t.paid ? 'text-muted-foreground' : ''}`}>{fmt(Number(t.amount))}</span>
                       <button
                         onClick={() => deleteTx.mutate(t.id)}
                         className="p-1 text-muted-foreground/40 hover:text-expense hover:bg-expense/10 rounded-lg transition-all"
@@ -1122,7 +1125,7 @@ export default function CreditCardsPage() {
             {parseInt(newTx.installments) > 1 && newTx.amount && (
               <div className="rounded-xl bg-muted/50 border border-border px-3 py-2 text-xs text-muted-foreground flex items-center gap-2">
                 <CalendarDays className="w-3.5 h-3.5 shrink-0" />
-                {newTx.installments}x de {formatCurrency(parseFloat(newTx.amount) / parseInt(newTx.installments))} por mês
+                {newTx.installments}x de {fmt(parseFloat(newTx.amount) / parseInt(newTx.installments))} por mês
               </div>
             )}
 
@@ -1154,7 +1157,7 @@ export default function CreditCardsPage() {
           <div className="space-y-4">
             <div className="rounded-2xl p-5 text-center" style={{ background: `linear-gradient(135deg, ${currentCard?.color}20, ${currentCard?.color}08)`, border: `1px solid ${currentCard?.color}30` }}>
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Total em aberto</p>
-              <p className="text-2xl font-extrabold text-expense currency">{formatCurrency(unpaidTotal)}</p>
+              <p className="text-2xl font-extrabold text-expense currency">{fmt(unpaidTotal)}</p>
               <p className="text-xs text-muted-foreground mt-1.5 capitalize">{monthLabel(billMonth)} · {transactions.filter(t => !t.paid).length} item(ns)</p>
             </div>
             <div className="space-y-1.5">
@@ -1174,7 +1177,7 @@ export default function CreditCardsPage() {
                   onClick={() => setPayBillAmount(unpaidTotal.toFixed(2))}
                   className="text-[11px] px-2 py-1 rounded-md bg-muted/60 hover:bg-muted font-medium"
                 >
-                  Valor total ({formatCurrency(unpaidTotal)})
+                  Valor total ({fmt(unpaidTotal)})
                 </button>
                 {unpaidTotal >= 50 && (
                   <button
@@ -1236,7 +1239,7 @@ export default function CreditCardsPage() {
               <div className="rounded-xl border border-border/50 bg-muted/30 px-4 py-3">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Item</p>
                 <p className="text-sm font-semibold mt-0.5 truncate">{payItem.description}</p>
-                <p className="text-2xl font-extrabold text-expense currency mt-1">{formatCurrency(payItem.amount)}</p>
+                <p className="text-2xl font-extrabold text-expense currency mt-1">{fmt(payItem.amount)}</p>
               </div>
               <div className="space-y-1.5">
                 <Label>Debitar da conta *</Label>
@@ -1248,7 +1251,7 @@ export default function CreditCardsPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-[11px] text-muted-foreground">Será criada uma despesa de {formatCurrency(payItem.amount)} debitada desta conta.</p>
+                <p className="text-[11px] text-muted-foreground">Será criada uma despesa de {fmt(payItem.amount)} debitada desta conta.</p>
               </div>
             </div>
           )}

@@ -5,6 +5,7 @@ import { useCreditCards, useCreditCardTransactions } from '@/hooks/useCreditCard
 import { useProfile } from '@/hooks/useProfile';
 import { useAccumulatedBalance } from '@/hooks/useAccumulatedBalance';
 import { getMonthYear, formatCurrency, getMonthLabel } from '@/lib/format';
+import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { supabase } from '@/integrations/supabase/client';
 import MonthSelector from '@/components/finance/MonthSelector';
 import {
@@ -85,6 +86,8 @@ function InsightCard({ insight }: { insight: Insight }) {
 }
 
 export default function InsightsPage() {
+  const { maskCurrency } = useSensitiveData();
+  const fmt = (v: number) => maskCurrency(formatCurrency(v));
   const [month, setMonth] = useState(getMonthYear());
   const [showAutomaticInsights, setShowAutomaticInsights] = useState(false);
   const [aiInsights, setAiInsights] = useState<Insight[]>([]);
@@ -270,28 +273,28 @@ export default function InsightsPage() {
                 <TrendingUp className="h-3 w-3" />
                 <p className="text-[9px] font-bold uppercase tracking-wider">Receitas</p>
               </div>
-              <p className="text-sm sm:text-base font-extrabold currency text-income tabular-nums whitespace-nowrap truncate">{formatCurrency(totalIncome)}</p>
+              <p className="text-sm sm:text-base font-extrabold currency text-income tabular-nums whitespace-nowrap truncate">{fmt(totalIncome)}</p>
             </div>
             <div className="rounded-2xl border border-expense/25 bg-expense/[0.06] px-3 py-2.5">
               <div className="flex items-center gap-1.5 text-expense mb-0.5">
                 <TrendingDown className="h-3 w-3" />
                 <p className="text-[9px] font-bold uppercase tracking-wider">Despesas</p>
               </div>
-              <p className="text-sm sm:text-base font-extrabold currency text-expense tabular-nums whitespace-nowrap truncate">{formatCurrency(totalExpenses)}</p>
+              <p className="text-sm sm:text-base font-extrabold currency text-expense tabular-nums whitespace-nowrap truncate">{fmt(totalExpenses)}</p>
             </div>
             <div className={cn('rounded-2xl border px-3 py-2.5', (totalIncome - totalExpenses) >= 0 ? 'border-info/25 bg-info/[0.06]' : 'border-expense/25 bg-expense/[0.06]')}>
               <div className={cn('flex items-center gap-1.5 mb-0.5', (totalIncome - totalExpenses) >= 0 ? 'text-info' : 'text-expense')}>
                 <PiggyBank className="h-3 w-3" />
                 <p className="text-[9px] font-bold uppercase tracking-wider">Economia</p>
               </div>
-              <p className={cn('text-sm sm:text-base font-extrabold currency tabular-nums whitespace-nowrap truncate', (totalIncome - totalExpenses) >= 0 ? 'text-info' : 'text-expense')}>{formatCurrency(totalIncome - totalExpenses)}</p>
+              <p className={cn('text-sm sm:text-base font-extrabold currency tabular-nums whitespace-nowrap truncate', (totalIncome - totalExpenses) >= 0 ? 'text-info' : 'text-expense')}>{fmt(totalIncome - totalExpenses)}</p>
             </div>
             <div className="rounded-2xl border border-primary/25 bg-primary/[0.06] px-3 py-2.5">
               <div className="flex items-center gap-1.5 text-primary mb-0.5">
                 <Wallet className="h-3 w-3" />
                 <p className="text-[9px] font-bold uppercase tracking-wider">Patrimônio</p>
               </div>
-              <p className="text-sm sm:text-base font-extrabold currency text-primary tabular-nums whitespace-nowrap truncate">{formatCurrency(netWorth)}</p>
+              <p className="text-sm sm:text-base font-extrabold currency text-primary tabular-nums whitespace-nowrap truncate">{fmt(netWorth)}</p>
             </div>
           </div>
         </div>
