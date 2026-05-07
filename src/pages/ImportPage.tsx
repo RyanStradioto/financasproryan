@@ -32,7 +32,7 @@ type ParsedRow = {
   fitId?: string; // OFX unique ID for dedup
 };
 
-// â”€â”€ Parsing helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Parsing helpers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 function splitCsvLine(line: string): string[] {
   const cols: string[] = [];
@@ -78,7 +78,7 @@ function getImportedMonths(rows: ParsedRow[]): string[] {
   return [...months].sort();
 }
 
-// â”€â”€ CC payment detection (used in both CSV and OFX parsers) â”€â”€â”€â”€â”€
+// â"€â"€ CC payment detection (used in both CSV and OFX parsers) â"€â"€â"€â"€â"€
 
 const CC_PAYMENT_KEYWORDS = [
   'pagamento de fatura', 'pag fatura', 'fatura cartao', 'fatura cartão',
@@ -91,7 +91,7 @@ function detectCCPayment(description: string): boolean {
   return CC_PAYMENT_KEYWORDS.some(kw => lower.includes(kw));
 }
 
-// â”€â”€ OFX type detection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ OFX type detection â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 type OFXType = 'bank' | 'creditcard';
 
@@ -122,7 +122,7 @@ function extractCCBillMonth(text: string): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
-// â”€â”€ CSV parser â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ CSV parser â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 function parseCSV(text: string, rules: ClassificationRule[], source: 'bank' | 'cc', categories: Array<{ id: string; name: string }> = []): ParsedRow[] {
   const allLines = text.split(/\r?\n/);
@@ -259,7 +259,7 @@ function parseCSV(text: string, rules: ClassificationRule[], source: 'bank' | 'c
   return rows;
 }
 
-// â”€â”€ OFX parser â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ OFX parser â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 const CC_CREDIT_SKIP_KEYWORDS = [
   'pagamento recebido', 'ajuste a crédito',
@@ -351,7 +351,7 @@ function parseFile(text: string, fileName: string, rules: ClassificationRule[], 
   return { rows: parseCSV(text, rules, forcedSource || 'bank', categories) };
 }
 
-// â”€â”€ Type labels & colors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Type labels & colors â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 const TYPE_LABELS: Record<RowType, string> = {
   income: 'Receita',
@@ -417,7 +417,7 @@ export default function ImportPage() {
         ...row,
         isDuplicate,
         selected: !isDuplicate,
-        classificationReason: isDuplicate ? '� ️ Já importado no mesmo período' : row.classificationReason,
+        classificationReason: isDuplicate ? '⚠️ Já importado no mesmo período' : row.classificationReason,
         confidence: isDuplicate ? 'low' : row.confidence,
       };
     });
@@ -525,7 +525,7 @@ export default function ImportPage() {
 
     const { supabase: sb } = await import('@/integrations/supabase/client');
 
-    // â”€â”€ Despesas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ Despesas â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     if (expenseRows.length > 0) {
       const payload = expenseRows.map(r => ({
         date: r.date, description: r.description, amount: r.amount,
@@ -537,7 +537,7 @@ export default function ImportPage() {
       else { successCount += expenseRows.length; console.log('[Import] Despesas OK'); }
     }
 
-    // â”€â”€ Receitas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ Receitas â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     if (incomeRows.length > 0) {
       const payload = incomeRows.map(r => ({
         date: r.date, description: r.description, amount: r.amount,
@@ -549,7 +549,7 @@ export default function ImportPage() {
       else { successCount += incomeRows.length; console.log('[Import] Receitas OK'); }
     }
 
-    // â”€â”€ Investimentos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ Investimentos â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     for (const r of investmentRows) {
       if (!r.investmentId) continue;
       try {
@@ -627,7 +627,7 @@ export default function ImportPage() {
       }
     }
 
-    // â”€â”€ Resultado â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ Resultado â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     if (errorMessages.length > 0) {
       console.error('[Import] Erros:', errorMessages);
       toast.error(
@@ -659,7 +659,7 @@ export default function ImportPage() {
   const hasAnyData = bankRows.length > 0 || ccRows.length > 0;
   const totalSelected = bankRows.filter(r => r.selected && r.type !== 'cc_payment').length + ccRows.filter(r => r.selected).length;
 
-  // â”€â”€ Upload area â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Upload area â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   const renderUploadArea = (
     label: string,
     icon: React.ReactNode,
@@ -726,7 +726,7 @@ export default function ImportPage() {
                   <p className="text-[10px] text-warning/70">↩ substituído pelos itens da fatura</p>
                 ) : (
                   <p className={`text-[10px] ${CONFIDENCE_COLORS[row.confidence]}`}>
-                    {row.isDuplicate ? '🔁' : row.confidence === 'high' ? '✅' : row.confidence === 'medium' ? '� ️' : '❓'} {row.classificationReason}
+                    {row.isDuplicate ? '🔁' : row.confidence === 'high' ? '✅' : row.confidence === 'medium' ? '⚠️' : '❓'} {row.classificationReason}
                   </p>
                 )}
               </td>

@@ -25,12 +25,18 @@ interface Props {
 export default function BurnRateChart({
   points, projectedTotal, willOverrun, monthBudget, todaySpent, dayOfMonth, maskCurrency,
 }: Props) {
-  const chartData = useMemo(() => points.map(p => ({
-    day: p.day,
-    real: p.isProjection ? null : p.cumulativeActual,
-    projected: p.isProjection ? p.cumulativeActual : null,
-    ideal: p.cumulativeIdeal,
-  })), [points]);
+  const chartData = useMemo(() => {
+    // Find the last "real" point (today) so projection line connects from there
+    const lastRealIdx = points.findIndex(p => p.isProjection) - 1;
+    const todayValue = lastRealIdx >= 0 ? points[lastRealIdx].cumulativeActual : 0;
+    return points.map((p, i) => ({
+      day: p.day,
+      real: p.isProjection ? null : p.cumulativeActual,
+      // projected starts from "today" point so the line connects visually
+      projected: p.isProjection ? p.cumulativeActual : (i === lastRealIdx ? todayValue : null),
+      ideal: p.cumulativeIdeal,
+    }));
+  }, [points]);
 
   if (monthBudget === 0) {
     return (
@@ -58,7 +64,7 @@ export default function BurnRateChart({
   const overrunPct = monthBudget > 0 ? ((projectedTotal - monthBudget) / monthBudget) * 100 : 0;
 
   return (
-    <div className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm p-5 sm:p-6 shadow-sm flex flex-col">
+    <div className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm p-4 sm:p-6 shadow-sm">
       <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/15">
@@ -80,9 +86,9 @@ export default function BurnRateChart({
         </div>
       </div>
 
-      <div className="flex-1 min-h-[220px]">
+      <div className="w-full" style={{ height: 280 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={chartData} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
+          <ComposedChart data={chartData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="burnReal" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />

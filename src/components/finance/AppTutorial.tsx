@@ -343,7 +343,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     if (isMobile) setMobileSheetOpen(false);
   }, [navigate, stepIndex, isMobile]);
 
-  // â”€â”€ Drag handlers (desktop only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Drag handlers (desktop only) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   const startDrag = useCallback((clientX: number, clientY: number) => {
     setIsDragging(true);
     dragRef.current = { startX: clientX, startY: clientY, origX: pos?.x ?? 0, origY: pos?.y ?? 0 };
@@ -385,13 +385,13 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('touchend', onEnd);
     };
   }, [isDragging]);
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
   const contextValue = useMemo<TutorialContextValue>(() => ({ openTutorial }), [openTutorial]);
 
   if (!open) return <TutorialContext.Provider value={contextValue}>{children}</TutorialContext.Provider>;
 
-  // â”€â”€ Welcome screen (full-screen modal) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Welcome screen (full-screen modal) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   if (isWelcome) {
     return (
       <TutorialContext.Provider value={contextValue}>
@@ -441,7 +441,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // â”€â”€ Checklist content (shared between mobile sheet and desktop widget) â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Checklist content (shared between mobile sheet and desktop widget) â"€â"€â"€â"€â"€â"€
   const ChecklistContent = () => (
     <>
       {/* Progress bar */}
@@ -537,7 +537,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     </>
   );
 
-  // â”€â”€ MOBILE: FAB pill + bottom sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ MOBILE: FAB pill + bottom sheet â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   if (isMobile) {
     return (
       <TutorialContext.Provider value={contextValue}>
@@ -608,7 +608,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // â”€â”€ DESKTOP: draggable floating widget â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ DESKTOP: draggable floating widget â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   const widgetStyle = {
     position: 'fixed' as const,
     left: pos?.x ?? 0,

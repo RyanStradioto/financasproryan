@@ -32,7 +32,7 @@ export default function StickySummaryBar({ balance, perDayAllowance, monthBudget
 
   return (
     <div className={cn(
-      'fixed top-0 left-0 right-0 z-40 lg:hidden transition-transform duration-300',
+      'fixed top-[52px] left-0 right-0 z-30 lg:hidden transition-transform duration-300',
       visible ? 'translate-y-0' : '-translate-y-full',
     )}>
       <div className="bg-card/95 backdrop-blur-xl border-b border-border/60 shadow-md px-3 py-2">

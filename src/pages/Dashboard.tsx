@@ -872,7 +872,7 @@ export default function Dashboard() {
 
       {/* Hero + account switcher + visual mode */}
       <div
-        className="relative overflow-hidden rounded-[2rem] border p-4 shadow-2xl shadow-black/10 sm:rounded-[2.5rem] sm:p-6"
+        className="relative overflow-hidden rounded-3xl border p-3.5 shadow-2xl shadow-black/10 sm:rounded-[2.5rem] sm:p-6"
         style={{
           borderColor: isGlobalView ? 'hsl(var(--border) / 0.7)' : accentBorder,
           background: isGlobalView
@@ -880,8 +880,8 @@ export default function Dashboard() {
             : `linear-gradient(145deg, ${accentSoft} 0%, hsl(var(--card) / 0.96) 52%, hsl(var(--background)) 100%)`,
         }}
       >
-        <div className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full blur-[100px]" style={{ background: accentGlow }} />
-        <div className="pointer-events-none absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-primary/10 blur-[100px]" />
+        <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 sm:-right-32 sm:-top-32 sm:h-96 sm:w-96 rounded-full blur-[80px] sm:blur-[100px]" style={{ background: accentGlow }} />
+        <div className="pointer-events-none absolute -bottom-20 -left-20 h-64 w-64 sm:-bottom-32 sm:-left-32 sm:h-96 sm:w-96 rounded-full bg-primary/10 blur-[80px] sm:blur-[100px]" />
 
         <div className="relative z-10 flex flex-col gap-5">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -895,17 +895,17 @@ export default function Dashboard() {
                 global={isGlobalView}
                 size="lg"
               />
-              <div className="min-w-0">
-                <p className="text-xs font-black text-muted-foreground tracking-[0.22em] uppercase">
+              <div className="min-w-0 w-full">
+                <p className="text-[10px] sm:text-xs font-black text-muted-foreground tracking-[0.18em] uppercase truncate">
                   {greeting.icon} {greeting.text}{profile?.first_name ? `, ${profile.first_name}` : ''}
                 </p>
-                <h1 className="truncate text-3xl font-black leading-tight tracking-tight sm:text-5xl mt-1">
+                <h1 className="truncate text-2xl font-black leading-tight tracking-tight sm:text-4xl lg:text-5xl mt-1">
                   {focusLabel}
                 </h1>
-                <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <span className="text-sm font-bold text-muted-foreground sm:text-base">{focusSubLabel}</span>
+                <div className="mt-2 flex flex-wrap items-center gap-2 sm:gap-3">
+                  <span className="text-xs sm:text-sm font-bold text-muted-foreground sm:text-base truncate max-w-full">{focusSubLabel}</span>
                   <span
-                    className="rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-wider backdrop-blur-md"
+                    className="rounded-full border px-2.5 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-[11px] font-black uppercase tracking-wider backdrop-blur-md whitespace-nowrap shrink-0"
                     style={{ borderColor: colorWithOpacity(healthColor, 0.4), backgroundColor: colorWithOpacity(healthColor, 0.15), color: healthColor }}
                   >
                     Saúde {healthScore}/100
@@ -941,7 +941,7 @@ export default function Dashboard() {
                 {activeAccounts.length + 1} visões
               </span>
             </div>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
               <button
                 onClick={() => setAccountFocusId('__all__')}
                 className={cn(

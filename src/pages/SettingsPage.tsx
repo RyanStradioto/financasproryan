@@ -27,7 +27,7 @@ const formatScheduleDate = (date: Date) => {
     timeZone: 'America/Sao_Paulo',
   }).format(date);
 
-  return `${weekday}, ${day} Ã s ${time}`;
+  return `${weekday}, ${day} às ${time}`;
 };
 
 const getNextWeeklySend = (now = new Date()) => {
@@ -553,12 +553,12 @@ export default function SettingsPage() {
             <div className="rounded-xl border border-border bg-muted/30 px-4 py-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Próximo semanal</p>
               <p className="mt-1 text-sm font-medium text-foreground">{nextWeeklySend}</p>
-              <p className="mt-1 text-xs text-muted-foreground">Envio automático toda segunda-feira � s 09:00.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Envio automático toda segunda-feira às 09:00.</p>
             </div>
             <div className="rounded-xl border border-border bg-muted/30 px-4 py-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Próximo mensal</p>
               <p className="mt-1 text-sm font-medium text-foreground">{nextMonthlySend}</p>
-              <p className="mt-1 text-xs text-muted-foreground">Envio automático no dia 1 de cada mês � s 09:00.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Envio automático no dia 1 de cada mês às 09:00.</p>
             </div>
           </div>
           <div className="grid gap-2 sm:flex sm:flex-wrap">
@@ -611,7 +611,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* â”€â”€ Zona de Perigo â”€â”€ */}
+      {/* â"€â"€ Zona de Perigo â"€â"€ */}
       <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5 space-y-4">
         <div className="flex items-center gap-2 text-destructive font-semibold text-sm">
           <AlertTriangle className="w-4 h-4" />
@@ -631,7 +631,7 @@ export default function SettingsPage() {
       </div>
       </div>
 
-      {/* â”€â”€ Dialog: selecionar meses para excluir â”€â”€ */}
+      {/* â"€â"€ Dialog: selecionar meses para excluir â"€â"€ */}
       <Dialog open={deleteMonthsOpen} onOpenChange={setDeleteMonthsOpen}>
         <DialogContent>
           <DialogHeader>

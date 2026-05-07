@@ -189,7 +189,7 @@ export default function IncomePage() {
 
   const total = filtered.reduce((s, i) => s + Number(i.amount), 0);
 
-  // â”€â”€ Stats for hero â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Stats for hero â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   const totalAll = useMemo(() => scopedIncome.reduce((s, i) => s + Number(i.amount), 0), [scopedIncome]);
   const totalReceived = useMemo(() => scopedIncome.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0), [scopedIncome]);
   const totalPending = useMemo(() => scopedIncome.filter(i => i.status !== 'concluido').reduce((s, i) => s + Number(i.amount), 0), [scopedIncome]);
@@ -237,7 +237,7 @@ export default function IncomePage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* â”€â”€â”€ Hero Header â”€â”€â”€ */}
+      {/* â"€â"€â"€ Hero Header â"€â"€â"€ */}
       <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-income/[0.06] p-4 shadow-sm sm:rounded-3xl sm:p-7">
         <div className="absolute -top-24 -right-24 w-72 h-72 bg-income/15 blur-3xl rounded-full pointer-events-none" />
         <div className="absolute -bottom-32 -left-20 w-64 h-64 bg-income/[0.06] blur-3xl rounded-full pointer-events-none" />
@@ -609,7 +609,7 @@ export default function IncomePage() {
         )}
       </div>
 
-      {/* â”€â”€â”€ Desktop table â”€â”€â”€ */}
+      {/* â"€â"€â"€ Desktop table â"€â"€â"€ */}
       <div className="hidden sm:block rounded-2xl border border-border/60 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
