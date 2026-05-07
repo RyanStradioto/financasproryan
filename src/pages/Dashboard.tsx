@@ -290,7 +290,7 @@ export default function Dashboard() {
     return categoryByMatchKey.get(matchKey) ?? categoryByLooseKey.get(looseKey) ?? null;
   };
 
-  // â”€â”€ Core numbers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Core numbers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   const totalIncome = useMemo(() =>
     scopedIncome.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0)
   , [scopedIncome]);
@@ -312,9 +312,16 @@ export default function Dashboard() {
     scopedCCTransactions.reduce((s, t) => s + Number(t.amount), 0)
   , [scopedCCTransactions]);
 
+  // Unpaid CC bills (past + current month) — these are obligations not yet reflected in account balance
+  const unpaidCCTotal = useMemo(() => {
+    return creditTransactions
+      .filter(t => !t.paid && t.bill_month <= month)
+      .reduce((s, t) => s + Number(t.amount), 0);
+  }, [creditTransactions, month]);
+
   const savings = totalIncome > 0 ? ((totalIncome - totalExpensesPaid) / totalIncome) * 100 : 0;
 
-  // â”€â”€ Category breakdown: nonCC expenses + CC transactions (sem dupla contagem) â”€â”€â”€
+  // â"€â"€ Category breakdown: nonCC expenses + CC transactions (sem dupla contagem) â"€â"€â"€
   const catBreakdown = useMemo(() => {
     const allItems = [
       ...scopedNonCCExpenses.map(e => ({ category_id: resolveCategoryId(e), amount: Number(e.amount) })),
@@ -331,7 +338,7 @@ export default function Dashboard() {
       .sort((a, b) => b.value - a.value);
   }, [scopedNonCCExpenses, scopedCCTransactions, categories, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
 
-  // â”€â”€ Status breakdown: apenas despesas normais (sem espelhos CC) + Fatura CC â”€â”€â”€
+  // â"€â"€ Status breakdown: apenas despesas normais (sem espelhos CC) + Fatura CC â"€â"€â"€
   const statusData = useMemo(() => [
     { name: 'Concluído', value: scopedNonCCExpenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0), fill: 'hsl(160, 84%, 39%)' },
     { name: 'Pendente',  value: scopedNonCCExpenses.filter(e => e.status === 'pendente').reduce((s, e) => s + Number(e.amount), 0),  fill: 'hsl(38, 92%, 50%)' },
@@ -339,7 +346,7 @@ export default function Dashboard() {
     ...(totalCCThisMonth > 0 ? [{ name: 'Fatura CC', value: totalCCThisMonth, fill: '#6366f1' }] : []),
   ].filter(s => s.value > 0), [scopedNonCCExpenses, totalCCThisMonth]);
 
-  // â”€â”€ Sparkline data (Last 30 days of the selected month) â”€â”€â”€â”€â”€
+  // â"€â"€ Sparkline data (Last 30 days of the selected month) â"€â"€â"€â"€â"€
   const getDailyTrend = (data: Array<Record<string, string | number | null>>, dateField = 'date') => {
     // Basic grouping for the visual sparkline
     const sorted = [...data].sort((a, b) => new Date(String(a[dateField] ?? "")).getTime() - new Date(String(b[dateField] ?? "")).getTime());
@@ -380,7 +387,7 @@ export default function Dashboard() {
     return vals;
   }, [scopedIncome, scopedNonCCExpenses, scopedCCTransactions]);
 
-  // â”€â”€ Budget progress for Rings: nonCC expenses + CC transactions por categoria â”€â”€
+  // â"€â"€ Budget progress for Rings: nonCC expenses + CC transactions por categoria â"€â"€
   const budgetsWithData = useMemo(() =>
     categories.filter(c => Number(c.monthly_budget) > 0).map(cat => {
       const spentRegular = scopedNonCCExpenses.filter(e => resolveCategoryId(e) === cat.id).reduce((s, e) => s + Number(e.amount), 0);
@@ -391,7 +398,7 @@ export default function Dashboard() {
     }).sort((a, b) => b.budget - a.budget)
   , [categories, scopedNonCCExpenses, scopedCCTransactions, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
 
-  // â”€â”€ Recent transactions (sem espelhos CC) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Recent transactions (sem espelhos CC) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   const recentTransactions = useMemo(() => [
     ...scopedIncome.map(i => ({ ...i, type: 'income' as const })),
     ...scopedNonCCExpenses.map(e => ({ ...e, type: 'expense' as const })),
@@ -464,7 +471,7 @@ export default function Dashboard() {
     return new Date(parseInt(year), parseInt(m) - 1, 1);
   }, [month]);
 
-  // â”€â”€ Previous month totals (for MoM deltas) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Previous month totals (for MoM deltas) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   const prevTotalIncome = useMemo(() =>
     scopedPrevIncome.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0)
   , [scopedPrevIncome]);
@@ -578,7 +585,7 @@ export default function Dashboard() {
     [...scopedIncome].sort((a, b) => Number(b.amount) - Number(a.amount)).slice(0, 5)
   , [scopedIncome]);
 
-  // â”€â”€ Comparativo Mensal: bars â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Comparativo Mensal: bars â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   const monthCompareData = useMemo(() => [
     {
       name: 'Receitas',
@@ -603,7 +610,7 @@ export default function Dashboard() {
     },
   ], [prevTotalIncome, totalIncome, prevTotalAll, currentTotalAll]);
 
-  // â”€â”€ Allocation: Contas vs Investimentos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Allocation: Contas vs Investimentos â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   const allocationData = useMemo(() => {
     const items = [];
     if (balance > 0) items.push({ name: 'Contas', value: balance, fill: 'hsl(160, 84%, 39%)' });
@@ -738,7 +745,29 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-      {/* â”€â”€â”€ KPI Cards Premium â”€â”€â”€ */}
+      {/* Pending CC Bill Alert */}
+      {unpaidCCTotal > 0 && (
+        <div
+          className="flex items-center gap-3 rounded-2xl border border-[#6366f1]/30 bg-[#6366f1]/5 px-4 py-3 hover:bg-[#6366f1]/10 transition-colors cursor-pointer"
+          onClick={() => window.location.href = '/cartoes'}
+          role="button"
+        >
+          <div className="w-8 h-8 rounded-lg bg-[#6366f1]/15 flex items-center justify-center shrink-0">
+            <CreditCard className="w-4 h-4 text-[#6366f1]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-[#6366f1]">
+              Fatura pendente: {maskCurrency(formatCurrency(unpaidCCTotal))}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Compras no cartao ainda nao pagas. Seu saldo bancario esta {maskCurrency(formatCurrency(unpaidCCTotal))} acima do real ate voce pagar a fatura em Cartoes.
+            </p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-[#6366f1]/60 shrink-0" />
+        </div>
+      )}
+
+      {/* â"€â"€â"€ KPI Cards Premium â"€â"€â"€ */}
       <div className={`grid grid-cols-1 gap-3 min-[390px]:grid-cols-2 sm:gap-4 stagger-1 ${totalCCThisMonth > 0 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
         <KpiCard
           label="Receitas"
@@ -921,7 +950,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* â”€â”€ Main Charts Grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* â"€â"€ Main Charts Grid â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
       <div className="grid lg:grid-cols-3 gap-6 stagger-2">
         {/* Trend Area Chart (span 2) */}
         <div className="lg:col-span-2 relative z-10">
@@ -961,7 +990,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* â”€â”€ Row 3: Visual Analytics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* â"€â"€ Row 3: Visual Analytics â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
       <div className="grid lg:grid-cols-3 gap-6 stagger-3">
         {/* Budget Rings */}
         <div className="stat-card flex flex-col">
@@ -1069,7 +1098,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* â”€â”€ Category & Status Breakdown (Added Back) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* â"€â"€ Category & Status Breakdown (Added Back) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
       <div className="grid lg:grid-cols-2 gap-6 stagger-4">
         {/* Category Donut */}
         <div className="stat-card">
@@ -1451,7 +1480,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* â”€â”€ Cash Flow Projection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* â"€â"€ Cash Flow Projection â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
       <div className="stagger-5">
         <CashFlowForecast accountId={accountFocusId} />
       </div>
@@ -1498,7 +1527,7 @@ export default function Dashboard() {
         <SmartAlerts expenses={scopedNonCCExpenses} income={scopedIncome} categories={categories} />
       </div>
 
-      {/* â”€â”€ Achievements â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* â"€â"€ Achievements â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
       <div className="stagger-6">
         <Achievements expenses={scopedNonCCExpenses} income={scopedIncome} categories={categories} />
       </div>
