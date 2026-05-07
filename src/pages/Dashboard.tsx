@@ -38,6 +38,18 @@ import AnomalyAlerts from '@/components/dashboard/AnomalyAlerts';
 import PixCounters from '@/components/dashboard/PixCounters';
 import StickySummaryBar from '@/components/dashboard/StickySummaryBar';
 import SixMonthStack from '@/components/dashboard/SixMonthStack';
+import ErrorBoundary from '@/components/ErrorBoundary';
+
+/** Safe wrapper: runs an analytics fn and returns a fallback if it throws. */
+function safeRun<T>(fn: () => T, fallback: T, label?: string): T {
+  try {
+    return fn();
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[dashboard analytics]', label || 'unknown', e);
+    return fallback;
+  }
+}
 
 const CHART_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
 
@@ -705,15 +717,18 @@ export default function Dashboard() {
     return exp + cc;
   }, [scopedNonCCExpenses, scopedCCTransactions]);
 
-  const allowance = useMemo(() => computeAllowance({
+  const allowance = useMemo(() => safeRun(() => computeAllowance({
     monthBudget: monthPace.totalBudget,
     monthSpent: currentTotalAll,
     dayOfMonth: monthPace.dayOfMonth,
     lastDayOfMonth: monthPace.lastDayOfMonth,
     todaySpent,
-  }), [monthPace, currentTotalAll, todaySpent]);
+  }), {
+    remainingDays: 30, remainingBudget: 0, perDayAllowance: 0,
+    todaySpent: 0, monthBudget: 0, monthSpent: 0,
+  }, 'allowance'), [monthPace, currentTotalAll, todaySpent]);
 
-  const burnRate = useMemo(() => {
+  const burnRate = useMemo(() => safeRun(() => {
     const allMonthExpenses = [
       ...scopedNonCCExpenses
         .filter(e => e.status === 'concluido')
@@ -727,9 +742,10 @@ export default function Dashboard() {
       lastDayOfMonth: monthPace.lastDayOfMonth,
       monthYYYYMM: month,
     });
-  }, [scopedNonCCExpenses, scopedCCTransactions, monthPace, month]);
+  }, { points: [], projectedTotal: 0, willOverrun: false }, 'burnRate'),
+  [scopedNonCCExpenses, scopedCCTransactions, monthPace, month]);
 
-  const anomalies = useMemo(() => {
+  const anomalies = useMemo(() => safeRun(() => {
     const currentExp = [
       ...scopedNonCCExpenses.filter(e => e.status === 'concluido').map(e => ({
         amount: Number(e.amount), date: e.date, description: e.description, category_id: resolveCategoryId(e), notes: e.notes,
@@ -747,10 +763,10 @@ export default function Dashboard() {
       })),
     ];
     return detectAnomalies({ currentExpenses: currentExp, historicalExpenses: histExp });
-  }, [scopedNonCCExpenses, scopedCCTransactions, scopedPrevNonCCExpenses, scopedPrevCCTransactions, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
+  }, [], 'anomalies'),
+  [scopedNonCCExpenses, scopedCCTransactions, scopedPrevNonCCExpenses, scopedPrevCCTransactions, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
 
-  const recurring = useMemo(() => {
-    // Build pool from current + previous months for detection
+  const recurring = useMemo(() => safeRun(() => {
     const pool = [
       ...scopedNonCCExpenses.map(e => ({
         amount: Number(e.amount), date: e.date, description: e.description, category_id: resolveCategoryId(e),
@@ -766,9 +782,10 @@ export default function Dashboard() {
       })),
     ];
     return detectRecurring({ expenses: pool, minOccurrences: 3 });
-  }, [scopedNonCCExpenses, scopedCCTransactions, scopedPrevNonCCExpenses, scopedPrevCCTransactions, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
+  }, [], 'recurring'),
+  [scopedNonCCExpenses, scopedCCTransactions, scopedPrevNonCCExpenses, scopedPrevCCTransactions, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
 
-  const categoryDeltas = useMemo(() => {
+  const categoryDeltas = useMemo(() => safeRun(() => {
     const cur = [
       ...scopedNonCCExpenses.filter(e => e.status === 'concluido').map(e => ({
         amount: Number(e.amount), date: e.date, category_id: resolveCategoryId(e),
@@ -786,12 +803,13 @@ export default function Dashboard() {
       })),
     ];
     return computeCategoryDeltas({ currentExpenses: cur, previousExpenses: prev });
-  }, [scopedNonCCExpenses, scopedCCTransactions, scopedPrevNonCCExpenses, scopedPrevCCTransactions, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
+  }, [], 'categoryDeltas'),
+  [scopedNonCCExpenses, scopedCCTransactions, scopedPrevNonCCExpenses, scopedPrevCCTransactions, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
 
-  const pixCounterparties = useMemo(() => aggregatePixCounterparties({
+  const pixCounterparties = useMemo(() => safeRun(() => aggregatePixCounterparties({
     income: scopedIncome.map(i => ({ amount: Number(i.amount), date: i.date, description: i.description, category_id: i.category_id })),
     expenses: scopedNonCCExpenses.map(e => ({ amount: Number(e.amount), date: e.date, description: e.description, category_id: e.category_id })),
-  }), [scopedIncome, scopedNonCCExpenses]);
+  }), [], 'pix'), [scopedIncome, scopedNonCCExpenses]);
 
   // Six-month overview (current month + 5 previous)
   const sixMonthData = useMemo(() => {
@@ -821,7 +839,7 @@ export default function Dashboard() {
   const topCategoryDelta = categoryDeltas.find(d => d.trend === 'up' && d.deltaPct !== null && Math.abs(d.deltaPct) >= 15);
   const topCategoryName = topCategoryDelta ? (categories.find(c => c.id === topCategoryDelta.category_id)?.name) : undefined;
 
-  const summaryLines = useMemo(() => buildExecutiveSummary({
+  const summaryLines = useMemo(() => safeRun(() => buildExecutiveSummary({
     balance,
     netWorth,
     totalIncome,
@@ -833,7 +851,8 @@ export default function Dashboard() {
     daysLeft: monthPace.lastDayOfMonth - monthPace.dayOfMonth,
     perDayAllowance: allowance.perDayAllowance,
     savingsRate: savings,
-  }), [balance, netWorth, totalIncome, currentTotalAll, prevTotalAll, topCategoryName, topCategoryDelta, unpaidCCTotal, monthPace, allowance, savings]);
+  }), [], 'summary'),
+  [balance, netWorth, totalIncome, currentTotalAll, prevTotalAll, topCategoryName, topCategoryDelta, unpaidCCTotal, monthPace, allowance, savings]);
 
   const summaryTone: 'positive' | 'negative' | 'neutral' =
     totalIncome === 0 && currentTotalAll === 0 ? 'neutral'
@@ -842,12 +861,14 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 sm:space-y-8 animate-fade-in pb-10 w-full max-w-full overflow-x-hidden sm:overflow-visible">
       {/* Sticky summary bar (mobile only) */}
-      <StickySummaryBar
-        balance={balance}
-        perDayAllowance={allowance.perDayAllowance}
-        monthBudgetSet={monthPace.totalBudget > 0}
-        maskCurrency={maskCurrency}
-      />
+      <ErrorBoundary fallback={null} label="StickyBar">
+        <StickySummaryBar
+          balance={balance}
+          perDayAllowance={allowance.perDayAllowance}
+          monthBudgetSet={monthPace.totalBudget > 0}
+          maskCurrency={maskCurrency}
+        />
+      </ErrorBoundary>
 
       {/* Hero + account switcher + visual mode */}
       <div
@@ -1034,18 +1055,22 @@ export default function Dashboard() {
       )}
 
       {/* Executive Summary + Daily Allowance — hero of decisions */}
-      <div className="grid gap-4 lg:grid-cols-2 stagger-1">
-        <ExecutiveSummary lines={summaryLines} tone={summaryTone} />
-        <AllowanceCard
-          allowance={allowance}
-          todaySpent={todaySpent}
-          maskCurrency={maskCurrency}
-        />
-      </div>
+      <ErrorBoundary fallback={null} label="ExecSummary+Allowance">
+        <div className="grid gap-4 lg:grid-cols-2 stagger-1">
+          <ExecutiveSummary lines={summaryLines} tone={summaryTone} />
+          <AllowanceCard
+            allowance={allowance}
+            todaySpent={todaySpent}
+            maskCurrency={maskCurrency}
+          />
+        </div>
+      </ErrorBoundary>
 
       {/* Anomaly Alerts (only when there are anomalies) */}
       {anomalies.length > 0 && (
-        <AnomalyAlerts anomalies={anomalies} categories={categories} maskCurrency={maskCurrency} />
+        <ErrorBoundary fallback={null} label="AnomalyAlerts">
+          <AnomalyAlerts anomalies={anomalies} categories={categories} maskCurrency={maskCurrency} />
+        </ErrorBoundary>
       )}
 
       {/* ─── KPI Cards Premium ─── */}
@@ -1762,43 +1787,47 @@ export default function Dashboard() {
       )}
 
       {/* ── Advanced Analytics row 1: Burn Rate + Top Categories Delta ──── */}
-      <div className="grid gap-4 lg:grid-cols-3 stagger-5">
-        <div className="lg:col-span-2">
-          <BurnRateChart
-            points={burnRate.points}
-            projectedTotal={burnRate.projectedTotal}
-            willOverrun={burnRate.willOverrun}
-            monthBudget={monthPace.totalBudget}
-            todaySpent={todaySpent}
-            dayOfMonth={monthPace.dayOfMonth}
+      <ErrorBoundary fallback={null} label="BurnRate+Delta">
+        <div className="grid gap-4 lg:grid-cols-3 stagger-5">
+          <div className="lg:col-span-2">
+            <BurnRateChart
+              points={burnRate.points}
+              projectedTotal={burnRate.projectedTotal}
+              willOverrun={burnRate.willOverrun}
+              monthBudget={monthPace.totalBudget}
+              todaySpent={todaySpent}
+              dayOfMonth={monthPace.dayOfMonth}
+              maskCurrency={maskCurrency}
+            />
+          </div>
+          <TopCategoriesDelta
+            deltas={categoryDeltas}
+            categories={categories}
             maskCurrency={maskCurrency}
+            limit={5}
           />
         </div>
-        <TopCategoriesDelta
-          deltas={categoryDeltas}
-          categories={categories}
-          maskCurrency={maskCurrency}
-          limit={5}
-        />
-      </div>
+      </ErrorBoundary>
 
       {/* ── Advanced Analytics row 2: Recurring + 6-month + Pix ──────────── */}
-      <div className="grid gap-4 lg:grid-cols-3 stagger-5">
-        <RecurringExpenses
-          recurring={recurring}
-          categories={categories}
-          maskCurrency={maskCurrency}
-          limit={6}
-        />
-        <SixMonthStack months={sixMonthData} maskCurrency={maskCurrency} />
-        <PixCounters
-          counterparties={pixCounterparties}
-          maskCurrency={maskCurrency}
-          maskText={maskText}
-          isVisible={isVisible}
-          limit={5}
-        />
-      </div>
+      <ErrorBoundary fallback={null} label="Recurring+6M+Pix">
+        <div className="grid gap-4 lg:grid-cols-3 stagger-5">
+          <RecurringExpenses
+            recurring={recurring}
+            categories={categories}
+            maskCurrency={maskCurrency}
+            limit={6}
+          />
+          <SixMonthStack months={sixMonthData} maskCurrency={maskCurrency} />
+          <PixCounters
+            counterparties={pixCounterparties}
+            maskCurrency={maskCurrency}
+            maskText={maskText}
+            isVisible={isVisible}
+            limit={5}
+          />
+        </div>
+      </ErrorBoundary>
 
       {/* ── Cash Flow Projection ────────────────────────────────────────── */}
       <div className="stagger-5">

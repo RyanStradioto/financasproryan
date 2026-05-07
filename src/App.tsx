@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import Auth from "./pages/Auth";
 import AppLayout from "./components/finance/AppLayout";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 // Rotas pesadas carregadas sob demanda para reduzir o bundle inicial
 const Dashboard       = lazy(() => import("./pages/Dashboard"));
@@ -55,40 +56,44 @@ function ProtectedRoutes() {
 
   return (
     <AppLayout>
-      <Suspense fallback={<PageLoader />}>
-        <Routes>
-          <Route path="/"             element={<Dashboard />} />
-          <Route path="/receitas"     element={<IncomePage />} />
-          <Route path="/despesas"     element={<ExpensesPage />} />
-          <Route path="/categorias"   element={<CategoriesPage />} />
-          <Route path="/planejamento" element={<PlanningPage />} />
-          <Route path="/contas"       element={<AccountsPage />} />
-          <Route path="/calendario"   element={<CalendarPage />} />
-          <Route path="/configuracoes" element={<SettingsPage />} />
-          <Route path="/importar"     element={<ImportPage />} />
-          <Route path="/insights"     element={<InsightsPage />} />
-          <Route path="/investimentos" element={<InvestmentsPage />} />
-          <Route path="/cartoes"      element={<CreditCardsPage />} />
-          <Route path="/relatorio"    element={<ReportPage />} />
-          <Route path="/lixeira"      element={<TrashPage />} />
-          <Route path="*"             element={<NotFound />} />
-        </Routes>
-      </Suspense>
+      <ErrorBoundary label="Pagina">
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/"             element={<ErrorBoundary label="Dashboard"><Dashboard /></ErrorBoundary>} />
+            <Route path="/receitas"     element={<IncomePage />} />
+            <Route path="/despesas"     element={<ExpensesPage />} />
+            <Route path="/categorias"   element={<CategoriesPage />} />
+            <Route path="/planejamento" element={<PlanningPage />} />
+            <Route path="/contas"       element={<AccountsPage />} />
+            <Route path="/calendario"   element={<CalendarPage />} />
+            <Route path="/configuracoes" element={<SettingsPage />} />
+            <Route path="/importar"     element={<ImportPage />} />
+            <Route path="/insights"     element={<InsightsPage />} />
+            <Route path="/investimentos" element={<InvestmentsPage />} />
+            <Route path="/cartoes"      element={<CreditCardsPage />} />
+            <Route path="/relatorio"    element={<ReportPage />} />
+            <Route path="/lixeira"      element={<TrashPage />} />
+            <Route path="*"             element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
     </AppLayout>
   );
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Sonner />
-        <BrowserRouter>
-          <ProtectedRoutes />
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+  <ErrorBoundary label="App">
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Sonner />
+          <BrowserRouter>
+            <ProtectedRoutes />
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
