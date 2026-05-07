@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCategories, useAddExpenseBatch, useAddIncome, useExpenses, useIncome as useIncomeData } from '@/hooks/useFinanceData';
 import { useInvestments, useAddInvestmentTransaction } from '@/hooks/useInvestments';
 import { useCreditCards, useAddCreditCardTransaction } from '@/hooks/useCreditCards';
-import { useClassificationRules, classifyDescription } from '@/hooks/useClassification';
+import { useClassificationRules, classifyDescription, type ClassificationRule } from '@/hooks/useClassification';
 import { formatCurrency } from '@/lib/format';
 import { toast } from 'sonner';
 import { Upload, Trash2, Check, TrendingUp, TrendingDown, BarChart3, Info, CreditCard, Building2, Link2, AlertTriangle } from 'lucide-react';
@@ -31,7 +31,7 @@ type ParsedRow = {
   fitId?: string; // OFX unique ID for dedup
 };
 
-// ── Parsing helpers ──────────────────────────────────────────────
+// â”€â”€ Parsing helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function splitCsvLine(line: string): string[] {
   const cols: string[] = [];
@@ -77,7 +77,7 @@ function getImportedMonths(rows: ParsedRow[]): string[] {
   return [...months].sort();
 }
 
-// ── CC payment detection (used in both CSV and OFX parsers) ─────
+// â”€â”€ CC payment detection (used in both CSV and OFX parsers) â”€â”€â”€â”€â”€
 
 const CC_PAYMENT_KEYWORDS = [
   'pagamento de fatura', 'pag fatura', 'fatura cartao', 'fatura cartão',
@@ -90,7 +90,7 @@ function detectCCPayment(description: string): boolean {
   return CC_PAYMENT_KEYWORDS.some(kw => lower.includes(kw));
 }
 
-// ── OFX type detection ───────────────────────────────────────────
+// â”€â”€ OFX type detection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type OFXType = 'bank' | 'creditcard';
 
@@ -121,9 +121,9 @@ function extractCCBillMonth(text: string): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
-// ── CSV parser ───────────────────────────────────────────────────
+// â”€â”€ CSV parser â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function parseCSV(text: string, rules: Array<{ [key: string]: string }>, source: 'bank' | 'cc', categories: Array<{ id: string; name: string }> = []): ParsedRow[] {
+function parseCSV(text: string, rules: ClassificationRule[], source: 'bank' | 'cc', categories: Array<{ id: string; name: string }> = []): ParsedRow[] {
   const allLines = text.split(/\r?\n/);
   if (allLines.length < 2) return [];
 
@@ -172,7 +172,7 @@ function parseCSV(text: string, rules: Array<{ [key: string]: string }>, source:
 
     // Stop at footer / summary rows (lines that don't start with a date-like value)
     const firstCol = cols[0].trim();
-    if (firstCol && !/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(firstCol) && !/^\d{4}-\d{2}-\d{2}/.test(firstCol)) continue;
+    if (firstCol && !/^\d{1,2}[-/]\d{1,2}[-/]\d{2,4}$/.test(firstCol) && !/^\d{4}-\d{2}-\d{2}/.test(firstCol)) continue;
 
     let date: string;
     let rawAmount: string;
@@ -258,7 +258,7 @@ function parseCSV(text: string, rules: Array<{ [key: string]: string }>, source:
   return rows;
 }
 
-// ── OFX parser ───────────────────────────────────────────────────
+// â”€â”€ OFX parser â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const CC_CREDIT_SKIP_KEYWORDS = [
   'pagamento recebido', 'ajuste a crédito',
@@ -269,7 +269,7 @@ function shouldSkipCCCredit(description: string): boolean {
   return CC_CREDIT_SKIP_KEYWORDS.some(kw => lower.includes(kw));
 }
 
-function parseOFX(text: string, rules: Array<{ [key: string]: string }>, categories: Array<{ id: string; name: string }> = []): { rows: ParsedRow[]; detectedType: OFXType; billMonth?: string } {
+function parseOFX(text: string, rules: ClassificationRule[], categories: Array<{ id: string; name: string }> = []): { rows: ParsedRow[]; detectedType: OFXType; billMonth?: string } {
   const detectedType = detectOFXType(text);
   const isCreditCard = detectedType === 'creditcard';
   const source: 'bank' | 'cc' = isCreditCard ? 'cc' : 'bank';
@@ -337,7 +337,7 @@ function parseOFX(text: string, rules: Array<{ [key: string]: string }>, categor
   return { rows, detectedType, billMonth };
 }
 
-function parseFile(text: string, fileName: string, rules: Array<{ [key: string]: string }>, forcedSource?: 'bank' | 'cc', categories: Array<{ id: string; name: string }> = []): { rows: ParsedRow[]; detectedType?: OFXType; billMonth?: string } {
+function parseFile(text: string, fileName: string, rules: ClassificationRule[], forcedSource?: 'bank' | 'cc', categories: Array<{ id: string; name: string }> = []): { rows: ParsedRow[]; detectedType?: OFXType; billMonth?: string } {
   const ext = fileName.toLowerCase();
   if (ext.endsWith('.ofx') || ext.endsWith('.qfx')) {
     const result = parseOFX(text, rules, categories);
@@ -350,7 +350,7 @@ function parseFile(text: string, fileName: string, rules: Array<{ [key: string]:
   return { rows: parseCSV(text, rules, forcedSource || 'bank', categories) };
 }
 
-// ── Type labels & colors ─────────────────────────────────────────
+// â”€â”€ Type labels & colors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const TYPE_LABELS: Record<RowType, string> = {
   income: 'Receita',
@@ -372,9 +372,9 @@ const CONFIDENCE_COLORS: Record<string, string> = {
   low: 'text-muted-foreground',
 };
 
-// ══════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Component
-// ══════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 export default function ImportPage() {
   const [bankRows, setBankRows] = useState<ParsedRow[]>([]);
@@ -416,7 +416,7 @@ export default function ImportPage() {
         ...row,
         isDuplicate,
         selected: !isDuplicate,
-        classificationReason: isDuplicate ? '⚠️ Já importado no mesmo período' : row.classificationReason,
+        classificationReason: isDuplicate ? '� ️ Já importado no mesmo período' : row.classificationReason,
         confidence: isDuplicate ? 'low' : row.confidence,
       };
     });
@@ -524,7 +524,7 @@ export default function ImportPage() {
 
     const { supabase: sb } = await import('@/integrations/supabase/client');
 
-    // ── Despesas ─────────────────────────────────────────────────
+    // â”€â”€ Despesas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (expenseRows.length > 0) {
       const payload = expenseRows.map(r => ({
         date: r.date, description: r.description, amount: r.amount,
@@ -536,7 +536,7 @@ export default function ImportPage() {
       else { successCount += expenseRows.length; console.log('[Import] Despesas OK'); }
     }
 
-    // ── Receitas ─────────────────────────────────────────────────
+    // â”€â”€ Receitas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (incomeRows.length > 0) {
       const payload = incomeRows.map(r => ({
         date: r.date, description: r.description, amount: r.amount,
@@ -548,7 +548,7 @@ export default function ImportPage() {
       else { successCount += incomeRows.length; console.log('[Import] Receitas OK'); }
     }
 
-    // ── Investimentos ─────────────────────────────────────────────
+    // â”€â”€ Investimentos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     for (const r of investmentRows) {
       if (!r.investmentId) continue;
       try {
@@ -626,7 +626,7 @@ export default function ImportPage() {
       }
     }
 
-    // ── Resultado ─────────────────────────────────────────────────
+    // â”€â”€ Resultado â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (errorMessages.length > 0) {
       console.error('[Import] Erros:', errorMessages);
       toast.error(
@@ -658,7 +658,7 @@ export default function ImportPage() {
   const hasAnyData = bankRows.length > 0 || ccRows.length > 0;
   const totalSelected = bankRows.filter(r => r.selected && r.type !== 'cc_payment').length + ccRows.filter(r => r.selected).length;
 
-  // ── Upload area ──────────────────────────────────────────────────
+  // â”€â”€ Upload area â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const renderUploadArea = (
     label: string,
     icon: React.ReactNode,
@@ -725,7 +725,7 @@ export default function ImportPage() {
                   <p className="text-[10px] text-warning/70">↩ substituído pelos itens da fatura</p>
                 ) : (
                   <p className={`text-[10px] ${CONFIDENCE_COLORS[row.confidence]}`}>
-                    {row.isDuplicate ? '🔁' : row.confidence === 'high' ? '✅' : row.confidence === 'medium' ? '⚠️' : '❓'} {row.classificationReason}
+                    {row.isDuplicate ? '🔁' : row.confidence === 'high' ? '✅' : row.confidence === 'medium' ? '� ️' : '❓'} {row.classificationReason}
                   </p>
                 )}
               </td>
@@ -944,4 +944,7 @@ export default function ImportPage() {
     </div>
   );
 }
+
+
+
 

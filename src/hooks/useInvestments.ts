@@ -6,6 +6,21 @@ import type { Tables, TablesInsert } from '@/integrations/supabase/types';
 export type Investment = Tables<'investments'>;
 export type InvestmentTransaction = Tables<'investment_transactions'>;
 
+const OPTIONAL_INVESTMENT_COLUMNS = ['annual_rate', 'liquidity', 'photo_url'] as const;
+
+function stripUnsupportedColumns<T extends Record<string, unknown>>(payload: T, message?: string): Partial<T> {
+  if (!message) return payload;
+  const next: Record<string, unknown> = { ...payload };
+
+  for (const key of OPTIONAL_INVESTMENT_COLUMNS) {
+    if (message.includes(`'${key}'`) || message.includes(`"${key}"`) || message.includes(key)) {
+      delete next[key];
+    }
+  }
+
+  return next as Partial<T>;
+}
+
 export function useInvestments() {
   const { user } = useAuth();
   return useQuery({
@@ -101,10 +116,19 @@ export function useAddInvestment() {
   const { user } = useAuth();
   return useMutation({
     mutationFn: async (data: Omit<TablesInsert<'investments'>, 'user_id'>) => {
+      const firstPayload = { ...data, user_id: user!.id };
       const { error } = await supabase
         .from('investments')
-        .insert({ ...data, user_id: user!.id });
-      if (error) throw error;
+        .insert(firstPayload);
+      if (!error) return;
+
+      const fallbackPayload = stripUnsupportedColumns(firstPayload, error.message);
+      if (Object.keys(fallbackPayload).length === Object.keys(firstPayload).length) throw error;
+
+      const { error: fallbackError } = await supabase
+        .from('investments')
+        .insert(fallbackPayload as TablesInsert<'investments'>);
+      if (fallbackError) throw fallbackError;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['investments'] }),
   });
@@ -115,7 +139,13 @@ export function useUpdateInvestment() {
   return useMutation({
     mutationFn: async ({ id, ...data }: { id: string } & Partial<TablesInsert<'investments'>>) => {
       const { error } = await supabase.from('investments').update(data).eq('id', id);
-      if (error) throw error;
+      if (!error) return;
+
+      const fallbackPayload = stripUnsupportedColumns(data, error.message);
+      if (Object.keys(fallbackPayload).length === Object.keys(data).length) throw error;
+
+      const { error: fallbackError } = await supabase.from('investments').update(fallbackPayload).eq('id', id);
+      if (fallbackError) throw fallbackError;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['investments'] }),
   });
@@ -151,9 +181,10 @@ export function useAddInvestmentTransaction() {
       skipLedgerSync?: boolean;
     }) => {
       // 1. Insert transaction record
+      const { skipLedgerSync, ...txPayload } = data;
       const { error: txError } = await supabase
         .from('investment_transactions')
-        .insert({ ...data, user_id: user!.id, description: data.description ?? '' });
+        .insert({ ...txPayload, user_id: user!.id, description: data.description ?? '' });
       if (txError) throw txError;
 
       // 2. Update investment current_value and total_invested
@@ -187,7 +218,7 @@ export function useAddInvestmentTransaction() {
 
       // 3. INTEGRATION: Deduct/add from account balance via expense/income records
       // This makes investments "talk" to the rest of the financial system
-      if (!data.skipLedgerSync && data.account_id && (data.type === 'aporte' || data.type === 'resgate')) {
+      if (!skipLedgerSync && data.account_id && (data.type === 'aporte' || data.type === 'resgate')) {
         if (data.type === 'aporte') {
           // Aporte = money leaves the account -> create an expense marked as investment transfer
           // We use a special note so it's identifiable as patrimonial transfer
@@ -231,3 +262,6 @@ export function useAddInvestmentTransaction() {
     },
   });
 }
+
+
+

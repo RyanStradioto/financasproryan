@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { useAccounts, useAddAccount, useIncome, useExpenses } from '@/hooks/useFinanceData';
+import { useAccounts, useAddAccount, useUpdateAccount, useIncome, useExpenses } from '@/hooks/useFinanceData';
 import { useInvestmentTransactions } from '@/hooks/useInvestments';
 import { formatCurrency } from '@/lib/format';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Landmark, TrendingUp, TrendingDown, Wallet, Info } from 'lucide-react';
+import { Plus, Landmark, TrendingUp, TrendingDown, Wallet, Info, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
+import { accountBrandFromRow, getAccountBrandPresets, resolveAccountBrand } from '@/lib/accountBrand';
 
 function getInvestmentAccountImpact(type: string, amount: number) {
   if (!amount) return 0;
@@ -18,15 +19,33 @@ function getInvestmentAccountImpact(type: string, amount: number) {
 
 export default function AccountsPage() {
   const { data: accounts = [] } = useAccounts();
-  // Busca TODAS as receitas e despesas sem filtro de mês (saldo acumulado total)
   const { data: income = [] } = useIncome();
   const { data: allExpenses = [] } = useExpenses();
   const { data: allTransactions = [] } = useInvestmentTransactions();
   const addAccount = useAddAccount();
+  const updateAccount = useUpdateAccount();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('🏦');
   const [initialBalance, setInitialBalance] = useState('');
+
+  // Edit state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editId, setEditId] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editInitialBalance, setEditInitialBalance] = useState('');
+  const BRAND_PRESETS = getAccountBrandPresets().filter((preset) =>
+    ['nubank', 'alelo', 'vr', 'caju', 'itau', 'bradesco', 'santander'].includes(preset.name),
+  );
+  const PRESET_LABELS: Record<string, string> = {
+    nubank: 'Nubank',
+    alelo: 'Alelo',
+    vr: 'VR',
+    caju: 'Caju',
+    itau: 'Itaú',
+    bradesco: 'Bradesco',
+    santander: 'Santander',
+  };
 
   const ICONS = ['🏦', '💳', '💰', '🏧', '📱', '🏛️'];
 
@@ -35,7 +54,8 @@ export default function AccountsPage() {
     try {
       await addAccount.mutateAsync({
         name,
-        icon,
+        icon: resolveAccountBrand(name, undefined, icon).icon,
+        color: resolveAccountBrand(name).color,
         initial_balance: parseFloat(initialBalance.replace(',', '.')) || 0,
       });
       toast.success('Conta criada!');
@@ -49,9 +69,34 @@ export default function AccountsPage() {
     }
   };
 
+  const openEdit = (acc: typeof accounts[0]) => {
+    setEditId(acc.id);
+    setEditName(acc.name);
+    setEditInitialBalance(String(Number(acc.initial_balance) || 0).replace('.', ','));
+    setEditOpen(true);
+  };
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const newBalance = parseFloat(editInitialBalance.replace(',', '.'));
+      await updateAccount.mutateAsync({
+        id: editId,
+        name: editName,
+        initial_balance: isNaN(newBalance) ? 0 : newBalance,
+        color: resolveAccountBrand(editName).color,
+        icon: resolveAccountBrand(editName).icon,
+      });
+      toast.success('Conta atualizada!');
+      setEditOpen(false);
+    } catch (err) {
+      const error = err as Error;
+      toast.error(error.message);
+    }
+  };
+
   const activeAccounts = accounts.filter(a => !a.archived);
 
-  // ── Saldo Global (todas as receitas e despesas, independente de conta) ──
   const totalIncomeAll = income.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0);
   const totalExpensesAll = allExpenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0);
   const totalInitialBalance = activeAccounts.reduce((s, a) => s + Number(a.initial_balance), 0);
@@ -85,6 +130,31 @@ export default function AccountsPage() {
                   ))}
                 </div>
               </div>
+              <div className="space-y-2">
+                <Label>Banco/Carteira</Label>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {BRAND_PRESETS.map((preset) => (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      onClick={() => {
+                        setName(PRESET_LABELS[preset.name] || preset.name);
+                        setIcon(preset.icon);
+                      }}
+                      className="flex items-center gap-2 rounded-xl border border-border/70 bg-card px-2.5 py-2 text-left transition-all hover:border-primary/40 hover:bg-primary/5"
+                    >
+                      <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-md border border-border/60 bg-background/70 p-1">
+                        {preset.logoUrl ? (
+                          <img src={preset.logoUrl} alt={preset.name} className="h-full w-full object-contain" />
+                        ) : (
+                          <span className="text-sm">{preset.icon}</span>
+                        )}
+                      </span>
+                      <span className="truncate text-xs font-semibold">{PRESET_LABELS[preset.name] || preset.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="space-y-1.5">
                 <Label>Nome</Label>
                 <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Nubank" required />
@@ -98,6 +168,27 @@ export default function AccountsPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Edit Account Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Editar Conta</DialogTitle></DialogHeader>
+          <form onSubmit={handleEdit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Nome</Label>
+              <Input value={editName} onChange={e => setEditName(e.target.value)} required />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Saldo Inicial (R$)</Label>
+              <Input value={editInitialBalance} onChange={e => setEditInitialBalance(e.target.value)} placeholder="0,00" className="font-mono" />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                💡 Ajuste este valor para corrigir o saldo acumulado exibido na Dashboard. Se o saldo está mais alto do que deveria, diminua este número.
+              </p>
+            </div>
+            <Button type="submit" className="w-full" disabled={updateAccount.isPending}>Salvar Alterações</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Card de Saldo Global ── */}
       <div className="rounded-xl bg-primary/5 border border-primary/20 p-5">
@@ -149,6 +240,7 @@ export default function AccountsPage() {
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {activeAccounts.map(acc => {
+              const brand = accountBrandFromRow(acc);
               const accIncome = income.filter(i => i.account_id === acc.id && i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0);
               const accExpenses = allExpenses.filter(e => e.account_id === acc.id && e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0);
               const accTransfers = allTransactions
@@ -157,9 +249,20 @@ export default function AccountsPage() {
               const currentBalance = Number(acc.initial_balance) + accIncome - accExpenses + accTransfers;
 
               return (
-                <div key={acc.id} className="stat-card">
+                <div key={acc.id} className="stat-card relative group" style={{ borderColor: `${brand.color}35`, background: `linear-gradient(135deg, ${brand.color}12, transparent 35%)` }}>
+                  <button
+                    onClick={() => openEdit(acc)}
+                    className="absolute top-3 right-3 p-2 rounded-lg bg-muted/50 text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-muted hover:text-foreground transition-all"
+                    title="Editar conta"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
                   <div className="flex items-center gap-2 mb-4">
-                    <span className="text-xl">{acc.icon}</span>
+                    {brand.logoUrl ? (
+                      <img src={brand.logoUrl} alt={acc.name} className="w-5 h-5 rounded-sm object-contain" />
+                    ) : (
+                      <span className="text-xl">{brand.icon}</span>
+                    )}
                     <h3 className="font-semibold">{acc.name}</h3>
                   </div>
                   <div className="space-y-3">

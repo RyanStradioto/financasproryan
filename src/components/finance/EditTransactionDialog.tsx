@@ -55,8 +55,8 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
       setAttachmentUrl(transaction.attachment_url || null);
       setAttachmentName(transaction.attachment_name || null);
       if (transaction.type === 'expense') {
-        const detected = detectCreditCardExpense(transaction, creditCards ?? [], accounts ?? []);
-        setCategoryId(transaction.category_id || '');
+        detectCreditCardExpense(transaction as Expense, creditCards ?? [], accounts ?? []);
+        setCategoryId((transaction as Expense).category_id || '');
         setPaymentMethod('account');
         setCreditCardId('');
         setInstallments('1');
@@ -397,4 +397,5 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
     </Dialog>
   );
 }
+
 

@@ -101,7 +101,8 @@ export default function InsightsPage() {
   const { data: cards = [] } = useCreditCards();
   const { data: ccTxns = [] } = useCreditCardTransactions(undefined, month);
   const { data: profile } = useProfile();
-  const { data: balance } = useAccumulatedBalance(month);
+  const { data: balanceData } = useAccumulatedBalance(month);
+  const balance = balanceData?.total || 0;
 
   const totalIncome = useMemo(() => income.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0), [income]);
   const totalExpenses = useMemo(() => expenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0), [expenses]);

@@ -11,6 +11,7 @@ import {
 } from '@/lib/softDeleteCompat';
 
 export type Category = Tables<'categories'>;
+export type CategoryAccountBudget = Tables<'category_account_budgets'>;
 export type Account = Tables<'accounts'>;
 export type Income = Tables<'income'>;
 export type Expense = Tables<'expenses'>;
@@ -45,6 +46,26 @@ export function useAccounts() {
         .order('name');
       if (error) throw error;
       return data as Account[];
+    },
+    enabled: !!user,
+  });
+}
+
+export function useCategoryAccountBudgets() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['category-account-budgets', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('category_account_budgets')
+        .select('*')
+        .order('created_at');
+      if (!error) return data as CategoryAccountBudget[];
+      if (isMissingRelationError(error, 'category_account_budgets')) {
+        console.warn('[schema-compat] category_account_budgets ausente; usando orçamento legado por categoria');
+        return [] as CategoryAccountBudget[];
+      }
+      throw error;
     },
     enabled: !!user,
   });
@@ -214,7 +235,7 @@ export function useDeleteIncome() {
         if (supportsSoftDelete) {
           return supabase
             .from('income')
-            .update({ deleted_at: new Date().toISOString() } as any)
+            .update({ deleted_at: new Date().toISOString() })
             .eq('id', id);
         }
 
@@ -299,7 +320,7 @@ export function useDeleteExpense() {
         if (supportsSoftDelete) {
           return supabase
             .from('expenses')
-            .update({ deleted_at: new Date().toISOString() } as any)
+            .update({ deleted_at: new Date().toISOString() })
             .eq('id', id);
         }
 
@@ -401,15 +422,15 @@ export function useRestoreDeletion() {
       const { table_name, payload } = deletion;
 
       // Clean the payload by removing system fields that shouldn't be inserted
-      const cleanPayload = { ...payload } as Record<string, unknown>;
+      const cleanPayload = { ...(payload as Record<string, unknown>) };
       delete cleanPayload.id;
       delete cleanPayload.created_at;
       delete cleanPayload.updated_at;
-      delete cleanPayload.user_id; // This will be added by the insert trigger
+      cleanPayload.user_id = deletion.user_id;
 
-      const { error: restoreError } = await supabase
-        .from(table_name as 'income' | 'expenses')
-        .insert(cleanPayload);
+      const { error: restoreError } = table_name === 'income'
+        ? await supabase.from('income').insert(cleanPayload as TablesInsert<'income'>)
+        : await supabase.from('expenses').insert(cleanPayload as TablesInsert<'expenses'>);
       if (restoreError) throw restoreError;
 
       const { error: deleteHistoryError } = await supabase
@@ -459,6 +480,46 @@ export function useUpdateCategory() {
   });
 }
 
+export function useReplaceCategoryAccountBudgets() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async ({
+      categoryId,
+      budgets,
+    }: {
+      categoryId: string;
+      budgets: Array<{ account_id: string; monthly_budget: number }>;
+    }) => {
+      const { error: deleteError } = await supabase
+        .from('category_account_budgets')
+        .delete()
+        .eq('category_id', categoryId);
+      if (deleteError) {
+        if (isMissingRelationError(deleteError, 'category_account_budgets')) return;
+        throw deleteError;
+      }
+
+      const rows = budgets
+        .filter((budget) => budget.account_id && budget.monthly_budget > 0)
+        .map((budget) => ({
+          category_id: categoryId,
+          account_id: budget.account_id,
+          monthly_budget: budget.monthly_budget,
+          user_id: user!.id,
+        }));
+
+      if (rows.length === 0) return;
+
+      const { error: insertError } = await supabase
+        .from('category_account_budgets')
+        .insert(rows as TablesInsert<'category_account_budgets'>[]);
+      if (insertError) throw insertError;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['category-account-budgets'] }),
+  });
+}
+
 export function useDeleteCategory() {
   const qc = useQueryClient();
   return useMutation({
@@ -479,6 +540,20 @@ export function useAddAccount() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['accounts'] }),
+  });
+}
+
+export function useUpdateAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...data }: { id: string } & Partial<TablesInsert<'accounts'>>) => {
+      const { error } = await supabase.from('accounts').update(data as TablesInsert<'accounts'>).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['accounts'] });
+      qc.invalidateQueries({ queryKey: ['accumulated-balance'] });
+    },
   });
 }
 
@@ -509,3 +584,5 @@ export function useUpdateIncome() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['income'] }),
   });
 }
+
+

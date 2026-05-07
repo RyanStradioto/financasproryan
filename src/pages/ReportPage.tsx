@@ -31,7 +31,9 @@ function getMonthOptions() {
   return opts;
 }
 
-function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: any[]; label?: string }) {
+type TooltipPayload = { color?: string; fill?: string; name?: string; dataKey?: string; value?: number };
+
+function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: TooltipPayload[]; label?: string }) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-xl border border-border bg-popover px-3 py-2.5 shadow-lg backdrop-blur-sm">
@@ -199,7 +201,7 @@ export default function ReportPage() {
     y += 8;
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    doc.text(periodLabel.normalize('NFD').replace(/[̀-ͯ]/g, ''), pageWidth / 2, y, { align: 'center' });
+    doc.text(periodLabel.normalize('NFD').replace(/[\\u0300-\\u036f]/g, ''), pageWidth / 2, y, { align: 'center' });
     y += 14;
 
     doc.setFontSize(13);
@@ -236,7 +238,7 @@ export default function ReportPage() {
       y += 8;
 
       const catData = catBreakdown.map(c => [
-        `${c.icon} ${c.name}`.normalize('NFD').replace(/[̀-ͯ]/g, ''),
+        `${c.icon} ${c.name}`.normalize('NFD').replace(/[\\u0300-\\u036f]/g, ''),
         fmtBRL(c.value),
         totalExpenses > 0 ? `${((c.value / totalExpenses) * 100).toFixed(1)}%` : '0%',
       ]);
@@ -264,8 +266,8 @@ export default function ReportPage() {
         const cat = categories.find(c => c.id === e.category_id);
         return [
           String(i + 1),
-          (e.description || 'Despesa').normalize('NFD').replace(/[̀-ͯ]/g, ''),
-          cat ? cat.name.normalize('NFD').replace(/[̀-ͯ]/g, '') : '-',
+          (e.description || 'Despesa').normalize('NFD').replace(/[\\u0300-\\u036f]/g, ''),
+          cat ? cat.name.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '') : '-',
           e.date,
           fmtBRL(Number(e.amount)),
         ];
@@ -292,7 +294,7 @@ export default function ReportPage() {
       y += 8;
 
       const accData = accountBreakdown.map(a => [
-        `${a.icon} ${a.name}`.normalize('NFD').replace(/[̀-ͯ]/g, ''),
+        `${a.icon} ${a.name}`.normalize('NFD').replace(/[\\u0300-\\u036f]/g, ''),
         fmtBRL(a.income),
         fmtBRL(a.expense),
         fmtBRL(a.balance),
@@ -322,7 +324,7 @@ export default function ReportPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* ─── Hero Header ─── */}
+      {/* â”€â”€â”€ Hero Header â”€â”€â”€ */}
       <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-info/[0.05] p-4 shadow-sm sm:rounded-3xl sm:p-7">
         <div className="absolute -top-24 -right-32 w-80 h-80 bg-info/15 blur-3xl rounded-full pointer-events-none" />
         <div className="absolute -bottom-32 -left-24 w-72 h-72 bg-primary/[0.08] blur-3xl rounded-full pointer-events-none" />
@@ -343,7 +345,7 @@ export default function ReportPage() {
         </div>
       </div>
 
-      {/* ─── Period Selector Card ─── */}
+      {/* â”€â”€â”€ Period Selector Card â”€â”€â”€ */}
       <div className="rounded-2xl border border-border/60 bg-card/70 backdrop-blur-sm p-4 shadow-sm sm:rounded-3xl sm:p-6">
         <div className="flex items-center gap-2.5 mb-4">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/15">
@@ -392,7 +394,7 @@ export default function ReportPage() {
         </div>
       </div>
 
-      {/* ─── Empty State ─── */}
+      {/* â”€â”€â”€ Empty State â”€â”€â”€ */}
       {!generated && (
         <div className="rounded-3xl border border-dashed border-border/50 bg-muted/10 py-20 px-6 text-center">
           <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-info/15 to-info/5 flex items-center justify-center mx-auto mb-4 border border-info/15 shadow-inner">
@@ -403,7 +405,7 @@ export default function ReportPage() {
         </div>
       )}
 
-      {/* ─── Report Body ─── */}
+      {/* â”€â”€â”€ Report Body â”€â”€â”€ */}
       {generated && (
         <div ref={reportRef} className="space-y-6 animate-fade-in">
           {/* Period Banner */}
@@ -825,3 +827,5 @@ export default function ReportPage() {
     </div>
   );
 }
+
+

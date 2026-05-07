@@ -39,6 +39,13 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
 export type ClassificationType = 'expense' | 'income' | 'investment';
 export type ClassificationConfidence = 'high' | 'medium' | 'low';
 
+export interface ClassificationRule {
+  keyword: string;
+  type: string;
+  category_id: string | null;
+  investment_id: string | null;
+}
+
 export interface ClassificationResult {
   type: ClassificationType;
   confidence: ClassificationConfidence;
@@ -51,7 +58,7 @@ export interface ClassificationResult {
 export function classifyDescription(
   description: string,
   amount: number,
-  userRules: Array<{ keyword: string; type: string; category_id: string | null; investment_id: string | null }> = [],
+  userRules: ClassificationRule[] = [],
   categories: Array<{ id: string; name: string }> = []
 ): ClassificationResult {
   const lower = description.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');

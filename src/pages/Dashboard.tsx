@@ -1,5 +1,5 @@
 import { useState, useMemo, type ElementType } from 'react';
-import { TrendingUp, TrendingDown, Wallet, PiggyBank, Pencil, BarChart3, ArrowUpRight, ArrowDownRight, Target, Clock, Zap, ChevronRight, BellRing, Sparkles, CreditCard, Activity, CalendarRange, Flame, Trophy, AlertTriangle, Heart } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, PiggyBank, Pencil, BarChart3, ArrowUpRight, ArrowDownRight, Target, Clock, ChevronRight, BellRing, Sparkles, CreditCard, Activity, CalendarRange, Flame, Trophy, AlertTriangle } from 'lucide-react';
 import { useIncome, useExpenses, useAccounts, type Income, type Expense } from '@/hooks/useFinanceData';
 import { useNetWorth } from '@/hooks/useInvestments';
 import { useCCTransactionsForMonth, useCreditCards, useCreditCardTransactions } from '@/hooks/useCreditCards';
@@ -24,8 +24,22 @@ import { cn } from '@/lib/utils';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import PendingExpensesDialog from '@/components/finance/PendingExpensesDialog';
 import { buildDescriptionAmountKey, buildExpenseMatchKey, detectCreditCardExpense, parseStructuredCardMarker } from '@/lib/paymentMethod';
+import { accountBrandFromRow, resolveAccountBrand } from '@/lib/accountBrand';
 
 const CHART_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
+
+function colorWithOpacity(hex: string, opacity: number) {
+  const cleanHex = hex.replace('#', '');
+  const normalized = cleanHex.length === 3
+    ? cleanHex.split('').map((char) => char + char).join('')
+    : cleanHex;
+  const int = Number.parseInt(normalized, 16);
+  if (Number.isNaN(int)) return `rgba(37, 99, 235, ${opacity})`;
+  const r = (int >> 16) & 255;
+  const g = (int >> 8) & 255;
+  const b = int & 255;
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+}
 
 function ChartTooltipCard({
   title,
@@ -72,11 +86,11 @@ function KpiCard({
   const sparkColor = trend === 'up' ? 'hsl(160, 84%, 39%)' : trend === 'down' ? 'hsl(0, 72%, 51%)' : 'hsl(217, 91%, 60%)';
 
   return (
-    <div className={cn('relative rounded-2xl border border-border/60 bg-card/70 backdrop-blur-sm p-4 sm:p-5 shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden animate-slide-up', color)}>
+    <div className={cn('relative min-h-[122px] rounded-3xl border border-border/60 bg-gradient-to-br from-card/95 via-card/75 to-background/55 p-4 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-border hover:shadow-xl hover:shadow-black/5 sm:p-5 group overflow-hidden animate-slide-up', color)}>
       {/* Decorative gradient blob */}
       <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-[0.06] group-hover:opacity-[0.10] group-hover:scale-110 transition-all duration-500 pointer-events-none" style={{ background: `radial-gradient(circle, ${sparkColor} 0%, transparent 70%)` }} />
 
-      <div className="relative z-10 flex flex-col gap-2.5 h-full">
+      <div className="relative z-10 flex h-full flex-col justify-between gap-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -115,9 +129,66 @@ function KpiCard({
   );
 }
 
+function BrandLogoBadge({
+  logoUrl,
+  label,
+  color,
+  icon,
+  active = false,
+  global = false,
+  size = 'md',
+}: {
+  logoUrl?: string;
+  label: string;
+  color: string;
+  icon?: string;
+  active?: boolean;
+  global?: boolean;
+  size?: 'md' | 'lg';
+}) {
+  const isLg = size === 'lg';
+  const shellSize = isLg ? 'h-20 w-20 rounded-[1.5rem]' : 'h-12 w-12 rounded-2xl';
+  const logoSize = isLg ? 'h-12 w-12' : 'h-8 w-8';
+  const iconSize = isLg ? 'h-9 w-9' : 'h-6 w-6';
+
+  if (global) {
+    return (
+      <span className={cn(
+        'relative flex shrink-0 items-center justify-center border border-primary/25 bg-primary/10 text-primary shadow-lg shadow-primary/10',
+        shellSize,
+      )}>
+        <Wallet className={iconSize} />
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={cn(
+        'relative flex shrink-0 items-center justify-center border shadow-lg transition-transform group-hover:scale-105',
+        shellSize,
+        active ? 'border-white/20' : 'border-border/50',
+      )}
+      style={{
+        background: `linear-gradient(145deg, ${colorWithOpacity(color, active ? 0.24 : 0.14)}, hsl(var(--card) / 0.92))`,
+        boxShadow: active ? `0 18px 44px -24px ${color}` : undefined,
+      }}
+    >
+      {logoUrl ? (
+        <span className={cn('flex items-center justify-center rounded-xl bg-white p-1.5 shadow-sm', isLg ? 'h-14 w-14' : 'h-9 w-9')}>
+          <img src={logoUrl} alt={label} className={cn('object-contain', logoSize)} />
+        </span>
+      ) : (
+        <span className="text-2xl">{icon || '$'}</span>
+      )}
+    </span>
+  );
+}
+
 export default function Dashboard() {
   const { maskCurrency } = useSensitiveData();
   const [month, setMonth] = useState(getMonthYear());
+  const [accountFocusId, setAccountFocusId] = useState<string>('__all__');
   const { data: profile } = useProfile();
   
   // Previous month string (for MoM comparisons)
@@ -137,7 +208,9 @@ export default function Dashboard() {
   const { data: creditCards = [] } = useCreditCards();
   const { data: creditTransactions = [] } = useCreditCardTransactions();
   const { investmentTotal } = useNetWorth();
-  const { data: accumulatedBalance = 0 } = useAccumulatedBalance(month);
+  const { data: accumulatedData } = useAccumulatedBalance(month);
+  const accumulatedBalance = accumulatedData?.total || 0;
+  const accumulatedByAccount = accumulatedData?.byAccount || {};
   const { data: ccTransactions = [] } = useCCTransactionsForMonth(month);
   const { calcWorkTime, hourlyRate } = useWorkTimeCalc();
 
@@ -150,6 +223,43 @@ export default function Dashboard() {
   const nonCCExpenses = useMemo(() =>
     expenses.filter(e => !isCreditCardExpense(e))
   , [expenses, creditCards, accounts]);
+
+  const scopedIncome = useMemo(
+    () => (accountFocusId === '__all__' ? income : income.filter(i => i.account_id === accountFocusId)),
+    [income, accountFocusId],
+  );
+  const scopedNonCCExpenses = useMemo(
+    () => (accountFocusId === '__all__' ? nonCCExpenses : nonCCExpenses.filter(e => e.account_id === accountFocusId)),
+    [nonCCExpenses, accountFocusId],
+  );
+  const scopedCCTransactions = useMemo(() => {
+    if (accountFocusId === '__all__') return ccTransactions;
+    const account = accounts.find(a => a.id === accountFocusId);
+    if (!account) return [];
+    const accBrand = resolveAccountBrand(account.name).name;
+    const matchingCardIds = creditCards
+      .filter(c => resolveAccountBrand(c.name).name === accBrand)
+      .map(c => c.id);
+    return ccTransactions.filter(t => matchingCardIds.includes(t.credit_card_id));
+  }, [ccTransactions, accountFocusId, accounts, creditCards]);
+  const scopedPrevIncome = useMemo(
+    () => (accountFocusId === '__all__' ? prevIncome : prevIncome.filter(i => i.account_id === accountFocusId)),
+    [prevIncome, accountFocusId],
+  );
+  const scopedPrevNonCCExpenses = useMemo(() => {
+    const base = prevExpenses.filter(e => !isCreditCardExpense(e));
+    return accountFocusId === '__all__' ? base : base.filter(e => e.account_id === accountFocusId);
+  }, [prevExpenses, accountFocusId, creditCards, accounts]);
+  const scopedPrevCCTransactions = useMemo(() => {
+    if (accountFocusId === '__all__') return prevCCTransactions;
+    const account = accounts.find(a => a.id === accountFocusId);
+    if (!account) return [];
+    const accBrand = resolveAccountBrand(account.name).name;
+    const matchingCardIds = creditCards
+      .filter(c => resolveAccountBrand(c.name).name === accBrand)
+      .map(c => c.id);
+    return prevCCTransactions.filter(t => matchingCardIds.includes(t.credit_card_id));
+  }, [prevCCTransactions, accountFocusId, accounts, creditCards]);
 
   const { categoryByTxId, categoryByMatchKey, categoryByLooseKey } = useMemo(() => {
     const byTxId = new Map<string, string>();
@@ -180,38 +290,35 @@ export default function Dashboard() {
     return categoryByMatchKey.get(matchKey) ?? categoryByLooseKey.get(looseKey) ?? null;
   };
 
-  // ── Core numbers ─────────────────────────────────────────────
+  // â”€â”€ Core numbers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const totalIncome = useMemo(() =>
-    income.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0)
-  , [income]);
+    scopedIncome.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0)
+  , [scopedIncome]);
 
   const totalExpensesPaid = useMemo(() =>
-    nonCCExpenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0)
-  , [nonCCExpenses]);
+    scopedNonCCExpenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0)
+  , [scopedNonCCExpenses]);
 
   const totalExpensesAll = useMemo(() =>
-    nonCCExpenses.reduce((s, e) => s + Number(e.amount), 0)
-  , [nonCCExpenses]);
+    scopedNonCCExpenses.reduce((s, e) => s + Number(e.amount), 0)
+  , [scopedNonCCExpenses]);
 
   const pendingAmount = useMemo(() =>
-    nonCCExpenses.filter(e => e.status !== 'concluido').reduce((s, e) => s + Number(e.amount), 0)
-  , [nonCCExpenses]);
-
-  const balance = accumulatedBalance;
-  const netWorth = accumulatedBalance + investmentTotal;
+    scopedNonCCExpenses.filter(e => e.status !== 'concluido').reduce((s, e) => s + Number(e.amount), 0)
+  , [scopedNonCCExpenses]);
 
   // CC totals for the current bill month
   const totalCCThisMonth = useMemo(() =>
-    ccTransactions.reduce((s, t) => s + Number(t.amount), 0)
-  , [ccTransactions]);
+    scopedCCTransactions.reduce((s, t) => s + Number(t.amount), 0)
+  , [scopedCCTransactions]);
 
   const savings = totalIncome > 0 ? ((totalIncome - totalExpensesPaid) / totalIncome) * 100 : 0;
 
-  // ── Category breakdown: nonCC expenses + CC transactions (sem dupla contagem) ───
+  // â”€â”€ Category breakdown: nonCC expenses + CC transactions (sem dupla contagem) â”€â”€â”€
   const catBreakdown = useMemo(() => {
     const allItems = [
-      ...nonCCExpenses.map(e => ({ category_id: resolveCategoryId(e), amount: Number(e.amount) })),
-      ...ccTransactions.map(t => ({ category_id: t.category_id, amount: Number(t.amount) })),
+      ...scopedNonCCExpenses.map(e => ({ category_id: resolveCategoryId(e), amount: Number(e.amount) })),
+      ...scopedCCTransactions.map(t => ({ category_id: t.category_id, amount: Number(t.amount) })),
     ];
     return categories
       .map(cat => ({
@@ -222,22 +329,22 @@ export default function Dashboard() {
       }))
       .filter(c => c.value > 0)
       .sort((a, b) => b.value - a.value);
-  }, [nonCCExpenses, ccTransactions, categories, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
+  }, [scopedNonCCExpenses, scopedCCTransactions, categories, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
 
-  // ── Status breakdown: apenas despesas normais (sem espelhos CC) + Fatura CC ───
+  // â”€â”€ Status breakdown: apenas despesas normais (sem espelhos CC) + Fatura CC â”€â”€â”€
   const statusData = useMemo(() => [
-    { name: 'Concluído', value: nonCCExpenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0), fill: 'hsl(160, 84%, 39%)' },
-    { name: 'Pendente',  value: nonCCExpenses.filter(e => e.status === 'pendente').reduce((s, e) => s + Number(e.amount), 0),  fill: 'hsl(38, 92%, 50%)' },
-    { name: 'Agendado',  value: nonCCExpenses.filter(e => e.status === 'agendado').reduce((s, e) => s + Number(e.amount), 0),  fill: 'hsl(217, 91%, 60%)' },
+    { name: 'Concluído', value: scopedNonCCExpenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0), fill: 'hsl(160, 84%, 39%)' },
+    { name: 'Pendente',  value: scopedNonCCExpenses.filter(e => e.status === 'pendente').reduce((s, e) => s + Number(e.amount), 0),  fill: 'hsl(38, 92%, 50%)' },
+    { name: 'Agendado',  value: scopedNonCCExpenses.filter(e => e.status === 'agendado').reduce((s, e) => s + Number(e.amount), 0),  fill: 'hsl(217, 91%, 60%)' },
     ...(totalCCThisMonth > 0 ? [{ name: 'Fatura CC', value: totalCCThisMonth, fill: '#6366f1' }] : []),
-  ].filter(s => s.value > 0), [nonCCExpenses, totalCCThisMonth]);
+  ].filter(s => s.value > 0), [scopedNonCCExpenses, totalCCThisMonth]);
 
-  // ── Sparkline data (Last 30 days of the selected month) ─────
-  const getDailyTrend = (data: any[], dateField = 'date') => {
+  // â”€â”€ Sparkline data (Last 30 days of the selected month) â”€â”€â”€â”€â”€
+  const getDailyTrend = (data: Array<Record<string, string | number | null>>, dateField = 'date') => {
     // Basic grouping for the visual sparkline
-    const sorted = [...data].sort((a, b) => new Date(a[dateField]).getTime() - new Date(b[dateField]).getTime());
+    const sorted = [...data].sort((a, b) => new Date(String(a[dateField] ?? "")).getTime() - new Date(String(b[dateField] ?? "")).getTime());
     const daily: Record<string, number> = {};
-    sorted.forEach(item => { daily[item[dateField]] = (daily[item[dateField]] || 0) + Number(item.amount); });
+    sorted.forEach(item => { const key = String(item[dateField] ?? ""); daily[key] = (daily[key] || 0) + Number(item.amount); });
     const vals = Object.values(daily);
     // Pad to look like a chart if very few days
     if (vals.length === 1) return [0, vals[0]];
@@ -245,41 +352,104 @@ export default function Dashboard() {
     return vals;
   };
 
-  const incomeSparkline = useMemo(() => getDailyTrend(income.filter(i => i.status === 'concluido')), [income]);
-  const expenseSparkline = useMemo(() => getDailyTrend(expenses.filter(e => e.status === 'concluido')), [expenses]);
+  const incomeSparkline = useMemo(() => getDailyTrend(scopedIncome.filter(i => i.status === 'concluido')), [scopedIncome]);
+  const expenseSparkline = useMemo(() => {
+    const items = [
+      ...scopedNonCCExpenses.filter(e => e.status === 'concluido').map(e => ({ date: e.date, amount: Number(e.amount) })),
+      ...scopedCCTransactions.map(t => ({ date: t.date, amount: Number(t.amount) })),
+    ];
+    return getDailyTrend(items);
+  }, [scopedNonCCExpenses, scopedCCTransactions]);
   
   // Balance sparkline (running total)
   const balanceSparkline = useMemo(() => {
-    const all = [...income.map(i => ({...i, amount: Number(i.amount)})), ...expenses.map(e => ({...e, amount: -Number(e.amount)}))]
-      .filter(t => t.status === 'concluido')
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const all = [
+      ...scopedIncome
+        .filter(i => i.status === 'concluido')
+        .map(i => ({ date: i.date, amount: Number(i.amount) })),
+      ...scopedNonCCExpenses
+        .filter(e => e.status === 'concluido')
+        .map(e => ({ date: e.date, amount: -Number(e.amount) })),
+      ...scopedCCTransactions.map(t => ({ date: t.date, amount: -Number(t.amount) })),
+    ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
     let run = 0;
     const vals = all.map(t => { run += t.amount; return run; });
     if (vals.length === 0) return [0, 0];
     if (vals.length === 1) return [0, vals[0]];
     return vals;
-  }, [income, expenses]);
+  }, [scopedIncome, scopedNonCCExpenses, scopedCCTransactions]);
 
-  // ── Budget progress for Rings: nonCC expenses + CC transactions por categoria ──
+  // â”€â”€ Budget progress for Rings: nonCC expenses + CC transactions por categoria â”€â”€
   const budgetsWithData = useMemo(() =>
     categories.filter(c => Number(c.monthly_budget) > 0).map(cat => {
-      const spentRegular = nonCCExpenses.filter(e => resolveCategoryId(e) === cat.id).reduce((s, e) => s + Number(e.amount), 0);
-      const spentCC = ccTransactions.filter(t => t.category_id === cat.id).reduce((s, t) => s + Number(t.amount), 0);
+      const spentRegular = scopedNonCCExpenses.filter(e => resolveCategoryId(e) === cat.id).reduce((s, e) => s + Number(e.amount), 0);
+      const spentCC = scopedCCTransactions.filter(t => t.category_id === cat.id).reduce((s, t) => s + Number(t.amount), 0);
       const spent = spentRegular + spentCC;
       const budget = Number(cat.monthly_budget);
       return { ...cat, spent, budget };
     }).sort((a, b) => b.budget - a.budget)
-  , [categories, nonCCExpenses, ccTransactions, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
+  , [categories, scopedNonCCExpenses, scopedCCTransactions, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
 
-  // ── Recent transactions (sem espelhos CC) ───────────────────
+  // â”€â”€ Recent transactions (sem espelhos CC) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const recentTransactions = useMemo(() => [
-    ...income.map(i => ({ ...i, type: 'income' as const })),
-    ...nonCCExpenses.map(e => ({ ...e, type: 'expense' as const })),
+    ...scopedIncome.map(i => ({ ...i, type: 'income' as const })),
+    ...scopedNonCCExpenses.map(e => ({ ...e, type: 'expense' as const })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5)
-  , [income, nonCCExpenses]);
+  , [scopedIncome, scopedNonCCExpenses]);
+
+  const scopedExpenseHeatmapData = useMemo(() => [
+    ...scopedNonCCExpenses
+      .filter(e => e.status === 'concluido')
+      .map(e => ({ date: e.date, amount: Number(e.amount) })),
+    ...scopedCCTransactions.map(t => ({ date: t.date, amount: Number(t.amount) })),
+  ], [scopedNonCCExpenses, scopedCCTransactions]);
 
   const workTimeTotal = hourlyRate > 0 ? calcWorkTime(totalExpensesPaid) : null;
+  const accountInsights = useMemo(() => {
+    return accounts
+      .filter(a => !a.archived)
+      .map((acc) => {
+        const accIncome = income
+          .filter((i) => i.account_id === acc.id && i.status === 'concluido')
+          .reduce((s, i) => s + Number(i.amount), 0);
+        const accExpenses = nonCCExpenses
+          .filter((e) => e.account_id === acc.id && e.status === 'concluido')
+          .reduce((s, e) => s + Number(e.amount), 0);
+        const accPending = nonCCExpenses
+          .filter((e) => e.account_id === acc.id && e.status !== 'concluido')
+          .reduce((s, e) => s + Number(e.amount), 0);
+        const balance = accumulatedByAccount[acc.id] || 0;
+        return { acc, accIncome, accExpenses, accPending, balance };
+      })
+      .sort((a, b) => b.balance - a.balance);
+  }, [accounts, income, nonCCExpenses, accumulatedByAccount]);
+
+  const activeAccounts = useMemo(() => accounts.filter((acc) => !acc.archived), [accounts]);
+  const focusedAccountInsight = useMemo(
+    () => (accountFocusId === '__all__' ? null : accountInsights.find(({ acc }) => acc.id === accountFocusId) ?? null),
+    [accountInsights, accountFocusId],
+  );
+
+  const focusedBrand = useMemo(
+    () => (focusedAccountInsight ? accountBrandFromRow(focusedAccountInsight.acc) : null),
+    [focusedAccountInsight],
+  );
+  const isGlobalView = accountFocusId === '__all__';
+  const currentAccent = focusedBrand?.color || '#2563eb';
+  const accentSoft = colorWithOpacity(currentAccent, 0.12);
+  const accentBorder = colorWithOpacity(currentAccent, 0.45);
+  const accentGlow = colorWithOpacity(currentAccent, 0.2);
+  const focusLabel = isGlobalView ? 'Todas as contas' : focusedAccountInsight?.acc.name || 'Conta foco';
+  const focusSubLabel = isGlobalView
+    ? `${activeAccounts.length} contas ativas`
+    : `Saldo atual: ${maskCurrency(formatCurrency(focusedAccountInsight?.balance || 0))}`;
+
+  const balance = accountFocusId === '__all__' ? accumulatedBalance : (focusedAccountInsight?.balance ?? 0);
+  const focusedInvestmentTotal = accountFocusId === '__all__' ? investmentTotal : 0;
+  const netWorth = balance + focusedInvestmentTotal;
+
+  // All sections visible in single-page layout
   
   // Greeting based on time
   const greeting = useMemo(() => {
@@ -294,22 +464,18 @@ export default function Dashboard() {
     return new Date(parseInt(year), parseInt(m) - 1, 1);
   }, [month]);
 
-  // ── Previous month totals (for MoM deltas) ─────────────────────
+  // â”€â”€ Previous month totals (for MoM deltas) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const prevTotalIncome = useMemo(() =>
-    prevIncome.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0)
-  , [prevIncome]);
-
-  const prevNonCCExpenses = useMemo(() =>
-    prevExpenses.filter(e => !isCreditCardExpense(e))
-  , [prevExpenses, creditCards, accounts]);
+    scopedPrevIncome.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0)
+  , [scopedPrevIncome]);
 
   const prevTotalExpensesPaid = useMemo(() =>
-    prevNonCCExpenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0)
-  , [prevNonCCExpenses]);
+    scopedPrevNonCCExpenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0)
+  , [scopedPrevNonCCExpenses]);
 
   const prevTotalCC = useMemo(() =>
-    prevCCTransactions.reduce((s, t) => s + Number(t.amount), 0)
-  , [prevCCTransactions]);
+    scopedPrevCCTransactions.reduce((s, t) => s + Number(t.amount), 0)
+  , [scopedPrevCCTransactions]);
 
   const prevTotalAll = prevTotalExpensesPaid + prevTotalCC;
   const currentTotalAll = totalExpensesPaid + totalCCThisMonth;
@@ -342,8 +508,8 @@ export default function Dashboard() {
         const d = new Date(e.date + 'T00:00:00');
         return d.getDate() <= dayOfMonth;
       });
-      const exp = filterByDay(prevNonCCExpenses).filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0);
-      const cc = filterByDay(prevCCTransactions).reduce((s, t) => s + Number(t.amount), 0);
+      const exp = filterByDay(scopedPrevNonCCExpenses).filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0);
+      const cc = filterByDay(scopedPrevCCTransactions).reduce((s, t) => s + Number(t.amount), 0);
       return exp + cc;
     })();
     const paceVsPrev = pctDelta(currentTotalAll, prevSameDayTotal);
@@ -358,7 +524,7 @@ export default function Dashboard() {
       paceVsPrev,
       onTrack: totalBudget > 0 ? spendProgress <= monthProgress + 5 : null,
     };
-  }, [month, categories, currentTotalAll, prevNonCCExpenses, prevCCTransactions]);
+  }, [month, categories, currentTotalAll, scopedPrevNonCCExpenses, scopedPrevCCTransactions]);
 
   // ── Saúde Financeira: 0–100 score combinando vários sinais ─────
   const healthScore = useMemo(() => {
@@ -402,17 +568,17 @@ export default function Dashboard() {
   // ── Top Movimentos do Mês ──────────────────────────────────────
   const topExpenses = useMemo(() => {
     const allExpenses = [
-      ...nonCCExpenses.map(e => ({ id: e.id, description: e.description || 'Despesa', amount: Number(e.amount), date: e.date, category_id: resolveCategoryId(e), kind: 'expense' as const })),
-      ...ccTransactions.map(t => ({ id: t.id, description: t.description || 'Compra', amount: Number(t.amount), date: t.date, category_id: t.category_id, kind: 'cc' as const })),
+      ...scopedNonCCExpenses.map(e => ({ id: e.id, description: e.description || 'Despesa', amount: Number(e.amount), date: e.date, category_id: resolveCategoryId(e), kind: 'expense' as const })),
+      ...scopedCCTransactions.map(t => ({ id: t.id, description: t.description || 'Compra', amount: Number(t.amount), date: t.date, category_id: t.category_id, kind: 'cc' as const })),
     ];
     return allExpenses.sort((a, b) => b.amount - a.amount).slice(0, 5);
-  }, [nonCCExpenses, ccTransactions, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
+  }, [scopedNonCCExpenses, scopedCCTransactions, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
 
   const topIncomes = useMemo(() =>
-    [...income].sort((a, b) => Number(b.amount) - Number(a.amount)).slice(0, 5)
-  , [income]);
+    [...scopedIncome].sort((a, b) => Number(b.amount) - Number(a.amount)).slice(0, 5)
+  , [scopedIncome]);
 
-  // ── Comparativo Mensal: bars ───────────────────────────────────
+  // â”€â”€ Comparativo Mensal: bars â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const monthCompareData = useMemo(() => [
     {
       name: 'Receitas',
@@ -437,107 +603,143 @@ export default function Dashboard() {
     },
   ], [prevTotalIncome, totalIncome, prevTotalAll, currentTotalAll]);
 
-  // ── Allocation: Contas vs Investimentos ────────────────────────
+  // â”€â”€ Allocation: Contas vs Investimentos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const allocationData = useMemo(() => {
     const items = [];
     if (balance > 0) items.push({ name: 'Contas', value: balance, fill: 'hsl(160, 84%, 39%)' });
-    if (investmentTotal > 0) items.push({ name: 'Investimentos', value: investmentTotal, fill: 'hsl(217, 91%, 60%)' });
+    if (focusedInvestmentTotal > 0) items.push({ name: 'Investimentos', value: focusedInvestmentTotal, fill: 'hsl(217, 91%, 60%)' });
     return items;
-  }, [balance, investmentTotal]);
+  }, [balance, focusedInvestmentTotal]);
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-fade-in pb-10 w-full max-w-full overflow-x-hidden sm:overflow-visible">
-      {/* ─── Hero Header Premium ─── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.04] p-4 shadow-sm sm:rounded-3xl sm:p-7">
-        <div className="absolute -top-24 -right-32 w-80 h-80 bg-primary/15 blur-3xl rounded-full pointer-events-none" />
-        <div className="absolute -bottom-32 -left-24 w-72 h-72 bg-income/[0.08] blur-3xl rounded-full pointer-events-none" />
+      {/* Hero + account switcher + visual mode */}
+      <div
+        className="relative overflow-hidden rounded-[2rem] border p-4 shadow-2xl shadow-black/10 sm:rounded-[2.5rem] sm:p-6"
+        style={{
+          borderColor: isGlobalView ? 'hsl(var(--border) / 0.7)' : accentBorder,
+          background: isGlobalView
+            ? 'linear-gradient(145deg, hsl(var(--card) / 0.96) 0%, hsl(var(--background)) 48%, hsl(217 91% 60% / 0.10) 100%)'
+            : `linear-gradient(145deg, ${accentSoft} 0%, hsl(var(--card) / 0.96) 52%, hsl(var(--background)) 100%)`,
+        }}
+      >
+        <div className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full blur-[100px]" style={{ background: accentGlow }} />
+        <div className="pointer-events-none absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-primary/10 blur-[100px]" />
 
         <div className="relative z-10 flex flex-col gap-5">
-          {/* Title row */}
-          <div className="flex items-start justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-primary/25 to-primary/5 flex items-center justify-center shadow-inner border border-primary/15 shrink-0">
-                <Sparkles className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
-              </div>
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0 flex-1 flex flex-col sm:flex-row gap-5 items-start sm:items-center">
+              <BrandLogoBadge
+                logoUrl={focusedBrand?.logoUrl}
+                label={focusLabel}
+                color={currentAccent}
+                icon={focusedBrand?.icon}
+                active={!isGlobalView}
+                global={isGlobalView}
+                size="lg"
+              />
               <div className="min-w-0">
-                <p className="text-[11px] sm:text-xs text-muted-foreground font-semibold flex items-center gap-1.5">
-                  <span>{greeting.icon}</span> {greeting.text}{profile?.first_name ? `, ${profile.first_name}` : ''}!
+                <p className="text-xs font-black text-muted-foreground tracking-[0.22em] uppercase">
+                  {greeting.icon} {greeting.text}{profile?.first_name ? `, ${profile.first_name}` : ''}
                 </p>
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-none mt-1 text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/70">
-                  Seu Panorama
+                <h1 className="truncate text-3xl font-black leading-tight tracking-tight sm:text-5xl mt-1">
+                  {focusLabel}
                 </h1>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <span className="text-sm font-bold text-muted-foreground sm:text-base">{focusSubLabel}</span>
+                  <span
+                    className="rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-wider backdrop-blur-md"
+                    style={{ borderColor: colorWithOpacity(healthColor, 0.4), backgroundColor: colorWithOpacity(healthColor, 0.15), color: healthColor }}
+                  >
+                    Saúde {healthScore}/100
+                  </span>
+                </div>
               </div>
             </div>
-            <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 sm:w-auto sm:flex sm:shrink-0">
-              <MonthSelector month={month} onChange={setMonth} />
-              <TransactionDialog type="income">
-                <button className="h-9 w-9 rounded-xl bg-income text-income-foreground font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-income/90 hover:shadow-md hover:shadow-income/20 active:scale-[0.97] transition-all sm:w-auto sm:px-3">
-                  <ArrowUpRight className="w-4 h-4 shrink-0" /> <span className="hidden sm:inline">Receita</span>
+
+            <div className="grid w-full grid-cols-2 gap-3 sm:w-auto sm:flex">
+              <div className="col-span-2 sm:col-span-1">
+                <MonthSelector month={month} onChange={setMonth} />
+              </div>
+              <TransactionDialog type="income" defaultAccountId={accountFocusId === '__all__' ? undefined : accountFocusId}>
+                <button className="flex h-11 items-center justify-center rounded-2xl bg-income px-5 text-sm font-bold text-income-foreground transition-all hover:bg-income/90 hover:shadow-lg hover:-translate-y-0.5">
+                  <ArrowUpRight className="mr-2 h-5 w-5" /> Receita
                 </button>
               </TransactionDialog>
-              <TransactionDialog type="expense">
-                <button className="h-9 w-9 rounded-xl bg-expense text-expense-foreground font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-expense/90 hover:shadow-md hover:shadow-expense/20 active:scale-[0.97] transition-all sm:w-auto sm:px-3">
-                  <ArrowDownRight className="w-4 h-4 shrink-0" /> <span className="hidden sm:inline">Despesa</span>
+              <TransactionDialog type="expense" defaultAccountId={accountFocusId === '__all__' ? undefined : accountFocusId}>
+                <button className="flex h-11 items-center justify-center rounded-2xl bg-expense px-5 text-sm font-bold text-expense-foreground transition-all hover:bg-expense/90 hover:shadow-lg hover:-translate-y-0.5">
+                  <ArrowDownRight className="mr-2 h-5 w-5" /> Despesa
                 </button>
               </TransactionDialog>
             </div>
           </div>
 
-          {/* Health-driven insight strip */}
-          <div className="grid grid-cols-1 gap-2 min-[390px]:grid-cols-2 md:grid-cols-4 md:gap-3">
-            {/* Saúde Financeira */}
-            <div className="rounded-2xl border px-3 py-2.5 relative overflow-hidden" style={{ borderColor: `${healthColor}33`, backgroundColor: `${healthColor}0d` }}>
-              <div className="flex items-center gap-1.5 mb-0.5" style={{ color: healthColor }}>
-                <Heart className="h-3 w-3" />
-                <p className="text-[9px] font-bold uppercase tracking-wider">Saúde</p>
-              </div>
-              <div className="flex items-baseline gap-1.5">
-                <p className="text-base sm:text-lg font-extrabold leading-none" style={{ color: healthColor }}>{healthScore}</p>
-                <span className="text-[9px] uppercase tracking-wider font-bold opacity-70" style={{ color: healthColor }}>/100</span>
-              </div>
-              <p className="text-[10px] font-semibold mt-0.5" style={{ color: healthColor }}>{healthLabel}</p>
+          {/* Account Switcher */}
+          <div className="rounded-[1.75rem] border border-border/60 bg-background/35 p-3 backdrop-blur-2xl shadow-inner">
+            <div className="mb-3 flex items-center justify-between gap-3 px-1">
+              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-muted-foreground">
+                Escolha a conta
+              </p>
+              <span className="rounded-full border border-border/60 bg-card/60 px-2.5 py-1 text-[10px] font-bold text-muted-foreground">
+                {activeAccounts.length + 1} visões
+              </span>
             </div>
-            {/* No Cartão */}
-            <div className="rounded-2xl border border-[#6366f1]/25 bg-[#6366f1]/[0.06] px-3 py-2.5">
-              <div className="flex items-center gap-1.5 text-[#6366f1] mb-0.5">
-                <CreditCard className="h-3 w-3" />
-                <p className="text-[9px] font-bold uppercase tracking-wider">No Cartão</p>
-              </div>
-              <p className="text-sm sm:text-base font-extrabold currency text-[#6366f1] leading-tight truncate">{maskCurrency(formatCurrency(totalCCThisMonth))}</p>
-              {ccDelta !== null && (
-                <p className={cn('text-[10px] font-semibold mt-0.5 flex items-center gap-0.5', ccDelta > 0 ? 'text-expense' : 'text-income')}>
-                  {ccDelta > 0 ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
-                  {Math.abs(ccDelta).toFixed(0)}% vs anterior
-                </p>
-              )}
-            </div>
-            {/* Pendências */}
-            <div className="rounded-2xl border border-warning/25 bg-warning/[0.06] px-3 py-2.5">
-              <div className="flex items-center gap-1.5 text-warning mb-0.5">
-                <Clock className="h-3 w-3" />
-                <p className="text-[9px] font-bold uppercase tracking-wider">Pendências</p>
-              </div>
-              <p className="text-sm sm:text-base font-extrabold currency text-warning leading-tight truncate">{maskCurrency(formatCurrency(pendingAmount))}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{nonCCExpenses.filter(e => e.status !== 'concluido').length} {nonCCExpenses.filter(e => e.status !== 'concluido').length === 1 ? 'conta' : 'contas'}</p>
-            </div>
-            {/* Economia */}
-            <div className="rounded-2xl border border-income/25 bg-income/[0.06] px-3 py-2.5">
-              <div className="flex items-center gap-1.5 text-income mb-0.5">
-                <Zap className="h-3 w-3" />
-                <p className="text-[9px] font-bold uppercase tracking-wider">Economia</p>
-              </div>
-              <p className="text-sm sm:text-base font-extrabold text-income leading-tight">{savings.toFixed(1)}%</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{savings >= 20 ? '🎯 acima da meta' : savings >= 10 ? 'no caminho' : '⚠️ aumente'}</p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+              <button
+                onClick={() => setAccountFocusId('__all__')}
+                className={cn(
+                  'group flex items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition-all duration-300',
+                  isGlobalView
+                    ? 'border-primary/45 bg-primary/10 shadow-lg shadow-primary/10 ring-2 ring-primary/15'
+                    : 'border-border/40 bg-background/45 hover:border-primary/25 hover:bg-background/80 hover:shadow-md',
+                )}
+              >
+                <BrandLogoBadge label="Visão Geral" color="#10b981" global active={isGlobalView} />
+                <div className="min-w-0 w-full mt-1">
+                  <p className="text-sm font-bold truncate">Visão Geral</p>
+                  <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{activeAccounts.length} contas ativas</p>
+                  <p className="text-sm font-black currency mt-1 tabular-nums truncate tracking-tight">{maskCurrency(formatCurrency(accumulatedBalance))}</p>
+                </div>
+              </button>
+              {activeAccounts.map((account) => {
+                const brand = accountBrandFromRow(account);
+                const active = accountFocusId === account.id;
+                const insight = accountInsights.find(a => a.acc.id === account.id);
+                const bal = insight?.balance ?? 0;
+                return (
+                  <button
+                    key={account.id}
+                    onClick={() => setAccountFocusId(account.id)}
+                    className={cn(
+                        'group flex items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition-all duration-300',
+                        active
+                          ? 'shadow-lg ring-2'
+                          : 'border-border/40 bg-background/45 hover:bg-background/80 hover:shadow-md',
+                      )}
+                    style={active ? { borderColor: colorWithOpacity(brand.color, 0.6), backgroundColor: colorWithOpacity(brand.color, 0.15), '--tw-ring-color': colorWithOpacity(brand.color, 0.25) } as React.CSSProperties : undefined}
+                  >
+                    <BrandLogoBadge
+                      logoUrl={brand.logoUrl}
+                      label={account.name}
+                      color={brand.color}
+                      icon={brand.icon || account.icon}
+                      active={active}
+                    />
+                    <div className="min-w-0 w-full mt-1">
+                      <p className="text-sm font-bold truncate">{account.name}</p>
+                      <p className={cn('text-sm font-black currency mt-1 tabular-nums truncate tracking-tight', bal >= 0 ? 'text-income' : 'text-expense')}>
+                        {maskCurrency(formatCurrency(bal))}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
       </div>
-
-      {/* ── Alertas ────────────────────────────────────────── */}
-      <SmartAlerts expenses={expenses} income={income} categories={categories} />
-
-      {/* ─── KPI Cards Premium ─── */}
-      <div className={`grid grid-cols-1 gap-3 min-[390px]:grid-cols-2 sm:gap-4 stagger-1 ${totalCCThisMonth > 0 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
+      {/* â”€â”€â”€ KPI Cards Premium â”€â”€â”€ */}
+      <div className={`grid grid-cols-1 gap-3 min-[390px]:grid-cols-2 sm:gap-4 stagger-1 ${totalCCThisMonth > 0 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
         <KpiCard
           label="Receitas"
           value={formatCurrency(totalIncome)}
@@ -559,41 +761,7 @@ export default function Dashboard() {
           delta={expenseDelta}
           deltaInverted
         />
-        <KpiCard
-          label="Saldo Acumulado"
-          value={formatCurrency(balance)}
-          sub="disponível em contas"
-          color={balance >= 0 ? 'border-l-[3px] border-l-primary' : 'border-l-[3px] border-l-expense'}
-          icon={Wallet}
-          trend={balance >= 0 ? 'up' : 'down'}
-          sparklineData={balanceSparkline}
-        />
 
-        {/* Patrimônio Líquido = Saldo + Investimentos */}
-        <a href="/investimentos" className="block">
-          <div className="relative rounded-2xl border border-info/20 bg-card/70 backdrop-blur-sm p-4 sm:p-5 shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden animate-slide-up border-l-[3px] border-l-info h-full">
-            <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-[0.06] group-hover:opacity-[0.12] group-hover:scale-110 transition-all duration-500 pointer-events-none" style={{ background: 'radial-gradient(circle, hsl(217, 91%, 60%) 0%, transparent 70%)' }} />
-            <div className="relative z-10 flex flex-col gap-2.5 h-full">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl items-center justify-center flex shrink-0 bg-info/10 text-info">
-                    <BarChart3 className="w-4 h-4" />
-                  </div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.1em]">Patrimônio</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-info group-hover:translate-x-0.5 transition-all" />
-              </div>
-              <div className="mt-1 min-w-0">
-                <p className="text-base sm:text-lg lg:text-xl font-extrabold currency tracking-tight leading-none text-info whitespace-nowrap tabular-nums truncate">
-                  {maskCurrency(formatCurrency(netWorth))}
-                </p>
-                <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1.5 leading-tight line-clamp-2">
-                  Contas {maskCurrency(formatCurrency(balance))} · Invest. {maskCurrency(formatCurrency(investmentTotal))}
-                </p>
-              </div>
-            </div>
-          </div>
-        </a>
 
         {/* Fatura CC — só aparece quando há transações de cartão no mês */}
         {totalCCThisMonth > 0 && (
@@ -615,7 +783,7 @@ export default function Dashboard() {
                     {maskCurrency(formatCurrency(totalCCThisMonth))}
                   </p>
                   <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1.5 leading-tight">
-                    {ccTransactions.filter(t => t.paid).length}/{ccTransactions.length} itens pagos
+                    {scopedCCTransactions.filter(t => t.paid).length}/{scopedCCTransactions.length} itens pagos
                   </p>
                 </div>
               </div>
@@ -753,11 +921,11 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Main Charts Grid ───────────────────────────────── */}
+      {/* â”€â”€ Main Charts Grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="grid lg:grid-cols-3 gap-6 stagger-2">
         {/* Trend Area Chart (span 2) */}
         <div className="lg:col-span-2 relative z-10">
-          <TrendChart />
+          <TrendChart accountId={accountFocusId} />
         </div>
 
         {/* Economy Gauge & Mini Stats */}
@@ -793,7 +961,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Row 3: Visual Analytics ────────────────────────── */}
+      {/* â”€â”€ Row 3: Visual Analytics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="grid lg:grid-cols-3 gap-6 stagger-3">
         {/* Budget Rings */}
         <div className="stat-card flex flex-col">
@@ -823,10 +991,10 @@ export default function Dashboard() {
           </h3>
           <div className="flex-1 flex flex-col items-center justify-center">
             <div className="w-full max-w-[280px]">
-              {expenses.length > 0 ? (
+              {scopedExpenseHeatmapData.length > 0 ? (
                 <WeeklyHeatmap 
                   month={currentMonthDate} 
-                  data={expenses.filter(e => e.status === 'concluido').map(e => ({ date: e.date, amount: Number(e.amount) }))} 
+                  data={scopedExpenseHeatmapData} 
                 />
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
@@ -877,7 +1045,7 @@ export default function Dashboard() {
                         {t.type === 'income' ? '+' : '-'}{maskCurrency(formatCurrency(Number(t.amount)))}
                       </span>
                       <button
-                        onClick={() => setEditing(t as any)}
+                        onClick={() => setEditing(t)}
                         className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-all"
                       >
                         <Pencil className="w-3 h-3" />
@@ -901,7 +1069,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Category & Status Breakdown (Added Back) ────────── */}
+      {/* â”€â”€ Category & Status Breakdown (Added Back) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="grid lg:grid-cols-2 gap-6 stagger-4">
         {/* Category Donut */}
         <div className="stat-card">
@@ -1026,9 +1194,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ─── NEW: Top Movimentos do Mês ─── */}
+
+      {/* ─── Top Movimentos do Mês ─── */}
       {(topExpenses.length > 0 || topIncomes.length > 0) && (() => {
-        const showAllocationFiller = topExpenses.length > 0 && topIncomes.length === 0 && allocationData.length > 0 && investmentTotal > 0;
+        const showAllocationFiller = topExpenses.length > 0 && topIncomes.length === 0 && allocationData.length > 0 && focusedInvestmentTotal > 0;
         const showIncomeFiller = topIncomes.length > 0 && topExpenses.length === 0;
         return (
         <div className="grid lg:grid-cols-2 gap-6 stagger-4">
@@ -1182,7 +1351,6 @@ export default function Dashboard() {
               </div>
               <div className="space-y-2.5">
                 {topIncomes.map((tx, idx) => {
-                  const cat = categories.find(c => c.id === tx.category_id);
                   const maxValue = Number(topIncomes[0].amount);
                   const pct = maxValue > 0 ? (Number(tx.amount) / maxValue) * 100 : 0;
                   return (
@@ -1200,7 +1368,7 @@ export default function Dashboard() {
                           <div className="min-w-0 flex-1">
                             <p className="text-[13px] font-semibold truncate">{tx.description || 'Receita'}</p>
                             <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                              {cat ? `${cat.icon} ${cat.name}` : 'Sem categoria'} · {formatDate(tx.date)}
+                              Receita · {formatDate(tx.date)}
                             </p>
                           </div>
                         </div>
@@ -1220,7 +1388,7 @@ export default function Dashboard() {
       })()}
 
       {/* ─── Allocation Patrimônio (skip when already shown as filler) ─── */}
-      {allocationData.length > 0 && investmentTotal > 0 && !(topExpenses.length > 0 && topIncomes.length === 0) && (
+      {allocationData.length > 0 && focusedInvestmentTotal > 0 && !(topExpenses.length > 0 && topIncomes.length === 0) && (
         <div className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm p-5 sm:p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4 gap-3">
             <div className="flex items-center gap-2.5">
@@ -1283,14 +1451,56 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── Cash Flow Projection ────────────────────────────── */}
+      {/* â”€â”€ Cash Flow Projection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="stagger-5">
-        <CashFlowForecast />
+        <CashFlowForecast accountId={accountFocusId} />
       </div>
 
-      {/* ── Achievements ───────────────────────────────────── */}
+      {/* ── Saldo, Patrimônio e Alertas ──────────────────────── */}
+      <div className="stagger-6 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <KpiCard
+            label="Saldo Acumulado"
+            value={formatCurrency(balance)}
+            sub="disponível em contas"
+            color={balance >= 0 ? 'border-l-[3px] border-l-primary' : 'border-l-[3px] border-l-expense'}
+            icon={Wallet}
+            trend={balance >= 0 ? 'up' : 'down'}
+            sparklineData={balanceSparkline}
+          />
+          <a href="/investimentos" className="block">
+            <div className="relative rounded-2xl border border-info/20 bg-card/70 backdrop-blur-sm p-4 sm:p-5 shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden animate-slide-up border-l-[3px] border-l-info h-full">
+              <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-[0.06] group-hover:opacity-[0.12] group-hover:scale-110 transition-all duration-500 pointer-events-none" style={{ background: 'radial-gradient(circle, hsl(217, 91%, 60%) 0%, transparent 70%)' }} />
+              <div className="relative z-10 flex flex-col gap-2.5 h-full">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl items-center justify-center flex shrink-0 bg-info/10 text-info">
+                      <BarChart3 className="w-4 h-4" />
+                    </div>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.1em]">Patrimônio</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-info group-hover:translate-x-0.5 transition-all" />
+                </div>
+                <div className="mt-1 min-w-0">
+                  <p className="text-base sm:text-lg lg:text-xl font-extrabold currency tracking-tight leading-none text-info whitespace-nowrap tabular-nums truncate">
+                    {maskCurrency(formatCurrency(netWorth))}
+                  </p>
+                  <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1.5 leading-tight line-clamp-2">
+                    {accountFocusId === '__all__'
+                      ? `Contas ${maskCurrency(formatCurrency(balance))} · Invest. ${maskCurrency(formatCurrency(focusedInvestmentTotal))}`
+                      : `Conta foco: ${focusedAccountInsight?.acc.name || 'Conta selecionada'}`}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </a>
+        </div>
+        <SmartAlerts expenses={scopedNonCCExpenses} income={scopedIncome} categories={categories} />
+      </div>
+
+      {/* â”€â”€ Achievements â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="stagger-6">
-        <Achievements expenses={expenses} income={income} categories={categories} />
+        <Achievements expenses={scopedNonCCExpenses} income={scopedIncome} categories={categories} />
       </div>
 
       {editing && (
@@ -1304,8 +1514,12 @@ export default function Dashboard() {
       <PendingExpensesDialog 
         open={pendingModalOpen} 
         onOpenChange={setPendingModalOpen} 
-        expenses={expenses} 
+        expenses={scopedNonCCExpenses} 
       />
     </div>
   );
 }
+
+
+
+

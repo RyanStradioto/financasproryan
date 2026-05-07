@@ -86,6 +86,51 @@ export type Database = {
         }
         Relationships: []
       }
+      category_account_budgets: {
+        Row: {
+          account_id: string
+          category_id: string
+          created_at: string
+          id: string
+          monthly_budget: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          category_id: string
+          created_at?: string
+          id?: string
+          monthly_budget?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          category_id?: string
+          created_at?: string
+          id?: string
+          monthly_budget?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "category_account_budgets_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "category_account_budgets_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       credit_card_transactions: {
         Row: {
           amount: number
@@ -469,9 +514,82 @@ export type Database = {
         }
         Relationships: []
       }
+      planning_fixed_costs: {
+        Row: {
+          account_id: string | null
+          active: boolean
+          amount: number
+          category_id: string | null
+          created_at: string
+          day: number
+          description: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          active?: boolean
+          amount?: number
+          category_id?: string | null
+          created_at?: string
+          day?: number
+          description: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          active?: boolean
+          amount?: number
+          category_id?: string | null
+          created_at?: string
+          day?: number
+          description?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      planning_salary_configs: {
+        Row: {
+          account_id: string | null
+          created_at: string
+          description: string
+          first_split_pct: number
+          gross_override: number
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          created_at?: string
+          description?: string
+          first_split_pct?: number
+          gross_override?: number
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          created_at?: string
+          description?: string
+          first_split_pct?: number
+          gross_override?: number
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
+          first_name: string | null
           id: string
           monthly_salary: number
           monthly_summary_enabled: boolean
@@ -483,6 +601,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          first_name?: string | null
           id?: string
           monthly_salary?: number
           monthly_summary_enabled?: boolean
@@ -494,6 +613,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          first_name?: string | null
           id?: string
           monthly_salary?: number
           monthly_summary_enabled?: boolean

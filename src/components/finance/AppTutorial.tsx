@@ -150,7 +150,7 @@ function loadPos() {
   try { const s = localStorage.getItem(POS_KEY); return s ? JSON.parse(s) : null; } catch { return null; }
 }
 function savePos(p: { x: number; y: number }) {
-  try { localStorage.setItem(POS_KEY, JSON.stringify(p)); } catch {}
+  try { localStorage.setItem(POS_KEY, JSON.stringify(p)); } catch { return; }
 }
 function clampPos(p: { x: number; y: number }) {
   return {
@@ -246,7 +246,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     try {
       const s = localStorage.getItem(getChecksKey(user.id));
       if (s) setManualChecks(JSON.parse(s));
-    } catch {}
+    } catch { return; }
   }, [user?.id]);
 
   const saveManualChecks = useCallback((next: Record<number, number[]>) => {
@@ -343,7 +343,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     if (isMobile) setMobileSheetOpen(false);
   }, [navigate, stepIndex, isMobile]);
 
-  // ── Drag handlers (desktop only) ────────────────────────────────────────────
+  // â”€â”€ Drag handlers (desktop only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const startDrag = useCallback((clientX: number, clientY: number) => {
     setIsDragging(true);
     dragRef.current = { startX: clientX, startY: clientY, origX: pos?.x ?? 0, origY: pos?.y ?? 0 };
@@ -385,13 +385,13 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('touchend', onEnd);
     };
   }, [isDragging]);
-  // ───────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const contextValue = useMemo<TutorialContextValue>(() => ({ openTutorial }), [openTutorial]);
 
   if (!open) return <TutorialContext.Provider value={contextValue}>{children}</TutorialContext.Provider>;
 
-  // ── Welcome screen (full-screen modal) ─────────────────────────────────────
+  // â”€â”€ Welcome screen (full-screen modal) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (isWelcome) {
     return (
       <TutorialContext.Provider value={contextValue}>
@@ -441,7 +441,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // ── Checklist content (shared between mobile sheet and desktop widget) ──────
+  // â”€â”€ Checklist content (shared between mobile sheet and desktop widget) â”€â”€â”€â”€â”€â”€
   const ChecklistContent = () => (
     <>
       {/* Progress bar */}
@@ -537,7 +537,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     </>
   );
 
-  // ── MOBILE: FAB pill + bottom sheet ────────────────────────────────────────
+  // â”€â”€ MOBILE: FAB pill + bottom sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (isMobile) {
     return (
       <TutorialContext.Provider value={contextValue}>
@@ -608,7 +608,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // ── DESKTOP: draggable floating widget ─────────────────────────────────────
+  // â”€â”€ DESKTOP: draggable floating widget â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const widgetStyle = {
     position: 'fixed' as const,
     left: pos?.x ?? 0,
@@ -770,3 +770,4 @@ export function useTutorial() {
   if (!ctx) throw new Error('useTutorial must be used within TutorialProvider');
   return ctx;
 }
+
