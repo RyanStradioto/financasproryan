@@ -203,34 +203,97 @@ export default function CreditCardsPage() {
     } catch {}
   }, [cards]);
 
-  // Apply default payment account to ALL existing CC mirror expenses for a card
-  // (one-time backfill so existing data starts deducting from the account).
+  // Apply default payment account to ALL existing CC data for a card.
+  // This is a complete backfill that:
+  //  1. Sets account_id on all CC mirror expenses for this card (so balance counts them)
+  //  2. Syncs mirror status with the linked CC tx's paid flag (paid → concluido,
+  //     so the balance hook actually deducts it; otherwise mirrors stay pendente and
+  //     don't affect balance)
+  //  3. Removes any old [FATURA_CARTAO] expenses for this card name to avoid
+  //     double-counting (they were created by the legacy "Pagar Fatura" flow and
+  //     are now superseded by the per-item mirrors)
   const applyDefaultAccountToHistory = async (cardId: string) => {
     const accountId = getCardDefaultAccount(cardId);
     if (!accountId) { toast.error('Configure a conta padrão primeiro'); return; }
+    const card = cards.find(c => c.id === cardId);
+    if (!card) return;
+
     try {
-      // Update all CC mirror expenses for this card that don't already have an account
-      const { data: existing, error: selErr } = await supabase
+      // Step 1: find all CC mirror expenses for this card (with or without account_id)
+      const { data: mirrors, error: selErr } = await supabase
         .from('expenses')
-        .select('id')
-        .like('notes', `%card:${cardId}%`)
-        .is('account_id', null);
+        .select('id, notes, account_id, status')
+        .like('notes', `%card:${cardId}%`);
       if (selErr) throw selErr;
-      const ids = (existing || []).map(e => e.id);
-      if (ids.length === 0) {
-        toast.info('Nenhuma transação antiga para corrigir');
-        return;
+
+      const mirrorList = mirrors || [];
+
+      // Update account_id on those that don't have one
+      const idsNeedingAccount = mirrorList
+        .filter(m => !m.account_id)
+        .map(m => m.id);
+      if (idsNeedingAccount.length > 0) {
+        await supabase
+          .from('expenses')
+          .update({ account_id: accountId })
+          .in('id', idsNeedingAccount);
       }
-      const { error: updErr } = await supabase
+
+      // Step 2: for each mirror, parse linked CC tx id from notes and sync status
+      const mirrorTxMap: Array<{ mirrorId: string; txId: string }> = [];
+      for (const m of mirrorList) {
+        const match = m.notes?.match(/tx:([^\|\]\s]+)/);
+        if (match) mirrorTxMap.push({ mirrorId: m.id, txId: match[1] });
+      }
+
+      let statusUpdated = 0;
+      if (mirrorTxMap.length > 0) {
+        const txIds = Array.from(new Set(mirrorTxMap.map(p => p.txId)));
+        const { data: ccTxs } = await supabase
+          .from('credit_card_transactions')
+          .select('id, paid')
+          .in('id', txIds);
+
+        const paidSet = new Set((ccTxs || []).filter(t => t.paid).map(t => t.id));
+        const mirrorsToConcluir = mirrorTxMap
+          .filter(p => paidSet.has(p.txId))
+          .map(p => p.mirrorId);
+
+        if (mirrorsToConcluir.length > 0) {
+          await supabase
+            .from('expenses')
+            .update({ status: 'concluido' })
+            .in('id', mirrorsToConcluir);
+          statusUpdated = mirrorsToConcluir.length;
+        }
+      }
+
+      // Step 3: remove legacy [FATURA_CARTAO] expenses for this card to avoid double-counting
+      const { data: oldBillPayments } = await supabase
         .from('expenses')
-        .update({ account_id: accountId })
-        .in('id', ids);
-      if (updErr) throw updErr;
-      // Also update mirrors for items already paid (status = concluido) to keep them counted
-      // The above update already covers them because we filter only by account_id null.
-      toast.success(`${ids.length} transação(ões) atribuída(s) à conta padrão!`);
+        .select('id, notes')
+        .like('notes', '%[FATURA_CARTAO]%');
+
+      const billPaymentsToDelete = (oldBillPayments || [])
+        .filter(e => e.notes?.includes(card.name))
+        .map(e => e.id);
+
+      if (billPaymentsToDelete.length > 0) {
+        await supabase
+          .from('expenses')
+          .delete()
+          .in('id', billPaymentsToDelete);
+      }
+
+      const parts: string[] = [];
+      if (idsNeedingAccount.length > 0) parts.push(`${idsNeedingAccount.length} mirror(s) com conta`);
+      if (statusUpdated > 0) parts.push(`${statusUpdated} marcado(s) como pago`);
+      if (billPaymentsToDelete.length > 0) parts.push(`${billPaymentsToDelete.length} pagamento(s) duplicado(s) removido(s)`);
+      toast.success(parts.length > 0 ? parts.join(' · ') : 'Tudo já estava em ordem');
+
       queryClientCC.invalidateQueries({ queryKey: ['expenses'] });
       queryClientCC.invalidateQueries({ queryKey: ['accumulated-balance'] });
+      queryClientCC.invalidateQueries({ queryKey: ['cc-transactions'] });
     } catch (e) { toast.error((e as Error).message); }
   };
 
