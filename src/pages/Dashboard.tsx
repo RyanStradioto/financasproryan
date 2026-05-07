@@ -23,6 +23,13 @@ import { formatWorkTime } from '@/lib/workTime';
 import { cn } from '@/lib/utils';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import PendingExpensesDialog from '@/components/finance/PendingExpensesDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 import { buildDescriptionAmountKey, buildExpenseMatchKey, detectCreditCardExpense, parseStructuredCardMarker } from '@/lib/paymentMethod';
 import { accountBrandFromRow, resolveAccountBrand } from '@/lib/accountBrand';
 import {
@@ -302,6 +309,48 @@ export default function Dashboard() {
   const { calcWorkTime, hourlyRate } = useWorkTimeCalc();
 
   const [editing, setEditing] = useState<((Income & { type: 'income' }) | (Expense & { type: 'expense' })) | null>(null);
+  const [orphanFixOpen, setOrphanFixOpen] = useState(false);
+  const [orphanFixAccountId, setOrphanFixAccountId] = useState('');
+  const [orphanFixBusy, setOrphanFixBusy] = useState(false);
+  const orphanQc = useQueryClient();
+  const { user: orphanUser } = useAuth();
+
+  const handleFixOrphans = async () => {
+    if (!orphanFixAccountId || !orphanUser) return;
+    setOrphanFixBusy(true);
+    try {
+      // Update all expenses with null account_id, NOT being CC mirrors, status concluido
+      const { data: orphans, error: selErr } = await supabase
+        .from('expenses')
+        .select('id, notes')
+        .is('account_id', null)
+        .eq('status', 'concluido')
+        .eq('user_id', orphanUser.id);
+      if (selErr) throw selErr;
+      // Filter out CC mirror rows (those have notes starting with [Cartao de credito|card:)
+      const idsToFix = (orphans || [])
+        .filter(o => !o.notes?.includes('[Cartao de credito|card:'))
+        .map(o => o.id);
+      if (idsToFix.length === 0) {
+        toast.info('Nada para corrigir');
+        setOrphanFixOpen(false);
+        return;
+      }
+      const { error: updErr } = await supabase
+        .from('expenses')
+        .update({ account_id: orphanFixAccountId })
+        .in('id', idsToFix);
+      if (updErr) throw updErr;
+      toast.success(`${idsToFix.length} despesa(s) atualizada(s) com sucesso!`);
+      setOrphanFixOpen(false);
+      orphanQc.invalidateQueries({ queryKey: ['expenses'] });
+      orphanQc.invalidateQueries({ queryKey: ['accumulated-balance'] });
+    } catch (e) {
+      toast.error('Erro: ' + (e as Error).message);
+    } finally {
+      setOrphanFixBusy(false);
+    }
+  };
   const [pendingModalOpen, setPendingModalOpen] = useState(false);
   const isCreditCardExpense = (expense: Pick<Expense, 'notes' | 'account_id'>) =>
     detectCreditCardExpense(expense, creditCards, accounts).isCreditCard;
@@ -1034,23 +1083,29 @@ export default function Dashboard() {
 
       {/* Orphan Expenses Warning — expenses with no account assigned */}
       {orphanExpensesTotal > 0 && (
-        <div className="flex items-start gap-3 rounded-2xl border border-warning/30 bg-warning/5 px-4 py-3">
+        <div className="flex items-start gap-3 rounded-2xl border border-warning/30 bg-warning/5 px-4 py-3 flex-wrap sm:flex-nowrap">
           <div className="w-8 h-8 rounded-lg bg-warning/15 flex items-center justify-center shrink-0 mt-0.5">
             <AlertTriangle className="w-4 h-4 text-warning" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-warning">
-              {orphanExpensesCount} despesa{orphanExpensesCount !== 1 ? 's' : ''} sem conta atribuida — {maskCurrency(formatCurrency(orphanExpensesTotal))}
+              {orphanExpensesCount} despesa{orphanExpensesCount !== 1 ? 's' : ''} sem conta — {maskCurrency(formatCurrency(orphanExpensesTotal))}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-              Essas despesas nao foram vinculadas a nenhuma conta bancaria, entao nao aparecem no saldo de nenhuma conta especifica. Isso pode explicar a diferenca entre o saldo do app e o saldo real. Va em Despesas e atribua a conta correta a cada uma delas.
+              Essas despesas não estão vinculadas a nenhuma conta, então o saldo não foi debitado. Clique em "Corrigir" para atribuir uma conta a todas de uma vez.
             </p>
             {orphanIncomeTotal > 0 && (
               <p className="text-xs text-muted-foreground mt-1">
-                Tambem ha {orphanIncomeCount} receita{orphanIncomeCount !== 1 ? 's' : ''} sem conta ({maskCurrency(formatCurrency(orphanIncomeTotal))}) que infla o total sem aparecer em nenhuma conta.
+                + {orphanIncomeCount} receita{orphanIncomeCount !== 1 ? 's' : ''} sem conta ({maskCurrency(formatCurrency(orphanIncomeTotal))}).
               </p>
             )}
           </div>
+          <button
+            onClick={() => setOrphanFixOpen(true)}
+            className="text-xs font-bold px-3 py-2 rounded-lg bg-warning text-warning-foreground hover:bg-warning/90 shrink-0"
+          >
+            Corrigir
+          </button>
         </div>
       )}
 
@@ -1852,11 +1907,54 @@ export default function Dashboard() {
         />
       )}
 
-      <PendingExpensesDialog 
-        open={pendingModalOpen} 
-        onOpenChange={setPendingModalOpen} 
-        expenses={scopedNonCCExpenses} 
+      <PendingExpensesDialog
+        open={pendingModalOpen}
+        onOpenChange={setPendingModalOpen}
+        expenses={scopedNonCCExpenses}
       />
+
+      {/* Orphan Expenses Fix Dialog */}
+      <Dialog open={orphanFixOpen} onOpenChange={setOrphanFixOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Atribuir conta às despesas órfãs</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3">
+              <p className="text-sm font-semibold text-warning">
+                {orphanExpensesCount} despesa{orphanExpensesCount !== 1 ? 's' : ''} • {maskCurrency(formatCurrency(orphanExpensesTotal))}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Todas serão atribuídas à conta selecionada. O saldo desta conta vai diminuir em {maskCurrency(formatCurrency(orphanExpensesTotal))}.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground">Conta de destino</label>
+              <Select value={orphanFixAccountId} onValueChange={setOrphanFixAccountId}>
+                <SelectTrigger><SelectValue placeholder="Selecionar conta..." /></SelectTrigger>
+                <SelectContent>
+                  {accounts.filter(a => !a.archived).map(a => (
+                    <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Apenas despesas concluídas sem conta atribuída (excluindo espelhos de cartão) serão afetadas.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOrphanFixOpen(false)} disabled={orphanFixBusy}>Cancelar</Button>
+            <Button
+              onClick={handleFixOrphans}
+              disabled={!orphanFixAccountId || orphanFixBusy}
+              className="bg-warning text-warning-foreground hover:bg-warning/90"
+            >
+              {orphanFixBusy ? 'Aplicando...' : `Atribuir a ${orphanExpensesCount} despesa(s)`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

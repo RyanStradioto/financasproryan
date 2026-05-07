@@ -50,7 +50,13 @@ export default function CreditCardsPage() {
   const [showNewTx, setShowNewTx] = useState(false);
   const [showPayBill, setShowPayBill] = useState(false);
   const [payBillAccountId, setPayBillAccountId] = useState('');
+  const [payBillAmount, setPayBillAmount] = useState('');
+  const [payBillMarkAll, setPayBillMarkAll] = useState(true);
   const [expandedUpcomingMonth, setExpandedUpcomingMonth] = useState<string | null>(getMonthYear());
+
+  // Per-item quick-pay state
+  const [payItem, setPayItem] = useState<{ id: string; description: string; amount: number } | null>(null);
+  const [payItemAccountId, setPayItemAccountId] = useState('');
 
   const { data: cards = [] } = useCreditCards();
   const { data: categories = [] } = useCategories();
@@ -186,22 +192,81 @@ export default function CreditCardsPage() {
     } catch (e) { toast.error((e as Error).message); }
   };
 
+  // Default payment account per card — remembered in localStorage so future
+  // payments use the same account without re-asking.
+  const defaultPayAccountKey = (cardId: string) => `cc_default_pay_account_${cardId}`;
+  const getDefaultPayAccount = (cardId: string): string => {
+    try { return localStorage.getItem(defaultPayAccountKey(cardId)) || ''; }
+    catch { return ''; }
+  };
+  const setDefaultPayAccount = (cardId: string, accountId: string) => {
+    try { localStorage.setItem(defaultPayAccountKey(cardId), accountId); } catch {}
+  };
+
+  // Open Pay Bill dialog with smart defaults
+  const openPayBill = () => {
+    if (!currentCard) return;
+    setPayBillAmount(unpaidTotal.toFixed(2));
+    setPayBillAccountId(getDefaultPayAccount(currentCard.id) || (accounts.find(a => !a.archived)?.id ?? ''));
+    setPayBillMarkAll(true);
+    setShowPayBill(true);
+  };
+
   const handlePayBill = async () => {
-    if (!currentCard || unpaidTotal <= 0) return;
+    if (!currentCard) return;
+    const amount = parseFloat(payBillAmount);
+    if (!amount || amount <= 0) { toast.error('Informe um valor valido'); return; }
+    if (!payBillAccountId) { toast.error('Selecione a conta de pagamento'); return; }
     try {
       await addExpense.mutateAsync({
         date: new Date().toISOString().split('T')[0],
         description: `💳 Fatura ${currentCard.name} — ${monthLabel(billMonth)}`,
-        amount: unpaidTotal,
-        account_id: (payBillAccountId && payBillAccountId !== '__none__') ? payBillAccountId : null,
+        amount,
+        account_id: payBillAccountId,
         status: 'concluido',
         notes: `[FATURA_CARTAO] ${currentCard.name} ${billMonth}`,
       });
-      const unpaid = transactions.filter(t => !t.paid);
-      await Promise.all(unpaid.map(t => togglePaid.mutateAsync({ id: t.id, paid: true })));
-      toast.success(`Fatura paga! ${unpaid.length} item(ns) marcado(s).`);
+      let markedCount = 0;
+      if (payBillMarkAll) {
+        const unpaid = transactions.filter(t => !t.paid);
+        await Promise.all(unpaid.map(t => togglePaid.mutateAsync({ id: t.id, paid: true })));
+        markedCount = unpaid.length;
+      }
+      setDefaultPayAccount(currentCard.id, payBillAccountId);
+      toast.success(`Fatura paga! ${formatCurrency(amount)} debitado${markedCount > 0 ? ` · ${markedCount} item(ns) marcado(s)` : ''}.`);
       setShowPayBill(false);
-      setPayBillAccountId('');
+    } catch (e) { toast.error((e as Error).message); }
+  };
+
+  // Per-item check: opens dialog asking which account to debit from
+  const handleItemCheckboxClick = (t: { id: string; paid: boolean; description: string; amount: number }) => {
+    if (t.paid) {
+      // Un-marking: just toggle, keep any existing expense (user can delete manually)
+      togglePaid.mutate({ id: t.id, paid: false });
+      return;
+    }
+    if (!currentCard) return;
+    // Marking as paid: open dialog to ask account
+    setPayItem({ id: t.id, description: t.description, amount: Number(t.amount) });
+    setPayItemAccountId(getDefaultPayAccount(currentCard.id) || (accounts.find(a => !a.archived)?.id ?? ''));
+  };
+
+  const handleConfirmItemPayment = async () => {
+    if (!payItem || !currentCard) return;
+    if (!payItemAccountId) { toast.error('Selecione a conta'); return; }
+    try {
+      await addExpense.mutateAsync({
+        date: new Date().toISOString().split('T')[0],
+        description: `💳 ${payItem.description} (${currentCard.name})`,
+        amount: payItem.amount,
+        account_id: payItemAccountId,
+        status: 'concluido',
+        notes: `[FATURA_CARTAO_ITEM|tx:${payItem.id}|card:${currentCard.id}] ${payItem.description}`,
+      });
+      await togglePaid.mutateAsync({ id: payItem.id, paid: true });
+      setDefaultPayAccount(currentCard.id, payItemAccountId);
+      toast.success(`Pago: ${formatCurrency(payItem.amount)} debitado da conta`);
+      setPayItem(null);
     } catch (e) { toast.error((e as Error).message); }
   };
 
@@ -630,7 +695,7 @@ export default function CreditCardsPage() {
             <p className="text-sm text-muted-foreground">{transactions.length} compra{transactions.length !== 1 ? 's' : ''} · {transactions.filter(t => t.paid).length} paga{transactions.filter(t => t.paid).length !== 1 ? 's' : ''}</p>
             <div className="grid w-full grid-cols-1 gap-2 min-[430px]:grid-cols-2 sm:flex sm:w-auto">
               {unpaidTotal > 0 && (
-                <Button size="sm" variant="outline" className="border-income/30 text-income hover:bg-income/5 gap-1.5" onClick={() => setShowPayBill(true)}>
+                <Button size="sm" variant="outline" className="border-income/30 text-income hover:bg-income/5 gap-1.5" onClick={openPayBill}>
                   <Wallet className="w-3.5 h-3.5" />
                   Pagar {formatCurrency(unpaidTotal)}
                 </Button>
@@ -663,7 +728,8 @@ export default function CreditCardsPage() {
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <button
-                        onClick={() => togglePaid.mutate({ id: t.id, paid: !t.paid })}
+                        onClick={() => handleItemCheckboxClick({ id: t.id, paid: t.paid, description: t.description, amount: Number(t.amount) })}
+                        title={t.paid ? 'Desmarcar' : 'Marcar como pago e debitar da conta'}
                         className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${t.paid ? 'bg-income border-income shadow-sm shadow-income/30' : 'border-muted-foreground/40 hover:border-income/60'}`}
                       >
                         {t.paid && <Check className="w-2.5 h-2.5 text-white" />}
@@ -808,24 +874,63 @@ export default function CreditCardsPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="rounded-2xl p-5 text-center" style={{ background: `linear-gradient(135deg, ${currentCard?.color}20, ${currentCard?.color}08)`, border: `1px solid ${currentCard?.color}30` }}>
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Valor a pagar</p>
-              <p className="text-3xl font-extrabold text-expense currency">{formatCurrency(unpaidTotal)}</p>
-              <p className="text-xs text-muted-foreground mt-1.5 capitalize">{monthLabel(billMonth)}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{transactions.filter(t => !t.paid).length} item(ns) em aberto</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Total em aberto</p>
+              <p className="text-2xl font-extrabold text-expense currency">{formatCurrency(unpaidTotal)}</p>
+              <p className="text-xs text-muted-foreground mt-1.5 capitalize">{monthLabel(billMonth)} · {transactions.filter(t => !t.paid).length} item(ns)</p>
             </div>
             <div className="space-y-1.5">
-              <Label>Debitar da conta (opcional)</Label>
+              <Label>Valor pago (R$)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={payBillAmount}
+                onChange={e => setPayBillAmount(e.target.value)}
+                placeholder="0,00"
+                style={{ fontSize: '16px' }}
+              />
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setPayBillAmount(unpaidTotal.toFixed(2))}
+                  className="text-[11px] px-2 py-1 rounded-md bg-muted/60 hover:bg-muted font-medium"
+                >
+                  Valor total ({formatCurrency(unpaidTotal)})
+                </button>
+                {unpaidTotal >= 50 && (
+                  <button
+                    type="button"
+                    onClick={() => setPayBillAmount((unpaidTotal / 2).toFixed(2))}
+                    className="text-[11px] px-2 py-1 rounded-md bg-muted/60 hover:bg-muted font-medium"
+                  >
+                    Metade
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Debitar da conta *</Label>
               <Select value={payBillAccountId} onValueChange={setPayBillAccountId}>
                 <SelectTrigger><SelectValue placeholder="Selecionar conta..." /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">Não especificar</SelectItem>
                   {accounts.filter(a => !a.archived).map(a => (
                     <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-[11px] text-muted-foreground">Ao selecionar uma conta, o valor será debitado do saldo.</p>
+              <p className="text-[11px] text-muted-foreground">O valor será debitado do saldo desta conta. Próximas faturas usarão esta conta por padrão.</p>
             </div>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={payBillMarkAll}
+                onChange={e => setPayBillMarkAll(e.target.checked)}
+                className="w-4 h-4 rounded border-border accent-primary"
+              />
+              <span className="text-xs text-muted-foreground">
+                Marcar todos os itens em aberto como pagos
+              </span>
+            </label>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowPayBill(false)}>Cancelar</Button>
@@ -833,9 +938,50 @@ export default function CreditCardsPage() {
               className="text-white gap-1.5"
               style={{ backgroundColor: '#10b981' }}
               onClick={handlePayBill}
-              disabled={addExpense.isPending || togglePaid.isPending}
+              disabled={addExpense.isPending || togglePaid.isPending || !payBillAccountId || !payBillAmount}
             >
               <Check className="w-4 h-4" /> Confirmar Pagamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Per-item Quick Pay Dialog ──────────────────────────────── */}
+      <Dialog open={!!payItem} onOpenChange={(o) => !o && setPayItem(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Marcar como pago</DialogTitle>
+          </DialogHeader>
+          {payItem && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-border/50 bg-muted/30 px-4 py-3">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Item</p>
+                <p className="text-sm font-semibold mt-0.5 truncate">{payItem.description}</p>
+                <p className="text-2xl font-extrabold text-expense currency mt-1">{formatCurrency(payItem.amount)}</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Debitar da conta *</Label>
+                <Select value={payItemAccountId} onValueChange={setPayItemAccountId}>
+                  <SelectTrigger><SelectValue placeholder="Selecionar conta..." /></SelectTrigger>
+                  <SelectContent>
+                    {accounts.filter(a => !a.archived).map(a => (
+                      <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground">Será criada uma despesa de {formatCurrency(payItem.amount)} debitada desta conta.</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayItem(null)}>Cancelar</Button>
+            <Button
+              className="text-white gap-1.5"
+              style={{ backgroundColor: '#10b981' }}
+              onClick={handleConfirmItemPayment}
+              disabled={addExpense.isPending || togglePaid.isPending || !payItemAccountId}
+            >
+              <Check className="w-4 h-4" /> Confirmar e debitar
             </Button>
           </DialogFooter>
         </DialogContent>
