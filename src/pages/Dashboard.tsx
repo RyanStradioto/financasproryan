@@ -25,6 +25,19 @@ import { useSensitiveData } from '@/components/finance/SensitiveData';
 import PendingExpensesDialog from '@/components/finance/PendingExpensesDialog';
 import { buildDescriptionAmountKey, buildExpenseMatchKey, detectCreditCardExpense, parseStructuredCardMarker } from '@/lib/paymentMethod';
 import { accountBrandFromRow, resolveAccountBrand } from '@/lib/accountBrand';
+import {
+  computeAllowance, computeBurnRate, detectAnomalies, detectRecurring,
+  computeCategoryDeltas, aggregatePixCounterparties, buildExecutiveSummary,
+} from '@/lib/dashboardAnalytics';
+import AllowanceCard from '@/components/dashboard/AllowanceCard';
+import ExecutiveSummary from '@/components/dashboard/ExecutiveSummary';
+import BurnRateChart from '@/components/dashboard/BurnRateChart';
+import TopCategoriesDelta from '@/components/dashboard/TopCategoriesDelta';
+import RecurringExpenses from '@/components/dashboard/RecurringExpenses';
+import AnomalyAlerts from '@/components/dashboard/AnomalyAlerts';
+import PixCounters from '@/components/dashboard/PixCounters';
+import StickySummaryBar from '@/components/dashboard/StickySummaryBar';
+import SixMonthStack from '@/components/dashboard/SixMonthStack';
 
 const CHART_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
 
@@ -352,7 +365,7 @@ export default function Dashboard() {
     return categoryByMatchKey.get(matchKey) ?? categoryByLooseKey.get(looseKey) ?? null;
   };
 
-  // â"€â"€ Core numbers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+  // -"€-"€ Core numbers -"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€
   const totalIncome = useMemo(() =>
     scopedIncome.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0)
   , [scopedIncome]);
@@ -383,7 +396,7 @@ export default function Dashboard() {
 
   const savings = totalIncome > 0 ? ((totalIncome - totalExpensesPaid) / totalIncome) * 100 : 0;
 
-  // â"€â"€ Category breakdown: nonCC expenses + CC transactions (sem dupla contagem) â"€â"€â"€
+  // -"€-"€ Category breakdown: nonCC expenses + CC transactions (sem dupla contagem) -"€-"€-"€
   const catBreakdown = useMemo(() => {
     const allItems = [
       ...scopedNonCCExpenses.map(e => ({ category_id: resolveCategoryId(e), amount: Number(e.amount) })),
@@ -400,7 +413,7 @@ export default function Dashboard() {
       .sort((a, b) => b.value - a.value);
   }, [scopedNonCCExpenses, scopedCCTransactions, categories, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
 
-  // â"€â"€ Status breakdown: apenas despesas normais (sem espelhos CC) + Fatura CC â"€â"€â"€
+  // -"€-"€ Status breakdown: apenas despesas normais (sem espelhos CC) + Fatura CC -"€-"€-"€
   const statusData = useMemo(() => [
     { name: 'Concluído', value: scopedNonCCExpenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0), fill: 'hsl(160, 84%, 39%)' },
     { name: 'Pendente',  value: scopedNonCCExpenses.filter(e => e.status === 'pendente').reduce((s, e) => s + Number(e.amount), 0),  fill: 'hsl(38, 92%, 50%)' },
@@ -408,7 +421,7 @@ export default function Dashboard() {
     ...(totalCCThisMonth > 0 ? [{ name: 'Fatura CC', value: totalCCThisMonth, fill: '#6366f1' }] : []),
   ].filter(s => s.value > 0), [scopedNonCCExpenses, totalCCThisMonth]);
 
-  // â"€â"€ Sparkline data (Last 30 days of the selected month) â"€â"€â"€â"€â"€
+  // -"€-"€ Sparkline data (Last 30 days of the selected month) -"€-"€-"€-"€-"€
   const getDailyTrend = (data: Array<Record<string, string | number | null>>, dateField = 'date') => {
     // Basic grouping for the visual sparkline
     const sorted = [...data].sort((a, b) => new Date(String(a[dateField] ?? "")).getTime() - new Date(String(b[dateField] ?? "")).getTime());
@@ -449,7 +462,7 @@ export default function Dashboard() {
     return vals;
   }, [scopedIncome, scopedNonCCExpenses, scopedCCTransactions]);
 
-  // â"€â"€ Budget progress for Rings: nonCC expenses + CC transactions por categoria â"€â"€
+  // -"€-"€ Budget progress for Rings: nonCC expenses + CC transactions por categoria -"€-"€
   const budgetsWithData = useMemo(() =>
     categories.filter(c => Number(c.monthly_budget) > 0).map(cat => {
       const spentRegular = scopedNonCCExpenses.filter(e => resolveCategoryId(e) === cat.id).reduce((s, e) => s + Number(e.amount), 0);
@@ -460,7 +473,7 @@ export default function Dashboard() {
     }).sort((a, b) => b.budget - a.budget)
   , [categories, scopedNonCCExpenses, scopedCCTransactions, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
 
-  // â"€â"€ Recent transactions (sem espelhos CC) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+  // -"€-"€ Recent transactions (sem espelhos CC) -"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€
   const recentTransactions = useMemo(() => [
     ...scopedIncome.map(i => ({ ...i, type: 'income' as const })),
     ...scopedNonCCExpenses.map(e => ({ ...e, type: 'expense' as const })),
@@ -533,7 +546,7 @@ export default function Dashboard() {
     return new Date(parseInt(year), parseInt(m) - 1, 1);
   }, [month]);
 
-  // â"€â"€ Previous month totals (for MoM deltas) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+  // -"€-"€ Previous month totals (for MoM deltas) -"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€
   const prevTotalIncome = useMemo(() =>
     scopedPrevIncome.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0)
   , [scopedPrevIncome]);
@@ -647,7 +660,7 @@ export default function Dashboard() {
     [...scopedIncome].sort((a, b) => Number(b.amount) - Number(a.amount)).slice(0, 5)
   , [scopedIncome]);
 
-  // â"€â"€ Comparativo Mensal: bars â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+  // -"€-"€ Comparativo Mensal: bars -"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€
   const monthCompareData = useMemo(() => [
     {
       name: 'Receitas',
@@ -672,7 +685,7 @@ export default function Dashboard() {
     },
   ], [prevTotalIncome, totalIncome, prevTotalAll, currentTotalAll]);
 
-  // â"€â"€ Allocation: Contas vs Investimentos â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+  // ── Allocation: Contas vs Investimentos ─────────────────────────────────
   const allocationData = useMemo(() => {
     const items = [];
     if (balance > 0) items.push({ name: 'Contas', value: balance, fill: 'hsl(160, 84%, 39%)' });
@@ -680,8 +693,162 @@ export default function Dashboard() {
     return items;
   }, [balance, focusedInvestmentTotal]);
 
+  // ── New Analytics: Allowance, Burn Rate, Anomalies, Recurring, Deltas, Pix ──
+  const todaySpent = useMemo(() => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const exp = scopedNonCCExpenses
+      .filter(e => e.status === 'concluido' && e.date === todayStr)
+      .reduce((s, e) => s + Number(e.amount), 0);
+    const cc = scopedCCTransactions
+      .filter(t => t.date === todayStr)
+      .reduce((s, t) => s + Number(t.amount), 0);
+    return exp + cc;
+  }, [scopedNonCCExpenses, scopedCCTransactions]);
+
+  const allowance = useMemo(() => computeAllowance({
+    monthBudget: monthPace.totalBudget,
+    monthSpent: currentTotalAll,
+    dayOfMonth: monthPace.dayOfMonth,
+    lastDayOfMonth: monthPace.lastDayOfMonth,
+    todaySpent,
+  }), [monthPace, currentTotalAll, todaySpent]);
+
+  const burnRate = useMemo(() => {
+    const allMonthExpenses = [
+      ...scopedNonCCExpenses
+        .filter(e => e.status === 'concluido')
+        .map(e => ({ amount: Number(e.amount), date: e.date })),
+      ...scopedCCTransactions.map(t => ({ amount: Number(t.amount), date: t.date })),
+    ];
+    return computeBurnRate({
+      expenses: allMonthExpenses,
+      monthBudget: monthPace.totalBudget,
+      dayOfMonth: monthPace.dayOfMonth,
+      lastDayOfMonth: monthPace.lastDayOfMonth,
+      monthYYYYMM: month,
+    });
+  }, [scopedNonCCExpenses, scopedCCTransactions, monthPace, month]);
+
+  const anomalies = useMemo(() => {
+    const currentExp = [
+      ...scopedNonCCExpenses.filter(e => e.status === 'concluido').map(e => ({
+        amount: Number(e.amount), date: e.date, description: e.description, category_id: resolveCategoryId(e), notes: e.notes,
+      })),
+      ...scopedCCTransactions.map(t => ({
+        amount: Number(t.amount), date: t.date, description: t.description, category_id: t.category_id, notes: t.notes,
+      })),
+    ];
+    const histExp = [
+      ...scopedPrevNonCCExpenses.filter(e => e.status === 'concluido').map(e => ({
+        amount: Number(e.amount), date: e.date, description: e.description, category_id: resolveCategoryId(e), notes: e.notes,
+      })),
+      ...scopedPrevCCTransactions.map(t => ({
+        amount: Number(t.amount), date: t.date, description: t.description, category_id: t.category_id, notes: t.notes,
+      })),
+    ];
+    return detectAnomalies({ currentExpenses: currentExp, historicalExpenses: histExp });
+  }, [scopedNonCCExpenses, scopedCCTransactions, scopedPrevNonCCExpenses, scopedPrevCCTransactions, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
+
+  const recurring = useMemo(() => {
+    // Build pool from current + previous months for detection
+    const pool = [
+      ...scopedNonCCExpenses.map(e => ({
+        amount: Number(e.amount), date: e.date, description: e.description, category_id: resolveCategoryId(e),
+      })),
+      ...scopedCCTransactions.map(t => ({
+        amount: Number(t.amount), date: t.date, description: t.description, category_id: t.category_id,
+      })),
+      ...scopedPrevNonCCExpenses.map(e => ({
+        amount: Number(e.amount), date: e.date, description: e.description, category_id: resolveCategoryId(e),
+      })),
+      ...scopedPrevCCTransactions.map(t => ({
+        amount: Number(t.amount), date: t.date, description: t.description, category_id: t.category_id,
+      })),
+    ];
+    return detectRecurring({ expenses: pool, minOccurrences: 3 });
+  }, [scopedNonCCExpenses, scopedCCTransactions, scopedPrevNonCCExpenses, scopedPrevCCTransactions, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
+
+  const categoryDeltas = useMemo(() => {
+    const cur = [
+      ...scopedNonCCExpenses.filter(e => e.status === 'concluido').map(e => ({
+        amount: Number(e.amount), date: e.date, category_id: resolveCategoryId(e),
+      })),
+      ...scopedCCTransactions.map(t => ({
+        amount: Number(t.amount), date: t.date, category_id: t.category_id,
+      })),
+    ];
+    const prev = [
+      ...scopedPrevNonCCExpenses.filter(e => e.status === 'concluido').map(e => ({
+        amount: Number(e.amount), date: e.date, category_id: resolveCategoryId(e),
+      })),
+      ...scopedPrevCCTransactions.map(t => ({
+        amount: Number(t.amount), date: t.date, category_id: t.category_id,
+      })),
+    ];
+    return computeCategoryDeltas({ currentExpenses: cur, previousExpenses: prev });
+  }, [scopedNonCCExpenses, scopedCCTransactions, scopedPrevNonCCExpenses, scopedPrevCCTransactions, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
+
+  const pixCounterparties = useMemo(() => aggregatePixCounterparties({
+    income: scopedIncome.map(i => ({ amount: Number(i.amount), date: i.date, description: i.description, category_id: i.category_id })),
+    expenses: scopedNonCCExpenses.map(e => ({ amount: Number(e.amount), date: e.date, description: e.description, category_id: e.category_id })),
+  }), [scopedIncome, scopedNonCCExpenses]);
+
+  // Six-month overview (current month + 5 previous)
+  const sixMonthData = useMemo(() => {
+    const result: Array<{ month: string; label: string; income: number; expenses: number; sobra: number }> = [];
+    const [y, m] = month.split('-').map(Number);
+    const monthLabels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    // Use only the data we already have for current and previous month — placeholders for older
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(y, m - 1 - i, 1);
+      const yy = d.getFullYear(); const mm = d.getMonth() + 1;
+      const monthKey = `${yy}-${String(mm).padStart(2, '0')}`;
+      let income = 0, expenses = 0;
+      if (i === 0) { income = totalIncome; expenses = currentTotalAll; }
+      else if (i === 1) { income = prevTotalIncome; expenses = prevTotalAll; }
+      // Older months default to 0; would need separate query to fetch
+      result.push({
+        month: monthKey,
+        label: `${monthLabels[mm - 1]}/${String(yy).slice(2)}`,
+        income, expenses,
+        sobra: income - expenses,
+      });
+    }
+    return result;
+  }, [month, totalIncome, currentTotalAll, prevTotalIncome, prevTotalAll]);
+
+  // Executive summary (3-line auto narrative)
+  const topCategoryDelta = categoryDeltas.find(d => d.trend === 'up' && d.deltaPct !== null && Math.abs(d.deltaPct) >= 15);
+  const topCategoryName = topCategoryDelta ? (categories.find(c => c.id === topCategoryDelta.category_id)?.name) : undefined;
+
+  const summaryLines = useMemo(() => buildExecutiveSummary({
+    balance,
+    netWorth,
+    totalIncome,
+    totalExpenses: currentTotalAll,
+    prevTotalExpenses: prevTotalAll,
+    topGrowingCategoryName: topCategoryName,
+    topGrowingCategoryDeltaPct: topCategoryDelta?.deltaPct ?? undefined,
+    unpaidCCTotal,
+    daysLeft: monthPace.lastDayOfMonth - monthPace.dayOfMonth,
+    perDayAllowance: allowance.perDayAllowance,
+    savingsRate: savings,
+  }), [balance, netWorth, totalIncome, currentTotalAll, prevTotalAll, topCategoryName, topCategoryDelta, unpaidCCTotal, monthPace, allowance, savings]);
+
+  const summaryTone: 'positive' | 'negative' | 'neutral' =
+    totalIncome === 0 && currentTotalAll === 0 ? 'neutral'
+    : totalIncome - currentTotalAll >= 0 ? 'positive' : 'negative';
+
   return (
     <div className="space-y-6 sm:space-y-8 animate-fade-in pb-10 w-full max-w-full overflow-x-hidden sm:overflow-visible">
+      {/* Sticky summary bar (mobile only) */}
+      <StickySummaryBar
+        balance={balance}
+        perDayAllowance={allowance.perDayAllowance}
+        monthBudgetSet={monthPace.totalBudget > 0}
+        maskCurrency={maskCurrency}
+      />
+
       {/* Hero + account switcher + visual mode */}
       <div
         className="relative overflow-hidden rounded-[2rem] border p-4 shadow-2xl shadow-black/10 sm:rounded-[2.5rem] sm:p-6"
@@ -866,7 +1033,22 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* â"€â"€â"€ KPI Cards Premium â"€â"€â"€ */}
+      {/* Executive Summary + Daily Allowance — hero of decisions */}
+      <div className="grid gap-4 lg:grid-cols-2 stagger-1">
+        <ExecutiveSummary lines={summaryLines} tone={summaryTone} />
+        <AllowanceCard
+          allowance={allowance}
+          todaySpent={todaySpent}
+          maskCurrency={maskCurrency}
+        />
+      </div>
+
+      {/* Anomaly Alerts (only when there are anomalies) */}
+      {anomalies.length > 0 && (
+        <AnomalyAlerts anomalies={anomalies} categories={categories} maskCurrency={maskCurrency} />
+      )}
+
+      {/* ─── KPI Cards Premium ─── */}
       <div className={`grid grid-cols-1 gap-3 min-[390px]:grid-cols-2 sm:gap-4 stagger-1 ${totalCCThisMonth > 0 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
         <KpiCard
           label="Receitas"
@@ -1049,7 +1231,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* â"€â"€ Main Charts Grid â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
+      {/* -"€-"€ Main Charts Grid -"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€ */}
       <div className="grid lg:grid-cols-3 gap-6 stagger-2">
         {/* Trend Area Chart (span 2) */}
         <div className="lg:col-span-2 relative z-10">
@@ -1089,7 +1271,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* â"€â"€ Row 3: Visual Analytics â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
+      {/* -"€-"€ Row 3: Visual Analytics -"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€ */}
       <div className="grid lg:grid-cols-3 gap-6 stagger-3">
         {/* Budget Rings */}
         <div className="stat-card flex flex-col">
@@ -1197,7 +1379,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* â"€â"€ Category & Status Breakdown (Added Back) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
+      {/* -"€-"€ Category & Status Breakdown (Added Back) -"€-"€-"€-"€-"€-"€-"€-"€-"€-"€ */}
       <div className="grid lg:grid-cols-2 gap-6 stagger-4">
         {/* Category Donut */}
         <div className="stat-card">
@@ -1579,54 +1761,56 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* â"€â"€ Cash Flow Projection â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
+      {/* ── Advanced Analytics row 1: Burn Rate + Top Categories Delta ──── */}
+      <div className="grid gap-4 lg:grid-cols-3 stagger-5">
+        <div className="lg:col-span-2">
+          <BurnRateChart
+            points={burnRate.points}
+            projectedTotal={burnRate.projectedTotal}
+            willOverrun={burnRate.willOverrun}
+            monthBudget={monthPace.totalBudget}
+            todaySpent={todaySpent}
+            dayOfMonth={monthPace.dayOfMonth}
+            maskCurrency={maskCurrency}
+          />
+        </div>
+        <TopCategoriesDelta
+          deltas={categoryDeltas}
+          categories={categories}
+          maskCurrency={maskCurrency}
+          limit={5}
+        />
+      </div>
+
+      {/* ── Advanced Analytics row 2: Recurring + 6-month + Pix ──────────── */}
+      <div className="grid gap-4 lg:grid-cols-3 stagger-5">
+        <RecurringExpenses
+          recurring={recurring}
+          categories={categories}
+          maskCurrency={maskCurrency}
+          limit={6}
+        />
+        <SixMonthStack months={sixMonthData} maskCurrency={maskCurrency} />
+        <PixCounters
+          counterparties={pixCounterparties}
+          maskCurrency={maskCurrency}
+          maskText={maskText}
+          isVisible={isVisible}
+          limit={5}
+        />
+      </div>
+
+      {/* ── Cash Flow Projection ────────────────────────────────────────── */}
       <div className="stagger-5">
         <CashFlowForecast accountId={accountFocusId} />
       </div>
 
-      {/* ── Saldo, Patrimônio e Alertas ──────────────────────── */}
-      <div className="stagger-6 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <KpiCard
-            label="Saldo Acumulado"
-            value={formatCurrency(balance)}
-            sub="disponível em contas"
-            color={balance >= 0 ? 'border-l-[3px] border-l-primary' : 'border-l-[3px] border-l-expense'}
-            icon={Wallet}
-            trend={balance >= 0 ? 'up' : 'down'}
-            sparklineData={balanceSparkline}
-          />
-          <a href="/investimentos" className="block">
-            <div className="relative rounded-2xl border border-info/20 bg-card/70 backdrop-blur-sm p-4 sm:p-5 shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden animate-slide-up border-l-[3px] border-l-info h-full">
-              <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-[0.06] group-hover:opacity-[0.12] group-hover:scale-110 transition-all duration-500 pointer-events-none" style={{ background: 'radial-gradient(circle, hsl(217, 91%, 60%) 0%, transparent 70%)' }} />
-              <div className="relative z-10 flex flex-col gap-2.5 h-full">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl items-center justify-center flex shrink-0 bg-info/10 text-info">
-                      <BarChart3 className="w-4 h-4" />
-                    </div>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.1em]">Patrimônio</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-info group-hover:translate-x-0.5 transition-all" />
-                </div>
-                <div className="mt-1 min-w-0">
-                  <p className="text-base sm:text-lg lg:text-xl font-extrabold currency tracking-tight leading-none text-info whitespace-nowrap tabular-nums truncate">
-                    {maskCurrency(formatCurrency(netWorth))}
-                  </p>
-                  <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1.5 leading-tight line-clamp-2">
-                    {accountFocusId === '__all__'
-                      ? `Contas ${maskCurrency(formatCurrency(balance))} · Invest. ${maskCurrency(formatCurrency(focusedInvestmentTotal))}`
-                      : `Conta foco: ${focusedAccountInsight?.acc.name || 'Conta selecionada'}`}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </a>
-        </div>
+      {/* ── Smart Alerts ────────────────────────────────────────────────── */}
+      <div className="stagger-6">
         <SmartAlerts expenses={scopedNonCCExpenses} income={scopedIncome} categories={categories} />
       </div>
 
-      {/* â"€â"€ Achievements â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
+      {/* -"€-"€ Achievements -"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€ */}
       <div className="stagger-6">
         <Achievements expenses={scopedNonCCExpenses} income={scopedIncome} categories={categories} />
       </div>
