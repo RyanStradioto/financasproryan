@@ -19,7 +19,8 @@ interface UpdateInfo {
 }
 
 const SEEN_VERSION_KEY = 'financaspro_seen_update_version';
-const CHECK_INTERVAL = 5 * 60 * 1000;
+const APPLIED_VERSION_KEY = 'financaspro_applied_version';
+const CHECK_INTERVAL = 60 * 1000; // 1 min instead of 5
 const GENERIC_CHANGES = [
   'Nova versao disponivel com melhorias de desempenho e estabilidade.',
   'A atualizacao inclui ajustes importantes no app mobile e no comportamento do PWA.',
@@ -40,6 +41,17 @@ export function useAppUpdate() {
       window.setInterval(() => {
         registration.update().catch(() => {});
       }, CHECK_INTERVAL);
+    },
+    onNeedRefresh() {
+      // SW detected new version waiting. Auto-apply silently if user already
+      // saw the current version notification (or it's a brand new install).
+      const seen = localStorage.getItem(SEEN_VERSION_KEY);
+      const applied = localStorage.getItem(APPLIED_VERSION_KEY);
+      if (seen && applied === seen) {
+        // Already applied this version's notification — nothing to do
+        return;
+      }
+      // Will be handled by useEffect below — just trigger version check
     },
   });
 
@@ -85,15 +97,24 @@ export function useAppUpdate() {
 
   const applyUpdate = useCallback(() => {
     const version = versionInfoRef.current?.version;
-    if (version) localStorage.setItem(SEEN_VERSION_KEY, version);
+    if (version) {
+      localStorage.setItem(SEEN_VERSION_KEY, version);
+      localStorage.setItem(APPLIED_VERSION_KEY, version);
+    }
     versionInfoRef.current = null;
     setVersionInfo(null);
 
+    // Force a hard refresh that bypasses cache — the most reliable way to
+    // ensure the user sees the new build even if SW didn't activate yet.
     if (needRefresh) {
-      updateServiceWorker(true).catch(() => window.location.reload());
-    } else {
-      window.location.reload();
+      updateServiceWorker(true).catch(() => {});
     }
+    // Add cache-bust query so any stale assets get re-requested
+    setTimeout(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.set('_v', Date.now().toString(36));
+      window.location.replace(url.toString());
+    }, 100);
   }, [needRefresh, updateServiceWorker]);
 
   const dismiss = useCallback(() => {
