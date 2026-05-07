@@ -143,7 +143,44 @@ CREATE POLICY "Users can insert own investment transactions" ON public.investmen
 CREATE POLICY "Users can update own investment transactions" ON public.investment_transactions FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can delete own investment transactions" ON public.investment_transactions FOR DELETE USING (auth.uid() = user_id);
 
--- ── 6. RECARREGAR O SCHEMA CACHE DO POSTGREST ────────────────────────────────
+-- ── 6. CATEGORY ACCOUNT BUDGETS (orçamento por conta) ──────────────────────
+CREATE TABLE IF NOT EXISTS public.category_account_budgets (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  category_id uuid NOT NULL REFERENCES public.categories(id) ON DELETE CASCADE,
+  account_id uuid NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  monthly_budget numeric(14,2) NOT NULL DEFAULT 0 CHECK (monthly_budget >= 0),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, category_id, account_id)
+);
+
+ALTER TABLE public.category_account_budgets ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users manage own category account budgets" ON public.category_account_budgets;
+CREATE POLICY "Users manage own category account budgets"
+  ON public.category_account_budgets FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS idx_category_account_budgets_user_category
+  ON public.category_account_budgets(user_id, category_id);
+
+CREATE INDEX IF NOT EXISTS idx_category_account_budgets_account
+  ON public.category_account_budgets(account_id);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger WHERE tgname = 'update_category_account_budgets_updated_at'
+  ) THEN
+    CREATE TRIGGER update_category_account_budgets_updated_at
+      BEFORE UPDATE ON public.category_account_budgets
+      FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+  END IF;
+END $$;
+
+-- ── 7. RECARREGAR O SCHEMA CACHE DO POSTGREST ────────────────────────────────
 -- Isso resolve o "Database error querying schema" sem reiniciar o servidor.
 NOTIFY pgrst, 'reload schema';
 
