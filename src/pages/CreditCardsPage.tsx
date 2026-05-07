@@ -20,6 +20,7 @@ import {
 } from '@/hooks/useCreditCards';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { useCategories, useAccounts, useAddExpense } from '@/hooks/useFinanceData';
 import { getMonthYear, formatCurrency, formatDate, calcBillMonth } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -62,6 +63,7 @@ export default function CreditCardsPage() {
   const [payItem, setPayItem] = useState<{ id: string; description: string; amount: number } | null>(null);
   const [payItemAccountId, setPayItemAccountId] = useState('');
 
+  const { user } = useAuth();
   const { data: cards = [] } = useCreditCards();
   const { data: categories = [] } = useCategories();
   const { data: accounts = [] } = useAccounts();
@@ -212,23 +214,64 @@ export default function CreditCardsPage() {
   //  3. Removes any old [FATURA_CARTAO] expenses for this card name to avoid
   //     double-counting (they were created by the legacy "Pagar Fatura" flow and
   //     are now superseded by the per-item mirrors)
+  // Apply default payment account to ALL existing CC data for a card.
+  // Enhanced to also CREATE mirror expenses for old transactions that have none.
+  // This fully reconciles the bank balance with the CC history.
   const applyDefaultAccountToHistory = async (cardId: string) => {
     const accountId = getCardDefaultAccount(cardId);
     if (!accountId) { toast.error('Configure a conta padrão primeiro'); return; }
     const card = cards.find(c => c.id === cardId);
-    if (!card) return;
+    if (!card || !user) return;
 
     try {
-      // Step 1: find all CC mirror expenses for this card (with or without account_id)
+      // Step 1: fetch ALL CC transactions for this card
+      const { data: ccTxData, error: ccTxErr } = await supabase
+        .from('credit_card_transactions')
+        .select('id, description, amount, date, bill_month, category_id, notes, paid')
+        .eq('credit_card_id', cardId);
+      if (ccTxErr) throw ccTxErr;
+      const allCcTxs = ccTxData || [];
+
+      // Step 2: find all existing CC mirror expenses for this card
       const { data: mirrors, error: selErr } = await supabase
         .from('expenses')
         .select('id, notes, account_id, status')
         .like('notes', `%card:${cardId}%`);
       if (selErr) throw selErr;
-
       const mirrorList = mirrors || [];
 
-      // Update account_id on those that don't have one
+      // Build set of CC tx ids that already have a mirror expense
+      const mirroredTxIds = new Set<string>();
+      for (const m of mirrorList) {
+        const match = m.notes?.match(/tx:([^\|\]\s]+)/);
+        if (match) mirroredTxIds.add(match[1]);
+      }
+
+      // Step 3: create mirror expenses for old CC transactions that have NO mirror
+      const txsWithoutMirror = allCcTxs.filter(tx => !mirroredTxIds.has(tx.id));
+      let created = 0;
+      if (txsWithoutMirror.length > 0) {
+        const newExpenses = txsWithoutMirror.map(tx => {
+          const cardMarker = `[Cartao de credito|card:${cardId}|bill:${tx.bill_month}|tx:${tx.id}]`;
+          const baseNote = (tx.notes as string | null)?.trim();
+          return {
+            user_id: user.id,
+            date: tx.date as string,
+            description: tx.description as string,
+            amount: tx.amount as number,
+            category_id: (tx.category_id as string | null) ?? null,
+            account_id: accountId,
+            // Paid CC tx → concluido (deducts from balance); unpaid → pendente (doesn't)
+            status: tx.paid ? 'concluido' : 'pendente',
+            notes: baseNote ? `${cardMarker} ${baseNote}` : cardMarker,
+          };
+        });
+        const { error: createErr } = await supabase.from('expenses').insert(newExpenses);
+        if (createErr) throw createErr;
+        created = txsWithoutMirror.length;
+      }
+
+      // Step 4: set account_id on existing mirrors that don't have one yet
       const idsNeedingAccount = mirrorList
         .filter(m => !m.account_id)
         .map(m => m.id);
@@ -239,7 +282,7 @@ export default function CreditCardsPage() {
           .in('id', idsNeedingAccount);
       }
 
-      // Step 2: for each mirror, parse linked CC tx id from notes and sync status
+      // Step 5: sync status of existing mirrors based on their CC tx paid flag
       const mirrorTxMap: Array<{ mirrorId: string; txId: string }> = [];
       for (const m of mirrorList) {
         const match = m.notes?.match(/tx:([^\|\]\s]+)/);
@@ -255,20 +298,19 @@ export default function CreditCardsPage() {
           .in('id', txIds);
 
         const paidSet = new Set((ccTxs || []).filter(t => t.paid).map(t => t.id));
-        const mirrorsToConcluir = mirrorTxMap
-          .filter(p => paidSet.has(p.txId))
-          .map(p => p.mirrorId);
+        const mirrorsToConcluir = mirrorTxMap.filter(p => paidSet.has(p.txId)).map(p => p.mirrorId);
+        const mirrorsToPendente = mirrorTxMap.filter(p => !paidSet.has(p.txId)).map(p => p.mirrorId);
 
         if (mirrorsToConcluir.length > 0) {
-          await supabase
-            .from('expenses')
-            .update({ status: 'concluido' })
-            .in('id', mirrorsToConcluir);
-          statusUpdated = mirrorsToConcluir.length;
+          await supabase.from('expenses').update({ status: 'concluido' }).in('id', mirrorsToConcluir);
+          statusUpdated += mirrorsToConcluir.length;
+        }
+        if (mirrorsToPendente.length > 0) {
+          await supabase.from('expenses').update({ status: 'pendente' }).in('id', mirrorsToPendente);
         }
       }
 
-      // Step 3: remove legacy [FATURA_CARTAO] expenses for this card to avoid double-counting
+      // Step 6: remove legacy [FATURA_CARTAO] single-payment expenses to avoid double-counting
       const { data: oldBillPayments } = await supabase
         .from('expenses')
         .select('id, notes')
@@ -279,17 +321,15 @@ export default function CreditCardsPage() {
         .map(e => e.id);
 
       if (billPaymentsToDelete.length > 0) {
-        await supabase
-          .from('expenses')
-          .delete()
-          .in('id', billPaymentsToDelete);
+        await supabase.from('expenses').delete().in('id', billPaymentsToDelete);
       }
 
       const parts: string[] = [];
+      if (created > 0) parts.push(`${created} transação(ões) antiga(s) sincronizada(s)`);
       if (idsNeedingAccount.length > 0) parts.push(`${idsNeedingAccount.length} mirror(s) com conta`);
-      if (statusUpdated > 0) parts.push(`${statusUpdated} marcado(s) como pago`);
-      if (billPaymentsToDelete.length > 0) parts.push(`${billPaymentsToDelete.length} pagamento(s) duplicado(s) removido(s)`);
-      toast.success(parts.length > 0 ? parts.join(' · ') : 'Tudo já estava em ordem');
+      if (statusUpdated > 0) parts.push(`${statusUpdated} status sincronizado(s)`);
+      if (billPaymentsToDelete.length > 0) parts.push(`${billPaymentsToDelete.length} duplicata(s) removida(s)`);
+      toast.success(parts.length > 0 ? `✅ ${parts.join(' · ')}` : 'Tudo já estava em ordem ✓');
 
       queryClientCC.invalidateQueries({ queryKey: ['expenses'] });
       queryClientCC.invalidateQueries({ queryKey: ['accumulated-balance'] });
