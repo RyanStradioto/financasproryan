@@ -6,6 +6,21 @@ import type { Tables, TablesInsert } from '@/integrations/supabase/types';
 export type CreditCard = Tables<'credit_cards'>;
 export type CreditCardTransaction = Tables<'credit_card_transactions'>;
 
+/** localStorage key for per-card default payment account */
+export const ccDefaultAccountKey = (cardId: string) => `cc_default_pay_account_${cardId}`;
+export function getCardDefaultAccount(cardId: string): string | null {
+  try {
+    const v = localStorage.getItem(ccDefaultAccountKey(cardId));
+    return v && v.length > 0 ? v : null;
+  } catch { return null; }
+}
+export function setCardDefaultAccount(cardId: string, accountId: string | null) {
+  try {
+    if (accountId) localStorage.setItem(ccDefaultAccountKey(cardId), accountId);
+    else localStorage.removeItem(ccDefaultAccountKey(cardId));
+  } catch {}
+}
+
 export function useCreditCards() {
   const { user } = useAuth();
   return useQuery({
@@ -149,6 +164,10 @@ export function useAddCreditCardTransaction() {
       if (error) throw error;
 
       // Keep budget/discipline tracking in sync by mirroring credit-card purchases in expenses.
+      // If the card has a default payment account configured, the mirror expenses inherit
+      // that account_id — meaning the bank balance reflects the upcoming CC obligation
+      // immediately (instead of waiting for "Pagar Fatura").
+      const defaultAccountId = getCardDefaultAccount(data.credit_card_id);
       const installmentAmount = +(data.amount / total).toFixed(2);
       const baseDate = new Date(`${data.date}T00:00:00`);
       const expenseRows = rows.map((tx, i) => {
@@ -163,7 +182,7 @@ export function useAddCreditCardTransaction() {
           description: total > 1 ? `${data.description} (${i + 1}/${total})` : data.description,
           amount: installmentAmount,
           category_id: data.category_id ?? null,
-          account_id: null,
+          account_id: defaultAccountId,
           status: i === 0 ? (data.paid ? 'concluido' : 'pendente') : 'agendado',
           notes: baseNote ? `${cardMarker} ${baseNote}` : cardMarker,
           is_recurring: data.is_recurring ?? false,
@@ -185,13 +204,36 @@ export function useToggleCCTransactionPaid() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, paid }: { id: string; paid: boolean }) => {
+      // 1) Toggle on credit_card_transactions
       const { error } = await supabase
         .from('credit_card_transactions')
         .update({ paid })
         .eq('id', id);
       if (error) throw error;
+
+      // 2) Find the mirror expense (notes contain "tx:<id>")
+      // If it exists AND has account_id, sync its status so the bank balance
+      // reflects this CC obligation in real time.
+      const { data: mirrors } = await supabase
+        .from('expenses')
+        .select('id, account_id, status, notes')
+        .like('notes', `%tx:${id}%`);
+
+      const linkedMirror = (mirrors || []).find(m => m.notes?.includes(`tx:${id}`));
+      if (linkedMirror && linkedMirror.account_id) {
+        // Has a payment account configured — flip the status accordingly
+        const newStatus = paid ? 'concluido' : 'pendente';
+        await supabase
+          .from('expenses')
+          .update({ status: newStatus })
+          .eq('id', linkedMirror.id);
+      }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['cc-transactions'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cc-transactions'] });
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+      qc.invalidateQueries({ queryKey: ['accumulated-balance'] });
+    },
   });
 }
 

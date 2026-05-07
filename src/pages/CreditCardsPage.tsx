@@ -15,7 +15,11 @@ import {
   useToggleCCTransactionPaid,
   useDeleteCCTransaction,
   useAllFutureCCTransactions,
+  getCardDefaultAccount,
+  setCardDefaultAccount,
 } from '@/hooks/useCreditCards';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { useCategories, useAccounts, useAddExpense } from '@/hooks/useFinanceData';
 import { getMonthYear, formatCurrency, formatDate, calcBillMonth } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -82,7 +86,12 @@ export default function CreditCardsPage() {
     credit_limit: '',
     closing_day: '10',
     due_day: '17',
+    payment_account_id: '',
   });
+
+  // Bumps to force re-renders when localStorage default-account changes
+  const [defaultAcctBump, setDefaultAcctBump] = useState(0);
+  const queryClientCC = useQueryClient();
 
   const [editCard, setEditCard] = useState({
     name: '',
@@ -155,20 +164,73 @@ export default function CreditCardsPage() {
   }, [transactions, categories]);
 
   const handleAddCard = async () => {
-    if (!newCard.name.trim()) return toast.error('Informe o nome do cartao');
-
+    if (!newCard.name.trim()) return toast.error('Informe o nome do cartão');
     try {
-      await addCard.mutateAsync({
+      // Optimistically use a temporary id for the localStorage write later
+      const result: { id?: string } = (await addCard.mutateAsync({
         name: newCard.name,
         color: newCard.color,
         credit_limit: parseFloat(newCard.credit_limit) || 0,
         closing_day: parseInt(newCard.closing_day) || 1,
         due_day: parseInt(newCard.due_day) || 10,
         icon: '💳',
-      });
-      toast.success('Cartao adicionado!');
+      })) ?? {};
+      // The newest card by name is the one we just created — find it after the query refresh
+      // (We can't get the new id from the mutation result without changing the hook signature.)
+      // Instead, rely on the next render to find it; persist a pending mapping.
+      if (newCard.payment_account_id) {
+        // Store pending payment account by name+createdAt; we'll resolve on next render
+        try { localStorage.setItem('cc_pending_default_account', JSON.stringify({ name: newCard.name, accountId: newCard.payment_account_id })); } catch {}
+      }
+      toast.success('Cartão adicionado!');
       setShowNewCard(false);
-      setNewCard({ name: '', color: CARD_COLORS[0], credit_limit: '', closing_day: '10', due_day: '17' });
+      setNewCard({ name: '', color: CARD_COLORS[0], credit_limit: '', closing_day: '10', due_day: '17', payment_account_id: '' });
+    } catch (e) { toast.error((e as Error).message); }
+  };
+
+  // Resolve pending default-account mapping after card creation
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('cc_pending_default_account');
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const justCreated = cards.find(c => c.name === parsed.name && !getCardDefaultAccount(c.id));
+      if (justCreated) {
+        setCardDefaultAccount(justCreated.id, parsed.accountId);
+        localStorage.removeItem('cc_pending_default_account');
+        setDefaultAcctBump(b => b + 1);
+      }
+    } catch {}
+  }, [cards]);
+
+  // Apply default payment account to ALL existing CC mirror expenses for a card
+  // (one-time backfill so existing data starts deducting from the account).
+  const applyDefaultAccountToHistory = async (cardId: string) => {
+    const accountId = getCardDefaultAccount(cardId);
+    if (!accountId) { toast.error('Configure a conta padrão primeiro'); return; }
+    try {
+      // Update all CC mirror expenses for this card that don't already have an account
+      const { data: existing, error: selErr } = await supabase
+        .from('expenses')
+        .select('id')
+        .like('notes', `%card:${cardId}%`)
+        .is('account_id', null);
+      if (selErr) throw selErr;
+      const ids = (existing || []).map(e => e.id);
+      if (ids.length === 0) {
+        toast.info('Nenhuma transação antiga para corrigir');
+        return;
+      }
+      const { error: updErr } = await supabase
+        .from('expenses')
+        .update({ account_id: accountId })
+        .in('id', ids);
+      if (updErr) throw updErr;
+      // Also update mirrors for items already paid (status = concluido) to keep them counted
+      // The above update already covers them because we filter only by account_id null.
+      toast.success(`${ids.length} transação(ões) atribuída(s) à conta padrão!`);
+      queryClientCC.invalidateQueries({ queryKey: ['expenses'] });
+      queryClientCC.invalidateQueries({ queryKey: ['accumulated-balance'] });
     } catch (e) { toast.error((e as Error).message); }
   };
 
@@ -214,8 +276,23 @@ export default function CreditCardsPage() {
 
   const handlePayBill = async () => {
     if (!currentCard) return;
+    const hasDefault = !!getCardDefaultAccount(currentCard.id);
+
+    if (hasDefault) {
+      // Card has default account → mirrors already debit balance.
+      // Pay Bill is just a reconciliation: mark all unpaid items as paid.
+      try {
+        const unpaid = transactions.filter(t => !t.paid);
+        await Promise.all(unpaid.map(t => togglePaid.mutateAsync({ id: t.id, paid: true })));
+        toast.success(`${unpaid.length} item(ns) marcado(s) como pago(s).`);
+        setShowPayBill(false);
+      } catch (e) { toast.error((e as Error).message); }
+      return;
+    }
+
+    // Legacy flow (no default account configured): create a single expense
     const amount = parseFloat(payBillAmount);
-    if (!amount || amount <= 0) { toast.error('Informe um valor valido'); return; }
+    if (!amount || amount <= 0) { toast.error('Informe um valor válido'); return; }
     if (!payBillAccountId) { toast.error('Selecione a conta de pagamento'); return; }
     try {
       await addExpense.mutateAsync({
@@ -238,15 +315,24 @@ export default function CreditCardsPage() {
     } catch (e) { toast.error((e as Error).message); }
   };
 
-  // Per-item check: opens dialog asking which account to debit from
+  // Per-item check.
+  // If the card has a default payment account configured, just toggle —
+  // the togglePaid hook automatically updates the mirror expense's status,
+  // and the mirror already has account_id set so the bank balance reflects
+  // it correctly.
+  // If no default, open dialog asking which account.
   const handleItemCheckboxClick = (t: { id: string; paid: boolean; description: string; amount: number }) => {
+    if (!currentCard) return;
+    if (getCardDefaultAccount(currentCard.id)) {
+      // Card has default account — instant toggle, mirror handles balance
+      togglePaid.mutate({ id: t.id, paid: !t.paid });
+      return;
+    }
     if (t.paid) {
-      // Un-marking: just toggle, keep any existing expense (user can delete manually)
       togglePaid.mutate({ id: t.id, paid: false });
       return;
     }
-    if (!currentCard) return;
-    // Marking as paid: open dialog to ask account
+    // No default account: ask user which account to use (legacy flow)
     setPayItem({ id: t.id, description: t.description, amount: Number(t.amount) });
     setPayItemAccountId(getDefaultPayAccount(currentCard.id) || (accounts.find(a => !a.archived)?.id ?? ''));
   };
@@ -610,6 +696,71 @@ export default function CreditCardsPage() {
         </div>
       )}
 
+      {/* ── Default Account Setup Banner (for existing cards without default) ── */}
+      {selectedCard && currentCard && !getCardDefaultAccount(currentCard.id) && defaultAcctBump >= 0 && (
+        <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+              <Wallet className="w-4 h-4 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold">Vincule este cartão a uma conta</p>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                Quando você vincula o cartão {currentCard.name} a uma conta (ex: Nubank), todas as compras passam a debitar dela automaticamente — sem precisar marcar item por item.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Select onValueChange={(v) => {
+              setCardDefaultAccount(currentCard.id, v);
+              setDefaultAcctBump(b => b + 1);
+              toast.success('Conta padrão vinculada!');
+            }}>
+              <SelectTrigger className="flex-1"><SelectValue placeholder="Selecione a conta padrão..." /></SelectTrigger>
+              <SelectContent>
+                {accounts.filter(a => !a.archived).map(a => (
+                  <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
+
+      {/* ── Default Account Configured Status ── */}
+      {selectedCard && currentCard && getCardDefaultAccount(currentCard.id) && (() => {
+        const acctId = getCardDefaultAccount(currentCard.id);
+        const acct = accounts.find(a => a.id === acctId);
+        return (
+          <div className="rounded-xl border border-income/25 bg-income/5 px-4 py-2.5 flex items-center gap-3 flex-wrap">
+            <Check className="w-4 h-4 text-income shrink-0" />
+            <p className="text-xs flex-1 min-w-0">
+              <span className="text-muted-foreground">Pagamento debitado de:</span>{' '}
+              <span className="font-semibold">{acct?.icon} {acct?.name || 'Conta vinculada'}</span>
+            </p>
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={() => applyDefaultAccountToHistory(currentCard.id)}
+                className="text-[11px] font-semibold text-primary hover:underline"
+                title="Aplica esta conta a todas as transações antigas deste cartão"
+              >
+                Aplicar a transações antigas
+              </button>
+              <button
+                onClick={() => {
+                  setCardDefaultAccount(currentCard.id, null);
+                  setDefaultAcctBump(b => b + 1);
+                  toast.success('Conta padrão removida');
+                }}
+                className="text-[11px] text-muted-foreground hover:underline"
+              >
+                Remover
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Bill Details ─────────────────────────────────────────── */}
       {selectedCard && currentCard && (
         <div className="stat-card space-y-5 relative overflow-hidden">
@@ -805,6 +956,22 @@ export default function CreditCardsPage() {
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Dia de fechamento</Label><Input type="number" min={1} max={31} value={newCard.closing_day} onChange={(e) => setNewCard((p) => ({ ...p, closing_day: e.target.value }))} /></div>
               <div><Label>Dia de vencimento</Label><Input type="number" min={1} max={31} value={newCard.due_day} onChange={(e) => setNewCard((p) => ({ ...p, due_day: e.target.value }))} /></div>
+            </div>
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
+              <Label className="flex items-center gap-1.5 text-primary">
+                <Wallet className="w-3.5 h-3.5" /> Conta de pagamento padrão
+              </Label>
+              <Select value={newCard.payment_account_id} onValueChange={(v) => setNewCard(p => ({ ...p, payment_account_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione a conta..." /></SelectTrigger>
+                <SelectContent>
+                  {accounts.filter(a => !a.archived).map(a => (
+                    <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Toda compra neste cartão vai automaticamente debitar desta conta. O saldo reflete a obrigação no momento da compra.
+              </p>
             </div>
           </div>
           <DialogFooter>
