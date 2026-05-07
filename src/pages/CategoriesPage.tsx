@@ -86,7 +86,12 @@ type AccountBudgetBreakdown = {
 };
 
 function parseCurrencyInput(value: string) {
-  return parseFloat(value.replace(/\./g, '').replace(',', '.')) || 0;
+  if (!value) return 0;
+  // Handle both "1.234,56" (pt-BR CurrencyInput) and plain "300" or "300.50" (number input)
+  const normalized = value.includes(',')
+    ? value.replace(/\./g, '').replace(',', '.')  // pt-BR format: "1.234,56" → "1234.56"
+    : value;                                       // plain number: "300" or "300.50"
+  return parseFloat(normalized) || 0;
 }
 
 function formatCurrencyInput(value: number) {
@@ -153,7 +158,7 @@ function BudgetSplitEditor({
             const usedAccountIds = new Set(splits.map((item, i) => (i === index ? '' : item.accountId)).filter(Boolean));
             const selectedAccount = activeAccounts.find((account) => account.id === split.accountId);
             return (
-              <div key={`${split.accountId || 'new'}-${index}`} className="grid grid-cols-[minmax(0,1fr)_120px_32px] gap-2">
+              <div key={`${split.accountId || 'new'}-${index}`} className="grid grid-cols-[minmax(0,1fr)_140px_32px] gap-2">
                 <select
                   value={split.accountId}
                   onChange={(event) => updateSplit(index, { accountId: event.target.value })}
@@ -172,7 +177,18 @@ function BudgetSplitEditor({
                       );
                     })}
                 </select>
-                <CurrencyInput value={split.budget} onChange={(value) => updateSplit(index, { budget: value })} />
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground select-none">R$</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0,00"
+                    value={split.budget}
+                    onChange={(e) => updateSplit(index, { budget: e.target.value })}
+                    className="pl-9 font-mono"
+                  />
+                </div>
                 <button
                   type="button"
                   onClick={() => removeSplit(index)}
