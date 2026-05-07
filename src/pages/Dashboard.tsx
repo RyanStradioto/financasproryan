@@ -185,6 +185,64 @@ function BrandLogoBadge({
   );
 }
 
+// ─── Balance Breakdown Component ──────────────────────────────────────────────
+function BalanceBreakdown({
+  accName, balance, initBal, cumulativeIncome, cumulativeExpenses,
+  orphanExpensesTotal, orphanExpensesCount, maskCurrency,
+}: {
+  accName: string; accId: string; balance: number; initBal: number;
+  cumulativeIncome: number; cumulativeExpenses: number;
+  orphanExpensesTotal: number; orphanExpensesCount: number;
+  maskCurrency: (v: string) => string;
+}) {
+  const calculated = initBal + cumulativeIncome - cumulativeExpenses;
+  // Sanity: if calculated doesn't match balance, flag it
+  const mismatch = Math.abs(calculated - balance) > 0.5;
+
+  return (
+    <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm p-4 space-y-3">
+      <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
+        Composicao do saldo — {accName}
+      </p>
+      <div className="space-y-1.5">
+        <div className="flex justify-between text-xs">
+          <span className="text-muted-foreground">Saldo inicial configurado</span>
+          <span className="font-semibold tabular-nums">{maskCurrency(formatCurrency(initBal))}</span>
+        </div>
+        <div className="flex justify-between text-xs">
+          <span className="text-muted-foreground">+ Receitas atribuidas a esta conta</span>
+          <span className="font-semibold text-income tabular-nums">+{maskCurrency(formatCurrency(cumulativeIncome))}</span>
+        </div>
+        <div className="flex justify-between text-xs">
+          <span className="text-muted-foreground">- Despesas atribuidas a esta conta</span>
+          <span className="font-semibold text-expense tabular-nums">-{maskCurrency(formatCurrency(cumulativeExpenses))}</span>
+        </div>
+        <div className="h-px bg-border/40 my-1" />
+        <div className="flex justify-between text-sm font-bold">
+          <span>= Saldo calculado</span>
+          <span className={balance >= 0 ? 'text-income' : 'text-expense'}>{maskCurrency(formatCurrency(balance))}</span>
+        </div>
+      </div>
+      {orphanExpensesTotal > 0 && (
+        <div className="rounded-lg bg-warning/10 border border-warning/25 px-3 py-2.5 space-y-1">
+          <p className="text-xs font-semibold text-warning flex items-center gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            {orphanExpensesCount} despesa{orphanExpensesCount !== 1 ? 's' : ''} sem conta: {maskCurrency(formatCurrency(orphanExpensesTotal))}
+          </p>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            Essas despesas foram lancadas sem selecionar uma conta bancaria. Elas nao aparecem no saldo desta conta (nem de nenhuma outra), o que pode explicar a diferenca com o saldo real. Abra cada despesa em Despesas e escolha a conta correta.
+          </p>
+        </div>
+      )}
+      {mismatch && (
+        <p className="text-[10px] text-muted-foreground/60 italic">
+          Nota: pode haver pequena variacao por arredondamento ou despesas sem conta.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { maskCurrency } = useSensitiveData();
   const [month, setMonth] = useState(getMonthYear());
@@ -211,6 +269,10 @@ export default function Dashboard() {
   const { data: accumulatedData } = useAccumulatedBalance(month);
   const accumulatedBalance = accumulatedData?.total || 0;
   const accumulatedByAccount = accumulatedData?.byAccount || {};
+  const orphanExpensesTotal = accumulatedData?.orphanExpensesTotal || 0;
+  const orphanIncomeTotal   = accumulatedData?.orphanIncomeTotal || 0;
+  const orphanExpensesCount = accumulatedData?.orphanExpensesCount || 0;
+  const orphanIncomeCount   = accumulatedData?.orphanIncomeCount || 0;
   const { data: ccTransactions = [] } = useCCTransactionsForMonth(month);
   const { calcWorkTime, hourlyRate } = useWorkTimeCalc();
 
@@ -745,6 +807,21 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      {/* Account Balance Breakdown — shows when a specific account is focused */}
+      {!isGlobalView && focusedAccountInsight && (
+        <BalanceBreakdown
+          accName={focusedAccountInsight.acc.name}
+          accId={focusedAccountInsight.acc.id}
+          balance={focusedAccountInsight.balance}
+          initBal={accumulatedData?.initialBalanceByAccount?.[focusedAccountInsight.acc.id] || 0}
+          cumulativeIncome={accumulatedData?.cumulativeIncomeByAccount?.[focusedAccountInsight.acc.id] || 0}
+          cumulativeExpenses={accumulatedData?.cumulativeExpensesByAccount?.[focusedAccountInsight.acc.id] || 0}
+          orphanExpensesTotal={orphanExpensesTotal}
+          orphanExpensesCount={orphanExpensesCount}
+          maskCurrency={maskCurrency}
+        />
+      )}
+
       {/* Pending CC Bill Alert */}
       {unpaidCCTotal > 0 && (
         <div
@@ -764,6 +841,28 @@ export default function Dashboard() {
             </p>
           </div>
           <ChevronRight className="w-4 h-4 text-[#6366f1]/60 shrink-0" />
+        </div>
+      )}
+
+      {/* Orphan Expenses Warning — expenses with no account assigned */}
+      {orphanExpensesTotal > 0 && (
+        <div className="flex items-start gap-3 rounded-2xl border border-warning/30 bg-warning/5 px-4 py-3">
+          <div className="w-8 h-8 rounded-lg bg-warning/15 flex items-center justify-center shrink-0 mt-0.5">
+            <AlertTriangle className="w-4 h-4 text-warning" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-warning">
+              {orphanExpensesCount} despesa{orphanExpensesCount !== 1 ? 's' : ''} sem conta atribuida — {maskCurrency(formatCurrency(orphanExpensesTotal))}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+              Essas despesas nao foram vinculadas a nenhuma conta bancaria, entao nao aparecem no saldo de nenhuma conta especifica. Isso pode explicar a diferenca entre o saldo do app e o saldo real. Va em Despesas e atribua a conta correta a cada uma delas.
+            </p>
+            {orphanIncomeTotal > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Tambem ha {orphanIncomeCount} receita{orphanIncomeCount !== 1 ? 's' : ''} sem conta ({maskCurrency(formatCurrency(orphanIncomeTotal))}) que infla o total sem aparecer em nenhuma conta.
+              </p>
+            )}
+          </div>
         </div>
       )}
 

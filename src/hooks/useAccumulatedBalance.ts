@@ -12,6 +12,11 @@ import { queryWithSoftDeleteFallback } from '@/lib/softDeleteCompat';
  * the bank-account balance. A CC purchase does NOT reduce your bank balance;
  * only the bill PAYMENT (which creates a real expense with account_id tagged
  * [FATURA_CARTAO]) does. This prevents false double-counting.
+ *
+ * Returns diagnostic fields to help users understand balance discrepancies:
+ * - orphanExpenses: expenses with no account_id that are NOT CC mirrors (should have been assigned)
+ * - orphanIncome: income with no account_id (should have been assigned)
+ * - initialBalanceByAccount: initial balance per account for breakdown display
  */
 export function useAccumulatedBalance(month: string) {
   const { user } = useAuth();
@@ -24,10 +29,10 @@ export function useAccumulatedBalance(month: string) {
       const endDate = `${month}-${String(lastDay).padStart(2, '0')}`;
 
       const [incomeData, expenseData, accountsData] = await Promise.all([
-        queryWithSoftDeleteFallback<{ amount: number; account_id: string }>((supportsSoftDelete) => {
+        queryWithSoftDeleteFallback<{ amount: number; account_id: string | null; description: string | null }>((supportsSoftDelete) => {
           let query = supabase
             .from('income')
-            .select('amount, account_id')
+            .select('amount, account_id, description')
             .lte('date', endDate)
             .eq('status', 'concluido');
           if (supportsSoftDelete) {
@@ -35,10 +40,10 @@ export function useAccumulatedBalance(month: string) {
           }
           return query;
         }),
-        queryWithSoftDeleteFallback<{ amount: number; account_id: string | null; notes: string | null }>((supportsSoftDelete) => {
+        queryWithSoftDeleteFallback<{ amount: number; account_id: string | null; notes: string | null; description: string | null }>((supportsSoftDelete) => {
           let query = supabase
             .from('expenses')
-            .select('amount, account_id, notes')
+            .select('amount, account_id, notes, description')
             .lte('date', endDate)
             .eq('status', 'concluido');
           if (supportsSoftDelete) {
@@ -50,29 +55,40 @@ export function useAccumulatedBalance(month: string) {
       ]);
 
       const byAccount: Record<string, number> = {};
+      const initialBalanceByAccount: Record<string, number> = {};
       let totalInitialBalance = 0;
 
       if (accountsData.data) {
         accountsData.data.forEach(acc => {
           const initBal = Number(acc.initial_balance) || 0;
           byAccount[acc.id] = initBal;
+          initialBalanceByAccount[acc.id] = initBal;
           totalInitialBalance += initBal;
         });
       }
 
-      // Separate real expenses (those with account_id) from CC mirror rows
-      // CC mirror rows: notes start with "[Cartao de credito|card:" and have no account_id.
-      // These represent credit purchases — they should NOT reduce the bank account balance
-      // because the bank account is only debited when the bill is actually paid.
-      // Bill payments are tagged with [FATURA_CARTAO] and DO have account_id set.
-      const realExpenses = expenseData.filter(
-        e => e.account_id !== null && e.account_id !== undefined,
-      );
+      // CC mirror rows: no account_id + notes contain '[Cartao de credito|card:'
+      // These are tracking entries only — they do NOT reduce bank balance.
+      // Bank balance only changes when the bill is paid (expense with account_id + [FATURA_CARTAO]).
+      const isCCMirror = (e: { account_id: string | null; notes: string | null }) =>
+        !e.account_id && !!e.notes?.includes('[Cartao de credito|card:');
 
-      const totalIncome    = incomeData.reduce((s, i) => s + Number(i.amount), 0);
+      // Expenses that actually hit bank accounts (have account_id assigned)
+      const realExpenses = expenseData.filter(e => e.account_id !== null && e.account_id !== undefined);
+
+      // "Orphan" expenses: no account_id AND not a CC mirror — these reduce the total but
+      // don't appear in any account breakdown. They're usually input errors (forgot to pick account).
+      const orphanExpenses = expenseData.filter(e => !e.account_id && !isCCMirror(e));
+
+      // Income with no account assigned — not counted in any account balance
+      const orphanIncome = incomeData.filter(i => !i.account_id);
+
+      const totalIncome       = incomeData.reduce((s, i) => s + Number(i.amount), 0);
       const totalRealExpenses = realExpenses.reduce((s, e) => s + Number(e.amount), 0);
+      const orphanExpensesTotal = orphanExpenses.reduce((s, e) => s + Number(e.amount), 0);
+      const orphanIncomeTotal   = orphanIncome.reduce((s, i) => s + Number(i.amount), 0);
 
-      // Build per-account balances
+      // Build per-account balances (only from rows with a known account_id)
       incomeData.forEach(i => {
         if (!i.account_id) return;
         byAccount[i.account_id] = (byAccount[i.account_id] || 0) + Number(i.amount);
@@ -83,9 +99,29 @@ export function useAccumulatedBalance(month: string) {
         byAccount[e.account_id] = (byAccount[e.account_id] || 0) - Number(e.amount);
       });
 
+      // Cumulative income and expenses per account (for breakdown display)
+      const cumulativeIncomeByAccount: Record<string, number> = {};
+      const cumulativeExpensesByAccount: Record<string, number> = {};
+      incomeData.forEach(i => {
+        if (!i.account_id) return;
+        cumulativeIncomeByAccount[i.account_id] = (cumulativeIncomeByAccount[i.account_id] || 0) + Number(i.amount);
+      });
+      realExpenses.forEach(e => {
+        if (!e.account_id) return;
+        cumulativeExpensesByAccount[e.account_id] = (cumulativeExpensesByAccount[e.account_id] || 0) + Number(e.amount);
+      });
+
       return {
         total: totalInitialBalance + totalIncome - totalRealExpenses,
         byAccount,
+        initialBalanceByAccount,
+        cumulativeIncomeByAccount,
+        cumulativeExpensesByAccount,
+        // Diagnostic fields
+        orphanExpensesTotal,
+        orphanIncomeTotal,
+        orphanExpensesCount: orphanExpenses.length,
+        orphanIncomeCount: orphanIncome.length,
       };
     },
     enabled: !!user && !!month,
