@@ -8,10 +8,11 @@ import { useCreditCards, useAddCreditCardTransaction } from '@/hooks/useCreditCa
 import { useClassificationRules, classifyDescription, type ClassificationRule } from '@/hooks/useClassification';
 import { formatCurrency } from '@/lib/format';
 import { toast } from 'sonner';
-import { Upload, Trash2, Check, TrendingUp, TrendingDown, BarChart3, Info, CreditCard, Building2, Link2, AlertTriangle } from 'lucide-react';
+import { Upload, Trash2, Check, TrendingUp, TrendingDown, BarChart3, Info, CreditCard, Building2, Link2, AlertTriangle, FileText } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
 import { useQueryClient } from '@tanstack/react-query';
+import NubankImporter from '@/components/finance/NubankImporter';
 
 type RowType = 'income' | 'expense' | 'investment' | 'cc_payment';
 
@@ -796,8 +797,24 @@ export default function ImportPage() {
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Importar Extrato</h1>
-        <p className="text-sm text-muted-foreground">Importe o extrato do banco e a fatura do cartão — o app detecta automaticamente o tipo do arquivo OFX</p>
+        <p className="text-sm text-muted-foreground">Importe extratos do banco em PDF (Nubank), OFX ou CSV.</p>
       </div>
+
+      <Tabs defaultValue="nubank-pdf" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 max-w-xl">
+          <TabsTrigger value="nubank-pdf" className="gap-2">
+            <FileText className="w-4 h-4" /> Nubank PDF
+          </TabsTrigger>
+          <TabsTrigger value="ofx-csv" className="gap-2">
+            <Building2 className="w-4 h-4" /> OFX / CSV
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="nubank-pdf" className="mt-6">
+          <NubankImporter />
+        </TabsContent>
+
+        <TabsContent value="ofx-csv" className="mt-6 space-y-6">
 
       {/* Instructions */}
       <div className="rounded-lg bg-muted/60 border border-border p-4 space-y-2">
@@ -941,6 +958,8 @@ export default function ImportPage() {
           )}
         </>
       )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
