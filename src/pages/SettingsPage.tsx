@@ -312,11 +312,22 @@ export default function SettingsPage() {
   const nextMonthlySend = getNextMonthlySend();
 
   return (
-    <div className="w-full max-w-2xl space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
-        <p className="text-sm text-muted-foreground">Seus dados pessoais e preferências</p>
+    <div className="w-full space-y-6 animate-fade-in">
+      {/* ─── Hero Header ─── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.05] p-4 shadow-sm sm:rounded-3xl sm:p-7">
+        <div className="absolute -top-20 -right-20 w-64 h-64 bg-primary/15 blur-3xl rounded-full pointer-events-none" />
+        <div className="relative z-10 flex items-center gap-3.5 min-w-0">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-primary/25 to-primary/5 flex items-center justify-center shadow-inner border border-primary/15 shrink-0">
+            <User className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-none">Configurações</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1.5">Seus dados pessoais e preferências</p>
+          </div>
+        </div>
       </div>
+
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
 
       <div className="stat-card space-y-6">
         <div className="flex items-center gap-2 text-sm font-semibold">
@@ -609,6 +620,7 @@ export default function SettingsPage() {
           <Trash2 className="w-4 h-4" />
           Excluir dados por mês
         </button>
+      </div>
       </div>
 
       {/* ── Dialog: selecionar meses para excluir ── */}

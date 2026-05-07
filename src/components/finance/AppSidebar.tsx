@@ -96,7 +96,7 @@ export default function AppSidebar() {
   };
 
   return (
-    <aside className="hidden lg:flex flex-col w-[260px] h-screen sticky top-0 self-start shrink-0 z-30 border-r border-border/60 bg-gradient-to-b from-card via-card to-card/85 backdrop-blur-xl shadow-sm">
+    <aside className="hidden lg:flex flex-col w-[260px] fixed left-0 top-0 bottom-0 z-30 border-r border-border/60 bg-gradient-to-b from-card via-card to-card/85 backdrop-blur-xl shadow-sm overflow-hidden">
       {/* Decorative gradient blob */}
       <div className="pointer-events-none absolute -top-24 -left-12 w-56 h-56 rounded-full bg-primary/[0.07] blur-3xl" />
       <div className="pointer-events-none absolute top-1/3 -right-12 w-48 h-48 rounded-full bg-income/[0.04] blur-3xl" />
