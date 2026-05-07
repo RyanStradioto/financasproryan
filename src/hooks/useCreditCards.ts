@@ -248,6 +248,37 @@ export function useDeleteCCTransaction() {
   });
 }
 
+export function useUpdateCCTransaction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, category_id }: { id: string; category_id: string | null }) => {
+      // 1) Update the CC transaction itself
+      const { error } = await supabase
+        .from('credit_card_transactions')
+        .update({ category_id })
+        .eq('id', id);
+      if (error) throw error;
+
+      // 2) Sync the mirror expense so category stays consistent
+      const { data: mirrors } = await supabase
+        .from('expenses')
+        .select('id')
+        .like('notes', `%tx:${id}%`);
+      const mirror = (mirrors || []).find(() => true); // first match
+      if (mirror) {
+        await supabase
+          .from('expenses')
+          .update({ category_id })
+          .eq('id', mirror.id);
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cc-transactions'] });
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+    },
+  });
+}
+
 /** Upcoming installments for the next N months (is_installment = true) — used by CreditCardsPage */
 export function useUpcomingInstallments(monthsAhead = 3) {
   const { user } = useAuth();

@@ -14,6 +14,7 @@ import {
   useAddCreditCardTransaction,
   useToggleCCTransactionPaid,
   useDeleteCCTransaction,
+  useUpdateCCTransaction,
   useAllFutureCCTransactions,
   getCardDefaultAccount,
   setCardDefaultAccount,
@@ -75,6 +76,7 @@ export default function CreditCardsPage() {
   const addTx = useAddCreditCardTransaction();
   const togglePaid = useToggleCCTransactionPaid();
   const deleteTx = useDeleteCCTransaction();
+  const updateTx = useUpdateCCTransaction();
   const addExpense = useAddExpense();
 
   useEffect(() => {
@@ -1000,13 +1002,20 @@ export default function CreditCardsPage() {
                             <span className="text-[10px] bg-warning/10 text-warning px-1.5 py-0.5 rounded-full font-medium shrink-0">Recorrente</span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 mt-0.5">
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           <p className="text-xs text-muted-foreground">{formatDate(t.date)}</p>
-                          {cat && (
-                            <span className="text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded-full">
-                              {cat.icon} {cat.name}
-                            </span>
-                          )}
+                          <select
+                            value={t.category_id ?? ''}
+                            onChange={(e) => updateTx.mutate({ id: t.id, category_id: e.target.value || null })}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-[10px] text-muted-foreground bg-muted/50 rounded-full px-1.5 py-0.5 border-0 outline-none cursor-pointer hover:bg-muted transition-colors appearance-none max-w-[140px]"
+                            style={{ fontFamily: 'inherit' }}
+                          >
+                            <option value="">Sem categoria</option>
+                            {categories.map(c => (
+                              <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+                            ))}
+                          </select>
                         </div>
                       </div>
                     </div>
