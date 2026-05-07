@@ -269,7 +269,7 @@ function BalanceBreakdown({
 }
 
 export default function Dashboard() {
-  const { maskCurrency } = useSensitiveData();
+  const { maskCurrency, maskText, isVisible } = useSensitiveData();
   const [month, setMonth] = useState(getMonthYear());
   const [accountFocusId, setAccountFocusId] = useState<string>('__all__');
   const { data: profile } = useProfile();
