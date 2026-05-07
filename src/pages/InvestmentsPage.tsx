@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
-  Plus, TrendingUp, ArrowUpCircle, ArrowDownCircle, Trash2,
-  BarChart3, Pencil, ChevronDown, ChevronUp, Image as ImageIcon,
+  Plus, TrendingUp, BarChart3, Pencil, ChevronDown, ChevronUp,
+  Image as ImageIcon, Trash2, ArrowUpRight, ArrowDownRight,
+  Wallet, Target, Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -13,10 +15,8 @@ import {
   useAddInvestment,
   useUpdateInvestment,
   useDeleteInvestment,
-  useAddInvestmentTransaction,
   useInvestmentTransactions,
 } from '@/hooks/useInvestments';
-import { useAccounts } from '@/hooks/useFinanceData';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -27,31 +27,24 @@ import type { Investment } from '@/hooks/useInvestments';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const INVESTMENT_TYPES = [
-  { value: 'cdb',      label: 'CDB',           icon: '🏦' },
-  { value: 'lci',      label: 'LCI',           icon: '🏛️' },
-  { value: 'lca',      label: 'LCA',           icon: '🌾' },
+  { value: 'cdb',      label: 'CDB',            icon: '🏦' },
+  { value: 'lci',      label: 'LCI',            icon: '🏛️' },
+  { value: 'lca',      label: 'LCA',            icon: '🌾' },
   { value: 'tesouro',  label: 'Tesouro Direto', icon: '🏛️' },
-  { value: 'acoes',    label: 'Ações',          icon: '📈' },
-  { value: 'fii',      label: 'FII',            icon: '🏢' },
-  { value: 'poupanca', label: 'Poupança',       icon: '🐷' },
-  { value: 'caixinha', label: 'Caixinha',       icon: '📦' },
-  { value: 'fundo',    label: 'Fundo',          icon: '📊' },
-  { value: 'cripto',   label: 'Cripto',         icon: '₿'  },
-  { value: 'outro',    label: 'Outro',          icon: '💼' },
+  { value: 'acoes',    label: 'Ações',           icon: '📈' },
+  { value: 'fii',      label: 'FII',             icon: '🏢' },
+  { value: 'poupanca', label: 'Poupança',        icon: '🐷' },
+  { value: 'caixinha', label: 'Caixinha',        icon: '📦' },
+  { value: 'fundo',    label: 'Fundo',           icon: '📊' },
+  { value: 'cripto',   label: 'Cripto',          icon: '₿'  },
+  { value: 'outro',    label: 'Outro',           icon: '💼' },
 ];
 
 const TYPE_COLORS: Record<string, string> = {
-  cdb: '#10b981',
-  lci: '#06b6d4',
-  lca: '#84cc16',
-  tesouro: '#3b82f6',
-  acoes: '#f59e0b',
-  fii: '#8b5cf6',
-  poupanca: '#ec4899',
-  caixinha: '#f97316',
-  fundo: '#6366f1',
-  cripto: '#ef4444',
-  outro: '#6b7280',
+  cdb: '#10b981', lci: '#06b6d4', lca: '#84cc16',
+  tesouro: '#3b82f6', acoes: '#f59e0b', fii: '#8b5cf6',
+  poupanca: '#ec4899', caixinha: '#f97316', fundo: '#6366f1',
+  cripto: '#ef4444', outro: '#6b7280',
 };
 
 const PRESET_COLORS = [
@@ -60,18 +53,15 @@ const PRESET_COLORS = [
 ];
 
 const LIQUIDITY_OPTIONS = [
-  { value: 'diaria',      label: 'Diária',        badge: 'D+0' },
-  { value: 'd+1',         label: 'D+1',           badge: 'D+1' },
-  { value: 'd+30',        label: 'D+30',          badge: 'D+30' },
-  { value: 'd+360',       label: 'D+360',         badge: 'D+360' },
-  { value: 'vencimento',  label: 'No vencimento', badge: 'Venc.' },
+  { value: 'diaria',     label: 'Diária',        badge: 'D+0' },
+  { value: 'd+1',        label: 'D+1',           badge: 'D+1' },
+  { value: 'd+30',       label: 'D+30',          badge: 'D+30' },
+  { value: 'd+360',      label: 'D+360',         badge: 'D+360' },
+  { value: 'vencimento', label: 'No vencimento', badge: 'Venc.' },
 ];
-
-const TYPES_WITH_ACCOUNT = ['aporte', 'resgate'];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Compound growth: current * (1 + rate/100) ^ (months/12) */
 const project = (current: number, annualRate: number, months: number): number =>
   current * Math.pow(1 + annualRate / 100, months / 12);
 
@@ -83,17 +73,14 @@ const liquidityBadge = (liq: string | null) =>
 export default function InvestmentsPage() {
   const { maskCurrency, maskText, isVisible } = useSensitiveData();
   const { data: investments = [] } = useInvestments();
-  const { data: accounts = [] } = useAccounts();
   const { data: allTransactions = [] } = useInvestmentTransactions();
-  const addInvestment = useAddInvestment();
+  const addInvestment   = useAddInvestment();
   const updateInvestment = useUpdateInvestment();
   const deleteInvestment = useDeleteInvestment();
-  const addTransaction = useAddInvestmentTransaction();
 
   // ── dialog states ──────────────────────────────────────────────────────────
   const [showNewInvestment, setShowNewInvestment] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
-  const [showAporte, setShowAporte] = useState<string | null>(null);
   const [selectedInvestment, setSelectedInvestment] = useState<string | null>(null);
   const [expandedProjections, setExpandedProjections] = useState<string | null>(null);
 
@@ -109,20 +96,18 @@ export default function InvestmentsPage() {
     color: '', annual_rate: '', liquidity: 'diaria', photo_url: '',
   });
 
-  // ── movimentação form ──────────────────────────────────────────────────────
-  const [aporteData, setAporteData] = useState<{
-    amount: string; date: string;
-    type: 'aporte' | 'resgate' | 'rendimento' | 'taxa' | 'ir';
-    account_id: string; description: string;
-  }>({ amount: '', date: new Date().toISOString().split('T')[0], type: 'aporte', account_id: '', description: '' });
-
   // ── derived totals ─────────────────────────────────────────────────────────
-  const totalPatrimony  = investments.reduce((s, i) => s + Number(i.current_value), 0);
-  const totalInvested   = investments.reduce((s, i) => s + Number(i.total_invested), 0);
-  const totalReturn     = totalPatrimony - totalInvested;
-  const returnPct       = totalInvested > 0 ? (totalReturn / totalInvested) * 100 : 0;
+  const totalPatrimony = investments.reduce((s, i) => s + Number(i.current_value), 0);
+  const totalInvested  = investments.reduce((s, i) => s + Number(i.total_invested), 0);
+  const totalReturn    = totalPatrimony - totalInvested;
+  const returnPct      = totalInvested > 0 ? (totalReturn / totalInvested) * 100 : 0;
+  const avgRate        = investments.length > 0
+    ? investments.reduce((s, i) => s + Number(i.annual_rate ?? 0), 0) / investments.length
+    : 0;
 
-  const selectedTxns = selectedInvestment ? allTransactions.filter((t) => t.investment_id === selectedInvestment) : allTransactions;
+  const selectedTxns = selectedInvestment
+    ? allTransactions.filter(t => t.investment_id === selectedInvestment)
+    : allTransactions;
 
   const pieData = investments
     .filter(i => Number(i.current_value) > 0)
@@ -133,13 +118,6 @@ export default function InvestmentsPage() {
       icon: i.icon,
     }));
   const showDonut = pieData.length >= 1 && totalPatrimony > 0;
-
-  // movimentação helpers
-  const showAccountSelector = TYPES_WITH_ACCOUNT.includes(aporteData.type);
-  const accountLabel = aporteData.type === 'aporte' ? 'Debitar da conta (opcional)' : 'Depositar na conta (opcional)';
-  const previewAmount = parseFloat(aporteData.amount) || 0;
-  const showPreview = showAccountSelector && !!aporteData.account_id && previewAmount > 0;
-  const selectedAccount = accounts.find(a => a.id === aporteData.account_id);
 
   // ── handlers ───────────────────────────────────────────────────────────────
 
@@ -180,7 +158,6 @@ export default function InvestmentsPage() {
 
   const handleNewInvestment = async () => {
     if (!newInv.name.trim()) return toast.error('Informe o nome do investimento');
-
     try {
       await addInvestment.mutateAsync({
         name: newInv.name.trim(),
@@ -194,7 +171,6 @@ export default function InvestmentsPage() {
         liquidity: newInv.liquidity,
         photo_url: newInv.photo_url || null,
       });
-
       toast.success('Investimento cadastrado!');
       setShowNewInvestment(false);
       setNewInv({ name: '', type: 'cdb', institution: '', current_value: '', annual_rate: '', liquidity: 'diaria', photo_url: '' });
@@ -203,92 +179,147 @@ export default function InvestmentsPage() {
     }
   };
 
-  const handleAporte = async () => {
-    if (!aporteData.amount || !showAporte) return;
-
-    try {
-      await addTransaction.mutateAsync({
-        investment_id: showAporte,
-        type: aporteData.type,
-        amount: parseFloat(aporteData.amount),
-        date: aporteData.date,
-        account_id: aporteData.account_id || null,
-        description: aporteData.description || (aporteData.type === 'aporte' ? 'Aporte' : 'Movimentacao'),
-      });
-      const label = { aporte: 'Aporte', resgate: 'Resgate', rendimento: 'Rendimento', taxa: 'Taxa', ir: 'IR' }[aporteData.type];
-      toast.success(`${label} registrado ✅`);
-      setShowAporte(null);
-      setAporteData({
-        amount: '',
-        date: new Date().toISOString().split('T')[0],
-        type: 'aporte',
-        account_id: '',
-        description: '',
-      });
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
-  };
-
   // ── render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
 
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Investimentos</h1>
-          <p className="text-sm text-muted-foreground">Gestão patrimonial — aportes não são despesas</p>
+      {/* ─── Hero Header ──────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-info/[0.06] p-4 shadow-sm sm:rounded-3xl sm:p-6">
+        <div className="absolute -top-16 -right-16 w-56 h-56 bg-info/10 blur-3xl rounded-full pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 w-48 h-24 bg-income/[0.06] blur-2xl rounded-full pointer-events-none" />
+        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-info/25 to-info/5 flex items-center justify-center shadow-inner border border-info/15 shrink-0">
+              <BarChart3 className="w-6 h-6 sm:w-7 sm:h-7 text-info" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-none flex items-center gap-2">
+                Investimentos
+                <Sparkles className="w-4 h-4 text-info opacity-60 shrink-0" />
+              </h1>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1.5">
+                Gestão patrimonial — {investments.length} ativo{investments.length !== 1 ? 's' : ''} cadastrado{investments.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={() => setShowNewInvestment(true)}
+            className="w-full sm:w-auto shrink-0 gap-2 bg-info hover:bg-info/90 text-white shadow-md shadow-info/20"
+            data-tutorial-target="new-investment"
+          >
+            <Plus className="w-4 h-4" /> Novo Ativo
+          </Button>
         </div>
-        <Button onClick={() => setShowNewInvestment(true)} className="w-full sm:w-auto" data-tutorial-target="new-investment">
-          <Plus className="w-4 h-4 mr-1" /> Novo Ativo
-        </Button>
+
+        {/* Stat chips */}
+        <div className="relative z-10 flex flex-wrap gap-2 mt-4">
+          <div className="flex items-center gap-1.5 rounded-full bg-background/70 border border-border/60 px-3 py-1.5 text-xs font-semibold backdrop-blur-sm">
+            <Wallet className="w-3 h-3 text-info" />
+            <span className="text-muted-foreground">Patrimônio:</span>
+            <span className="text-foreground">{maskCurrency(formatCurrency(totalPatrimony))}</span>
+          </div>
+          <div className={cn(
+            'flex items-center gap-1.5 rounded-full bg-background/70 border border-border/60 px-3 py-1.5 text-xs font-semibold backdrop-blur-sm',
+          )}>
+            <TrendingUp className="w-3 h-3 text-income" />
+            <span className="text-muted-foreground">Rendimento:</span>
+            <span className={totalReturn >= 0 ? 'text-income' : 'text-expense'}>
+              {totalReturn >= 0 ? '+' : ''}{maskCurrency(formatCurrency(totalReturn))}
+              {totalInvested > 0 && isVisible && (
+                <span className="text-muted-foreground font-normal ml-1">({returnPct >= 0 ? '+' : ''}{returnPct.toFixed(2)}%)</span>
+              )}
+            </span>
+          </div>
+          {avgRate > 0 && (
+            <div className="flex items-center gap-1.5 rounded-full bg-background/70 border border-border/60 px-3 py-1.5 text-xs font-semibold backdrop-blur-sm">
+              <Target className="w-3 h-3 text-primary" />
+              <span className="text-muted-foreground">Média:</span>
+              <span className="text-foreground">{isVisible ? `${avgRate.toFixed(1)}% a.a.` : maskText('00%')}</span>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-1 gap-3 min-[430px]:grid-cols-2 lg:grid-cols-4">
+      {/* ─── How to register movements ────────────────────────────────────── */}
+      <div className="rounded-xl border border-border/60 bg-muted/30 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+            <BarChart3 className="w-4 h-4 text-primary" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">Como registrar movimentações?</p>
+            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+              Aportes são <strong>despesas</strong> vinculadas ao ativo. Resgates são <strong>receitas</strong> vinculadas ao ativo.
+              O saldo da conta e o valor do investimento são atualizados automaticamente.
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2 shrink-0 sm:flex-col lg:flex-row">
+          <Link
+            to="/despesas"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-expense/10 text-expense text-xs font-semibold hover:bg-expense/20 transition-colors whitespace-nowrap"
+          >
+            <ArrowUpRight className="w-3.5 h-3.5" /> Registrar Aporte
+          </Link>
+          <Link
+            to="/receitas"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-income/10 text-income text-xs font-semibold hover:bg-income/20 transition-colors whitespace-nowrap"
+          >
+            <ArrowDownRight className="w-3.5 h-3.5" /> Registrar Resgate
+          </Link>
+        </div>
+      </div>
+
+      {/* ─── KPI Cards ────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="stat-card">
-          <p className="text-xs text-muted-foreground mb-1">Patrimonio Total</p>
-          <p className="truncate text-xl font-bold text-primary">{maskCurrency(formatCurrency(totalPatrimony))}</p>
+          <p className="text-xs text-muted-foreground mb-1">Patrimônio Total</p>
+          <p className="truncate text-xl font-bold text-info">{maskCurrency(formatCurrency(totalPatrimony))}</p>
+          <p className="text-xs text-muted-foreground mt-1">{investments.length} ativo{investments.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="stat-card">
           <p className="text-xs text-muted-foreground mb-1">Total Investido</p>
           <p className="truncate text-xl font-bold">{maskCurrency(formatCurrency(totalInvested))}</p>
+          <p className="text-xs text-muted-foreground mt-1">Custo de aquisição</p>
         </div>
         <div className="stat-card">
-          <p className="text-xs text-muted-foreground mb-1">Rendimento</p>
-          <p className={cn('text-xl font-bold', totalReturn >= 0 ? 'text-income' : 'text-expense')}>
+          <p className="text-xs text-muted-foreground mb-1">Rendimento Líquido</p>
+          <p className={cn('text-xl font-bold truncate', totalReturn >= 0 ? 'text-income' : 'text-expense')}>
             {totalReturn >= 0 ? '+' : ''}{maskCurrency(formatCurrency(totalReturn))}
           </p>
-        </div>
-        <div className="stat-card">
-          <p className="text-xs text-muted-foreground mb-1">Retorno %</p>
-          <p className={cn('text-xl font-bold', returnPct >= 0 ? 'text-income' : 'text-expense')}>
-            {isVisible ? `${returnPct >= 0 ? '+' : ''}${returnPct.toFixed(2)}%` : maskText('12,34%')}
+          <p className="text-xs text-muted-foreground mt-1">
+            {isVisible ? `${returnPct >= 0 ? '+' : ''}${returnPct.toFixed(2)}%` : maskText('00%')}
           </p>
         </div>
+        <div className="stat-card">
+          <p className="text-xs text-muted-foreground mb-1">Taxa Média</p>
+          <p className="text-xl font-bold text-primary">
+            {isVisible && avgRate > 0 ? `${avgRate.toFixed(1)}%` : avgRate > 0 ? maskText('00%') : '—'}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">ao ano</p>
+        </div>
       </div>
 
-      {/* Info banner */}
-      <div className="rounded-lg bg-primary/5 border border-primary/20 px-4 py-3 text-sm flex items-start gap-3">
-        <BarChart3 className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-        <span className="text-muted-foreground">
-          <span className="font-medium text-primary">Lógica patrimonial ativa — </span>
-          Aportes movem dinheiro da conta para o investimento. Resgates fazem o caminho inverso. Nunca são despesas.
-        </span>
-      </div>
-
-      {/* Donut */}
+      {/* ─── Allocation Donut ─────────────────────────────────────────────── */}
       {showDonut && (
         <div className="stat-card">
-          <h3 className="font-semibold text-sm mb-4">Alocação do Portfólio</h3>
+          <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
+            <div className="w-5 h-5 rounded-md bg-info/10 flex items-center justify-center">
+              <BarChart3 className="w-3 h-3 text-info" />
+            </div>
+            Alocação do Portfólio
+          </h3>
           <div className="flex flex-col sm:flex-row gap-6 items-center">
             <div className="relative shrink-0" style={{ width: 200, height: 200 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={62} outerRadius={90} paddingAngle={2} dataKey="value" strokeWidth={0}>
-                    {pieData.map((entry) => <Cell key={entry.id} fill={entry.color} />)}
+                  <Pie
+                    data={pieData} cx="50%" cy="50%"
+                    innerRadius={62} outerRadius={90}
+                    paddingAngle={2} dataKey="value" strokeWidth={0}
+                  >
+                    {pieData.map(entry => <Cell key={entry.id} fill={entry.color} />)}
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
@@ -311,7 +342,10 @@ export default function InvestmentsPage() {
                     </div>
                   </div>
                   <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${item.pct}%`, backgroundColor: item.color }} />
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{ width: `${item.pct}%`, backgroundColor: item.color }}
+                    />
                   </div>
                 </div>
               ))}
@@ -320,12 +354,15 @@ export default function InvestmentsPage() {
         </div>
       )}
 
-      {/* Investment Cards */}
+      {/* ─── Investment Cards ─────────────────────────────────────────────── */}
       {investments.length === 0 ? (
         <div className="stat-card py-16 text-center">
           <TrendingUp className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
           <p className="font-medium text-muted-foreground">Nenhum investimento cadastrado</p>
           <p className="text-sm text-muted-foreground mt-1">Clique em "Novo Ativo" para começar</p>
+          <Button onClick={() => setShowNewInvestment(true)} className="mt-4" variant="outline">
+            <Plus className="w-4 h-4 mr-1" /> Novo Ativo
+          </Button>
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -333,19 +370,22 @@ export default function InvestmentsPage() {
             const typeInfo  = INVESTMENT_TYPES.find(t => t.value === inv.type);
             const returnVal = Number(inv.current_value) - Number(inv.total_invested);
             const pct       = Number(inv.total_invested) > 0 ? (returnVal / Number(inv.total_invested)) * 100 : 0;
-            const isSelected    = selectedInvestment === inv.id;
-            const annualRate    = Number(inv.annual_rate) || 0;
-            const hasRate       = annualRate > 0;
-            const showProj      = expandedProjections === inv.id;
-            const cur           = Number(inv.current_value);
-            const cardColor     = inv.color ?? TYPE_COLORS[inv.type] ?? '#10b981';
+            const isSelected = selectedInvestment === inv.id;
+            const annualRate = Number(inv.annual_rate) || 0;
+            const hasRate    = annualRate > 0;
+            const showProj   = expandedProjections === inv.id;
+            const cur        = Number(inv.current_value);
+            const cardColor  = inv.color ?? TYPE_COLORS[inv.type] ?? '#10b981';
 
             return (
               <div
                 key={inv.id}
-                className={`stat-card flex flex-col gap-0 overflow-hidden transition-all ${isSelected ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-border'}`}
+                className={cn(
+                  'stat-card flex flex-col gap-0 overflow-hidden transition-all',
+                  isSelected ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-border',
+                )}
               >
-                {/* Photo banner (if any) */}
+                {/* Photo banner */}
                 {inv.photo_url && (
                   <div className="h-24 -mx-4 -mt-4 mb-3 overflow-hidden rounded-t-xl">
                     <img src={inv.photo_url} alt={inv.name} className="w-full h-full object-cover" />
@@ -371,21 +411,20 @@ export default function InvestmentsPage() {
                       </p>
                     </div>
                   </div>
+                  {/* Actions */}
                   <div className="flex gap-0.5 shrink-0 ml-1">
-                    <button onClick={(e) => { e.stopPropagation(); openEdit(inv); }}
-                      className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Editar">
+                    <button
+                      onClick={e => { e.stopPropagation(); openEdit(inv); }}
+                      className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      title="Editar / Personalizar"
+                    >
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); setShowAporte(inv.id); setAporteData(p => ({ ...p, type: 'aporte' })); }}
-                      className="p-1.5 rounded-lg hover:bg-income/10 text-income transition-colors" title="Aporte">
-                      <ArrowUpCircle className="w-4 h-4" />
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); setShowAporte(inv.id); setAporteData(p => ({ ...p, type: 'resgate' })); }}
-                      className="p-1.5 rounded-lg hover:bg-expense/10 text-expense transition-colors" title="Resgate">
-                      <ArrowDownCircle className="w-4 h-4" />
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); deleteInvestment.mutate(inv.id); }}
-                      className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+                    <button
+                      onClick={e => { e.stopPropagation(); deleteInvestment.mutate(inv.id); }}
+                      className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                      title="Excluir"
+                    >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -399,7 +438,7 @@ export default function InvestmentsPage() {
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Investido</span>
-                    <span>{maskCurrency(formatCurrency(inv.invested))}</span>
+                    <span>{maskCurrency(formatCurrency(Number(inv.total_invested)))}</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Rendimento</span>
@@ -416,16 +455,18 @@ export default function InvestmentsPage() {
 
                 {/* Progress bar */}
                 <div className="mt-3 h-1 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full rounded-full" style={{
-                    width: `${Math.min(100, (cur / (totalPatrimony || 1)) * 100)}%`,
-                    backgroundColor: cardColor,
-                  }} />
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${Math.min(100, (cur / (totalPatrimony || 1)) * 100)}%`, backgroundColor: cardColor }}
+                  />
                 </div>
 
                 {/* Tags row */}
                 <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
-                  <span className="text-[11px] px-2 py-0.5 rounded-full font-medium"
-                    style={{ backgroundColor: cardColor + '22', color: cardColor }}>
+                  <span
+                    className="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                    style={{ backgroundColor: cardColor + '22', color: cardColor }}
+                  >
                     {liquidityBadge(inv.liquidity)}
                   </span>
                   {hasRate && (
@@ -440,26 +481,38 @@ export default function InvestmentsPage() {
                   <div className="mt-2.5">
                     <button
                       className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors w-full"
-                      onClick={(e) => { e.stopPropagation(); setExpandedProjections(showProj ? null : inv.id); }}
+                      onClick={e => { e.stopPropagation(); setExpandedProjections(showProj ? null : inv.id); }}
                     >
                       <TrendingUp className="w-3 h-3" />
                       Projeções
                       {showProj ? <ChevronUp className="w-3 h-3 ml-auto" /> : <ChevronDown className="w-3 h-3 ml-auto" />}
                     </button>
                     {showProj && (
-                      <div className="mt-2 grid grid-cols-3 gap-1.5">
+                      <div className="mt-2 space-y-1.5">
                         {[
                           { label: '30 dias',  months: 1  },
+                          { label: '3 meses',  months: 3  },
                           { label: '6 meses',  months: 6  },
                           { label: '12 meses', months: 12 },
+                          { label: '24 meses', months: 24 },
+                          { label: '5 anos',   months: 60 },
                         ].map(({ label, months }) => {
                           const proj = project(cur, annualRate, months);
                           const gain = proj - cur;
+                          const gainPct = (gain / cur) * 100;
                           return (
-                            <div key={label} className="rounded-lg bg-muted/40 p-2 text-center">
-                              <p className="text-[10px] text-muted-foreground mb-0.5">{label}</p>
-                              <p className="text-xs font-bold">{maskCurrency(formatCurrency(proj))}</p>
-                              <p className="text-[10px] text-income">+{maskCurrency(formatCurrency(gain))}</p>
+                            <div key={label} className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2">
+                              <span className="text-[11px] text-muted-foreground font-medium w-16 shrink-0">{label}</span>
+                              <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden mx-3">
+                                <div
+                                  className="h-full rounded-full"
+                                  style={{ width: `${Math.min(100, gainPct * 2)}%`, backgroundColor: cardColor }}
+                                />
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-xs font-bold">{maskCurrency(formatCurrency(proj))}</p>
+                                <p className="text-[10px] text-income">+{maskCurrency(formatCurrency(gain))}</p>
+                              </div>
                             </div>
                           );
                         })}
@@ -467,43 +520,86 @@ export default function InvestmentsPage() {
                     )}
                   </div>
                 )}
+
+                {/* Quick action links */}
+                <div className="flex gap-2 mt-3 pt-3 border-t border-border/40">
+                  <Link
+                    to="/despesas"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-expense/8 text-expense text-[11px] font-semibold hover:bg-expense/15 transition-colors"
+                    title="Registrar aporte (despesa vinculada)"
+                  >
+                    <ArrowUpRight className="w-3 h-3" /> Aporte
+                  </Link>
+                  <Link
+                    to="/receitas"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-income/8 text-income text-[11px] font-semibold hover:bg-income/15 transition-colors"
+                    title="Registrar resgate (receita vinculada)"
+                  >
+                    <ArrowDownRight className="w-3 h-3" /> Resgate
+                  </Link>
+                </div>
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Transaction History */}
+      {/* ─── Transaction History ──────────────────────────────────────────── */}
       {selectedTxns.length > 0 && (
         <div className="stat-card">
-          <h3 className="font-semibold text-sm mb-4">
-            {selectedInvestment ? `Histórico - ${investments.find((i) => i.id === selectedInvestment)?.name}` : 'Histórico de movimentações'}
+          <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
+            <div className="w-5 h-5 rounded-md bg-primary/10 flex items-center justify-center">
+              <BarChart3 className="w-3 h-3 text-primary" />
+            </div>
+            {selectedInvestment
+              ? `Histórico — ${investments.find(i => i.id === selectedInvestment)?.name}`
+              : 'Histórico de movimentações'}
           </h3>
           <div className="space-y-2">
-            {selectedTxns.slice(0, 20).map((t) => (
-              <div key={t.id} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-                <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full ${
-                    t.type === 'aporte' ? 'bg-primary' : t.type === 'resgate' ? 'bg-expense' :
-                    t.type === 'rendimento' ? 'bg-income' : 'bg-warning'
-                  }`} />
-                  <div>
-                    <p className="text-sm font-medium">{t.description || t.type}</p>
-                    <p className="text-xs text-muted-foreground">{formatDate(t.date)}</p>
+            {selectedTxns.slice(0, 20).map(t => {
+              const isPositive = t.type === 'aporte' || t.type === 'rendimento';
+              const typeLabel: Record<string, string> = {
+                aporte: 'Aporte', resgate: 'Resgate', rendimento: 'Rendimento', taxa: 'Taxa', ir: 'IR',
+              };
+              return (
+                <div key={t.id} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0 gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={cn(
+                      'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-[11px]',
+                      t.type === 'aporte' ? 'bg-expense/10 text-expense' :
+                      t.type === 'resgate' ? 'bg-income/10 text-income' :
+                      t.type === 'rendimento' ? 'bg-income/10 text-income' :
+                      'bg-warning/10 text-warning',
+                    )}>
+                      {t.type === 'aporte' ? '↑' : t.type === 'resgate' ? '↓' : t.type === 'rendimento' ? '📈' : '💸'}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{t.description || typeLabel[t.type] || t.type}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(t.date)}</p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className={cn('text-sm font-semibold tabular-nums', isPositive ? 'text-income' : 'text-expense')}>
+                      {isPositive ? '+' : '−'}{maskCurrency(formatCurrency(Number(t.amount)))}
+                    </span>
+                    <p className="text-[10px] text-muted-foreground capitalize">{typeLabel[t.type] || t.type}</p>
                   </div>
                 </div>
-                <span className={`text-sm font-semibold currency ${
-                  t.type === 'aporte' || t.type === 'rendimento' ? 'text-income' : 'text-expense'
-                }`}>
-                  {t.type === 'aporte' || t.type === 'rendimento' ? '+' : '−'}{maskCurrency(formatCurrency(Number(t.amount)))}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
+          {selectedInvestment && (
+            <button
+              onClick={() => setSelectedInvestment(null)}
+              className="mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Ver todos os ativos →
+            </button>
+          )}
         </div>
       )}
 
-      {/* ── Edit Dialog ────────────────────────────────────────────────────── */}
+      {/* ── Edit Dialog ──────────────────────────────────────────────────── */}
       <Dialog open={!!editingInvestment} onOpenChange={o => !o && setEditingInvestment(null)}>
         <DialogContent className="max-h-[92dvh] overflow-y-auto">
           <DialogHeader><DialogTitle>Personalizar Investimento</DialogTitle></DialogHeader>
@@ -511,11 +607,19 @@ export default function InvestmentsPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
                 <Label className="text-xs text-muted-foreground">Nome</Label>
-                <Input value={editForm.name} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))} placeholder="Ex: CDB Nubank 100% CDI" />
+                <Input
+                  value={editForm.name}
+                  onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
+                  placeholder="Ex: CDB Nubank 100% CDI"
+                />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Instituição</Label>
-                <Input value={editForm.institution} onChange={e => setEditForm(p => ({ ...p, institution: e.target.value }))} placeholder="Nubank, XP..." />
+                <Input
+                  value={editForm.institution}
+                  onChange={e => setEditForm(p => ({ ...p, institution: e.target.value }))}
+                  placeholder="Nubank, XP..."
+                />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Tipo</Label>
@@ -528,7 +632,11 @@ export default function InvestmentsPage() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Ícone (emoji)</Label>
-                <Input value={editForm.icon} onChange={e => setEditForm(p => ({ ...p, icon: e.target.value }))} placeholder="📈" maxLength={4} />
+                <Input
+                  value={editForm.icon}
+                  onChange={e => setEditForm(p => ({ ...p, icon: e.target.value }))}
+                  placeholder="📈" maxLength={4}
+                />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Liquidez</Label>
@@ -548,7 +656,7 @@ export default function InvestmentsPage() {
                   placeholder="Ex: 12.5"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Usado para calcular projeções de 30 dias, 6 meses e 12 meses no card
+                  Usada para calcular projeções de 30 dias até 5 anos no card
                 </p>
               </div>
               <div className="col-span-2">
@@ -557,7 +665,7 @@ export default function InvestmentsPage() {
                   {PRESET_COLORS.map(c => (
                     <button
                       key={c}
-                      className={`w-7 h-7 rounded-full transition-all ${editForm.color === c ? 'ring-2 ring-offset-2 ring-foreground scale-110' : 'hover:scale-105'}`}
+                      className={cn('w-7 h-7 rounded-full transition-all', editForm.color === c ? 'ring-2 ring-offset-2 ring-foreground scale-110' : 'hover:scale-105')}
                       style={{ backgroundColor: c }}
                       onClick={() => setEditForm(p => ({ ...p, color: c }))}
                     />
@@ -580,7 +688,11 @@ export default function InvestmentsPage() {
                   placeholder="https://..."
                 />
                 {editForm.photo_url && (
-                  <img src={editForm.photo_url} alt="preview" className="mt-2 h-16 w-full object-cover rounded-lg" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                  <img
+                    src={editForm.photo_url} alt="preview"
+                    className="mt-2 h-16 w-full object-cover rounded-lg"
+                    onError={e => (e.currentTarget.style.display = 'none')}
+                  />
                 )}
               </div>
             </div>
@@ -592,40 +704,60 @@ export default function InvestmentsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── New Investment Dialog ──────────────────────────────────────────── */}
+      {/* ── New Investment Dialog ────────────────────────────────────────── */}
       <Dialog open={showNewInvestment} onOpenChange={setShowNewInvestment}>
         <DialogContent className="max-h-[92dvh] overflow-y-auto">
           <DialogHeader><DialogTitle>Novo Investimento</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
               <Label className="text-xs text-muted-foreground">Nome *</Label>
-              <Input placeholder="Ex: CDB Nubank 100% CDI" value={newInv.name} onChange={e => setNewInv(p => ({ ...p, name: e.target.value }))} />
+              <Input
+                placeholder="Ex: CDB Nubank 100% CDI"
+                value={newInv.name}
+                onChange={e => setNewInv(p => ({ ...p, name: e.target.value }))}
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs text-muted-foreground">Tipo</Label>
                 <Select value={newInv.type} onValueChange={v => setNewInv(p => ({ ...p, type: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{INVESTMENT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.icon} {t.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>
+                    {INVESTMENT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.icon} {t.label}</SelectItem>)}
+                  </SelectContent>
                 </Select>
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Instituição</Label>
-                <Input placeholder="Nubank, XP..." value={newInv.institution} onChange={e => setNewInv(p => ({ ...p, institution: e.target.value }))} />
+                <Input
+                  placeholder="Nubank, XP..."
+                  value={newInv.institution}
+                  onChange={e => setNewInv(p => ({ ...p, institution: e.target.value }))}
+                />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Valor atual (R$)</Label>
-                <Input type="number" placeholder="0,00" value={newInv.current_value} onChange={e => setNewInv(p => ({ ...p, current_value: e.target.value }))} />
+                <Input
+                  type="number" placeholder="0,00"
+                  value={newInv.current_value}
+                  onChange={e => setNewInv(p => ({ ...p, current_value: e.target.value }))}
+                />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Rentabilidade (% a.a.)</Label>
-                <Input type="number" step="0.1" placeholder="Ex: 12.5" value={newInv.annual_rate} onChange={e => setNewInv(p => ({ ...p, annual_rate: e.target.value }))} />
+                <Input
+                  type="number" step="0.1" placeholder="Ex: 12.5"
+                  value={newInv.annual_rate}
+                  onChange={e => setNewInv(p => ({ ...p, annual_rate: e.target.value }))}
+                />
               </div>
               <div className="col-span-2">
                 <Label className="text-xs text-muted-foreground">Liquidez</Label>
                 <Select value={newInv.liquidity} onValueChange={v => setNewInv(p => ({ ...p, liquidity: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{LIQUIDITY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>
+                    {LIQUIDITY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  </SelectContent>
                 </Select>
               </div>
             </div>
@@ -633,71 +765,6 @@ export default function InvestmentsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewInvestment(false)}>Cancelar</Button>
             <Button onClick={handleNewInvestment} disabled={addInvestment.isPending}>Criar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Movimentação Dialog ────────────────────────────────────────────── */}
-      <Dialog open={!!showAporte} onOpenChange={o => !o && setShowAporte(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Movimentacao Patrimonial</DialogTitle>
-          </DialogHeader>
-          <div className="rounded-lg bg-primary/5 border border-primary/20 px-3 py-2 text-xs text-muted-foreground mb-2">
-            ℹ️ Aportes e resgates <strong>não são despesas</strong> — transferem patrimônio entre conta e investimento.
-          </div>
-          <div className="space-y-4">
-            <div>
-              <Label className="text-xs text-muted-foreground">Tipo</Label>
-              <Select value={aporteData.type} onValueChange={(v: string) => setAporteData(p => ({ ...p, type: v as typeof aporteData.type, account_id: '' }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="aporte">⬆️ Aporte — depositar no investimento</SelectItem>
-                  <SelectItem value="resgate">⬇️ Resgate — retirar do investimento</SelectItem>
-                  <SelectItem value="rendimento">📈 Rendimento — atualizar valor</SelectItem>
-                  <SelectItem value="taxa">💸 Taxa / custo</SelectItem>
-                  <SelectItem value="ir">🏛️ Imposto de renda (IR)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs text-muted-foreground">Valor (R$)</Label>
-                <Input type="number" step="0.01" placeholder="0,00" value={aporteData.amount} onChange={e => setAporteData(p => ({ ...p, amount: e.target.value }))} />
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Data</Label>
-                <Input type="date" value={aporteData.date} onChange={e => setAporteData(p => ({ ...p, date: e.target.value }))} style={{ fontSize: '16px' }} />
-              </div>
-            </div>
-            {showAccountSelector && (
-              <div>
-                <Label className="text-xs text-muted-foreground">{accountLabel}</Label>
-                <Select value={aporteData.account_id || '__none__'} onValueChange={v => setAporteData(p => ({ ...p, account_id: v === '__none__' ? '' : v }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar conta..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Sem conta (só registrar no investimento)</SelectItem>
-                    {accounts.filter(a => !a.archived).map(a => <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            {showPreview && (
-              <div className={`rounded-lg px-3 py-2 text-sm border flex items-center gap-2 ${aporteData.type === 'aporte' ? 'bg-expense/5 border-expense/20 text-expense' : 'bg-income/5 border-income/20 text-income'}`}>
-                <span>{aporteData.type === 'aporte' ? '↓' : '↑'}</span>
-                <span>
-                  {formatCurrency(previewAmount)} {aporteData.type === 'aporte' ? 'debitados' : 'creditados'} em <strong>{selectedAccount?.name}</strong>
-                </span>
-              </div>
-            )}
-            <div>
-              <Label className="text-xs text-muted-foreground">Descrição (opcional)</Label>
-              <Input placeholder="Ex: Aporte mensal" value={aporteData.description} onChange={e => setAporteData(p => ({ ...p, description: e.target.value }))} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAporte(null)}>Cancelar</Button>
-            <Button onClick={handleAporte} disabled={addTransaction.isPending || !aporteData.amount}>Confirmar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
