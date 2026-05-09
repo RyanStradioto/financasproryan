@@ -952,6 +952,61 @@ export default function Dashboard() {
     };
   }, [sixMonthData]);
 
+  const weeklyFlowData = useMemo(() => {
+    const [year, monthNumber] = month.split('-').map(Number);
+    const lastDay = new Date(year, monthNumber, 0).getDate();
+    const weeks = Array.from({ length: Math.ceil(lastDay / 7) }, (_, index) => {
+      const start = index * 7 + 1;
+      const end = Math.min(start + 6, lastDay);
+      return {
+        week: `S${index + 1}`,
+        range: `${String(start).padStart(2, '0')}-${String(end).padStart(2, '0')}`,
+        income: 0,
+        expenses: 0,
+        balance: 0,
+      };
+    });
+
+    const getWeekIndex = (date?: string | null) => {
+      if (!date?.startsWith(month)) return -1;
+      const day = Number(date.slice(8, 10));
+      if (!Number.isFinite(day) || day < 1) return -1;
+      return Math.min(weeks.length - 1, Math.floor((day - 1) / 7));
+    };
+
+    scopedIncome
+      .filter(i => i.status === 'concluido')
+      .forEach(i => {
+        const index = getWeekIndex(i.date);
+        if (index >= 0) weeks[index].income += Number(i.amount);
+      });
+
+    scopedNonCCExpenses
+      .filter(e => e.status === 'concluido')
+      .forEach(e => {
+        const index = getWeekIndex(e.date);
+        if (index >= 0) weeks[index].expenses += Number(e.amount);
+      });
+
+    scopedCCTransactions.forEach(t => {
+      const index = getWeekIndex(t.date);
+      if (index >= 0) weeks[index].expenses += Number(t.amount);
+    });
+
+    return weeks.map(week => ({ ...week, balance: week.income - week.expenses }));
+  }, [month, scopedIncome, scopedNonCCExpenses, scopedCCTransactions]);
+
+  const weeklyFlowSummary = useMemo(() => {
+    const activeWeeks = weeklyFlowData.filter(week => week.income > 0 || week.expenses > 0);
+    const source = activeWeeks.length > 0 ? activeWeeks : weeklyFlowData;
+    const bestWeek = source.reduce((best, week) => week.balance > best.balance ? week : best, source[0]);
+    const heaviestWeek = source.reduce((max, week) => week.expenses > max.expenses ? week : max, source[0]);
+    const averageExpense = source.length > 0
+      ? source.reduce((sum, week) => sum + week.expenses, 0) / source.length
+      : 0;
+    return { bestWeek, heaviestWeek, averageExpense };
+  }, [weeklyFlowData]);
+
   // Executive summary (3-line auto narrative)
   const topCategoryDelta = categoryDeltas.find(d => d.trend === 'up' && d.deltaPct !== null && Math.abs(d.deltaPct) >= 15);
   const topCategoryName = topCategoryDelta ? (categories.find(c => c.id === topCategoryDelta.category_id)?.name) : undefined;
@@ -1367,7 +1422,8 @@ export default function Dashboard() {
       </section>
 
       <section className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.75fr)]">
-        <PremiumCard className="relative self-start overflow-hidden p-5 sm:p-6">
+        <div className="space-y-5">
+          <PremiumCard className="relative self-start overflow-hidden p-5 sm:p-6">
           <div className="pointer-events-none absolute -left-24 -top-28 h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
           <div className="pointer-events-none absolute -right-20 top-10 h-64 w-64 rounded-full bg-sky-400/10 blur-3xl" />
           <div className="relative mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -1406,6 +1462,26 @@ export default function Dashboard() {
                     <stop offset="72%" stopColor="#fb7185" stopOpacity={0.04} />
                     <stop offset="100%" stopColor="#fb7185" stopOpacity={0} />
                   </linearGradient>
+                  <linearGradient id="dashboardBalanceArea" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.24} />
+                    <stop offset="74%" stopColor="#38bdf8" stopOpacity={0.035} />
+                    <stop offset="100%" stopColor="#38bdf8" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="dashboardIncomeStroke" x1="0" x2="1" y1="0" y2="0">
+                    <stop offset="0%" stopColor="#5eead4" />
+                    <stop offset="55%" stopColor="#34d399" />
+                    <stop offset="100%" stopColor="#22c55e" />
+                  </linearGradient>
+                  <linearGradient id="dashboardExpenseStroke" x1="0" x2="1" y1="0" y2="0">
+                    <stop offset="0%" stopColor="#fda4af" />
+                    <stop offset="55%" stopColor="#fb7185" />
+                    <stop offset="100%" stopColor="#f43f5e" />
+                  </linearGradient>
+                  <linearGradient id="dashboardBalanceStroke" x1="0" x2="1" y1="0" y2="0">
+                    <stop offset="0%" stopColor="#7dd3fc" />
+                    <stop offset="55%" stopColor="#38bdf8" />
+                    <stop offset="100%" stopColor="#60a5fa" />
+                  </linearGradient>
                   <filter id="dashboardChartGlow" x="-40%" y="-40%" width="180%" height="180%">
                     <feGaussianBlur stdDeviation="2.5" result="coloredBlur" />
                     <feMerge>
@@ -1430,9 +1506,9 @@ export default function Dashboard() {
                     return active && rows.length ? <ChartTooltipCard title={String(label)} rows={rows} /> : null;
                   }}
                 />
-                <Area name="Receitas" type="monotone" dataKey="income" stroke="#34d399" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" fill="url(#dashboardIncomeArea)" dot={{ r: 4.5, fill: '#34d399', stroke: '#07101a', strokeWidth: 2 }} activeDot={{ r: 7, fill: '#34d399', stroke: '#ecfdf5', strokeWidth: 2 }} filter="url(#dashboardChartGlow)" />
-                <Area name="Despesas" type="monotone" dataKey="expenses" stroke="#fb7185" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" fill="url(#dashboardExpenseArea)" dot={{ r: 4.5, fill: '#fb7185', stroke: '#07101a', strokeWidth: 2 }} activeDot={{ r: 7, fill: '#fb7185', stroke: '#fff1f2', strokeWidth: 2 }} />
-                <Line name="Saldo" type="monotone" dataKey="sobra" stroke="#38bdf8" strokeWidth={3.25} strokeLinecap="round" strokeLinejoin="round" dot={{ r: 4.5, fill: '#38bdf8', stroke: '#07101a', strokeWidth: 2 }} activeDot={{ r: 7, fill: '#38bdf8', stroke: '#e0f2fe', strokeWidth: 2 }} />
+                <Area name="Saldo" type="natural" dataKey="sobra" stroke="url(#dashboardBalanceStroke)" strokeWidth={3.25} strokeLinecap="round" strokeLinejoin="round" fill="url(#dashboardBalanceArea)" dot={{ r: 4.5, fill: '#38bdf8', stroke: '#07101a', strokeWidth: 2 }} activeDot={{ r: 7, fill: '#38bdf8', stroke: '#e0f2fe', strokeWidth: 2 }} />
+                <Line name="Receitas" type="natural" dataKey="income" stroke="url(#dashboardIncomeStroke)" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" dot={{ r: 5, fill: '#34d399', stroke: '#07101a', strokeWidth: 2.5 }} activeDot={{ r: 8, fill: '#34d399', stroke: '#ecfdf5', strokeWidth: 2 }} filter="url(#dashboardChartGlow)" />
+                <Line name="Despesas" type="natural" dataKey="expenses" stroke="url(#dashboardExpenseStroke)" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" dot={{ r: 5, fill: '#fb7185', stroke: '#07101a', strokeWidth: 2.5 }} activeDot={{ r: 8, fill: '#fb7185', stroke: '#fff1f2', strokeWidth: 2 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -1450,6 +1526,81 @@ export default function Dashboard() {
             )}
           </div>
         </PremiumCard>
+
+          <PremiumCard className="relative overflow-hidden p-5 sm:p-6">
+            <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-cyan-400/10 blur-3xl" />
+            <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px]">
+              <div className="min-w-0">
+                <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <h2 className="text-lg font-black text-white">Ritmo semanal</h2>
+                    <p className="mt-1 text-sm text-slate-500">Como entradas e saídas se distribuem no mês.</p>
+                  </div>
+                  <span className="w-fit rounded-full border border-cyan-300/15 bg-cyan-400/[0.07] px-3 py-1 text-xs font-black text-cyan-200">
+                    {weeklyFlowData.length} semanas analisadas
+                  </span>
+                </div>
+
+                <div className="h-[210px] rounded-[1.35rem] border border-white/10 bg-[#070b12]/75 p-3">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={weeklyFlowData} margin={{ top: 12, right: 14, left: -10, bottom: 0 }} barGap={6}>
+                      <defs>
+                        <linearGradient id="weeklyIncomeBar" x1="0" x2="0" y1="0" y2="1">
+                          <stop offset="0%" stopColor="#5eead4" stopOpacity={0.95} />
+                          <stop offset="100%" stopColor="#10b981" stopOpacity={0.45} />
+                        </linearGradient>
+                        <linearGradient id="weeklyExpenseBar" x1="0" x2="0" y1="0" y2="1">
+                          <stop offset="0%" stopColor="#fb7185" stopOpacity={0.92} />
+                          <stop offset="100%" stopColor="#be123c" stopOpacity={0.45} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid stroke="rgba(148,163,184,0.09)" strokeDasharray="4 10" vertical={false} />
+                      <XAxis dataKey="week" axisLine={false} tickLine={false} tick={{ fill: '#7c8aa3', fontSize: 12, fontWeight: 800 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 700 }} tickFormatter={(v) => `R$${Math.round(Number(v) / 1000)}k`} />
+                      <RechartsTooltip
+                        cursor={{ fill: 'rgba(148,163,184,0.08)' }}
+                        content={({ active, payload, label }) => {
+                          const week = weeklyFlowData.find(item => item.week === label);
+                          const rows = (payload || [])
+                            .filter((p) => p.value !== null && p.value !== undefined)
+                            .map((p) => ({
+                              label: String(p.name),
+                              value: maskCurrency(formatCurrency(Number(p.value))),
+                              color: String(p.color || '#94a3b8'),
+                            }));
+                          return active && rows.length ? <ChartTooltipCard title={`${label}${week ? ` • dias ${week.range}` : ''}`} rows={rows} /> : null;
+                        }}
+                      />
+                      <Bar name="Receitas" dataKey="income" fill="url(#weeklyIncomeBar)" radius={[9, 9, 3, 3]} maxBarSize={34} />
+                      <Bar name="Despesas" dataKey="expenses" fill="url(#weeklyExpenseBar)" radius={[9, 9, 3, 3]} maxBarSize={34} />
+                      <Line name="Saldo" type="monotone" dataKey="balance" stroke="#38bdf8" strokeWidth={2.75} strokeLinecap="round" dot={{ r: 3.5, fill: '#38bdf8', stroke: '#07101a', strokeWidth: 2 }} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Melhor semana</p>
+                  <p className="mt-2 text-lg font-black text-white">{weeklyFlowSummary.bestWeek?.week ?? '-'}</p>
+                  <p className={cn('currency mt-1 text-sm font-black', (weeklyFlowSummary.bestWeek?.balance ?? 0) >= 0 ? 'text-emerald-300' : 'text-rose-300')}>
+                    {maskCurrency(formatCurrency(weeklyFlowSummary.bestWeek?.balance ?? 0))}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Mais pesada</p>
+                  <p className="mt-2 text-lg font-black text-white">{weeklyFlowSummary.heaviestWeek?.week ?? '-'}</p>
+                  <p className="currency mt-1 text-sm font-black text-rose-300">{maskCurrency(formatCurrency(weeklyFlowSummary.heaviestWeek?.expenses ?? 0))}</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Média de gastos</p>
+                  <p className="currency mt-2 text-lg font-black text-cyan-200">{maskCurrency(formatCurrency(weeklyFlowSummary.averageExpense))}</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">por semana ativa</p>
+                </div>
+              </div>
+            </div>
+          </PremiumCard>
+        </div>
 
         <div className="space-y-5">
           <PremiumCard className="p-5">
