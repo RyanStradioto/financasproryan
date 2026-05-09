@@ -203,6 +203,7 @@ export function useAddCreditCardTransaction() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cc-transactions'] });
+      qc.invalidateQueries({ queryKey: ['cc-all-future'] });
       qc.invalidateQueries({ queryKey: ['expenses'] });
       qc.invalidateQueries({ queryKey: ['accumulated-balance'] });
     },
@@ -253,7 +254,10 @@ export function useDeleteCCTransaction() {
       const { error } = await supabase.from('credit_card_transactions').delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['cc-transactions'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cc-transactions'] });
+      qc.invalidateQueries({ queryKey: ['cc-all-future'] });
+    },
   });
 }
 
@@ -283,6 +287,7 @@ export function useUpdateCCTransaction() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cc-transactions'] });
+      qc.invalidateQueries({ queryKey: ['cc-all-future'] });
       qc.invalidateQueries({ queryKey: ['expenses'] });
     },
   });
