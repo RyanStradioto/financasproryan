@@ -15,7 +15,7 @@ import SparklineChart from '@/components/finance/SparklineChart';
 import EconomyGauge from '@/components/finance/EconomyGauge';
 import BudgetRings from '@/components/finance/BudgetRings';
 import WeeklyHeatmap from '@/components/finance/WeeklyHeatmap';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ComposedChart, Line } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ComposedChart, Area, Line } from 'recharts';
 import { useCategories } from '@/hooks/useFinanceData';
 import { useAccumulatedBalance } from '@/hooks/useAccumulatedBalance';
 import { useWorkTimeCalc, useProfile } from '@/hooks/useProfile';
@@ -290,6 +290,8 @@ export default function Dashboard() {
 
   const { data: income = [] } = useIncome(month);
   const { data: expenses = [] } = useExpenses(month);
+  const { data: allIncome = [] } = useIncome();
+  const { data: allExpenses = [] } = useExpenses();
   const { data: prevIncome = [] } = useIncome(prevMonth);
   const { data: prevExpenses = [] } = useExpenses(prevMonth);
   const { data: prevCCTransactions = [] } = useCCTransactionsForMonth(prevMonth);
@@ -862,29 +864,80 @@ export default function Dashboard() {
 
   // Six-month overview (current month + 5 previous)
   const sixMonthData = useMemo(() => {
-    const result: Array<{ month: string; label: string; income: number | null; expenses: number | null; sobra: number | null; hasData: boolean }> = [];
+    const result: Array<{ month: string; label: string; income: number; expenses: number; sobra: number }> = [];
     const [y, m] = month.split('-').map(Number);
     const monthLabels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    // Use only the data we already have for current and previous month — placeholders for older
+    const monthKeys = new Set<string>();
+
     for (let i = 5; i >= 0; i--) {
       const d = new Date(y, m - 1 - i, 1);
-      const yy = d.getFullYear(); const mm = d.getMonth() + 1;
-      const monthKey = `${yy}-${String(mm).padStart(2, '0')}`;
-      let income: number | null = null;
-      let expenses: number | null = null;
-      if (i === 0) { income = totalIncome; expenses = currentTotalAll; }
-      else if (i === 1) { income = prevTotalIncome; expenses = prevTotalAll; }
-      const hasData = income !== null && expenses !== null;
+      monthKeys.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    }
+
+    const focusedCardIds = (() => {
+      if (accountFocusId === '__all__') return null;
+      const account = accounts.find(a => a.id === accountFocusId);
+      if (!account) return [];
+      const accBrand = resolveAccountBrand(account.name).name;
+      return creditCards
+        .filter(c => resolveAccountBrand(c.name).name === accBrand)
+        .map(c => c.id);
+    })();
+
+    const byMonth = new Map<string, { income: number; expenses: number; hasData: boolean }>();
+    const ensureMonth = (monthKey: string) => {
+      const current = byMonth.get(monthKey) || { income: 0, expenses: 0, hasData: false };
+      byMonth.set(monthKey, current);
+      return current;
+    };
+
+    allIncome
+      .filter(i => i.status === 'concluido')
+      .filter(i => accountFocusId === '__all__' || i.account_id === accountFocusId)
+      .forEach(i => {
+        const monthKey = i.date?.slice(0, 7);
+        if (!monthKeys.has(monthKey)) return;
+        const row = ensureMonth(monthKey);
+        row.income += Number(i.amount);
+        row.hasData = true;
+      });
+
+    allExpenses
+      .filter(e => !isCreditCardExpense(e))
+      .filter(e => e.status === 'concluido')
+      .filter(e => accountFocusId === '__all__' || e.account_id === accountFocusId)
+      .forEach(e => {
+        const monthKey = e.date?.slice(0, 7);
+        if (!monthKeys.has(monthKey)) return;
+        const row = ensureMonth(monthKey);
+        row.expenses += Number(e.amount);
+        row.hasData = true;
+      });
+
+    creditTransactions
+      .filter(t => monthKeys.has(t.bill_month))
+      .filter(t => !focusedCardIds || focusedCardIds.includes(t.credit_card_id))
+      .forEach(t => {
+        const row = ensureMonth(t.bill_month);
+        row.expenses += Number(t.amount);
+        row.hasData = true;
+      });
+
+    [...monthKeys].forEach(monthKey => {
+      const values = byMonth.get(monthKey);
+      if (!values?.hasData) return;
+      const [yy, mm] = monthKey.split('-').map(Number);
       result.push({
         month: monthKey,
         label: `${monthLabels[mm - 1]}/${String(yy).slice(2)}`,
-        income, expenses,
-        sobra: hasData ? income - expenses : null,
-        hasData,
+        income: values.income,
+        expenses: values.expenses,
+        sobra: values.income - values.expenses,
       });
-    }
+    });
+
     return result;
-  }, [month, totalIncome, currentTotalAll, prevTotalIncome, prevTotalAll]);
+  }, [month, allIncome, allExpenses, creditTransactions, accountFocusId, accounts, creditCards]);
 
   // Executive summary (3-line auto narrative)
   const topCategoryDelta = categoryDeltas.find(d => d.trend === 'up' && d.deltaPct !== null && Math.abs(d.deltaPct) >= 15);
@@ -1311,7 +1364,19 @@ export default function Dashboard() {
           </div>
           <div className="h-[330px]">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={sixMonthData} margin={{ top: 12, right: 12, left: 0, bottom: 0 }} barGap={8} barCategoryGap="34%">
+              <ComposedChart data={sixMonthData} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="dashboardIncomeArea" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#34d399" stopOpacity={0.32} />
+                    <stop offset="78%" stopColor="#34d399" stopOpacity={0.04} />
+                    <stop offset="100%" stopColor="#34d399" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="dashboardExpenseArea" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#fb7185" stopOpacity={0.24} />
+                    <stop offset="78%" stopColor="#fb7185" stopOpacity={0.035} />
+                    <stop offset="100%" stopColor="#fb7185" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid stroke="rgba(148,163,184,0.10)" vertical={false} />
                 <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 700 }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={(v) => `R$${Math.round(Number(v) / 1000)}k`} />
@@ -1328,9 +1393,9 @@ export default function Dashboard() {
                     return active && rows.length ? <ChartTooltipCard title={String(label)} rows={rows} /> : null;
                   }}
                 />
-                <Bar name="Receitas" dataKey="income" fill="#34d399" radius={[10, 10, 4, 4]} maxBarSize={44} />
-                <Bar name="Despesas" dataKey="expenses" fill="#f87171" radius={[10, 10, 4, 4]} maxBarSize={44} />
-                <Line name="Saldo" type="linear" dataKey="sobra" stroke="#38bdf8" strokeWidth={3} dot={{ r: 4, fill: '#38bdf8', strokeWidth: 0 }} activeDot={{ r: 6, fill: '#38bdf8', stroke: '#0f172a', strokeWidth: 2 }} connectNulls={false} />
+                <Area name="Receitas" type="monotone" dataKey="income" stroke="#34d399" strokeWidth={3} fill="url(#dashboardIncomeArea)" dot={{ r: 4, fill: '#34d399', strokeWidth: 0 }} activeDot={{ r: 6, fill: '#34d399', stroke: '#0f172a', strokeWidth: 2 }} />
+                <Area name="Despesas" type="monotone" dataKey="expenses" stroke="#fb7185" strokeWidth={3} fill="url(#dashboardExpenseArea)" dot={{ r: 4, fill: '#fb7185', strokeWidth: 0 }} activeDot={{ r: 6, fill: '#fb7185', stroke: '#0f172a', strokeWidth: 2 }} />
+                <Line name="Saldo" type="monotone" dataKey="sobra" stroke="#38bdf8" strokeWidth={3} dot={{ r: 4, fill: '#38bdf8', strokeWidth: 0 }} activeDot={{ r: 6, fill: '#38bdf8', stroke: '#0f172a', strokeWidth: 2 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
