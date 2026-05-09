@@ -15,7 +15,7 @@ import SparklineChart from '@/components/finance/SparklineChart';
 import EconomyGauge from '@/components/finance/EconomyGauge';
 import BudgetRings from '@/components/finance/BudgetRings';
 import WeeklyHeatmap from '@/components/finance/WeeklyHeatmap';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, AreaChart, Area } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ComposedChart, Line } from 'recharts';
 import { useCategories } from '@/hooks/useFinanceData';
 import { useAccumulatedBalance } from '@/hooks/useAccumulatedBalance';
 import { useWorkTimeCalc, useProfile } from '@/hooks/useProfile';
@@ -862,7 +862,7 @@ export default function Dashboard() {
 
   // Six-month overview (current month + 5 previous)
   const sixMonthData = useMemo(() => {
-    const result: Array<{ month: string; label: string; income: number; expenses: number; sobra: number }> = [];
+    const result: Array<{ month: string; label: string; income: number | null; expenses: number | null; sobra: number | null; hasData: boolean }> = [];
     const [y, m] = month.split('-').map(Number);
     const monthLabels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     // Use only the data we already have for current and previous month — placeholders for older
@@ -870,15 +870,17 @@ export default function Dashboard() {
       const d = new Date(y, m - 1 - i, 1);
       const yy = d.getFullYear(); const mm = d.getMonth() + 1;
       const monthKey = `${yy}-${String(mm).padStart(2, '0')}`;
-      let income = 0, expenses = 0;
+      let income: number | null = null;
+      let expenses: number | null = null;
       if (i === 0) { income = totalIncome; expenses = currentTotalAll; }
       else if (i === 1) { income = prevTotalIncome; expenses = prevTotalAll; }
-      // Older months default to 0; would need separate query to fetch
+      const hasData = income !== null && expenses !== null;
       result.push({
         month: monthKey,
         label: `${monthLabels[mm - 1]}/${String(yy).slice(2)}`,
         income, expenses,
-        sobra: income - expenses,
+        sobra: hasData ? income - expenses : null,
+        hasData,
       });
     }
     return result;
@@ -1309,22 +1311,27 @@ export default function Dashboard() {
           </div>
           <div className="h-[330px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={sixMonthData} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="incomeArea" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#34d399" stopOpacity={0.28} /><stop offset="100%" stopColor="#34d399" stopOpacity={0} /></linearGradient>
-                  <linearGradient id="expenseArea" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#f87171" stopOpacity={0.22} /><stop offset="100%" stopColor="#f87171" stopOpacity={0} /></linearGradient>
-                  <linearGradient id="balanceArea" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#60a5fa" stopOpacity={0.24} /><stop offset="100%" stopColor="#60a5fa" stopOpacity={0} /></linearGradient>
-                </defs>
+              <ComposedChart data={sixMonthData} margin={{ top: 12, right: 12, left: 0, bottom: 0 }} barGap={8} barCategoryGap="34%">
                 <CartesianGrid stroke="rgba(148,163,184,0.10)" vertical={false} />
                 <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 700 }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={(v) => `R$${Math.round(Number(v) / 1000)}k`} />
-                <RechartsTooltip content={({ active, payload, label }) => active && payload ? (
-                  <ChartTooltipCard title={String(label)} rows={payload.map((p) => ({ label: String(p.name), value: maskCurrency(formatCurrency(Number(p.value))), color: p.color }))} />
-                ) : null} />
-                <Area name="Receitas" type="monotone" dataKey="income" stroke="#34d399" strokeWidth={3} fill="url(#incomeArea)" />
-                <Area name="Despesas" type="monotone" dataKey="expenses" stroke="#f87171" strokeWidth={3} fill="url(#expenseArea)" />
-                <Area name="Saldo" type="monotone" dataKey="sobra" stroke="#60a5fa" strokeWidth={3} fill="url(#balanceArea)" />
-              </AreaChart>
+                <RechartsTooltip
+                  cursor={{ fill: 'rgba(148,163,184,0.08)' }}
+                  content={({ active, payload, label }) => {
+                    const rows = (payload || [])
+                      .filter((p) => p.value !== null && p.value !== undefined)
+                      .map((p) => ({
+                        label: String(p.name),
+                        value: maskCurrency(formatCurrency(Number(p.value))),
+                        color: String(p.color || '#94a3b8'),
+                      }));
+                    return active && rows.length ? <ChartTooltipCard title={String(label)} rows={rows} /> : null;
+                  }}
+                />
+                <Bar name="Receitas" dataKey="income" fill="#34d399" radius={[10, 10, 4, 4]} maxBarSize={44} />
+                <Bar name="Despesas" dataKey="expenses" fill="#f87171" radius={[10, 10, 4, 4]} maxBarSize={44} />
+                <Line name="Saldo" type="linear" dataKey="sobra" stroke="#38bdf8" strokeWidth={3} dot={{ r: 4, fill: '#38bdf8', strokeWidth: 0 }} activeDot={{ r: 6, fill: '#38bdf8', stroke: '#0f172a', strokeWidth: 2 }} connectNulls={false} />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
           <div className="mt-4 flex flex-wrap gap-3 text-xs font-bold text-slate-400">
