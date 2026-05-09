@@ -68,6 +68,10 @@ function getMonthRange(monthsAgo: number) {
   };
 }
 
+function isCreditCardMirrorExpense(notes: unknown): boolean {
+  return typeof notes === "string" && notes.includes("[Cartao de credito|");
+}
+
 function generateMonthlyInsights(
   totalIncome: number,
   totalExpenses: number,
@@ -80,7 +84,7 @@ function generateMonthlyInsights(
 ): string[] {
   const tips: string[] = [];
 
-  /* BalanÃ§o geral */
+  /* Balance overview */
   if (balance < 0) {
     tips.push(`O mes fechou no negativo em ${fmt(Math.abs(balance))}. Para o proximo mes, defina limites por categoria antes de gastar.`);
   } else if (savingsRate >= 20) {
@@ -91,7 +95,7 @@ function generateMonthlyInsights(
     tips.push(`A taxa de poupanca ficou em apenas ${savingsRate.toFixed(1)}%. Identifique categorias com maior potencial de corte.`);
   }
 
-  /* Comparativo com mes anterior */
+  /* Previous month comparison */
   if (prevExpenses > 0) {
     const delta = totalExpenses - prevExpenses;
     const deltaPct = Math.abs((delta / prevExpenses) * 100).toFixed(1);
@@ -102,14 +106,14 @@ function generateMonthlyInsights(
     }
   }
 
-  /* Categorias acima do orcamento */
+  /* Categories over budget */
   const overBudget = categories.filter((c) => c.budget > 0 && c.value > c.budget);
   if (overBudget.length > 0) {
     const names = overBudget.slice(0, 3).map((c) => c.name).join(", ");
     tips.push(`Categorias acima do orcamento: ${names}. Revise os limites ou reduza gastos nessas areas.`);
   }
 
-  /* Categoria dominante */
+  /* Dominant category */
   if (categories.length > 0 && totalExpenses > 0) {
     const top = categories[0];
     const pct = Math.round((top.value / totalExpenses) * 100);
@@ -118,7 +122,7 @@ function generateMonthlyInsights(
     }
   }
 
-  /* Media diaria */
+  /* Daily average */
   if (avgDaily > 0) {
     tips.push(`Voce gastou em media ${fmt(avgDaily)} por dia este mes.`);
   }
@@ -150,7 +154,7 @@ function buildMonthlyHtml(p: {
   nextScheduledSend: string;
 }): string {
   const balPos       = p.balance >= 0;
-  const headerBg     = "#1a0533";
+  const headerBg     = "linear-gradient(135deg,#160329 0%,#32105f 58%,#5b164f 100%)";
   const accentPurple = "#7c3aed";
   const ratioExpPct  = p.totalIncome > 0
     ? Math.min(Math.round((p.totalExpenses / p.totalIncome) * 100), 100)
@@ -163,7 +167,7 @@ function buildMonthlyHtml(p: {
     ? ((p.totalIncome - p.prevIncome) / p.prevIncome) * 100
     : null;
 
-  /* â”€â”€ Category rows â”€â”€ */
+  /* Category rows */
   const catRows = p.categories.slice(0, 8).map((c) => {
     const pct      = p.totalExpenses > 0 ? Math.round((c.value / p.totalExpenses) * 100) : 0;
     const budgetPct = c.budget > 0 ? Math.min(Math.round((c.value / c.budget) * 100), 100) : 0;
@@ -194,7 +198,7 @@ function buildMonthlyHtml(p: {
       </tr>`;
   }).join("");
 
-  /* â”€â”€ Top expense rows â”€â”€ */
+  /* Top expense rows */
   const txRows = p.topExpenses.slice(0, 5).map((t, i) => `
     <tr style="background:${i % 2 === 0 ? "#f9fafb" : "#ffffff"};">
       <td style="padding:8px 12px;font-size:13px;color:#111827;">${t.description || "Sem descricao"}</td>
@@ -205,14 +209,14 @@ function buildMonthlyHtml(p: {
       <td style="padding:8px 12px;font-size:13px;font-weight:700;color:#dc2626;text-align:right;white-space:nowrap;">${fmt(t.amount)}</td>
     </tr>`).join("");
 
-  /* â”€â”€ Account rows â”€â”€ */
+  /* Account rows */
   const accRows = p.accounts.slice(0, 5).map((a) => `
     <tr>
       <td style="padding:6px 0;font-size:13px;color:#1f2937;">${a.icon}&nbsp;&nbsp;${a.name}</td>
       <td style="padding:6px 0;font-size:13px;font-weight:700;color:${a.balance >= 0 ? "#166534" : "#dc2626"};text-align:right;">${fmt(a.balance)}</td>
     </tr>`).join("");
 
-  /* â”€â”€ Insight rows â”€â”€ */
+  /* Insight rows */
   const insightRows = p.insights.map((t) => `
     <tr>
       <td style="padding:3px 0 3px 4px;vertical-align:top;width:1%;">
@@ -224,10 +228,10 @@ function buildMonthlyHtml(p: {
   const greeting = p.firstName ? `Ola, ${p.firstName}!` : "Ola!";
 
   const deltaExpHtml = prevDeltaExp !== null
-    ? `<span style="font-size:11px;color:${prevDeltaExp > 0 ? "#dc2626" : "#16a34a"};font-weight:700;">${prevDeltaExp > 0 ? "â–²" : "â–¼"} ${Math.abs(prevDeltaExp).toFixed(1)}% vs. mes ant.</span>`
+    ? `<span style="font-size:11px;color:${prevDeltaExp > 0 ? "#dc2626" : "#16a34a"};font-weight:700;">${prevDeltaExp > 0 ? "&#9650;" : "&#9660;"} ${Math.abs(prevDeltaExp).toFixed(1)}% vs. mes ant.</span>`
     : "";
   const deltaIncHtml = prevDeltaInc !== null
-    ? `<span style="font-size:11px;color:${prevDeltaInc >= 0 ? "#16a34a" : "#dc2626"};font-weight:700;">${prevDeltaInc >= 0 ? "â–²" : "â–¼"} ${Math.abs(prevDeltaInc).toFixed(1)}% vs. mes ant.</span>`
+    ? `<span style="font-size:11px;color:${prevDeltaInc >= 0 ? "#16a34a" : "#dc2626"};font-weight:700;">${prevDeltaInc >= 0 ? "&#9650;" : "&#9660;"} ${Math.abs(prevDeltaInc).toFixed(1)}% vs. mes ant.</span>`
     : "";
 
   return `<!DOCTYPE html>
@@ -236,6 +240,15 @@ function buildMonthlyHtml(p: {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <title>Relatorio Mensal | FinancasPro</title>
+  <style>
+    @media screen and (max-width:620px) {
+      body { padding: 0 !important; }
+      table[width="600"] { width: 100% !important; max-width: 100% !important; }
+      td { box-sizing: border-box !important; }
+      td[width="31%"], td[width="48%"] { display: block !important; width: 100% !important; padding: 0 0 10px 0 !important; }
+      th, td { word-break: break-word !important; }
+    }
+  </style>
 </head>
 <body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f5f9;padding:28px 0;">
@@ -330,7 +343,7 @@ function buildMonthlyHtml(p: {
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;">
           <table width="100%" cellpadding="0" cellspacing="0" border="0">
             <tr>
-              <td style="font-size:12px;font-weight:600;color:#374151;">Orcamento do mes â€” Despesas x Receitas</td>
+              <td style="font-size:12px;font-weight:600;color:#374151;">Orcamento do mes &mdash; Despesas x Receitas</td>
               <td align="right" style="font-size:12px;font-weight:700;color:${ratioExpPct > 90 ? "#dc2626" : ratioExpPct > 70 ? "#d97706" : "#16a34a"};">${ratioExpPct}% comprometido</td>
             </tr>
           </table>
@@ -507,20 +520,31 @@ Deno.serve(async (req) => {
             auth: { persistSession: false },
           });
 
-      const [incRes, expRes, catRes, prevIncRes, prevExpRes, accRes, cardEqRes] = await Promise.all([
+      const [incRes, expRes, catRes, prevIncRes, prevExpRes, accRes, cardEqRes, prevCardEqRes] = await Promise.all([
         dc.from("income").select("id,amount,date,description,account_id")
           .eq("user_id", profile.user_id).gte("date", reportRange.startDate).lte("date", reportRange.endDate),
-        dc.from("expenses").select("id,amount,date,description,category_id")
+        dc.from("expenses").select("id,amount,date,description,category_id,notes")
           .eq("user_id", profile.user_id).gte("date", reportRange.startDate).lte("date", reportRange.endDate),
         dc.from("categories").select("id,name,icon,monthly_budget").eq("user_id", profile.user_id),
         dc.from("income").select("amount")
           .eq("user_id", profile.user_id).gte("date", prevRange.startDate).lte("date", prevRange.endDate),
-        dc.from("expenses").select("amount")
+        dc.from("expenses").select("amount,notes")
           .eq("user_id", profile.user_id).gte("date", prevRange.startDate).lte("date", prevRange.endDate),
         dc.from("accounts").select("id,name,icon,initial_balance").eq("user_id", profile.user_id),
         dc.from("credit_card_transactions").select("id,amount,date,bill_month,category_id,description")
           .eq("user_id", profile.user_id).eq("bill_month", reportRange.monthKey),
+        dc.from("credit_card_transactions").select("amount")
+          .eq("user_id", profile.user_id).eq("bill_month", prevRange.monthKey),
       ]);
+
+      if (incRes.error) throw incRes.error;
+      if (expRes.error) throw expRes.error;
+      if (catRes.error) throw catRes.error;
+      if (prevIncRes.error) throw prevIncRes.error;
+      if (prevExpRes.error) throw prevExpRes.error;
+      if (accRes.error) throw accRes.error;
+      if (cardEqRes.error) throw cardEqRes.error;
+      if (prevCardEqRes.error) throw prevCardEqRes.error;
 
       const income     = incRes.data  || [];
       const expenses   = expRes.data  || [];
@@ -529,17 +553,21 @@ Deno.serve(async (req) => {
       const prevExp    = prevExpRes.data || [];
       const accounts   = accRes.data  || [];
       const cardTx     = cardEqRes.data || [];
+      const prevCardTx = prevCardEqRes.data || [];
+      const normalExpenses = expenses.filter((e: Record<string, unknown>) => !isCreditCardMirrorExpense(e.notes));
+      const prevNormalExpenses = prevExp.filter((e: Record<string, unknown>) => !isCreditCardMirrorExpense(e.notes));
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const totalIncome    = income.reduce((s: number, i: Record<string, unknown>)   => s + Number(i.amount), 0);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const totalExpenses  = expenses.reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0)
+      const totalExpenses  = normalExpenses.reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0)
                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                            + cardTx.reduce((s: number, e: Record<string, unknown>)   => s + Number(e.amount), 0);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const prevTotalInc   = prevIncome.reduce((s: number, i: Record<string, unknown>) => s + Number(i.amount), 0);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const prevTotalExp   = prevExp.reduce((s: number, e: Record<string, unknown>)    => s + Number(e.amount), 0);
+      const prevTotalExp   = prevNormalExpenses.reduce((s: number, e: Record<string, unknown>)    => s + Number(e.amount), 0)
+                           + prevCardTx.reduce((s: number, e: Record<string, unknown>)    => s + Number(e.amount), 0);
       const balance        = totalIncome - totalExpenses;
       const savingsRate    = totalIncome > 0 ? (balance / totalIncome) * 100 : 0;
       const avgDaily       = reportRange.daysInMonth > 0 ? totalExpenses / reportRange.daysInMonth : 0;
@@ -548,9 +576,9 @@ Deno.serve(async (req) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const catMap = new Map<string, CatItem>();
       for (const cat of categories) {
-        catMap.set(String(cat.id), { name: String(cat.name), icon: String(cat.icon || "ðŸ·ï¸"), budget: Number(cat.monthly_budget) || 0, value: 0 });
+        catMap.set(String(cat.id), { name: String(cat.name), icon: String(cat.icon || "tag"), budget: Number(cat.monthly_budget) || 0, value: 0 });
       }
-      const allExp = [...expenses, ...cardTx];
+      const allExp = [...normalExpenses, ...cardTx];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       for (const e of allExp) {
         const c = catMap.get(String(e.category_id));
@@ -574,11 +602,11 @@ Deno.serve(async (req) => {
           date: String(e.date),
         }));
 
-      /* Account balances (initial_balance as proxy â€” good enough for summary) */
+      /* Account balances use initial_balance as a lightweight summary proxy. */
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const accItems: AccItem[] = accounts.map((a: any) => ({
         name: String(a.name),
-        icon: String(a.icon || "ðŸ¦"),
+        icon: String(a.icon || "bank"),
         balance: Number(a.initial_balance) || 0,
       })).sort((a: AccItem, b: AccItem) => b.balance - a.balance);
 
@@ -591,7 +619,7 @@ Deno.serve(async (req) => {
         firstName: profile.first_name || "",
         label: reportRange.label,
         totalIncome, totalExpenses, balance, savingsRate, avgDaily,
-        expenseCount: expenses.length + cardTx.length,
+        expenseCount: normalExpenses.length + cardTx.length,
         incomeCount: income.length,
         categories: catBreakdown,
         topExpenses,
@@ -611,7 +639,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             sender: { name: "FinancasPro", email: "amaralstradiotoryan@gmail.com" },
             to: [{ email: profile.email }],
-            subject: `ðŸ“… Relatorio Mensal | ${reportRange.label}`,
+            subject: `Relatorio Mensal | ${reportRange.label}`,
             htmlContent: html,
           }),
         });

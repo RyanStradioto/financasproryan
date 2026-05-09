@@ -349,6 +349,7 @@ export default function CreditCardsPage() {
         credit_card_id: selectedCard,
         description: newTx.description,
         amount: numericAmount,
+        amount_mode: 'total',
         date: newTx.date,
         bill_month: newTxBillMonth,
         category_id: newTx.category_id || null,

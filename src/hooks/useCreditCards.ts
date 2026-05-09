@@ -118,7 +118,8 @@ export function useAddCreditCardTransaction() {
       credit_card_id: string;
       category_id?: string | null;
       description: string;
-      amount: number; // amount of each installment
+      amount: number; // total purchase amount by default
+      amount_mode?: 'total' | 'installment';
       date: string;
       bill_month: string; // YYYY-MM of the first bill
       installments?: number; // defaults to 1 (no installment)
@@ -131,8 +132,16 @@ export function useAddCreditCardTransaction() {
       const start = Math.min(Math.max(data.start_installment ?? 1, 1), total);
       const remaining = total - start + 1;
       const groupId = total > 1 ? crypto.randomUUID() : null;
-      const perInstallment = +data.amount.toFixed(2);
       const baseDescription = cleanInstallmentDescription(data.description);
+      const purchaseTotal = data.amount_mode === 'installment'
+        ? data.amount * total
+        : data.amount;
+      const purchaseTotalCents = Math.round(purchaseTotal * 100);
+      const baseInstallmentCents = Math.floor(purchaseTotalCents / total);
+      const remainderCents = purchaseTotalCents % total;
+      const installmentAmounts = Array.from({ length: total }, (_, i) =>
+        (baseInstallmentCents + (i < remainderCents ? 1 : 0)) / 100
+      );
 
       const rows = Array.from({ length: remaining }, (_, i) => {
         const installmentNumber = start + i;
@@ -147,7 +156,7 @@ export function useAddCreditCardTransaction() {
           credit_card_id: data.credit_card_id,
           category_id: data.category_id ?? null,
           description: total > 1 ? `${baseDescription} - PARCELA ${installmentNumber}/${total}` : baseDescription,
-          amount: perInstallment,
+          amount: installmentAmounts[installmentNumber - 1],
           date: data.date,
           bill_month: futureBill,
           is_installment: total > 1,
@@ -168,9 +177,9 @@ export function useAddCreditCardTransaction() {
       // that account_id — meaning the bank balance reflects the upcoming CC obligation
       // immediately (instead of waiting for "Pagar Fatura").
       const defaultAccountId = getCardDefaultAccount(data.credit_card_id);
-      const installmentAmount = +(data.amount / total).toFixed(2);
       const baseDate = new Date(`${data.date}T00:00:00`);
       const expenseRows = rows.map((tx, i) => {
+        const installmentNumber = start + i;
         const d = new Date(baseDate);
         d.setMonth(d.getMonth() + i);
         const expenseDate = d.toISOString().split('T')[0];
@@ -179,8 +188,8 @@ export function useAddCreditCardTransaction() {
         return {
           user_id: user!.id,
           date: expenseDate,
-          description: total > 1 ? `${data.description} (${i + 1}/${total})` : data.description,
-          amount: installmentAmount,
+          description: total > 1 ? `${baseDescription} (${installmentNumber}/${total})` : baseDescription,
+          amount: installmentAmounts[installmentNumber - 1],
           category_id: data.category_id ?? null,
           account_id: defaultAccountId,
           status: i === 0 ? (data.paid ? 'concluido' : 'pendente') : 'agendado',

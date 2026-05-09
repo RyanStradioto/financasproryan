@@ -128,6 +128,14 @@
 
   * {
     @apply border-border;
+    min-width: 0;
+  }
+
+  html {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
@@ -145,6 +153,17 @@
   textarea,
   button {
     min-width: 0;
+  }
+
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
+  }
+
+  table {
+    max-width: 100%;
   }
 }
 
@@ -254,6 +273,11 @@
 }
 
 @media (max-width: 640px) {
+  [data-radix-dialog-content] {
+    width: 100vw !important;
+    max-width: 100vw !important;
+  }
+
   .stat-card {
     border-radius: 1rem;
     padding: 1rem;
@@ -262,6 +286,28 @@
   .hero-card {
     border-radius: 1rem;
     padding: 1rem;
+  }
+
+  .currency {
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .mobile-card-value {
+    max-width: none;
+  }
+
+  .recharts-wrapper,
+  .recharts-surface {
+    max-width: 100% !important;
+  }
+
+  .recharts-responsive-container {
+    min-width: 0 !important;
+  }
+
+  .data-table {
+    min-width: 640px;
   }
 }
 
