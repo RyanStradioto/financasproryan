@@ -35,6 +35,7 @@ function getMonthOptions() {
 type TooltipPayload = { color?: string; fill?: string; name?: string; dataKey?: string; value?: number };
 
 function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: TooltipPayload[]; label?: string }) {
+  const { maskCurrency: mask } = useSensitiveData();
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-xl border border-border bg-popover px-3 py-2.5 shadow-lg backdrop-blur-sm">
@@ -46,7 +47,7 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color || p.fill }} />
               <span className="text-muted-foreground capitalize">{p.name || p.dataKey}</span>
             </div>
-            <span className="font-bold currency tabular-nums">{formatCurrency(Number(p.value))}</span>
+            <span className="font-bold currency tabular-nums">{mask(formatCurrency(Number(p.value)))}</span>
           </div>
         ))}
       </div>
