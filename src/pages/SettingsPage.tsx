@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { User, Briefcase, Clock, CalendarDays, Mail, Save, Trash2, AlertTriangle, Send, Sparkles, Lock, Eye, EyeOff } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
+import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useQueryClient } from '@tanstack/react-query';
@@ -65,6 +66,8 @@ export default function SettingsPage() {
   const { openTutorial } = useTutorial();
   const { data: profile, isLoading } = useProfile();
   const upsert = useUpsertProfile();
+  const { maskCurrency } = useSensitiveData();
+  const fmt = (v: number) => maskCurrency(formatCurrency(v));
 
   const [firstName, setFirstName] = useState('');
   const [salary, setSalary] = useState('');
@@ -508,11 +511,11 @@ export default function SettingsPage() {
             <div className="flex flex-col gap-2 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Valor/hora</span>
-                <span className="font-bold currency text-foreground">{formatCurrency(hourlyRate)}</span>
+                <span className="font-bold currency text-foreground">{fmt(hourlyRate)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Valor/dia</span>
-                <span className="font-bold currency text-foreground">{formatCurrency(dailyRate)}</span>
+                <span className="font-bold currency text-foreground">{fmt(dailyRate)}</span>
               </div>
             </div>
           </div>

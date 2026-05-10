@@ -43,34 +43,21 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   );
 };
 
-// Custom label renderer to avoid overlap and format nicely
-const renderCustomBarLabel = (props: { x?: number; y?: number; width?: number; value?: number; fill?: string }) => {
-  const { x = 0, y = 0, width = 0, value = 0, fill = "currentColor" } = props;
-  if (!value || value < 10) return null; 
-  
-  // Format to full value without cents (e.g. 4.606)
-  const formatted = new Intl.NumberFormat('pt-BR', { 
-    minimumFractionDigits: 0, 
-    maximumFractionDigits: 0 
-  }).format(value);
-  
-  return (
-    <text 
-      x={x + width / 2} 
-      y={y - 8} 
-      fill="hsl(var(--foreground))" 
-      textAnchor="middle" 
-      fontSize={10} 
-      fontWeight={800} 
-      className="currency drop-shadow-md"
-    >
-      {formatted}
-    </text>
-  );
-};
-
 export default function CashFlowForecast({ accountId = '__all__' }: { accountId?: string }) {
+  const { isVisible } = useSensitiveData();
   const { data: history = [] } = useFinanceHistory(6, accountId);
+
+  // Custom label renderer — hidden when sensitive data is masked
+  const renderCustomBarLabel = (props: { x?: number; y?: number; width?: number; value?: number }) => {
+    const { x = 0, y = 0, width = 0, value = 0 } = props;
+    if (!value || value < 10 || !isVisible) return null;
+    const formatted = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+    return (
+      <text x={x + width / 2} y={y - 8} fill="hsl(var(--foreground))" textAnchor="middle" fontSize={10} fontWeight={800} className="currency drop-shadow-md">
+        {formatted}
+      </text>
+    );
+  };
 
   const chartData = useMemo(() => {
     const shortMonthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];

@@ -900,8 +900,9 @@ export default function Dashboard() {
     daysLeft: monthPace.lastDayOfMonth - monthPace.dayOfMonth,
     perDayAllowance: allowance.perDayAllowance,
     savingsRate: savings,
-  }), [], 'summary'),
-  [balance, netWorth, totalIncome, currentTotalAll, prevTotalAll, topCategoryName, topCategoryDelta, unpaidCCTotal, monthPace, allowance, savings]);
+  }, maskCurrency), [], 'summary'),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [balance, netWorth, totalIncome, currentTotalAll, prevTotalAll, topCategoryName, topCategoryDelta, unpaidCCTotal, monthPace, allowance, savings, maskCurrency]);
 
   const summaryTone: 'positive' | 'negative' | 'neutral' =
     totalIncome === 0 && currentTotalAll === 0 ? 'neutral'
@@ -1143,7 +1144,7 @@ export default function Dashboard() {
         <KpiCard
           label="Despesas"
           value={formatCurrency(totalExpensesPaid + totalCCThisMonth)}
-          sub={`${formatCurrency(totalExpensesPaid)} contas + ${formatCurrency(totalCCThisMonth)} cartão`}
+          sub={`${maskCurrency(formatCurrency(totalExpensesPaid))} contas + ${maskCurrency(formatCurrency(totalCCThisMonth))} cartão`}
           color="border-l-[3px] border-l-expense"
           icon={TrendingDown}
           trend="down"

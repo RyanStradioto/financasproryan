@@ -63,6 +63,7 @@ const TYPE_CONFIG = {
 function InsightCard({ insight }: { insight: Insight }) {
   const cfg = TYPE_CONFIG[insight.type] || TYPE_CONFIG.tip;
   const Icon = cfg.icon;
+  const { isVisible } = useSensitiveData();
   return (
     <div className={cn('group relative overflow-hidden rounded-2xl border p-4 sm:p-5 transition-all hover:shadow-md', cfg.border, cfg.bg)}>
       <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full opacity-[0.08] group-hover:opacity-[0.14] transition-opacity pointer-events-none" style={{ background: `radial-gradient(circle, ${cfg.accent} 0%, transparent 70%)` }} />
@@ -78,7 +79,7 @@ function InsightCard({ insight }: { insight: Insight }) {
               {cfg.label}
             </span>
           </div>
-          <p className="text-[13px] text-muted-foreground leading-relaxed">{insight.description}</p>
+          <p className={cn('text-[13px] text-muted-foreground leading-relaxed', !isVisible && 'blur-sm select-none')}>{insight.description}</p>
         </div>
       </div>
     </div>
@@ -131,16 +132,16 @@ export default function InsightsPage() {
     if (prevTotalExpenses > 0 && totalExpenses > 0) {
       const expDiff = ((totalExpenses - prevTotalExpenses) / prevTotalExpenses) * 100;
       if (expDiff > 15) {
-        insights.push({ type: 'warning', icon: '📈', title: `Gastos subiram ${expDiff.toFixed(0)}%`, description: `Passaram de ${formatCurrency(prevTotalExpenses)} para ${formatCurrency(totalExpenses)} em relação ao mês anterior.` });
+        insights.push({ type: 'warning', icon: '📈', title: `Gastos subiram ${expDiff.toFixed(0)}%`, description: `Passaram de ${fmt(prevTotalExpenses)} para ${fmt(totalExpenses)} em relação ao mês anterior.` });
       } else if (expDiff < -10) {
-        insights.push({ type: 'achievement', icon: '📉', title: `Gastos reduziram ${Math.abs(expDiff).toFixed(0)}%`, description: `Caíram de ${formatCurrency(prevTotalExpenses)} para ${formatCurrency(totalExpenses)} — ótimo trabalho de controle!` });
+        insights.push({ type: 'achievement', icon: '📉', title: `Gastos reduziram ${Math.abs(expDiff).toFixed(0)}%`, description: `Caíram de ${fmt(prevTotalExpenses)} para ${fmt(totalExpenses)} — ótimo trabalho de controle!` });
       }
     }
 
     if (prevTotalIncome > 0 && totalIncome > 0) {
       const incDiff = ((totalIncome - prevTotalIncome) / prevTotalIncome) * 100;
       if (incDiff > 10) {
-        insights.push({ type: 'achievement', icon: '💸', title: `Receita aumentou ${incDiff.toFixed(0)}%`, description: `Passou de ${formatCurrency(prevTotalIncome)} para ${formatCurrency(totalIncome)}.` });
+        insights.push({ type: 'achievement', icon: '💸', title: `Receita aumentou ${incDiff.toFixed(0)}%`, description: `Passou de ${fmt(prevTotalIncome)} para ${fmt(totalIncome)}.` });
       }
     }
 
@@ -150,9 +151,9 @@ export default function InsightsPage() {
       const budget = Number(cat.monthly_budget);
       const pct = (spent / budget) * 100;
       if (pct > 100) {
-        insights.push({ type: 'warning', icon: '🔴', title: `${cat.icon} ${cat.name}: estourou o orçamento`, description: `Gastou ${formatCurrency(spent)} de ${formatCurrency(budget)} — ${(pct - 100).toFixed(0)}% acima do limite.` });
+        insights.push({ type: 'warning', icon: '🔴', title: `${cat.icon} ${cat.name}: estourou o orçamento`, description: `Gastou ${fmt(spent)} de ${fmt(budget)} — ${(pct - 100).toFixed(0)}% acima do limite.` });
       } else if (pct > 80) {
-        insights.push({ type: 'tip', icon: '🟡', title: `${cat.icon} ${cat.name}: perto do limite`, description: `Já usou ${pct.toFixed(0)}% do orçamento. Restam ${formatCurrency(budget - spent)}.` });
+        insights.push({ type: 'tip', icon: '🟡', title: `${cat.icon} ${cat.name}: perto do limite`, description: `Já usou ${pct.toFixed(0)}% do orçamento. Restam ${fmt(budget - spent)}.` });
       }
     }
 
@@ -165,14 +166,14 @@ export default function InsightsPage() {
     if (catSpending.length > 0) {
       const top = catSpending[0];
       const pctOfTotal = totalExpenses > 0 ? (top.total / totalExpenses * 100).toFixed(0) : '0';
-      insights.push({ type: 'tip', icon: '📊', title: `Maior categoria: ${top.icon} ${top.name}`, description: `Representa ${pctOfTotal}% dos gastos do mês (${formatCurrency(top.total)}).` });
+      insights.push({ type: 'tip', icon: '📊', title: `Maior categoria: ${top.icon} ${top.name}`, description: `Representa ${pctOfTotal}% dos gastos do mês (${fmt(top.total)}).` });
     }
 
     if (investmentTotal > 0) {
       const investedTotal = investments.reduce((s, i) => s + Number(i.total_invested), 0);
       const returnPct = investedTotal > 0 ? ((investmentTotal - investedTotal) / investedTotal * 100) : 0;
       if (returnPct > 0) {
-        insights.push({ type: 'achievement', icon: '💰', title: 'Investimentos rendendo', description: `Patrimônio em investimentos cresceu ${returnPct.toFixed(2)}% sobre o aportado (${formatCurrency(investmentTotal - investedTotal)} de ganho).` });
+        insights.push({ type: 'achievement', icon: '💰', title: 'Investimentos rendendo', description: `Patrimônio em investimentos cresceu ${returnPct.toFixed(2)}% sobre o aportado (${fmt(investmentTotal - investedTotal)} de ganho).` });
       } else if (returnPct < -5) {
         insights.push({ type: 'warning', icon: '📉', title: 'Investimentos em prejuízo', description: `Carteira está ${Math.abs(returnPct).toFixed(2)}% abaixo do investido — revise alocações se necessário.` });
       }
@@ -181,7 +182,7 @@ export default function InsightsPage() {
     if (ccTotal > 0 && totalIncome > 0) {
       const ccPct = (ccTotal / totalIncome) * 100;
       if (ccPct > 50) {
-        insights.push({ type: 'warning', icon: '💳', title: 'Alto uso do cartão de crédito', description: `Fatura de ${formatCurrency(ccTotal)} representa ${ccPct.toFixed(0)}% da sua renda. Cuidado com o efeito bola de neve.` });
+        insights.push({ type: 'warning', icon: '💳', title: 'Alto uso do cartão de crédito', description: `Fatura de ${fmt(ccTotal)} representa ${ccPct.toFixed(0)}% da sua renda. Cuidado com o efeito bola de neve.` });
       } else if (ccPct < 20 && ccTotal > 0) {
         insights.push({ type: 'tip', icon: '💳', title: 'Uso saudável do cartão', description: `Fatura representa apenas ${ccPct.toFixed(0)}% da renda — controle excelente.` });
       }
@@ -197,7 +198,7 @@ export default function InsightsPage() {
     }
 
     if (savings < 0) {
-      insights.push({ type: 'warning', icon: '🚨', title: 'Você gastou mais do que ganhou', description: `Déficit de ${formatCurrency(Math.abs(savings))} no mês. Revise gastos não essenciais com urgência.` });
+      insights.push({ type: 'warning', icon: '🚨', title: 'Você gastou mais do que ganhou', description: `Déficit de ${fmt(Math.abs(savings))} no mês. Revise gastos não essenciais com urgência.` });
     }
 
     return insights.slice(0, 10);

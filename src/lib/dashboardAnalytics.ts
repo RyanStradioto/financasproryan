@@ -371,7 +371,11 @@ export interface ExecutiveSummaryInput {
   savingsRate: number;
 }
 
-export function buildExecutiveSummary(input: ExecutiveSummaryInput): string[] {
+export function buildExecutiveSummary(
+  input: ExecutiveSummaryInput,
+  maskMoney: (s: string) => string = (s) => s,
+): string[] {
+  const m = (v: number) => maskMoney(fmtBRL(v));
   const lines: string[] = [];
 
   // Line 1: bottom line
@@ -381,9 +385,9 @@ export function buildExecutiveSummary(input: ExecutiveSummaryInput): string[] {
   }
   const sobra = input.totalIncome - input.totalExpenses;
   if (sobra >= 0) {
-    lines.push(`Mês positivo: sobra de ${fmtBRL(sobra)} (${fmtPct(input.savingsRate)} de poupança).`);
+    lines.push(`Mês positivo: sobra de ${m(sobra)} (${fmtPct(input.savingsRate)} de poupança).`);
   } else {
-    lines.push(`Mês negativo: déficit de ${fmtBRL(-sobra)} — está gastando mais do que recebe.`);
+    lines.push(`Mês negativo: déficit de ${m(-sobra)} — está gastando mais do que recebe.`);
   }
 
   // Line 2: category trend
@@ -401,10 +405,10 @@ export function buildExecutiveSummary(input: ExecutiveSummaryInput): string[] {
   // Line 3: forward-looking (allowance + CC)
   const parts: string[] = [];
   if (input.daysLeft > 0 && input.perDayAllowance > 0) {
-    parts.push(`Allowance de ${fmtBRL(input.perDayAllowance)}/dia para os ${input.daysLeft} dias restantes`);
+    parts.push(`Allowance de ${m(input.perDayAllowance)}/dia para os ${input.daysLeft} dias restantes`);
   }
   if (input.unpaidCCTotal > 0) {
-    parts.push(`fatura pendente de ${fmtBRL(input.unpaidCCTotal)}`);
+    parts.push(`fatura pendente de ${m(input.unpaidCCTotal)}`);
   }
   if (parts.length > 0) {
     lines.push(parts.join(' · ') + '.');
