@@ -176,12 +176,13 @@ function BrandLogoBadge({
   icon?: string;
   active?: boolean;
   global?: boolean;
-  size?: 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg';
 }) {
   const isLg = size === 'lg';
-  const shellSize = isLg ? 'h-20 w-20 rounded-[1.5rem]' : 'h-12 w-12 rounded-2xl';
-  const logoSize = isLg ? 'h-12 w-12' : 'h-8 w-8';
-  const iconSize = isLg ? 'h-9 w-9' : 'h-6 w-6';
+  const isSm = size === 'sm';
+  const shellSize = isLg ? 'h-20 w-20 rounded-[1.5rem]' : isSm ? 'h-8 w-8 rounded-xl' : 'h-12 w-12 rounded-2xl';
+  const logoSize = isLg ? 'h-12 w-12' : isSm ? 'h-5 w-5' : 'h-8 w-8';
+  const iconSize = isLg ? 'h-9 w-9' : isSm ? 'h-4 w-4' : 'h-6 w-6';
 
   if (global) {
     return (
@@ -207,7 +208,7 @@ function BrandLogoBadge({
       }}
     >
       {logoUrl ? (
-        <span className={cn('flex items-center justify-center rounded-xl bg-white p-1.5 shadow-sm', isLg ? 'h-14 w-14' : 'h-9 w-9')}>
+        <span className={cn('flex items-center justify-center rounded-lg bg-white p-1 shadow-sm', isLg ? 'h-14 w-14' : isSm ? 'h-6 w-6' : 'h-9 w-9')}>
           <img src={logoUrl} alt={label} className={cn('object-contain', logoSize)} />
         </span>
       ) : (
@@ -1188,7 +1189,7 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="space-y-5 pb-10 animate-fade-in w-full max-w-full overflow-x-hidden">
+    <div className="space-y-4 pb-10 animate-fade-in w-full max-w-full overflow-x-hidden">
       <ErrorBoundary fallback={null} label="StickyBar">
         <StickySummaryBar
           balance={balance}
@@ -1198,59 +1199,59 @@ export default function Dashboard() {
         />
       </ErrorBoundary>
 
-      <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#070b12] p-4 shadow-2xl shadow-black/30 sm:p-6 xl:p-7">
-        <div className="pointer-events-none absolute -right-28 -top-32 h-80 w-80 rounded-full bg-emerald-500/14 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-0 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-sky-500/10 blur-3xl" />
+      <section className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#070b12] p-4 shadow-xl shadow-black/30 sm:rounded-3xl sm:p-5">
+        <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-emerald-500/14 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 left-1/2 h-56 w-56 -translate-x-1/2 rounded-full bg-sky-500/10 blur-3xl" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(16,185,129,0.12),transparent_26%),radial-gradient(circle_at_92%_12%,rgba(59,130,246,0.16),transparent_28%)]" />
 
-        <div className="relative z-10 space-y-6">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+        <div className="relative z-10 space-y-4">
+          {/* Greeting + actions row */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-200/80">
+              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-200/80">
                 {greeting.text}{profile?.first_name ? `, ${profile.first_name}` : ''} 👋
               </p>
-              <h1 className="mt-2 text-3xl font-black tracking-tight text-white sm:text-5xl">
+              <h1 className="mt-1 text-xl font-black tracking-tight text-white sm:text-2xl lg:text-3xl">
                 Visão financeira do mês
               </h1>
-              <p className="mt-2 text-sm font-semibold text-slate-400 sm:text-base">
-                {monthTitleCapitalized} • {isGlobalView ? 'visão consolidada das suas contas' : `visão da conta ${focusLabel}`}
+              <p className="mt-1 text-xs font-semibold text-slate-400 sm:text-sm">
+                {monthTitleCapitalized} · {isGlobalView ? 'visão consolidada' : `conta: ${focusLabel}`}
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-end">
-              <div className="col-span-2 sm:col-span-1">
-                <MonthSelector month={month} onChange={setMonth} />
-              </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <MonthSelector month={month} onChange={setMonth} />
               <TransactionDialog type="income" defaultAccountId={accountFocusId === '__all__' ? undefined : accountFocusId}>
-                <button className="flex h-11 items-center justify-center rounded-2xl bg-emerald-500 px-5 text-sm font-black text-slate-950 shadow-lg shadow-emerald-500/15 transition-all hover:-translate-y-0.5 hover:bg-emerald-400">
-                  <ArrowUpRight className="mr-2 h-5 w-5" /> Receita
+                <button className="flex h-9 items-center justify-center rounded-xl bg-emerald-500 px-4 text-xs font-black text-slate-950 shadow-md shadow-emerald-500/20 transition-all hover:bg-emerald-400">
+                  <ArrowUpRight className="mr-1.5 h-4 w-4" /> Receita
                 </button>
               </TransactionDialog>
               <TransactionDialog type="expense" defaultAccountId={accountFocusId === '__all__' ? undefined : accountFocusId}>
-                <button className="flex h-11 items-center justify-center rounded-2xl bg-red-500 px-5 text-sm font-black text-white shadow-lg shadow-red-500/15 transition-all hover:-translate-y-0.5 hover:bg-red-400">
-                  <ArrowDownRight className="mr-2 h-5 w-5" /> Despesa
+                <button className="flex h-9 items-center justify-center rounded-xl bg-red-500 px-4 text-xs font-black text-white shadow-md shadow-red-500/20 transition-all hover:bg-red-400">
+                  <ArrowDownRight className="mr-1.5 h-4 w-4" /> Despesa
                 </button>
               </TransactionDialog>
             </div>
           </div>
 
-          <div className="overflow-x-auto pb-1">
-            <div className="flex min-w-max gap-3 pr-2">
+          {/* Account picker — scrollable row on mobile */}
+          <div className="overflow-x-auto pb-1 -mx-4 px-4 sm:-mx-5 sm:px-5">
+            <div className="flex gap-2 w-max">
               <button
                 onClick={() => setAccountFocusId('__all__')}
                 className={cn(
-                  'group flex min-w-[250px] items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all',
+                  'group flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all',
                   isGlobalView
-                    ? 'border-emerald-300/45 bg-emerald-400/10 shadow-lg shadow-emerald-950/20'
+                    ? 'border-emerald-300/45 bg-emerald-400/10 shadow-md shadow-emerald-950/20'
                     : 'border-white/10 bg-white/[0.035] hover:border-emerald-300/30 hover:bg-white/[0.055]',
                 )}
               >
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-emerald-300/20 bg-emerald-400/12 text-emerald-200">
-                  <Landmark className="h-5 w-5" />
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-300/20 bg-emerald-400/12 text-emerald-200">
+                  <Landmark className="h-4 w-4" />
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-sm font-black text-white">Todas as contas</span>
-                  <span className="currency mt-0.5 block text-sm font-black text-emerald-300 tabular-nums">{maskCurrency(formatCurrency(accumulatedBalance))}</span>
+                  <span className="block text-xs font-black text-white whitespace-nowrap">Todas as contas</span>
+                  <span className="currency mt-0.5 block text-xs font-black text-emerald-300 tabular-nums whitespace-nowrap">{maskCurrency(formatCurrency(accumulatedBalance))}</span>
                 </span>
               </button>
 
@@ -1264,15 +1265,15 @@ export default function Dashboard() {
                     key={account.id}
                     onClick={() => setAccountFocusId(account.id)}
                     className={cn(
-                      'group flex min-w-[210px] items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all',
-                      active ? 'bg-white/[0.075] shadow-lg shadow-black/20' : 'border-white/10 bg-white/[0.035] hover:bg-white/[0.055]',
+                      'group flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all',
+                      active ? 'bg-white/[0.075] shadow-md shadow-black/20' : 'border-white/10 bg-white/[0.035] hover:bg-white/[0.055]',
                     )}
-                    style={active ? { borderColor: colorWithOpacity(brand.color, 0.55), boxShadow: `0 18px 40px -28px ${brand.color}` } : undefined}
+                    style={active ? { borderColor: colorWithOpacity(brand.color, 0.55), boxShadow: `0 12px 28px -20px ${brand.color}` } : undefined}
                   >
-                    <BrandLogoBadge logoUrl={brand.logoUrl} label={account.name} color={brand.color} icon={brand.icon || account.icon} active={active} />
+                    <BrandLogoBadge logoUrl={brand.logoUrl} label={account.name} color={brand.color} icon={brand.icon || account.icon} active={active} size="sm" />
                     <span className="min-w-0">
-                      <span className="block truncate text-sm font-black text-white">{account.name}</span>
-                      <span className={cn('currency mt-0.5 block truncate text-sm font-black tabular-nums', accountBalance >= 0 ? 'text-emerald-300' : 'text-red-300')}>
+                      <span className="block truncate text-xs font-black text-white max-w-[120px]">{account.name}</span>
+                      <span className={cn('currency mt-0.5 block truncate text-xs font-black tabular-nums', accountBalance >= 0 ? 'text-emerald-300' : 'text-red-300')}>
                         {maskCurrency(formatCurrency(accountBalance))}
                       </span>
                     </span>
@@ -1284,22 +1285,22 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <section className="grid gap-3 grid-cols-2 sm:grid-cols-3 xl:grid-cols-5">
         {kpiCards.map((card) => {
           const Icon = card.icon;
           return (
-            <PremiumCard key={card.label} className={cn('relative min-h-[138px] overflow-hidden bg-gradient-to-br to-[#0b101a] p-4', card.accent)}>
-              <div className="absolute -right-10 -top-12 h-28 w-28 rounded-full bg-white/5 blur-2xl" />
-              <div className="relative flex h-full flex-col justify-between gap-4">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">{card.label}</p>
-                  <span className={cn('flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.045]', card.tone)}>
-                    <Icon className="h-[18px] w-[18px]" />
+            <PremiumCard key={card.label} className={cn('relative overflow-hidden bg-gradient-to-br to-[#0b101a] p-3 sm:p-4', card.accent)}>
+              <div className="absolute -right-8 -top-10 h-24 w-24 rounded-full bg-white/5 blur-2xl" />
+              <div className="relative flex h-full flex-col justify-between gap-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 leading-tight">{card.label}</p>
+                  <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.045]', card.tone)}>
+                    <Icon className="h-3.5 w-3.5" />
                   </span>
                 </div>
                 <div>
-                  <p className={cn('currency truncate text-2xl font-black tracking-tight tabular-nums', card.tone)}>{card.value}</p>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">{card.sub}</p>
+                  <p className={cn('currency truncate text-base sm:text-lg font-black tracking-tight tabular-nums', card.tone)}>{card.value}</p>
+                  <p className="mt-0.5 text-[10px] sm:text-xs font-semibold text-slate-500 truncate">{card.sub}</p>
                 </div>
               </div>
             </PremiumCard>
@@ -1307,149 +1308,158 @@ export default function Dashboard() {
         })}
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)]">
-        <PremiumCard className="relative overflow-hidden p-5 sm:p-6">
-          <div className="absolute -right-16 -top-16 h-52 w-52 rounded-full bg-emerald-400/10 blur-3xl" />
-          <div className="relative grid gap-6 lg:grid-cols-[1fr_220px] lg:items-center">
-            <div>
-              <div className="mb-5 flex items-center gap-3">
-                <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-300/20 bg-emerald-400/10 text-emerald-200">
-                  <BrainCircuit className="h-5 w-5" />
-                </span>
-                <div>
-                  <h2 className="text-xl font-black text-white">Resumo inteligente do mês</h2>
-                  <p className="text-sm text-slate-500">Diagnóstico rápido para decidir sem garimpar números.</p>
+      <section className="grid gap-4 lg:grid-cols-2">
+        <PremiumCard className="relative overflow-hidden p-4 sm:p-5">
+          <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-emerald-400/10 blur-3xl" />
+          <div className="relative space-y-4">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-300/20 bg-emerald-400/10 text-emerald-200">
+                <BrainCircuit className="h-4 w-4" />
+              </span>
+              <div>
+                <h2 className="text-base font-black text-white">Resumo inteligente</h2>
+                <p className="text-xs text-slate-500">Diagnóstico rápido do mês.</p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+              <div className="space-y-2">
+                <div className="rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2.5 text-sm font-semibold text-slate-300">
+                  <span className={monthResult >= 0 ? 'text-emerald-300' : 'text-red-300'}>{monthResult >= 0 ? 'Mês positivo' : 'Mês negativo'}:</span> {monthResult >= 0 ? 'sobra de' : 'déficit de'} {maskCurrency(formatCurrency(Math.abs(monthResult)))}.
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2.5">
+                    <p className="text-[10px] font-bold text-slate-500">Poupança</p>
+                    <p className="mt-0.5 text-sm font-black text-white">{Math.max(0, savings).toFixed(0)}% da renda</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2.5">
+                    <p className="text-[10px] font-bold text-slate-500">Receitas</p>
+                    <p className="mt-0.5 text-sm font-black text-emerald-300">{deltaCopy(incomeDelta)}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2.5">
+                    <p className="text-[10px] font-bold text-slate-500">Despesas</p>
+                    <p className="mt-0.5 text-sm font-black text-red-300">{deltaCopy(expenseDelta, true)}</p>
+                  </div>
+                  <button onClick={() => window.location.href = '/cartoes'} className="rounded-xl border border-sky-300/20 bg-sky-400/10 px-3 py-2.5 text-left transition-colors hover:bg-sky-400/15">
+                    <p className="text-[10px] font-bold text-sky-200/70">Cartões</p>
+                    <p className="mt-0.5 text-sm font-black text-sky-200">{maskCurrency(formatCurrency(unpaidCCTotal))}</p>
+                  </button>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm font-semibold text-slate-300">
-                  <span className={monthResult >= 0 ? 'text-emerald-300' : 'text-red-300'}>{monthResult >= 0 ? 'Mês positivo' : 'Mês negativo'}:</span> {monthResult >= 0 ? 'sobra de' : 'déficit de'} {maskCurrency(formatCurrency(Math.abs(monthResult)))}.
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-3">
-                    <p className="text-xs font-bold text-slate-500">Poupança</p>
-                    <p className="mt-1 text-sm font-black text-white">{Math.max(0, savings).toFixed(0)}% da renda este mês</p>
+              {/* Health gauge — visible only on sm+ */}
+              <div className="hidden sm:flex mx-auto h-36 w-36 items-center justify-center rounded-full border border-white/10 bg-white/[0.025] p-3 shadow-inner">
+                <div className="relative flex h-28 w-28 items-center justify-center rounded-full" style={{ background: `conic-gradient(${healthColor} ${healthScore * 3.6}deg, rgba(255,255,255,0.08) 0deg)` }}>
+                  <div className="flex h-22 w-22 flex-col items-center justify-center rounded-full bg-[#0b101a] text-center shadow-xl shadow-black/40" style={{ width: '4.8rem', height: '4.8rem' }}>
+                    <p className="text-2xl font-black text-white leading-none">{healthScore}</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">/100</p>
+                    <p className="text-[10px] font-black leading-tight" style={{ color: healthColor }}>{healthCopy}</p>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-3">
-                    <p className="text-xs font-bold text-slate-500">Receitas</p>
-                    <p className="mt-1 text-sm font-black text-emerald-300">{deltaCopy(incomeDelta)}</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-3">
-                    <p className="text-xs font-bold text-slate-500">Despesas</p>
-                    <p className="mt-1 text-sm font-black text-red-300">{deltaCopy(expenseDelta, true)}</p>
-                  </div>
-                  <button onClick={() => window.location.href = '/cartoes'} className="rounded-2xl border border-sky-300/20 bg-sky-400/10 px-4 py-3 text-left transition-colors hover:bg-sky-400/15">
-                    <p className="text-xs font-bold text-sky-200/70">Cartões</p>
-                    <p className="mt-1 text-sm font-black text-sky-200">Fatura pendente: {maskCurrency(formatCurrency(unpaidCCTotal))}</p>
-                  </button>
                 </div>
               </div>
             </div>
 
-            <div className="mx-auto flex h-52 w-52 items-center justify-center rounded-full border border-white/10 bg-white/[0.025] p-4 shadow-inner">
-              <div className="relative flex h-40 w-40 items-center justify-center rounded-full" style={{ background: `conic-gradient(${healthColor} ${healthScore * 3.6}deg, rgba(255,255,255,0.08) 0deg)` }}>
-                <div className="flex h-32 w-32 flex-col items-center justify-center rounded-full bg-[#0b101a] text-center shadow-xl shadow-black/40">
-                  <p className="text-4xl font-black text-white">{healthScore}</p>
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">/100</p>
-                  <p className="mt-1 text-sm font-black" style={{ color: healthColor }}>{healthCopy}</p>
-                </div>
+            {/* Health score row on mobile */}
+            <div className="flex sm:hidden items-center gap-3 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2.5">
+              <div className="h-2 flex-1 rounded-full bg-white/10">
+                <div className="h-full rounded-full transition-all" style={{ width: `${healthScore}%`, backgroundColor: healthColor }} />
               </div>
+              <span className="text-sm font-black shrink-0" style={{ color: healthColor }}>{healthScore}/100 · {healthCopy}</span>
             </div>
           </div>
         </PremiumCard>
 
-        <PremiumCard className="relative overflow-hidden p-5 sm:p-6">
-          <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-amber-400/12 blur-3xl" />
-          <div className="relative space-y-5">
+        <PremiumCard className="relative overflow-hidden p-4 sm:p-5">
+          <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-amber-400/12 blur-3xl" />
+          <div className="relative space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-xl font-black text-white">Allowance diária</h2>
-                <p className="mt-1 text-sm text-slate-500">Quanto ainda dá para gastar por dia.</p>
+                <h2 className="text-base font-black text-white">Allowance diária</h2>
+                <p className="text-xs text-slate-500">Quanto ainda dá gastar por dia.</p>
               </div>
-              <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-400/10 text-amber-200">
-                <Target className="h-5 w-5" />
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-300/20 bg-amber-400/10 text-amber-200">
+                <Target className="h-4 w-4" />
               </span>
             </div>
 
             <div>
-              <p className="currency text-4xl font-black text-amber-200 tabular-nums">{maskCurrency(formatCurrency(allowance.perDayAllowance))}</p>
-              <p className="mt-1 text-sm font-semibold text-slate-400">por dia</p>
+              <p className="currency text-2xl sm:text-3xl font-black text-amber-200 tabular-nums">{maskCurrency(formatCurrency(allowance.perDayAllowance))}</p>
+              <p className="mt-0.5 text-xs font-semibold text-slate-400">por dia restante</p>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-              <div className="mb-2 flex justify-between gap-3 text-xs font-bold text-slate-400">
+            <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+              <div className="mb-2 flex flex-wrap justify-between gap-2 text-xs font-bold text-slate-400">
                 <span>{maskCurrency(formatCurrency(allowance.remainingBudget))} restantes</span>
-                <span>{daysLeft} dias até o fim do mês</span>
+                <span>{daysLeft} dias até o fim</span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-white/10">
+              <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
                 <div className="h-full rounded-full bg-gradient-to-r from-amber-300 to-orange-400" style={{ width: `${Math.min(100, (currentTotalAll / totalBudget) * 100)}%` }} />
               </div>
             </div>
 
-            <div className="flex items-start gap-3 rounded-2xl border border-amber-300/20 bg-amber-400/[0.06] px-4 py-3">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-200" />
-              <p className="text-sm font-semibold text-slate-300">
-                Gasto de hoje {maskCurrency(formatCurrency(todaySpent))} {todaySpent > allowance.perDayAllowance ? '— acima do ideal' : '— dentro do ideal'}
+            <div className="flex items-start gap-2.5 rounded-xl border border-amber-300/20 bg-amber-400/[0.06] px-3 py-2.5">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-200" />
+              <p className="text-xs font-semibold text-slate-300">
+                Hoje: {maskCurrency(formatCurrency(todaySpent))} · {todaySpent > allowance.perDayAllowance ? 'acima do ideal' : 'dentro do ideal'}
               </p>
             </div>
           </div>
         </PremiumCard>
       </section>
 
-      <section className="space-y-3">
+      <section className="space-y-2.5">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-black text-white">O que merece sua atenção</h2>
-          <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate-600">Prioridades</span>
+          <h2 className="text-sm font-black text-white">O que merece atenção</h2>
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-600">Prioridades</span>
         </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-2.5 grid-cols-1 min-[420px]:grid-cols-2 xl:grid-cols-4">
           {attentionCards.map((item) => {
             const Icon = item.icon;
             const toneClass = item.tone === 'success' ? 'text-emerald-300 bg-emerald-400/10 border-emerald-300/20' : item.tone === 'danger' ? 'text-red-300 bg-red-400/10 border-red-300/20' : item.tone === 'info' ? 'text-sky-300 bg-sky-400/10 border-sky-300/20' : 'text-amber-300 bg-amber-400/10 border-amber-300/20';
             return (
-              <button key={item.title} onClick={() => { window.location.href = item.href; }} className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-[#0b101a]/85 p-4 text-left shadow-lg shadow-black/10 transition-all hover:-translate-y-0.5 hover:border-white/20">
-                <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border', toneClass)}>
-                  <Icon className="h-[18px] w-[18px]" />
+              <button key={item.title} onClick={() => { window.location.href = item.href; }} className="group flex items-center gap-3 rounded-xl border border-white/10 bg-[#0b101a]/85 p-3 text-left shadow-sm transition-all hover:border-white/20">
+                <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border', toneClass)}>
+                  <Icon className="h-4 w-4" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-black text-white">{item.title}</span>
-                  <span className="mt-0.5 block truncate text-sm font-bold text-slate-400">{item.value}</span>
+                  <span className="block truncate text-xs font-black text-white">{item.title}</span>
+                  <span className="mt-0.5 block truncate text-xs font-bold text-slate-400">{item.value}</span>
                 </span>
-                <ChevronRight className="h-4 w-4 text-slate-600 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-300" />
+                <ChevronRight className="h-3.5 w-3.5 text-slate-600 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-300 shrink-0" />
               </button>
             );
           })}
         </div>
       </section>
 
-      <section className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.75fr)]">
-        <div className="space-y-5">
-          <PremiumCard className="relative self-start overflow-hidden p-5 sm:p-6">
+      <section className="grid items-start gap-4 lg:grid-cols-2">
+        <div className="space-y-4">
+          <PremiumCard className="relative self-start overflow-hidden p-4 sm:p-5">
           <div className="pointer-events-none absolute -left-24 -top-28 h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
           <div className="pointer-events-none absolute -right-20 top-10 h-64 w-64 rounded-full bg-sky-400/10 blur-3xl" />
-          <div className="relative mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="relative mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <h2 className="text-xl font-black text-white">Evolução financeira</h2>
-              <p className="mt-1 text-sm text-slate-500">Receitas, despesas e saldo nos últimos meses.</p>
+              <h2 className="text-base font-black text-white">Evolução financeira</h2>
+              <p className="mt-0.5 text-xs text-slate-500">Receitas, despesas e saldo nos últimos meses.</p>
             </div>
-            <div className="flex flex-wrap gap-2 lg:justify-end">
-              <span className="rounded-2xl border border-emerald-300/15 bg-emerald-400/[0.07] px-3 py-2">
-                <span className="block text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200/70">Receitas</span>
-                <span className="currency mt-0.5 block text-sm font-black text-emerald-200">{maskCurrency(formatCurrency(evolutionSummary.currentIncome))}</span>
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-xl border border-emerald-300/15 bg-emerald-400/[0.07] px-2.5 py-1.5">
+                <span className="block text-[9px] font-black uppercase tracking-[0.15em] text-emerald-200/70">Receitas</span>
+                <span className="currency mt-0.5 block text-xs font-black text-emerald-200">{maskCurrency(formatCurrency(evolutionSummary.currentIncome))}</span>
               </span>
-              <span className="rounded-2xl border border-rose-300/15 bg-rose-400/[0.07] px-3 py-2">
-                <span className="block text-[10px] font-black uppercase tracking-[0.18em] text-rose-200/70">Despesas</span>
-                <span className="currency mt-0.5 block text-sm font-black text-rose-200">{maskCurrency(formatCurrency(evolutionSummary.currentExpenses))}</span>
+              <span className="rounded-xl border border-rose-300/15 bg-rose-400/[0.07] px-2.5 py-1.5">
+                <span className="block text-[9px] font-black uppercase tracking-[0.15em] text-rose-200/70">Despesas</span>
+                <span className="currency mt-0.5 block text-xs font-black text-rose-200">{maskCurrency(formatCurrency(evolutionSummary.currentExpenses))}</span>
               </span>
-              <span className="rounded-2xl border border-sky-300/15 bg-sky-400/[0.07] px-3 py-2">
-                <span className="block text-[10px] font-black uppercase tracking-[0.18em] text-sky-200/70">Saldo</span>
-                <span className={cn('currency mt-0.5 block text-sm font-black', evolutionSummary.currentBalance >= 0 ? 'text-sky-200' : 'text-rose-200')}>{maskCurrency(formatCurrency(evolutionSummary.currentBalance))}</span>
+              <span className="rounded-xl border border-sky-300/15 bg-sky-400/[0.07] px-2.5 py-1.5">
+                <span className="block text-[9px] font-black uppercase tracking-[0.15em] text-sky-200/70">Saldo</span>
+                <span className={cn('currency mt-0.5 block text-xs font-black', evolutionSummary.currentBalance >= 0 ? 'text-sky-200' : 'text-rose-200')}>{maskCurrency(formatCurrency(evolutionSummary.currentBalance))}</span>
               </span>
             </div>
           </div>
-          <div className="relative overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#070b12]/80 p-3 shadow-inner shadow-black/30">
+          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#070b12]/80 p-3 shadow-inner shadow-black/30">
             <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(16,185,129,0.08),transparent_42%,rgba(56,189,248,0.08))]" />
-            <div className="relative h-[250px] sm:h-[275px]">
+            <div className="relative h-[220px] sm:h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={sixMonthData} margin={{ top: 16, right: 20, left: 0, bottom: 4 }}>
                 <defs>
@@ -1514,35 +1524,35 @@ export default function Dashboard() {
             </ResponsiveContainer>
           </div>
           </div>
-          <div className="relative mt-4 flex flex-wrap items-center justify-between gap-3 text-xs font-bold text-slate-400">
+          <div className="relative mt-3 flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-slate-400">
             <div className="flex flex-wrap gap-3">
-              <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /> Receitas</span>
-              <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-rose-400" /> Despesas</span>
-              <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-sky-400" /> Saldo</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Receitas</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-400" /> Despesas</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-sky-400" /> Saldo</span>
             </div>
             {evolutionSummary.balanceDelta !== null && (
-              <span className={cn('rounded-full border px-3 py-1', evolutionSummary.balanceDelta >= 0 ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-200' : 'border-rose-300/20 bg-rose-400/10 text-rose-200')}>
-                {evolutionSummary.balanceDelta >= 0 ? '+' : ''}{maskCurrency(formatCurrency(evolutionSummary.balanceDelta))} vs mês anterior
+              <span className={cn('rounded-full border px-2.5 py-0.5 text-[11px]', evolutionSummary.balanceDelta >= 0 ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-200' : 'border-rose-300/20 bg-rose-400/10 text-rose-200')}>
+                {evolutionSummary.balanceDelta >= 0 ? '+' : ''}{maskCurrency(formatCurrency(evolutionSummary.balanceDelta))} vs anterior
               </span>
             )}
           </div>
         </PremiumCard>
 
-          <PremiumCard className="relative overflow-hidden p-5 sm:p-6">
+          <PremiumCard className="relative overflow-hidden p-4 sm:p-5">
             <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-cyan-400/10 blur-3xl" />
-            <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px]">
+            <div className="relative grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px]">
               <div className="min-w-0">
-                <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h2 className="text-lg font-black text-white">Ritmo semanal</h2>
-                    <p className="mt-1 text-sm text-slate-500">Como entradas e saídas se distribuem no mês.</p>
+                    <h2 className="text-base font-black text-white">Ritmo semanal</h2>
+                    <p className="text-xs text-slate-500">Como entradas e saídas se distribuem no mês.</p>
                   </div>
-                  <span className="w-fit rounded-full border border-cyan-300/15 bg-cyan-400/[0.07] px-3 py-1 text-xs font-black text-cyan-200">
-                    {weeklyFlowData.length} semanas analisadas
+                  <span className="w-fit rounded-full border border-cyan-300/15 bg-cyan-400/[0.07] px-2.5 py-1 text-[11px] font-black text-cyan-200">
+                    {weeklyFlowData.length} semanas
                   </span>
                 </div>
 
-                <div className="h-[210px] rounded-[1.35rem] border border-white/10 bg-[#070b12]/75 p-3">
+                <div className="h-[190px] rounded-xl border border-white/10 bg-[#070b12]/75 p-2.5">
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={weeklyFlowData} margin={{ top: 12, right: 14, left: -10, bottom: 0 }} barGap={6}>
                       <defs>
@@ -1580,44 +1590,44 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Melhor semana</p>
-                  <p className="mt-2 text-lg font-black text-white">{weeklyFlowSummary.bestWeek?.week ?? '-'}</p>
-                  <p className={cn('currency mt-1 text-sm font-black', (weeklyFlowSummary.bestWeek?.balance ?? 0) >= 0 ? 'text-emerald-300' : 'text-rose-300')}>
+              <div className="grid gap-2 grid-cols-3 lg:grid-cols-1">
+                <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                  <p className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-500">Melhor</p>
+                  <p className="mt-1 text-sm font-black text-white">{weeklyFlowSummary.bestWeek?.week ?? '-'}</p>
+                  <p className={cn('currency text-xs font-black', (weeklyFlowSummary.bestWeek?.balance ?? 0) >= 0 ? 'text-emerald-300' : 'text-rose-300')}>
                     {maskCurrency(formatCurrency(weeklyFlowSummary.bestWeek?.balance ?? 0))}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Mais pesada</p>
-                  <p className="mt-2 text-lg font-black text-white">{weeklyFlowSummary.heaviestWeek?.week ?? '-'}</p>
-                  <p className="currency mt-1 text-sm font-black text-rose-300">{maskCurrency(formatCurrency(weeklyFlowSummary.heaviestWeek?.expenses ?? 0))}</p>
+                <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                  <p className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-500">Mais pesada</p>
+                  <p className="mt-1 text-sm font-black text-white">{weeklyFlowSummary.heaviestWeek?.week ?? '-'}</p>
+                  <p className="currency text-xs font-black text-rose-300">{maskCurrency(formatCurrency(weeklyFlowSummary.heaviestWeek?.expenses ?? 0))}</p>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Média de gastos</p>
-                  <p className="currency mt-2 text-lg font-black text-cyan-200">{maskCurrency(formatCurrency(weeklyFlowSummary.averageExpense))}</p>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">por semana ativa</p>
+                <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                  <p className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-500">Média/sem.</p>
+                  <p className="currency mt-1 text-xs font-black text-cyan-200">{maskCurrency(formatCurrency(weeklyFlowSummary.averageExpense))}</p>
+                  <p className="text-[10px] font-semibold text-slate-500">por semana</p>
                 </div>
               </div>
             </div>
           </PremiumCard>
         </div>
 
-        <div className="space-y-5">
-          <PremiumCard className="p-5">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-lg font-black text-white">Transações recentes</h2>
+        <div className="space-y-4">
+          <PremiumCard className="p-4 sm:p-5">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-base font-black text-white">Transações recentes</h2>
               <a href="/relatorio" className="text-xs font-black text-emerald-300 hover:underline">Ver todas</a>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {recentActivity.map((tx) => (
-                <div key={tx.id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.025] px-3 py-3">
-                  <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm', tx.type === 'income' ? 'bg-emerald-400/10 text-emerald-300' : 'bg-red-400/10 text-red-300')}>{tx.icon}</span>
+                <div key={tx.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2.5">
+                  <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm', tx.type === 'income' ? 'bg-emerald-400/10 text-emerald-300' : 'bg-red-400/10 text-red-300')}>{tx.icon}</span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-black text-white">{tx.description}</p>
-                    <p className="mt-0.5 text-xs font-semibold text-slate-500">{formatDate(tx.date)} • {tx.label}</p>
+                    <p className="truncate text-xs font-black text-white">{tx.description}</p>
+                    <p className="mt-0.5 text-[10px] font-semibold text-slate-500">{formatDate(tx.date)} · {tx.label}</p>
                   </div>
-                  <p className={cn('currency shrink-0 text-sm font-black tabular-nums', tx.type === 'income' ? 'text-emerald-300' : 'text-red-300')}>
+                  <p className={cn('currency shrink-0 text-xs font-black tabular-nums', tx.type === 'income' ? 'text-emerald-300' : 'text-red-300')}>
                     {tx.type === 'income' ? '+' : '-'}{maskCurrency(formatCurrency(tx.amount))}
                   </p>
                 </div>
@@ -1625,21 +1635,21 @@ export default function Dashboard() {
             </div>
           </PremiumCard>
 
-          <PremiumCard className="p-5">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-lg font-black text-white">Categorias principais</h2>
+          <PremiumCard className="p-4 sm:p-5">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-base font-black text-white">Categorias principais</h2>
               <a href="/categorias" className="text-xs font-black text-emerald-300 hover:underline">Ver todas</a>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {catBreakdown.slice(0, 5).map((cat) => {
                 const pct = currentTotalAll > 0 ? (cat.value / currentTotalAll) * 100 : 0;
                 return (
                   <div key={cat.name}>
                     <div className="mb-1.5 flex items-center justify-between gap-3 text-xs font-bold">
                       <span className="truncate text-slate-300">{cat.icon} {cat.name}</span>
-                      <span className="shrink-0 text-slate-500">{pct.toFixed(0)}% • {maskCurrency(formatCurrency(cat.value))}</span>
+                      <span className="shrink-0 text-slate-500">{pct.toFixed(0)}% · {maskCurrency(formatCurrency(cat.value))}</span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
                       <div className="h-full rounded-full bg-gradient-to-r from-emerald-300 to-sky-400" style={{ width: `${Math.min(100, pct)}%` }} />
                     </div>
                   </div>
@@ -1650,34 +1660,34 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(360px,0.9fr)]">
-        <PremiumCard className="relative overflow-hidden p-5 sm:p-6">
-          <div className="pointer-events-none absolute -right-20 -top-20 h-52 w-52 rounded-full bg-rose-400/10 blur-3xl" />
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <PremiumCard className="relative overflow-hidden p-4 sm:p-5">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-rose-400/10 blur-3xl" />
           <div className="relative">
-            <div className="mb-5 flex items-center justify-between gap-3">
+            <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-rose-200/70">Ranking</p>
-                <h2 className="mt-1 text-lg font-black text-white">Top 5 despesas</h2>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-rose-200/70">Ranking</p>
+                <h2 className="text-base font-black text-white">Top 5 despesas</h2>
               </div>
-              <a href="/despesas" className="text-xs font-black text-rose-200 hover:underline">Ver despesas</a>
+              <a href="/despesas" className="text-xs font-black text-rose-200 hover:underline">Ver todas</a>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {topExpenses.length === 0 ? (
-                <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4 text-sm font-semibold text-slate-500">Nenhuma despesa neste mês.</div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3 text-xs font-semibold text-slate-500">Nenhuma despesa neste mês.</div>
               ) : topExpenses.map((item, index) => {
                 const cat = categories.find(c => c.id === item.category_id);
                 const pct = currentTotalAll > 0 ? (item.amount / currentTotalAll) * 100 : 0;
                 return (
-                  <div key={`${item.kind}-${item.id}`} className="group rounded-2xl border border-white/10 bg-white/[0.025] p-3 transition-all hover:border-rose-300/25 hover:bg-rose-400/[0.04]">
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-rose-300/15 bg-rose-400/10 text-xs font-black text-rose-200">#{index + 1}</span>
+                  <div key={`${item.kind}-${item.id}`} className="group rounded-xl border border-white/10 bg-white/[0.025] p-2.5 transition-all hover:border-rose-300/25 hover:bg-rose-400/[0.04]">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-rose-300/15 bg-rose-400/10 text-[10px] font-black text-rose-200">#{index + 1}</span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-black text-white">{item.description}</p>
-                        <p className="mt-0.5 text-xs font-semibold text-slate-500">{formatDate(item.date)} • {cat?.icon} {cat?.name || 'Sem categoria'}</p>
+                        <p className="truncate text-xs font-black text-white">{item.description}</p>
+                        <p className="mt-0.5 text-[10px] font-semibold text-slate-500">{formatDate(item.date)} · {cat?.icon} {cat?.name || 'Sem cat.'}</p>
                       </div>
-                      <p className="currency shrink-0 text-sm font-black text-rose-200">{maskCurrency(formatCurrency(item.amount))}</p>
+                      <p className="currency shrink-0 text-xs font-black text-rose-200">{maskCurrency(formatCurrency(item.amount))}</p>
                     </div>
-                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+                    <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/10">
                       <div className="h-full rounded-full bg-gradient-to-r from-rose-300 to-red-500" style={{ width: `${Math.min(100, pct)}%` }} />
                     </div>
                   </div>
@@ -1687,32 +1697,32 @@ export default function Dashboard() {
           </div>
         </PremiumCard>
 
-        <PremiumCard className="relative overflow-hidden p-5 sm:p-6">
-          <div className="pointer-events-none absolute -right-20 -top-20 h-52 w-52 rounded-full bg-emerald-400/10 blur-3xl" />
+        <PremiumCard className="relative overflow-hidden p-4 sm:p-5">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-emerald-400/10 blur-3xl" />
           <div className="relative">
-            <div className="mb-5 flex items-center justify-between gap-3">
+            <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-200/70">Ranking</p>
-                <h2 className="mt-1 text-lg font-black text-white">Top 5 receitas</h2>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200/70">Ranking</p>
+                <h2 className="text-base font-black text-white">Top 5 receitas</h2>
               </div>
-              <a href="/receitas" className="text-xs font-black text-emerald-200 hover:underline">Ver receitas</a>
+              <a href="/receitas" className="text-xs font-black text-emerald-200 hover:underline">Ver todas</a>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {topIncomes.length === 0 ? (
-                <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4 text-sm font-semibold text-slate-500">Nenhuma receita neste mês.</div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3 text-xs font-semibold text-slate-500">Nenhuma receita neste mês.</div>
               ) : topIncomes.map((item, index) => {
                 const pct = totalIncome > 0 ? (Number(item.amount) / totalIncome) * 100 : 0;
                 return (
-                  <div key={item.id} className="group rounded-2xl border border-white/10 bg-white/[0.025] p-3 transition-all hover:border-emerald-300/25 hover:bg-emerald-400/[0.04]">
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-300/15 bg-emerald-400/10 text-xs font-black text-emerald-200">#{index + 1}</span>
+                  <div key={item.id} className="group rounded-xl border border-white/10 bg-white/[0.025] p-2.5 transition-all hover:border-emerald-300/25 hover:bg-emerald-400/[0.04]">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-emerald-300/15 bg-emerald-400/10 text-[10px] font-black text-emerald-200">#{index + 1}</span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-black text-white">{item.description || 'Receita'}</p>
-                        <p className="mt-0.5 text-xs font-semibold text-slate-500">{formatDate(item.date)} • {item.status || 'concluido'}</p>
+                        <p className="truncate text-xs font-black text-white">{item.description || 'Receita'}</p>
+                        <p className="mt-0.5 text-[10px] font-semibold text-slate-500">{formatDate(item.date)} · {item.status || 'concluido'}</p>
                       </div>
-                      <p className="currency shrink-0 text-sm font-black text-emerald-200">{maskCurrency(formatCurrency(Number(item.amount)))}</p>
+                      <p className="currency shrink-0 text-xs font-black text-emerald-200">{maskCurrency(formatCurrency(Number(item.amount)))}</p>
                     </div>
-                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+                    <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/10">
                       <div className="h-full rounded-full bg-gradient-to-r from-emerald-300 to-teal-400" style={{ width: `${Math.min(100, pct)}%` }} />
                     </div>
                   </div>
@@ -1722,22 +1732,22 @@ export default function Dashboard() {
           </div>
         </PremiumCard>
 
-        <PremiumCard className="relative overflow-hidden p-5 sm:p-6">
-          <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-blue-400/10 blur-3xl" />
+        <PremiumCard className="relative overflow-hidden p-4 sm:p-5 md:col-span-2 xl:col-span-1">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-blue-400/10 blur-3xl" />
           <div className="relative">
-            <div className="mb-5 flex items-center justify-between gap-3">
+            <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-sky-200/70">Comparativo</p>
-                <h2 className="mt-1 text-lg font-black text-white">Mês atual vs anterior</h2>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-sky-200/70">Comparativo</p>
+                <h2 className="text-base font-black text-white">Mês atual vs anterior</h2>
               </div>
-              <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-black text-slate-300">3 métricas</span>
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-black text-slate-300">3 métricas</span>
             </div>
-            <div className="h-[270px]">
+            <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthCompareData} margin={{ top: 10, right: 6, left: -18, bottom: 0 }} barGap={7}>
+                <BarChart data={monthCompareData} margin={{ top: 8, right: 4, left: -20, bottom: 0 }} barGap={6}>
                   <CartesianGrid stroke="rgba(148,163,184,0.09)" strokeDasharray="4 10" vertical={false} />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#7c8aa3', fontSize: 12, fontWeight: 800 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 700 }} tickFormatter={(v) => `R$${Math.round(Number(v) / 1000)}k`} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#7c8aa3', fontSize: 11, fontWeight: 800 }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }} tickFormatter={(v) => `R$${Math.round(Number(v) / 1000)}k`} />
                   <RechartsTooltip
                     cursor={{ fill: 'rgba(148,163,184,0.08)' }}
                     content={({ active, payload, label }) => {
@@ -1751,131 +1761,131 @@ export default function Dashboard() {
                       return active && rows.length ? <ChartTooltipCard title={String(label)} rows={rows} /> : null;
                     }}
                   />
-                  <Bar name="Anterior" dataKey="anterior" fill="rgba(148,163,184,0.35)" radius={[8, 8, 3, 3]} maxBarSize={34} />
-                  <Bar name="Atual" dataKey="atual" radius={[8, 8, 3, 3]} maxBarSize={34}>
+                  <Bar name="Anterior" dataKey="anterior" fill="rgba(148,163,184,0.35)" radius={[6, 6, 2, 2]} maxBarSize={28} />
+                  <Bar name="Atual" dataKey="atual" radius={[6, 6, 2, 2]} maxBarSize={28}>
                     {monthCompareData.map((entry) => <Cell key={entry.name} fill={entry.colorAtual} />)}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-3 flex flex-wrap gap-3 text-xs font-bold text-slate-400">
-              <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-slate-500" /> Anterior</span>
-              <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /> Atual</span>
+            <div className="mt-2 flex flex-wrap gap-3 text-xs font-bold text-slate-400">
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-slate-500" /> Anterior</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Atual</span>
             </div>
           </div>
         </PremiumCard>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.1fr)]">
-        <PremiumCard className="p-5 sm:p-6">
-          <div className="mb-5 flex items-center justify-between gap-3">
+      <section className="grid gap-4 lg:grid-cols-2">
+        <PremiumCard className="p-4 sm:p-5">
+          <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-200/70">Orçamento</p>
-              <h2 className="mt-1 text-lg font-black text-white">Metas por categoria</h2>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200/70">Orçamento</p>
+              <h2 className="text-base font-black text-white">Metas por categoria</h2>
             </div>
-            <a href="/categorias" className="text-xs font-black text-emerald-300 hover:underline">Ajustar metas</a>
+            <a href="/categorias" className="text-xs font-black text-emerald-300 hover:underline">Ajustar</a>
           </div>
           {budgetsWithData.length > 0 ? (
-            <BudgetRings budgets={budgetsWithData.slice(0, 5)} size={168} />
+            <BudgetRings budgets={budgetsWithData.slice(0, 5)} size={144} />
           ) : (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4 text-sm font-semibold text-slate-500">Cadastre orçamentos nas categorias para acompanhar metas aqui.</div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3 text-xs font-semibold text-slate-500">Cadastre orçamentos nas categorias para acompanhar metas aqui.</div>
           )}
         </PremiumCard>
 
-        <PremiumCard className="p-5 sm:p-6">
-          <div className="mb-5 flex items-center justify-between gap-3">
+        <PremiumCard className="p-4 sm:p-5">
+          <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-200/70">Calendário</p>
-              <h2 className="mt-1 text-lg font-black text-white">Mapa de calor de gastos</h2>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange-200/70">Calendário</p>
+              <h2 className="text-base font-black text-white">Mapa de calor</h2>
             </div>
-            <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-black text-slate-300">{monthTitleCapitalized}</span>
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-black text-slate-300">{monthTitleCapitalized}</span>
           </div>
-          <div className="rounded-[1.5rem] border border-white/10 bg-[#070b12]/75 p-4">
+          <div className="rounded-xl border border-white/10 bg-[#070b12]/75 p-3">
             <WeeklyHeatmap month={currentMonthDate} data={scopedExpenseHeatmapData} />
           </div>
         </PremiumCard>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-3">
-        <PremiumCard className="p-5 sm:p-6">
-          <div className="mb-5 flex items-center justify-between gap-3">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <PremiumCard className="p-4 sm:p-5">
+          <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-black text-white">Visão do mês</h2>
-              <p className="text-sm text-slate-500">Dia {monthPace.dayOfMonth} de {monthPace.lastDayOfMonth}</p>
+              <h2 className="text-base font-black text-white">Visão do mês</h2>
+              <p className="text-xs text-slate-500">Dia {monthPace.dayOfMonth} de {monthPace.lastDayOfMonth}</p>
             </div>
-            <Activity className="h-5 w-5 text-emerald-300" />
+            <Activity className="h-4 w-4 text-emerald-300 shrink-0" />
           </div>
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div>
-              <div className="mb-1.5 flex justify-between text-xs font-bold text-slate-400"><span>Avanço do mês</span><span>{monthPace.monthProgress.toFixed(0)}%</span></div>
-              <div className="h-2 rounded-full bg-white/10"><div className="h-full rounded-full bg-emerald-400" style={{ width: `${monthPace.monthProgress}%` }} /></div>
+              <div className="mb-1 flex justify-between text-xs font-bold text-slate-400"><span>Avanço do mês</span><span>{monthPace.monthProgress.toFixed(0)}%</span></div>
+              <div className="h-1.5 rounded-full bg-white/10"><div className="h-full rounded-full bg-emerald-400" style={{ width: `${monthPace.monthProgress}%` }} /></div>
             </div>
             <div>
-              <div className="mb-1.5 flex justify-between text-xs font-bold text-slate-400"><span>Gastos do mês</span><span>{monthPace.spendProgress.toFixed(0)}%</span></div>
-              <div className="h-2 rounded-full bg-white/10"><div className={cn('h-full rounded-full', monthPace.onTrack ? 'bg-emerald-400' : 'bg-red-400')} style={{ width: `${Math.min(100, monthPace.spendProgress)}%` }} /></div>
+              <div className="mb-1 flex justify-between text-xs font-bold text-slate-400"><span>Gastos do mês</span><span>{monthPace.spendProgress.toFixed(0)}%</span></div>
+              <div className="h-1.5 rounded-full bg-white/10"><div className={cn('h-full rounded-full', monthPace.onTrack ? 'bg-emerald-400' : 'bg-red-400')} style={{ width: `${Math.min(100, monthPace.spendProgress)}%` }} /></div>
             </div>
-            <p className="text-sm font-semibold text-slate-500">{maskCurrency(formatCurrency(currentTotalAll))} de {maskCurrency(formatCurrency(monthPace.totalBudget || currentTotalAll))} de orçamento</p>
-            <div className="flex flex-wrap gap-2">
-              <span className={cn('rounded-full px-3 py-1 text-xs font-black', monthPace.onTrack ? 'bg-emerald-400/10 text-emerald-300' : 'bg-red-400/10 text-red-300')}>{monthPace.onTrack ? 'No ritmo certo' : 'Acima do ritmo'}</span>
-              {monthPace.paceVsPrev !== null && <span className="rounded-full bg-white/[0.05] px-3 py-1 text-xs font-black text-slate-300">{Math.abs(monthPace.paceVsPrev).toFixed(0)}% {monthPace.paceVsPrev > 0 ? 'mais rápido' : 'mais lento'} que mês anterior</span>}
+            <p className="text-xs font-semibold text-slate-500">{maskCurrency(formatCurrency(currentTotalAll))} de {maskCurrency(formatCurrency(monthPace.totalBudget || currentTotalAll))}</p>
+            <div className="flex flex-wrap gap-1.5">
+              <span className={cn('rounded-full px-2.5 py-1 text-[11px] font-black', monthPace.onTrack ? 'bg-emerald-400/10 text-emerald-300' : 'bg-red-400/10 text-red-300')}>{monthPace.onTrack ? 'No ritmo certo' : 'Acima do ritmo'}</span>
+              {monthPace.paceVsPrev !== null && <span className="rounded-full bg-white/[0.05] px-2.5 py-1 text-[11px] font-black text-slate-300">{Math.abs(monthPace.paceVsPrev).toFixed(0)}% {monthPace.paceVsPrev > 0 ? 'mais rápido' : 'mais lento'}</span>}
             </div>
           </div>
         </PremiumCard>
 
-        <PremiumCard className="p-5 sm:p-6">
-          <div className="mb-5 flex items-center justify-between gap-3">
+        <PremiumCard className="p-4 sm:p-5">
+          <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-black text-white">Gastos atípicos</h2>
-              <p className="text-sm text-slate-500">Movimentos fora do padrão</p>
+              <h2 className="text-base font-black text-white">Gastos atípicos</h2>
+              <p className="text-xs text-slate-500">Fora do padrão</p>
             </div>
             <a href="/despesas" className="text-xs font-black text-emerald-300 hover:underline">Ver todas</a>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {atypicalRows.map((row) => (
-              <div key={row.id} className="rounded-2xl border border-white/10 bg-white/[0.025] px-3 py-3">
-                <div className="flex items-start justify-between gap-3">
+              <div key={row.id} className="rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2.5">
+                <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-black text-white">{row.description}</p>
-                    <p className="mt-0.5 text-xs font-semibold text-slate-500">{formatDate(row.date)} • {row.category}</p>
+                    <p className="truncate text-xs font-black text-white">{row.description}</p>
+                    <p className="mt-0.5 text-[10px] font-semibold text-slate-500">{formatDate(row.date)} · {row.category}</p>
                   </div>
-                  <span className="rounded-full bg-amber-400/10 px-2 py-1 text-[10px] font-black text-amber-300">{row.badge}</span>
+                  <span className="rounded-full bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-black text-amber-300 shrink-0">{row.badge}</span>
                 </div>
-                <p className="currency mt-2 text-sm font-black text-red-300">{maskCurrency(formatCurrency(row.amount))}</p>
+                <p className="currency mt-1.5 text-xs font-black text-red-300">{maskCurrency(formatCurrency(row.amount))}</p>
               </div>
             ))}
           </div>
         </PremiumCard>
 
-        <PremiumCard className="p-5 sm:p-6">
-          <div className="mb-5 flex items-center justify-between gap-3">
+        <PremiumCard className="p-4 sm:p-5 sm:col-span-2 xl:col-span-1">
+          <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-black text-white">Alocação do patrimônio</h2>
-              <p className="text-sm text-slate-500">Contas vs investimentos</p>
+              <h2 className="text-base font-black text-white">Alocação</h2>
+              <p className="text-xs text-slate-500">Contas vs investimentos</p>
             </div>
-            <a href="/investimentos" className="text-xs font-black text-emerald-300 hover:underline">Ver detalhes</a>
+            <a href="/investimentos" className="text-xs font-black text-emerald-300 hover:underline">Detalhes</a>
           </div>
-          <div className="grid gap-4 sm:grid-cols-[150px_1fr] sm:items-center xl:grid-cols-1 2xl:grid-cols-[150px_1fr]">
-            <div className="h-[150px]">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center xl:flex-col">
+            <div className="h-[120px] w-full sm:w-[120px] sm:shrink-0 xl:w-full xl:h-[130px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={allocationData.length ? allocationData : [{ name: 'Sem dados', value: 1, fill: '#334155' }]} dataKey="value" innerRadius={44} outerRadius={68} paddingAngle={4}>
+                  <Pie data={allocationData.length ? allocationData : [{ name: 'Sem dados', value: 1, fill: '#334155' }]} dataKey="value" innerRadius={36} outerRadius={56} paddingAngle={4}>
                     {(allocationData.length ? allocationData : [{ fill: '#334155' }]).map((entry, index) => <Cell key={`alloc-${index}`} fill={entry.fill} />)}
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2 flex-1">
               {allocationData.map((item) => {
                 const pct = allocationTotal > 0 ? (item.value / allocationTotal) * 100 : 0;
                 return (
-                  <div key={item.name} className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.025] px-3 py-3">
-                    <span className="flex items-center gap-2 text-sm font-bold text-slate-300"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.fill }} /> {item.name}</span>
-                    <span className="text-right text-sm font-black text-white">{maskCurrency(formatCurrency(item.value))}<span className="ml-2 text-xs text-slate-500">{pct.toFixed(1)}%</span></span>
+                  <div key={item.name} className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2">
+                    <span className="flex items-center gap-1.5 text-xs font-bold text-slate-300"><span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: item.fill }} /> {item.name}</span>
+                    <span className="text-right text-xs font-black text-white">{maskCurrency(formatCurrency(item.value))}<span className="ml-1.5 text-[10px] text-slate-500">{pct.toFixed(0)}%</span></span>
                   </div>
                 );
               })}
-              <div className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-3 text-sm font-black text-emerald-200">
-                Total • {maskCurrency(formatCurrency(netWorth))}
+              <div className="rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-2 text-xs font-black text-emerald-200">
+                Total · {maskCurrency(formatCurrency(netWorth))}
               </div>
             </div>
           </div>
@@ -1883,12 +1893,12 @@ export default function Dashboard() {
       </section>
 
       {orphanExpensesTotal > 0 && (
-        <button onClick={() => setOrphanFixOpen(true)} className="flex w-full items-center gap-3 rounded-2xl border border-amber-300/20 bg-amber-400/[0.06] px-4 py-3 text-left transition-colors hover:bg-amber-400/10">
-          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-300" />
-          <span className="min-w-0 flex-1 text-sm font-semibold text-slate-300">
-            {orphanExpensesCount} despesa{orphanExpensesCount !== 1 ? 's' : ''} sem conta • {maskCurrency(formatCurrency(orphanExpensesTotal))}. Clique para corrigir.
+        <button onClick={() => setOrphanFixOpen(true)} className="flex w-full items-center gap-3 rounded-xl border border-amber-300/20 bg-amber-400/[0.06] px-3 py-3 text-left transition-colors hover:bg-amber-400/10">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-300" />
+          <span className="min-w-0 flex-1 text-xs font-semibold text-slate-300">
+            {orphanExpensesCount} despesa{orphanExpensesCount !== 1 ? 's' : ''} sem conta · {maskCurrency(formatCurrency(orphanExpensesTotal))}. Clique para corrigir.
           </span>
-          <ChevronRight className="h-4 w-4 text-slate-500" />
+          <ChevronRight className="h-3.5 w-3.5 text-slate-500 shrink-0" />
         </button>
       )}
       {editing && (
