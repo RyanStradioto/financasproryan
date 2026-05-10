@@ -1649,6 +1649,152 @@ export default function Dashboard() {
         </div>
       </section>
 
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(360px,0.9fr)]">
+        <PremiumCard className="relative overflow-hidden p-5 sm:p-6">
+          <div className="pointer-events-none absolute -right-20 -top-20 h-52 w-52 rounded-full bg-rose-400/10 blur-3xl" />
+          <div className="relative">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-rose-200/70">Ranking</p>
+                <h2 className="mt-1 text-lg font-black text-white">Top 5 despesas</h2>
+              </div>
+              <a href="/despesas" className="text-xs font-black text-rose-200 hover:underline">Ver despesas</a>
+            </div>
+            <div className="space-y-3">
+              {topExpenses.length === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4 text-sm font-semibold text-slate-500">Nenhuma despesa neste mês.</div>
+              ) : topExpenses.map((item, index) => {
+                const cat = categories.find(c => c.id === item.category_id);
+                const pct = currentTotalAll > 0 ? (item.amount / currentTotalAll) * 100 : 0;
+                return (
+                  <div key={`${item.kind}-${item.id}`} className="group rounded-2xl border border-white/10 bg-white/[0.025] p-3 transition-all hover:border-rose-300/25 hover:bg-rose-400/[0.04]">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-rose-300/15 bg-rose-400/10 text-xs font-black text-rose-200">#{index + 1}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-black text-white">{item.description}</p>
+                        <p className="mt-0.5 text-xs font-semibold text-slate-500">{formatDate(item.date)} • {cat?.icon} {cat?.name || 'Sem categoria'}</p>
+                      </div>
+                      <p className="currency shrink-0 text-sm font-black text-rose-200">{maskCurrency(formatCurrency(item.amount))}</p>
+                    </div>
+                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+                      <div className="h-full rounded-full bg-gradient-to-r from-rose-300 to-red-500" style={{ width: `${Math.min(100, pct)}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </PremiumCard>
+
+        <PremiumCard className="relative overflow-hidden p-5 sm:p-6">
+          <div className="pointer-events-none absolute -right-20 -top-20 h-52 w-52 rounded-full bg-emerald-400/10 blur-3xl" />
+          <div className="relative">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-200/70">Ranking</p>
+                <h2 className="mt-1 text-lg font-black text-white">Top 5 receitas</h2>
+              </div>
+              <a href="/receitas" className="text-xs font-black text-emerald-200 hover:underline">Ver receitas</a>
+            </div>
+            <div className="space-y-3">
+              {topIncomes.length === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4 text-sm font-semibold text-slate-500">Nenhuma receita neste mês.</div>
+              ) : topIncomes.map((item, index) => {
+                const pct = totalIncome > 0 ? (Number(item.amount) / totalIncome) * 100 : 0;
+                return (
+                  <div key={item.id} className="group rounded-2xl border border-white/10 bg-white/[0.025] p-3 transition-all hover:border-emerald-300/25 hover:bg-emerald-400/[0.04]">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-300/15 bg-emerald-400/10 text-xs font-black text-emerald-200">#{index + 1}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-black text-white">{item.description || 'Receita'}</p>
+                        <p className="mt-0.5 text-xs font-semibold text-slate-500">{formatDate(item.date)} • {item.status || 'concluido'}</p>
+                      </div>
+                      <p className="currency shrink-0 text-sm font-black text-emerald-200">{maskCurrency(formatCurrency(Number(item.amount)))}</p>
+                    </div>
+                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+                      <div className="h-full rounded-full bg-gradient-to-r from-emerald-300 to-teal-400" style={{ width: `${Math.min(100, pct)}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </PremiumCard>
+
+        <PremiumCard className="relative overflow-hidden p-5 sm:p-6">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-blue-400/10 blur-3xl" />
+          <div className="relative">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-sky-200/70">Comparativo</p>
+                <h2 className="mt-1 text-lg font-black text-white">Mês atual vs anterior</h2>
+              </div>
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-black text-slate-300">3 métricas</span>
+            </div>
+            <div className="h-[270px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={monthCompareData} margin={{ top: 10, right: 6, left: -18, bottom: 0 }} barGap={7}>
+                  <CartesianGrid stroke="rgba(148,163,184,0.09)" strokeDasharray="4 10" vertical={false} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#7c8aa3', fontSize: 12, fontWeight: 800 }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 700 }} tickFormatter={(v) => `R$${Math.round(Number(v) / 1000)}k`} />
+                  <RechartsTooltip
+                    cursor={{ fill: 'rgba(148,163,184,0.08)' }}
+                    content={({ active, payload, label }) => {
+                      const rows = (payload || [])
+                        .filter((p) => p.value !== null && p.value !== undefined)
+                        .map((p) => ({
+                          label: String(p.name),
+                          value: maskCurrency(formatCurrency(Number(p.value))),
+                          color: String(p.color || '#94a3b8'),
+                        }));
+                      return active && rows.length ? <ChartTooltipCard title={String(label)} rows={rows} /> : null;
+                    }}
+                  />
+                  <Bar name="Anterior" dataKey="anterior" fill="rgba(148,163,184,0.35)" radius={[8, 8, 3, 3]} maxBarSize={34} />
+                  <Bar name="Atual" dataKey="atual" radius={[8, 8, 3, 3]} maxBarSize={34}>
+                    {monthCompareData.map((entry) => <Cell key={entry.name} fill={entry.colorAtual} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-3 text-xs font-bold text-slate-400">
+              <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-slate-500" /> Anterior</span>
+              <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /> Atual</span>
+            </div>
+          </div>
+        </PremiumCard>
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.1fr)]">
+        <PremiumCard className="p-5 sm:p-6">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-200/70">Orçamento</p>
+              <h2 className="mt-1 text-lg font-black text-white">Metas por categoria</h2>
+            </div>
+            <a href="/categorias" className="text-xs font-black text-emerald-300 hover:underline">Ajustar metas</a>
+          </div>
+          {budgetsWithData.length > 0 ? (
+            <BudgetRings budgets={budgetsWithData.slice(0, 5)} size={168} />
+          ) : (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4 text-sm font-semibold text-slate-500">Cadastre orçamentos nas categorias para acompanhar metas aqui.</div>
+          )}
+        </PremiumCard>
+
+        <PremiumCard className="p-5 sm:p-6">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-200/70">Calendário</p>
+              <h2 className="mt-1 text-lg font-black text-white">Mapa de calor de gastos</h2>
+            </div>
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-black text-slate-300">{monthTitleCapitalized}</span>
+          </div>
+          <div className="rounded-[1.5rem] border border-white/10 bg-[#070b12]/75 p-4">
+            <WeeklyHeatmap month={currentMonthDate} data={scopedExpenseHeatmapData} />
+          </div>
+        </PremiumCard>
+      </section>
+
       <section className="grid gap-5 xl:grid-cols-3">
         <PremiumCard className="p-5 sm:p-6">
           <div className="mb-5 flex items-center justify-between gap-3">
