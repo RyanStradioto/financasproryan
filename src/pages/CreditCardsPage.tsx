@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, CreditCard, Trash2, Check, X, ChevronLeft, ChevronRight, ChevronDown, Wallet, CalendarDays, Zap, Receipt, TrendingUp, Sparkles } from 'lucide-react';
+import { Plus, CreditCard, Trash2, Check, ChevronLeft, ChevronRight, Wallet, CalendarDays, Zap, Receipt, Sparkles, Search, MoreVertical, ShieldCheck, Layers3, PieChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,6 @@ import {
   useCreditCards,
   useAddCreditCard,
   useDeleteCreditCard,
-  useUpdateCreditCard,
   useCreditCardTransactions,
   useAddCreditCardTransaction,
   useToggleCCTransactionPaid,
@@ -45,9 +44,22 @@ function monthLabel(m: string) {
   return new Date(y, mo - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 }
 
+function shortMonthLabel(m: string) {
+  const [y, mo] = m.split('-').map(Number);
+  const date = new Date(y, mo - 1);
+  const month = date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+  return `${month.charAt(0).toUpperCase()}${month.slice(1)} ${String(y).slice(-2)}`;
+}
+
+function addMonths(m: string, count: number) {
+  const [y, mo] = m.split('-').map(Number);
+  const d = new Date(y, mo - 1 + count, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 const CARD_COLORS = ['#6366f1', '#ec4899', '#f97316', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444', '#0ea5e9', '#f59e0b'];
 
-type TxFilter = 'all' | 'pending' | 'paid';
+type TxFilter = 'all' | 'pending' | 'paid' | 'installments' | 'uncategorized';
 
 export default function CreditCardsPage() {
   const { maskCurrency } = useSensitiveData();
@@ -55,13 +67,13 @@ export default function CreditCardsPage() {
   const [billMonth, setBillMonth] = useState(getMonthYear());
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [showNewCard, setShowNewCard] = useState(false);
-  const [showEditCard, setShowEditCard] = useState(false);
   const [showNewTx, setShowNewTx] = useState(false);
   const [showPayBill, setShowPayBill] = useState(false);
   const [payBillAccountId, setPayBillAccountId] = useState('');
   const [payBillAmount, setPayBillAmount] = useState('');
   const [payBillMarkAll, setPayBillMarkAll] = useState(true);
-  const [expandedUpcomingMonth, setExpandedUpcomingMonth] = useState<string | null>(getMonthYear());
+  const [txFilter, setTxFilter] = useState<TxFilter>('all');
+  const [txSearch, setTxSearch] = useState('');
 
   // Per-item quick-pay state
   const [payItem, setPayItem] = useState<{ id: string; description: string; amount: number } | null>(null);
@@ -74,7 +86,6 @@ export default function CreditCardsPage() {
   const { data: transactions = [] } = useCreditCardTransactions(selectedCard ?? undefined, billMonth);
   const { data: futureTxns = [] } = useAllFutureCCTransactions();
   const addCard = useAddCreditCard();
-  const updateCard = useUpdateCreditCard();
   const deleteCard = useDeleteCreditCard();
   const addTx = useAddCreditCardTransaction();
   const togglePaid = useToggleCCTransactionPaid();
@@ -99,14 +110,6 @@ export default function CreditCardsPage() {
   // Bumps to force re-renders when localStorage default-account changes
   const [defaultAcctBump, setDefaultAcctBump] = useState(0);
   const queryClientCC = useQueryClient();
-
-  const [editCard, setEditCard] = useState({
-    name: '',
-    color: CARD_COLORS[0],
-    credit_limit: '',
-    closing_day: '10',
-    due_day: '17',
-  });
 
   const [newTx, setNewTx] = useState({
     description: '',
@@ -134,6 +137,90 @@ export default function CreditCardsPage() {
     ? Math.min(100, (billTotal / Math.max(Number(currentCard.credit_limit), 1)) * 100)
     : 0;
 
+  const selectedFutureTxns = useMemo(
+    () => futureTxns.filter(t => !selectedCard || t.credit_card_id === selectedCard),
+    [futureTxns, selectedCard],
+  );
+
+  const selectedFutureOpenTotal = useMemo(
+    () => selectedFutureTxns.filter(t => !t.paid).reduce((s, t) => s + Number(t.amount), 0),
+    [selectedFutureTxns],
+  );
+
+  const selectedFutureInstallmentCount = useMemo(
+    () => selectedFutureTxns.filter(t => t.is_installment).length,
+    [selectedFutureTxns],
+  );
+
+  const availableLimit = currentCard
+    ? Math.max(0, Number(currentCard.credit_limit) - selectedFutureOpenTotal)
+    : 0;
+
+  const committedLimitPercent = currentCard
+    ? Math.min(100, (selectedFutureOpenTotal / Math.max(Number(currentCard.credit_limit), 1)) * 100)
+    : 0;
+
+  const billDueDate = useMemo(() => {
+    if (!currentCard) return null;
+    const [year, month] = billMonth.split('-').map(Number);
+    const dueMonthOffset = Number(currentCard.due_day) <= Number(currentCard.closing_day) ? 1 : 0;
+    return new Date(year, month - 1 + dueMonthOffset, Number(currentCard.due_day));
+  }, [billMonth, currentCard]);
+
+  const daysUntilDue = useMemo(() => {
+    if (!billDueDate) return 0;
+    const today = new Date();
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const due = new Date(billDueDate.getFullYear(), billDueDate.getMonth(), billDueDate.getDate());
+    return Math.ceil((due.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  }, [billDueDate]);
+
+  const timelineBills = useMemo(() => {
+    return Array.from({ length: 6 }, (_, index) => {
+      const month = addMonths(billMonth, index);
+      const monthTxns = month === billMonth
+        ? transactions
+        : selectedFutureTxns.filter(t => t.bill_month === month);
+      const total = monthTxns.reduce((s, t) => s + Number(t.amount), 0);
+      const paid = monthTxns.filter(t => t.paid).reduce((s, t) => s + Number(t.amount), 0);
+      return {
+        month,
+        total,
+        paid,
+        open: Math.max(0, total - paid),
+        count: monthTxns.length,
+      };
+    });
+  }, [billMonth, transactions, selectedFutureTxns]);
+
+  const normalizedTxSearch = txSearch.trim().toLowerCase();
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter(t => {
+      const cat = categories.find(c => c.id === t.category_id);
+      const matchesFilter =
+        txFilter === 'all' ||
+        (txFilter === 'pending' && !t.paid) ||
+        (txFilter === 'paid' && t.paid) ||
+        (txFilter === 'installments' && t.is_installment) ||
+        (txFilter === 'uncategorized' && !t.category_id);
+
+      if (!matchesFilter) return false;
+      if (!normalizedTxSearch) return true;
+
+      const haystack = [
+        t.description,
+        cat?.name ?? 'Sem categoria',
+        String(Number(t.amount).toFixed(2)).replace('.', ','),
+        formatDate(t.date),
+      ].join(' ').toLowerCase();
+
+      return haystack.includes(normalizedTxSearch);
+    });
+  }, [transactions, categories, txFilter, normalizedTxSearch]);
+
+  const openTransactions = filteredTransactions.filter(t => !t.paid);
+  const paidTransactions = filteredTransactions.filter(t => t.paid);
+
   const numericAmount = parseFloat(newTx.amount.replace(',', '.')) || 0;
 
   const newTxBillMonth = useMemo(() => {
@@ -143,45 +230,37 @@ export default function CreditCardsPage() {
 
   const newTxBillLabel = useMemo(() => monthLabel(newTxBillMonth), [newTxBillMonth]);
 
-  const upcomingByMonth = useMemo(() => {
-    const groups: Record<string, typeof futureTxns> = {};
-    for (const t of futureTxns) {
-      if (!groups[t.bill_month]) groups[t.bill_month] = [];
-      groups[t.bill_month].push(t);
-    }
-    return groups;
-  }, [futureTxns]);
-
-  const upcomingMonths = useMemo(() => Object.keys(upcomingByMonth).sort(), [upcomingByMonth]);
-
-  // Total commitment across all future bills
-  const futureTotal = useMemo(() => futureTxns.reduce((s, t) => s + Number(t.amount), 0), [futureTxns]);
-  const futureInstallmentCount = useMemo(() => futureTxns.filter(t => t.is_installment).length, [futureTxns]);
-
-  // Category breakdown for current bill
-  const catBreakdown = useMemo(() => {
-    const map: Record<string, number> = {};
+  const categorySummary = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; icon: string; total: number }>();
     for (const t of transactions) {
-      if (t.category_id) map[t.category_id] = (map[t.category_id] || 0) + Number(t.amount);
+      const cat = categories.find(c => c.id === t.category_id);
+      const key = cat?.id ?? '__uncategorized__';
+      const current = map.get(key) ?? {
+        id: key,
+        name: cat?.name ?? 'Sem categoria',
+        icon: cat?.icon ?? '○',
+        total: 0,
+      };
+      current.total += Number(t.amount);
+      map.set(key, current);
     }
-    return Object.entries(map)
-      .map(([id, total]) => ({ cat: categories.find(c => c.id === id), total }))
-      .filter(r => r.cat)
-      .sort((a, b) => b.total - a.total);
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
   }, [transactions, categories]);
+
+  const topCategoryTotal = Math.max(1, ...categorySummary.map(c => c.total));
 
   const handleAddCard = async () => {
     if (!newCard.name.trim()) return toast.error('Informe o nome do cartão');
     try {
       // Optimistically use a temporary id for the localStorage write later
-      const result: { id?: string } = (await addCard.mutateAsync({
+      await addCard.mutateAsync({
         name: newCard.name,
         color: newCard.color,
         credit_limit: parseFloat(newCard.credit_limit) || 0,
         closing_day: parseInt(newCard.closing_day) || 1,
         due_day: parseInt(newCard.due_day) || 10,
         icon: '💳',
-      })) ?? {};
+      });
       // The newest card by name is the one we just created — find it after the query refresh
       // (We can't get the new id from the mutation result without changing the hook signature.)
       // Instead, rely on the next render to find it; persist a pending mapping.
@@ -349,6 +428,7 @@ export default function CreditCardsPage() {
         credit_card_id: selectedCard,
         description: newTx.description,
         amount: numericAmount,
+        amount_mode: 'total',
         date: newTx.date,
         bill_month: newTxBillMonth,
         category_id: newTx.category_id || null,
@@ -464,595 +544,577 @@ export default function CreditCardsPage() {
     } catch (e) { toast.error((e as Error).message); }
   };
 
-  const getBillDates = () => {
-    if (!currentCard) return null;
-    const [year, month] = billMonth.split('-').map(Number);
-    const closingDate = new Date(year, month - 1, currentCard.closing_day);
-    const dueDate = new Date(year, month - 1, currentCard.due_day);
-    const now = new Date();
-    return {
-      closingDate: closingDate.toLocaleDateString('pt-BR'),
-      dueDate: dueDate.toLocaleDateString('pt-BR'),
-      status: now > closingDate ? 'Fechada' : 'Aberta',
-    };
-  };
+  const filterOptions: Array<{ id: TxFilter; label: string }> = [
+    { id: 'all', label: 'Todas' },
+    { id: 'pending', label: 'Em aberto' },
+    { id: 'paid', label: 'Pagas' },
+    { id: 'installments', label: 'Parceladas' },
+    { id: 'uncategorized', label: 'Sem categoria' },
+  ];
 
-  const billDates = getBillDates();
+  const renderTransactionRow = (t: typeof transactions[number]) => {
+    const cat = categories.find(c => c.id === t.category_id);
+    const categoryName = cat?.name ?? 'Sem categoria';
+    const categoryIcon = cat?.icon ?? '○';
+    const isPaid = Boolean(t.paid);
 
-  // Total de faturas do mês por cartão (para o grid)
-  const cardTotals = useMemo(() => {
-    const totals: Record<string, number> = {};
-    return totals;
-  }, []);
+    return (
+      <div
+        key={t.id}
+        className={cn(
+          'grid grid-cols-[auto_1fr] gap-3 rounded-2xl border px-3 py-3 transition-all sm:grid-cols-[auto_minmax(0,1.3fr)_120px_150px_90px_auto] sm:items-center',
+          isPaid
+            ? 'border-emerald-400/15 bg-emerald-400/[0.055] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]'
+            : 'border-white/[0.08] bg-white/[0.025] hover:border-violet-400/25 hover:bg-white/[0.045]',
+        )}
+      >
+        <button
+          onClick={() => handleItemCheckboxClick({ id: t.id, paid: t.paid, description: t.description, amount: Number(t.amount) })}
+          title={isPaid ? 'Desmarcar como pago' : 'Marcar como pago'}
+          className={cn(
+            'mt-0.5 flex h-6 w-6 items-center justify-center rounded-full border transition-all sm:mt-0',
+            isPaid
+              ? 'border-emerald-300/60 bg-emerald-400 text-slate-950 shadow-sm shadow-emerald-500/20'
+              : 'border-slate-500/60 bg-slate-950/60 hover:border-violet-300 hover:bg-violet-500/15',
+          )}
+        >
+          {isPaid && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+        </button>
 
-  return (
-    <div className="space-y-6 animate-fade-in">
-
-      {/* ─── Hero Header ─── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-[#6366f1]/[0.05] p-4 shadow-sm sm:rounded-3xl sm:p-7">
-        <div className="absolute -top-20 -right-20 w-72 h-72 bg-[#6366f1]/15 blur-3xl rounded-full pointer-events-none" />
-        <div className="absolute -bottom-32 -left-24 w-72 h-72 bg-[#8b5cf6]/[0.08] blur-3xl rounded-full pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col gap-5">
-          {/* Title row */}
-          <div className="flex items-start justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-[#6366f1]/25 to-[#6366f1]/5 flex items-center justify-center shadow-inner border border-[#6366f1]/15 shrink-0">
-                <CreditCard className="w-6 h-6 sm:w-7 sm:h-7 text-[#6366f1]" />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-none">Cartões de Crédito</h1>
-                <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 flex items-center gap-2 flex-wrap">
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#6366f1] animate-pulse" />
-                    {cards.length} {cards.length === 1 ? 'cartão' : 'cartões'}
-                  </span>
-                  {futureInstallmentCount > 0 && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#6366f1]/10 text-[#6366f1] border border-[#6366f1]/20 font-semibold text-[10px] uppercase tracking-wide">
-                      <CalendarDays className="w-3 h-3" />{futureInstallmentCount} parcelas futuras
-                    </span>
-                  )}
-                </p>
-              </div>
-            </div>
-            <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:shrink-0">
-              <Button variant="outline" size="sm" onClick={() => setShowNewCard(true)} className="h-9 gap-1.5">
-                <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Novo Cartão</span>
-              </Button>
-              {selectedCard && (
-                <Button size="sm" onClick={() => setShowNewTx(true)} className="h-9 gap-1.5 bg-[#6366f1] text-white shadow-sm shadow-[#6366f1]/20 hover:bg-[#6366f1]/90">
-                  <Plus className="w-4 h-4" /> Nova Compra
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Stats row */}
-          {cards.length > 0 && (() => {
-            const totalLimit = cards.reduce((s, c) => s + Number(c.credit_limit), 0);
-            const totalAvailable = Math.max(0, totalLimit - futureTotal);
-            const usagePct = totalLimit > 0 ? (futureTotal / totalLimit) * 100 : 0;
-            return (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
-                <div className="rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm px-3 py-2.5">
-                  <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
-                    <Wallet className="h-3 w-3" />
-                    <p className="text-[9px] font-bold uppercase tracking-wider">Limite total</p>
-                  </div>
-                  <p className="text-sm sm:text-base font-extrabold currency tabular-nums whitespace-nowrap truncate">{fmt(totalLimit)}</p>
-                </div>
-                <div className="rounded-xl border border-income/25 bg-income/[0.06] px-3 py-2.5">
-                  <div className="flex items-center gap-1.5 text-income mb-0.5">
-                    <Sparkles className="h-3 w-3" />
-                    <p className="text-[9px] font-bold uppercase tracking-wider">Disponível</p>
-                  </div>
-                  <p className="text-sm sm:text-base font-extrabold currency text-income tabular-nums whitespace-nowrap truncate">{fmt(totalAvailable)}</p>
-                </div>
-                <div className="rounded-xl border border-[#6366f1]/25 bg-[#6366f1]/[0.06] px-3 py-2.5">
-                  <div className="flex items-center gap-1.5 text-[#6366f1] mb-0.5">
-                    <TrendingUp className="h-3 w-3" />
-                    <p className="text-[9px] font-bold uppercase tracking-wider">Comprometido</p>
-                  </div>
-                  <p className="text-sm sm:text-base font-extrabold currency text-[#6366f1] tabular-nums whitespace-nowrap truncate">{fmt(futureTotal)}</p>
-                  <p className="text-[10px] text-[#6366f1]/70 mt-0.5 font-semibold">{usagePct.toFixed(0)}% do limite</p>
-                </div>
-                <div className="rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm px-3 py-2.5">
-                  <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
-                    <CalendarDays className="h-3 w-3" />
-                    <p className="text-[9px] font-bold uppercase tracking-wider">Faturas</p>
-                  </div>
-                  <p className="text-sm sm:text-base font-extrabold tabular-nums whitespace-nowrap truncate">{upcomingMonths.length} {upcomingMonths.length === 1 ? 'mês' : 'meses'}</p>
-                </div>
-              </div>
-            );
-          })()}
-        </div>
-      </div>
-
-      {/* ─── Calendário de Faturas Futuras ─── */}
-      {futureTxns.length > 0 && (
-        <div className="rounded-3xl border border-border/60 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden">
-          {/* Section header */}
-          <div className="flex flex-col gap-3 px-4 py-4 bg-gradient-to-r from-[#6366f1]/5 via-transparent to-transparent border-b border-border/50 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#6366f1]/20 to-[#6366f1]/5 flex items-center justify-center border border-[#6366f1]/15 shrink-0">
-                <CalendarDays className="w-4.5 h-4.5 text-[#6366f1]" />
-              </div>
-              <div className="min-w-0">
-                <h3 className="font-bold text-sm sm:text-base leading-tight">Calendário de Faturas</h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">{upcomingMonths.length} {upcomingMonths.length === 1 ? 'mês com lançamentos' : 'meses com lançamentos'} · todas as parcelas futuras</p>
-              </div>
-            </div>
-            <div className="shrink-0 sm:text-right">
-              <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/80">Total</p>
-              <p className="text-sm sm:text-base font-extrabold currency text-[#6366f1] tabular-nums">{fmt(futureTotal)}</p>
-            </div>
-          </div>
-
-          {/* Months list */}
-          <div className="divide-y divide-border/40">
-            {upcomingMonths.map((mo, idx) => {
-              const monthTxns = upcomingByMonth[mo];
-              const monthTotal = monthTxns.reduce((s, t) => s + Number(t.amount), 0);
-              const isExpanded = expandedUpcomingMonth === mo;
-              const label = monthLabel(mo);
-              const isCurrentMonth = mo === getMonthYear();
-
-              // Per-card breakdown for this month
-              const cardSplit = monthTxns.reduce<Record<string, number>>((acc, t) => {
-                acc[t.credit_card_id] = (acc[t.credit_card_id] ?? 0) + Number(t.amount);
-                return acc;
-              }, {});
-
-              return (
-                <div key={mo} className={isExpanded ? 'bg-muted/20' : ''}>
-                  <button
-                    type="button"
-                    onClick={() => setExpandedUpcomingMonth(isExpanded ? null : mo)}
-                    className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors group/month"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={cn(
-                        'w-9 h-9 rounded-xl flex flex-col items-center justify-center font-extrabold text-[10px] uppercase tracking-wider shrink-0 transition-colors',
-                        isCurrentMonth
-                          ? 'bg-[#6366f1] text-white shadow-sm shadow-[#6366f1]/30'
-                          : isExpanded
-                            ? 'bg-[#6366f1]/15 text-[#6366f1] border border-[#6366f1]/20'
-                            : 'bg-muted text-muted-foreground border border-border/60',
-                      )}>
-                        <span className="text-[8px] opacity-70 leading-none">{label.split(' ')[1]?.slice(0, 4) ?? ''}</span>
-                        <span className="text-[11px] leading-none mt-0.5">{label.split(' ')[0].slice(0, 3)}</span>
-                      </div>
-                      <div className="min-w-0 text-left">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-bold capitalize">{label}</span>
-                          {isCurrentMonth && (
-                            <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-[#6366f1] text-white font-bold">Atual</span>
-                          )}
-                          {idx === 0 && !isCurrentMonth && (
-                            <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-warning/15 text-warning font-bold border border-warning/20">Próxima</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                          <span className="text-[10px] text-muted-foreground">
-                            {monthTxns.length} {monthTxns.length === 1 ? 'item' : 'itens'}
-                          </span>
-                          {Object.entries(cardSplit).map(([cardId]) => {
-                            const card = cards.find(c => c.id === cardId);
-                            if (!card) return null;
-                            return (
-                              <span key={cardId} className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md font-semibold border" style={{ color: card.color ?? '#6366f1', backgroundColor: `${card.color ?? '#6366f1'}10`, borderColor: `${card.color ?? '#6366f1'}25` }}>
-                                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: card.color ?? '#6366f1' }} />
-                                {card.name}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-sm sm:text-base font-extrabold currency text-expense tabular-nums">{fmt(monthTotal)}</span>
-                      <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', isExpanded ? 'rotate-0' : '-rotate-90')} />
-                    </div>
-                  </button>
-
-                  {isExpanded && (
-                    <div className="px-3 pb-3">
-                      <div className="rounded-2xl border border-border/50 bg-card/80 overflow-hidden divide-y divide-border/30">
-                        {monthTxns.map(t => {
-                          const card = cards.find(c => c.id === t.credit_card_id);
-                          const cat = categories.find(c => c.id === t.category_id);
-                          const cardColor = card?.color ?? '#6366f1';
-                          return (
-                            <div key={t.id} className="flex items-center gap-3 justify-between px-4 py-3 hover:bg-muted/30 transition-colors group/tx">
-                              <div className="flex items-center gap-3 min-w-0 flex-1">
-                                <div className="w-1 h-10 rounded-full shrink-0" style={{ backgroundColor: cardColor }} />
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <p className={cn('text-sm font-semibold truncate', t.paid && 'line-through text-muted-foreground')}>{t.description}</p>
-                                    {t.is_installment && (
-                                      <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold shrink-0" style={{ color: cardColor, backgroundColor: `${cardColor}15`, border: `1px solid ${cardColor}30` }}>
-                                        {t.installment_number}/{t.total_installments}x
-                                      </span>
-                                    )}
-                                    {t.paid && (
-                                      <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold bg-income/10 text-income border border-income/20">PAGA</span>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                    {card && (
-                                      <span className="text-[10px] font-semibold" style={{ color: cardColor }}>{card.name}</span>
-                                    )}
-                                    {cat && (
-                                      <span className="text-[10px] text-muted-foreground">· {cat.icon} {cat.name}</span>
-                                    )}
-                                    <span className="text-[10px] text-muted-foreground">· {formatDate(t.date)}</span>
-                                  </div>
-                                </div>
-                              </div>
-                              <span className={cn('text-sm font-bold currency shrink-0 ml-3 tabular-nums', t.paid ? 'text-muted-foreground' : 'text-expense')}>{fmt(Number(t.amount))}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ─── Card Grid ─── */}
-      {cards.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-[#6366f1]/30 bg-[#6366f1]/[0.03] py-16 px-6 text-center">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#6366f1]/20 to-[#6366f1]/5 flex items-center justify-center mx-auto mb-4 border border-[#6366f1]/20 shadow-inner">
-            <CreditCard className="w-10 h-10 text-[#6366f1]/60" />
-          </div>
-          <p className="font-extrabold text-lg mb-1">Nenhum cartão cadastrado</p>
-          <p className="text-sm text-muted-foreground mb-5 max-w-sm mx-auto">Adicione seus cartões para controlar faturas e parcelamentos</p>
-          <Button onClick={() => setShowNewCard(true)} className="bg-[#6366f1] hover:bg-[#6366f1]/90 text-white shadow-sm shadow-[#6366f1]/20">
-            <Plus className="w-4 h-4 mr-1.5" /> Adicionar primeiro cartão
-          </Button>
-        </div>
-      ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {cards.map((card) => {
-            const isSelected = selectedCard === card.id;
-            // Future commitment for THIS card across all months
-            const cardFutureTotal = futureTxns
-              .filter(t => t.credit_card_id === card.id)
-              .reduce((s, t) => s + Number(t.amount), 0);
-            const cardLimitUsage = Math.min(100, (cardFutureTotal / Math.max(Number(card.credit_limit), 1)) * 100);
-
-            return (
-              <button
-                key={card.id}
-                onClick={() => setSelectedCard(card.id)}
-                className={cn(
-                  'group/card relative rounded-2xl p-5 cursor-pointer transition-all text-white overflow-hidden select-none text-left',
-                  'shadow-md hover:shadow-xl',
-                  isSelected ? 'ring-2 ring-offset-2 ring-offset-background scale-[1.015]' : 'hover:scale-[1.015]',
-                )}
-                style={{
-                  background: `linear-gradient(135deg, ${card.color}ff 0%, ${card.color}dd 50%, ${card.color}99 100%)`,
-                  boxShadow: isSelected ? `0 0 0 2px ${card.color}, 0 12px 24px -8px ${card.color}50` : undefined,
-                }}
-              >
-                {/* Decorative wave overlay */}
-                <div className="absolute inset-0 opacity-20 pointer-events-none">
-                  <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/30" />
-                  <div className="absolute -right-12 top-12 w-40 h-40 rounded-full bg-white/15" />
-                  <div className="absolute -left-8 -bottom-8 w-28 h-28 rounded-full bg-black/20" />
-                </div>
-
-                <div className="relative z-10 space-y-5">
-                  {/* Top: name + delete */}
-                  <div className="flex justify-between items-start">
-                    <div className="min-w-0">
-                      <p className="text-white/70 text-[9px] font-bold uppercase tracking-[0.2em] mb-1">Cartão</p>
-                      <p className="font-extrabold text-lg leading-tight tracking-tight truncate">{card.name}</p>
-                    </div>
-                    <button
-                      onClick={e => { e.stopPropagation(); deleteCard.mutate(card.id); }}
-                      className="p-1.5 rounded-lg bg-black/15 hover:bg-black/30 backdrop-blur-sm transition-colors opacity-0 group-hover/card:opacity-100 shrink-0"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  {/* Chip + brand mark */}
-                  <div className="flex items-center justify-between">
-                    <div className="w-11 h-8 rounded-md bg-gradient-to-br from-yellow-100/80 to-yellow-300/40 border border-white/20 shadow-inner" />
-                    <CreditCard className="w-7 h-7 text-white/40" />
-                  </div>
-
-                  {/* Bottom: limit usage bar + saldo disponível */}
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider mb-0.5">Comprometido</p>
-                        <p className="font-extrabold text-sm tracking-tight tabular-nums whitespace-nowrap truncate">{fmt(cardFutureTotal)}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider mb-0.5">Disponível</p>
-                        <p className="font-extrabold text-sm tracking-tight tabular-nums whitespace-nowrap truncate">{fmt(Math.max(0, Number(card.credit_limit) - cardFutureTotal))}</p>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="h-1.5 bg-black/25 rounded-full overflow-hidden">
-                        <div className="h-full bg-white/80 rounded-full transition-all" style={{ width: `${cardLimitUsage}%` }} />
-                      </div>
-                      <div className="flex items-center justify-between text-[9px] font-semibold gap-2">
-                        <span className="text-white/60 uppercase tracking-wider truncate">Limite {fmt(Number(card.credit_limit))}</span>
-                        <span className="text-white/90 whitespace-nowrap">Fecha {String(card.closing_day).padStart(2,'0')} · {cardLimitUsage.toFixed(0)}%</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Selected indicator */}
-                {isSelected && (
-                  <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-white/95 flex items-center justify-center shadow-md">
-                    <Check className="w-3.5 h-3.5" style={{ color: card.color }} strokeWidth={3} />
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ── Default Account Setup Banner (for existing cards without default) ── */}
-      {selectedCard && currentCard && !getCardDefaultAccount(currentCard.id) && defaultAcctBump >= 0 && (
-        <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 space-y-3">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
-              <Wallet className="w-4 h-4 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold">Vincule este cartão a uma conta</p>
-              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                Quando você vincula o cartão {currentCard.name} a uma conta (ex: Nubank), todas as compras passam a debitar dela automaticamente — sem precisar marcar item por item.
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-900/80 text-sm">
+              {categoryIcon}
+            </span>
+            <div className="min-w-0">
+              <p className={cn('truncate text-sm font-extrabold tracking-tight', isPaid ? 'text-slate-100' : 'text-white')}>
+                {t.description}
+              </p>
+              <p className="mt-0.5 text-[11px] font-medium text-slate-500 sm:hidden">
+                {formatDate(t.date)} · {categoryName}
               </p>
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Select onValueChange={(v) => {
-              setCardDefaultAccount(currentCard.id, v);
-              setDefaultAcctBump(b => b + 1);
-              toast.success('Conta padrão vinculada!');
-            }}>
-              <SelectTrigger className="flex-1"><SelectValue placeholder="Selecione a conta padrão..." /></SelectTrigger>
-              <SelectContent>
-                {accounts.filter(a => !a.archived).map(a => (
-                  <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
         </div>
-      )}
 
-      {/* ── Default Account Configured Status ── */}
-      {selectedCard && currentCard && getCardDefaultAccount(currentCard.id) && (() => {
-        const acctId = getCardDefaultAccount(currentCard.id);
-        const acct = accounts.find(a => a.id === acctId);
-        return (
-          <div className="rounded-xl border border-income/25 bg-income/5 px-4 py-2.5 flex items-center gap-3 flex-wrap">
-            <Check className="w-4 h-4 text-income shrink-0" />
-            <p className="text-xs flex-1 min-w-0">
-              <span className="text-muted-foreground">Pagamento debitado de:</span>{' '}
-              <span className="font-semibold">{acct?.icon} {acct?.name || 'Conta vinculada'}</span>
-            </p>
-            <div className="flex gap-2 shrink-0">
-              <button
-                onClick={() => applyDefaultAccountToHistory(currentCard.id)}
-                className="text-[11px] font-semibold text-primary hover:underline"
-                title="Aplica esta conta a todas as transações antigas deste cartão"
-              >
-                Aplicar a transações antigas
-              </button>
-              <button
-                onClick={() => {
-                  setCardDefaultAccount(currentCard.id, null);
-                  setDefaultAcctBump(b => b + 1);
-                  toast.success('Conta padrão removida');
-                }}
-                className="text-[11px] text-muted-foreground hover:underline"
-              >
-                Remover
-              </button>
-            </div>
-          </div>
-        );
-      })()}
+        <p className="col-start-2 text-xs font-semibold text-slate-400 sm:col-auto">
+          {formatDate(t.date)}
+        </p>
 
-      {/* ── Bill Details ─────────────────────────────────────────── */}
-      {selectedCard && currentCard && (
-        <div className="stat-card space-y-5 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 rounded-t-2xl" style={{ background: `linear-gradient(90deg, ${currentCard.color}, ${currentCard.color}44)` }} />
+        <div className="col-start-2 min-w-0 sm:col-auto">
+          <select
+            value={t.category_id ?? ''}
+            onChange={(e) => updateTx.mutate({ id: t.id, category_id: e.target.value || null })}
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-full cursor-pointer rounded-full border border-white/10 bg-slate-950/70 px-2.5 py-1 text-[11px] font-semibold text-slate-300 outline-none transition-colors hover:border-violet-400/35"
+            style={{ fontFamily: 'inherit' }}
+          >
+            <option value="">Sem categoria</option>
+            {categories.map(c => (
+              <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+            ))}
+          </select>
+        </div>
 
-          {/* Bill Header */}
-          <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${currentCard.color}20`, border: `1.5px solid ${currentCard.color}40` }}>
-                <CreditCard className="w-5 h-5" style={{ color: currentCard.color }} />
-              </div>
-              <div>
-                <h3 className="font-bold text-base">{currentCard.name}</h3>
-                <p className="text-xs text-muted-foreground">Fecha dia {currentCard.closing_day} · Vence dia {currentCard.due_day}</p>
-              </div>
-            </div>
-            <div className="flex w-full items-center gap-1.5 rounded-xl bg-muted/40 px-2 py-1.5 sm:w-auto">
-              <button onClick={() => setBillMonth(prevMonth(billMonth))} className="p-1.5 hover:bg-muted rounded-lg transition-colors">
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="min-w-0 flex-1 px-1 text-center text-sm font-semibold capitalize sm:min-w-[120px]">{monthLabel(billMonth)}</span>
-              <button onClick={() => setBillMonth(nextMonth(billMonth))} className="p-1.5 hover:bg-muted rounded-lg transition-colors">
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Bill Stats */}
-          <div className="grid grid-cols-2 gap-3 min-[430px]:grid-cols-3">
-            <div className="rounded-xl border p-3 space-y-1" style={{ borderColor: `${currentCard.color}30`, backgroundColor: `${currentCard.color}08` }}>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Total fatura</p>
-              <p className="font-extrabold text-lg currency text-expense">{fmt(billTotal)}</p>
-            </div>
-            <div className="rounded-xl border border-income/20 bg-income/5 p-3 space-y-1">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Pago</p>
-              <p className="font-extrabold text-lg currency text-income">{fmt(paidTotal)}</p>
-            </div>
-            <div className="rounded-xl border border-border/60 bg-muted/30 p-3 space-y-1">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Em aberto</p>
-              <p className={`font-extrabold text-lg currency ${unpaidTotal > 0 ? 'text-warning' : 'text-muted-foreground'}`}>{fmt(unpaidTotal)}</p>
-            </div>
-          </div>
-
-          {/* Limit Usage Bar */}
-          <div className="space-y-1.5">
-            <div className="flex flex-wrap justify-between gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-              <span className="truncate">Uso do limite — <span className="font-semibold">{fmt(billTotal)}</span> de {fmt(Number(currentCard.credit_limit))}</span>
-              <span className={`font-bold shrink-0 ${limitUsagePercent > 80 ? 'text-expense' : limitUsagePercent > 50 ? 'text-warning' : 'text-income'}`}>
-                {limitUsagePercent.toFixed(0)}%
-              </span>
-            </div>
-            <div className="h-2.5 bg-muted rounded-full overflow-hidden">
-              <div
-                className={cn(
-                  'h-full rounded-full transition-all',
-                  limitUsagePercent > 80 ? 'bg-expense' : limitUsagePercent > 50 ? 'bg-warning' : 'bg-income',
-                )}
-                style={{ width: `${limitUsagePercent}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Category Breakdown */}
-          {catBreakdown.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Por categoria</p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {catBreakdown.slice(0, 6).map(({ cat, total }) => (
-                  <div key={cat!.id} className="flex items-center gap-2.5 rounded-lg bg-muted/30 border border-border/50 px-3 py-2">
-                    <span className="text-lg shrink-0">{cat!.icon}</span>
-                    <div className="min-w-0">
-                      <p className="text-[10px] text-muted-foreground truncate">{cat!.name}</p>
-                      <p className="text-sm font-bold currency">{fmt(total)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+        <div className="col-start-2 flex flex-wrap gap-1.5 sm:col-auto">
+          {t.is_installment && (
+            <span className="rounded-full border border-violet-300/25 bg-violet-500/15 px-2 py-0.5 text-[11px] font-extrabold text-violet-200">
+              {t.installment_number}/{t.total_installments}x
+            </span>
           )}
+          {t.is_recurring && (
+            <span className="rounded-full border border-amber-300/25 bg-amber-400/10 px-2 py-0.5 text-[11px] font-extrabold text-amber-200">
+              Recorrente
+            </span>
+          )}
+        </div>
 
-          {/* Actions */}
-          <div className="flex flex-col gap-2 pt-1 border-t border-border/50 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">{transactions.length} compra{transactions.length !== 1 ? 's' : ''} · {transactions.filter(t => t.paid).length} paga{transactions.filter(t => t.paid).length !== 1 ? 's' : ''}</p>
-            <div className="grid w-full grid-cols-1 gap-2 min-[430px]:grid-cols-2 sm:flex sm:w-auto">
-              {unpaidTotal > 0 && (
-                <Button size="sm" variant="outline" className="border-income/30 text-income hover:bg-income/5 gap-1.5" onClick={openPayBill}>
-                  <Wallet className="w-3.5 h-3.5" />
-                  Pagar {fmt(unpaidTotal)}
-                </Button>
-              )}
-              <Button size="sm" className="gap-1.5" style={{ backgroundColor: currentCard.color }} onClick={() => setShowNewTx(true)}>
-                <Plus className="w-3.5 h-3.5" /> Nova compra
+        <div className="col-start-2 flex items-center justify-between gap-3 sm:col-auto sm:justify-end">
+          <span className={cn('currency text-sm font-black tabular-nums', isPaid ? 'text-emerald-200' : 'text-white')}>
+            {fmt(Number(t.amount))}
+          </span>
+          <button
+            onClick={() => deleteTx.mutate(t.id)}
+            title="Excluir compra"
+            className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-red-500/10 hover:text-red-300 sm:hidden"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+
+        <button
+          onClick={() => deleteTx.mutate(t.id)}
+          title="Excluir compra"
+          className="hidden rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-red-500/10 hover:text-red-300 sm:block"
+        >
+          <MoreVertical className="h-4 w-4" />
+        </button>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-5 animate-fade-in">
+      <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#070a12] p-4 shadow-2xl shadow-black/30 sm:p-6 xl:p-7">
+        <div className="pointer-events-none absolute -right-28 -top-28 h-72 w-72 rounded-full bg-violet-600/25 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(124,58,237,0.18),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.05),transparent_42%)]" />
+
+        <div className="relative z-10 flex flex-col gap-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex min-w-0 items-start gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-violet-300/20 bg-violet-500/15 shadow-inner shadow-violet-500/10">
+                <CreditCard className="h-7 w-7 text-violet-300" />
+              </div>
+              <div className="min-w-0">
+                <p className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-violet-200/80">
+                  <Sparkles className="h-3.5 w-3.5" /> Central de cartões
+                </p>
+                <h1 className="truncate text-3xl font-black tracking-tight text-white sm:text-4xl">Cartões de Crédito</h1>
+                <p className="mt-1.5 text-sm font-medium text-slate-400">
+                  {currentCard
+                    ? <><span className="font-extrabold text-violet-200">{currentCard.name}</span> · fecha dia {currentCard.closing_day} · vence dia {currentCard.due_day}</>
+                    : 'Cadastre um cartão para acompanhar faturas, limite e parcelas.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowNewCard(true)}
+                className="h-11 rounded-xl border-white/10 bg-white/[0.035] px-4 text-slate-100 hover:bg-white/[0.07]"
+              >
+                <Plus className="mr-2 h-4 w-4" /> Novo cartão
+              </Button>
+              <Button
+                onClick={() => setShowNewTx(true)}
+                disabled={!selectedCard}
+                className="h-11 rounded-xl bg-violet-600 px-4 text-white shadow-lg shadow-violet-600/25 hover:bg-violet-500 disabled:opacity-50"
+              >
+                <Plus className="mr-2 h-4 w-4" /> Nova compra
               </Button>
             </div>
           </div>
 
-          {/* Transactions */}
-          {transactions.length === 0 ? (
-            <div className="flex flex-col items-center py-10 gap-3 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-muted/50 flex items-center justify-center">
-                <Receipt className="w-6 h-6 text-muted-foreground/50" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Nenhuma compra nesta fatura</p>
-                <p className="text-xs text-muted-foreground/70 mt-0.5">Adicione uma compra para começar</p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              {transactions.map(t => {
-                const cat = categories.find(c => c.id === t.category_id);
-                return (
-                  <div
-                    key={t.id}
-                    className={`flex flex-col gap-2 rounded-xl border px-3 py-2.5 transition-all sm:flex-row sm:items-center sm:justify-between ${t.paid ? 'bg-income/[0.04] border-income/15' : 'hover:bg-muted/30 border-transparent hover:border-border/40'}`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <button
-                        onClick={() => handleItemCheckboxClick({ id: t.id, paid: t.paid, description: t.description, amount: Number(t.amount) })}
-                        title={t.paid ? 'Desmarcar' : 'Marcar como pago e debitar da conta'}
-                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${t.paid ? 'bg-income border-income shadow-sm shadow-income/30' : 'border-muted-foreground/40 hover:border-income/60'}`}
-                      >
-                        {t.paid && <Check className="w-2.5 h-2.5 text-white" />}
-                      </button>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className={`text-sm font-medium ${t.paid ? 'line-through text-muted-foreground' : ''}`}>{t.description}</p>
-                          {t.is_installment && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold shrink-0" style={{ backgroundColor: `${currentCard.color}15`, color: currentCard.color, border: `1px solid ${currentCard.color}30` }}>
-                              {t.installment_number}/{t.total_installments}x
+          {cards.length > 0 && (
+            <div className="overflow-x-auto pb-1">
+              <div className="flex min-w-max gap-3 pr-2">
+                {cards.map((card) => {
+                  const isSelected = selectedCard === card.id;
+                  const cardCommitment = futureTxns
+                    .filter(t => t.credit_card_id === card.id && !t.paid)
+                    .reduce((s, t) => s + Number(t.amount), 0);
+                  const cardUsage = Math.min(100, (cardCommitment / Math.max(Number(card.credit_limit), 1)) * 100);
+
+                  return (
+                    <button
+                      key={card.id}
+                      type="button"
+                      onClick={() => setSelectedCard(card.id)}
+                      className={cn(
+                        'group relative h-[92px] w-[230px] overflow-hidden rounded-2xl border p-4 text-left transition-all',
+                        isSelected
+                          ? 'border-violet-300/60 bg-white/[0.08] shadow-xl shadow-violet-950/30'
+                          : 'border-white/10 bg-white/[0.035] hover:border-violet-300/35 hover:bg-white/[0.055]',
+                      )}
+                    >
+                      <div className="absolute -right-8 -top-12 h-28 w-28 rounded-full opacity-30 blur-xl" style={{ backgroundColor: card.color }} />
+                      <div className="relative flex h-full flex-col justify-between">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex min-w-0 items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-black/25 text-white shadow-inner" style={{ color: card.color }}>
+                              <CreditCard className="h-[18px] w-[18px]" />
                             </span>
-                          )}
-                          {t.is_recurring && (
-                            <span className="text-[10px] bg-warning/10 text-warning px-1.5 py-0.5 rounded-full font-medium shrink-0">Recorrente</span>
-                          )}
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-black text-white">{card.name}</p>
+                              <p className="text-[11px] font-semibold text-slate-500">{cardUsage.toFixed(0)}% comprometido</p>
+                            </div>
+                          </div>
+                          {isSelected && <Check className="h-4 w-4 shrink-0 text-violet-200" />}
                         </div>
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <p className="text-xs text-muted-foreground">{formatDate(t.date)}</p>
-                          <select
-                            value={t.category_id ?? ''}
-                            onChange={(e) => updateTx.mutate({ id: t.id, category_id: e.target.value || null })}
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-[10px] text-muted-foreground bg-muted/50 rounded-full px-1.5 py-0.5 border-0 outline-none cursor-pointer hover:bg-muted transition-colors appearance-none max-w-[140px]"
-                            style={{ fontFamily: 'inherit' }}
-                          >
-                            <option value="">Sem categoria</option>
-                            {categories.map(c => (
-                              <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
-                            ))}
-                          </select>
+                        <div className="space-y-1.5">
+                          <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                            <div className="h-full rounded-full bg-violet-400" style={{ width: `${cardUsage}%` }} />
+                          </div>
+                          <div className="flex justify-between text-[11px] font-bold text-slate-400">
+                            <span>{fmt(cardCommitment)}</span>
+                            <span>{fmt(Number(card.credit_limit))}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex w-full items-center justify-between gap-2 sm:ml-2 sm:w-auto sm:shrink-0">
-                      <span className={`text-sm font-bold currency ${t.paid ? 'text-muted-foreground' : ''}`}>{fmt(Number(t.amount))}</span>
-                      <button
-                        onClick={() => deleteTx.mutate(t.id)}
-                        className="p-1 text-muted-foreground/40 hover:text-expense hover:bg-expense/10 rounded-lg transition-all"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {currentCard && (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-violet-200"><Receipt className="h-5 w-5" /></span>
+                  <p className="text-sm font-bold text-slate-300">Fatura atual</p>
+                </div>
+                <p className="currency text-2xl font-black text-white tabular-nums">{fmt(billTotal)}</p>
+                <p className="mt-1 text-sm font-extrabold text-amber-300">{fmt(unpaidTotal)} em aberto</p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300"><Wallet className="h-5 w-5" /></span>
+                  <p className="text-sm font-bold text-slate-300">Limite disponível</p>
+                </div>
+                <p className="currency text-2xl font-black text-emerald-300 tabular-nums">{fmt(availableLimit)}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-400">{Math.max(0, 100 - committedLimitPercent).toFixed(0)}% livre</p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-violet-200"><CalendarDays className="h-5 w-5" /></span>
+                  <p className="text-sm font-bold text-slate-300">Próximo vencimento</p>
+                </div>
+                <p className="text-2xl font-black text-white tabular-nums">
+                  {billDueDate ? billDueDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '') : '--'}
+                </p>
+                <p className={cn('mt-1 text-sm font-semibold', daysUntilDue < 0 ? 'text-red-300' : daysUntilDue <= 7 ? 'text-amber-300' : 'text-slate-400')}>
+                  {daysUntilDue < 0 ? `venceu há ${Math.abs(daysUntilDue)} dias` : `faltam ${daysUntilDue} dias`}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-500/15 text-slate-200"><Layers3 className="h-5 w-5" /></span>
+                  <p className="text-sm font-bold text-slate-300">Parcelas futuras</p>
+                </div>
+                <p className="text-2xl font-black text-white tabular-nums">{selectedFutureInstallmentCount}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-400">parcelas futuras</p>
+              </div>
             </div>
           )}
         </div>
-      )}
+      </div>
 
-      {/* ── No card selected hint ──────────────────────────────── */}
-      {cards.length > 0 && !selectedCard && (
-        <div className="stat-card py-10 text-center">
-          <Zap className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-sm font-medium text-muted-foreground">Clique em um cartão para ver a fatura</p>
+      {cards.length === 0 ? (
+        <div className="rounded-[2rem] border border-dashed border-violet-400/30 bg-violet-500/[0.035] px-6 py-16 text-center">
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl border border-violet-300/20 bg-violet-500/10">
+            <CreditCard className="h-10 w-10 text-violet-200/70" />
+          </div>
+          <p className="text-lg font-black text-white">Nenhum cartão cadastrado</p>
+          <p className="mx-auto mt-1 max-w-sm text-sm text-slate-400">Adicione seu primeiro cartão para controlar faturas, parcelas e limite em um só lugar.</p>
+          <Button onClick={() => setShowNewCard(true)} className="mt-5 rounded-xl bg-violet-600 text-white hover:bg-violet-500">
+            <Plus className="mr-2 h-4 w-4" /> Adicionar cartão
+          </Button>
+        </div>
+      ) : currentCard ? (
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+          <div className="min-w-0 space-y-5">
+            <section className="rounded-[1.75rem] border border-white/10 bg-[#090d16]/95 p-4 shadow-xl shadow-black/20 backdrop-blur-xl sm:p-5">
+              <div className="mb-5 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-black tracking-tight text-white">Linha do tempo das faturas</h2>
+                  <p className="mt-1 text-sm text-slate-500">Total, pago e aberto por mês. Ao pagar, o aberto diminui aqui também.</p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <button onClick={() => setBillMonth(prevMonth(billMonth))} className="rounded-xl border border-white/10 bg-white/[0.035] p-2 text-slate-300 transition-colors hover:bg-white/[0.07]"><ChevronLeft className="h-4 w-4" /></button>
+                  <button onClick={() => setBillMonth(nextMonth(billMonth))} className="rounded-xl border border-white/10 bg-white/[0.035] p-2 text-slate-300 transition-colors hover:bg-white/[0.07]"><ChevronRight className="h-4 w-4" /></button>
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3 2xl:grid-cols-6">
+                {timelineBills.map((item) => {
+                  const isSelected = item.month === billMonth;
+                  const isCurrent = item.month === getMonthYear();
+                  return (
+                    <button
+                      key={item.month}
+                      type="button"
+                      onClick={() => setBillMonth(item.month)}
+                      className={cn(
+                        'relative overflow-hidden rounded-2xl border p-4 text-left transition-all',
+                        isSelected
+                          ? 'border-violet-300/60 bg-violet-500/15 shadow-lg shadow-violet-950/30'
+                          : 'border-white/10 bg-white/[0.03] hover:border-violet-300/30 hover:bg-white/[0.05]',
+                      )}
+                    >
+                      <div className="absolute -bottom-8 -right-8 h-20 w-20 rounded-full bg-violet-500/10 blur-2xl" />
+                      <div className="relative space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-base font-black text-white">{shortMonthLabel(item.month)}</p>
+                          {isCurrent && <span className="rounded-full bg-violet-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">Atual</span>}
+                        </div>
+                        <div>
+                          <p className="currency text-lg font-black text-white tabular-nums">{fmt(item.total)}</p>
+                          <p className="mt-1 text-[11px] font-semibold text-slate-500">{item.count} compra{item.count === 1 ? '' : 's'}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-[11px] font-bold">
+                          <span className="text-emerald-300">Pago {fmt(item.paid)}</span>
+                          <span className="text-right text-amber-300">Aberto {fmt(item.open)}</span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="rounded-[1.75rem] border border-white/10 bg-[#090d16]/95 p-4 shadow-xl shadow-black/20 backdrop-blur-xl sm:p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <h2 className="text-2xl font-black capitalize tracking-tight text-white">{monthLabel(billMonth)}</h2>
+                  <p className="mt-2 text-sm font-semibold text-slate-400">
+                    <span className="text-emerald-300">Pago {fmt(paidTotal)}</span>
+                    <span className="mx-2 text-slate-600">•</span>
+                    <span className="text-amber-300">Em aberto {fmt(unpaidTotal)}</span>
+                    <span className="mx-2 text-slate-600">•</span>
+                    <span>{transactions.length} compra{transactions.length === 1 ? '' : 's'}</span>
+                  </p>
+                </div>
+                <div className="lg:text-right">
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Total da fatura</p>
+                  <p className="currency mt-1 text-3xl font-black text-red-300 tabular-nums">{fmt(billTotal)}</p>
+                </div>
+              </div>
+
+              <div className="mt-5 space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-slate-400">
+                  <span>Uso do limite — {fmt(billTotal)} de {fmt(Number(currentCard.credit_limit))}</span>
+                  <span className={cn('font-black', limitUsagePercent > 80 ? 'text-red-300' : limitUsagePercent > 50 ? 'text-amber-300' : 'text-emerald-300')}>{limitUsagePercent.toFixed(0)}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-white/[0.08]">
+                  <div
+                    className={cn('h-full rounded-full transition-all', limitUsagePercent > 80 ? 'bg-red-400' : limitUsagePercent > 50 ? 'bg-amber-300' : 'bg-emerald-400')}
+                    style={{ width: `${limitUsagePercent}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {filterOptions.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setTxFilter(option.id)}
+                      className={cn(
+                        'shrink-0 rounded-xl border px-3.5 py-2 text-sm font-bold transition-colors',
+                        txFilter === option.id
+                          ? 'border-violet-300/50 bg-violet-500 text-white shadow-lg shadow-violet-950/20'
+                          : 'border-white/10 bg-white/[0.025] text-slate-300 hover:bg-white/[0.055]',
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative w-full lg:max-w-sm">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  <Input
+                    value={txSearch}
+                    onChange={(e) => setTxSearch(e.target.value)}
+                    placeholder="Buscar compra, categoria ou valor..."
+                    className="h-11 rounded-xl border-white/10 bg-slate-950/70 pl-9 text-sm text-slate-100 placeholder:text-slate-600 focus-visible:ring-violet-500/60"
+                  />
+                </div>
+              </div>
+
+              {transactions.length === 0 ? (
+                <div className="mt-8 flex flex-col items-center rounded-3xl border border-dashed border-white/10 bg-white/[0.025] px-6 py-12 text-center">
+                  <Receipt className="mb-3 h-9 w-9 text-slate-600" />
+                  <p className="font-black text-white">Nenhuma compra nesta fatura</p>
+                  <p className="mt-1 text-sm text-slate-500">Adicione uma compra para começar o acompanhamento do mês.</p>
+                </div>
+              ) : openTransactions.length === 0 && paidTransactions.length === 0 ? (
+                <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.025] px-6 py-10 text-center text-sm font-semibold text-slate-500">
+                  Nenhuma compra encontrada com os filtros atuais.
+                </div>
+              ) : (
+                <div className="mt-6 space-y-6">
+                  {openTransactions.length > 0 && (
+                    <div>
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <h3 className="text-sm font-black uppercase tracking-[0.18em] text-amber-300">Em aberto</h3>
+                        <span className="text-xs font-bold text-slate-500">{openTransactions.length} item{openTransactions.length === 1 ? '' : 's'}</span>
+                      </div>
+                      <div className="space-y-2">{openTransactions.map(renderTransactionRow)}</div>
+                    </div>
+                  )}
+
+                  {paidTransactions.length > 0 && (
+                    <div>
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <h3 className="text-sm font-black uppercase tracking-[0.18em] text-emerald-300">Pagas</h3>
+                        <span className="text-xs font-bold text-slate-500">{paidTransactions.length} item{paidTransactions.length === 1 ? '' : 's'}</span>
+                      </div>
+                      <div className="space-y-2">{paidTransactions.map(renderTransactionRow)}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          </div>
+
+          <aside className="space-y-5 xl:sticky xl:top-4 xl:self-start">
+            <div className="overflow-hidden rounded-[1.75rem] border border-violet-300/25 bg-gradient-to-br from-violet-500 via-violet-700 to-[#211234] p-5 text-white shadow-2xl shadow-violet-950/30">
+              <div className="pointer-events-none absolute" />
+              <div className="relative space-y-7">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xl font-black">{currentCard.name}</p>
+                    <p className="mt-1 text-xs font-semibold text-violet-100/70">Crédito • final virtual</p>
+                  </div>
+                  <span className="text-3xl font-black text-white/20">nu</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="h-8 w-11 rounded-lg border border-white/25 bg-gradient-to-br from-white/80 to-white/30 shadow-inner" />
+                  <CreditCard className="h-7 w-7 text-white/35" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs font-bold text-violet-100/60">Comprometido</p>
+                    <p className="currency mt-1 font-black tabular-nums">{fmt(selectedFutureOpenTotal)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-bold text-violet-100/60">Disponível</p>
+                    <p className="currency mt-1 font-black tabular-nums">{fmt(availableLimit)}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-black/25">
+                    <div className="h-full rounded-full bg-white/[0.85]" style={{ width: `${committedLimitPercent}%` }} />
+                  </div>
+                  <div className="flex items-center justify-between text-xs font-bold text-violet-100/70">
+                    <span>Limite {fmt(Number(currentCard.credit_limit))}</span>
+                    <span>{committedLimitPercent.toFixed(0)}% do limite</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[1.75rem] border border-white/10 bg-[#090d16]/95 p-5 shadow-xl shadow-black/20 backdrop-blur-xl">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-black text-white">Resumo por categoria</h3>
+                  <p className="text-sm text-slate-500">Distribuição da fatura selecionada</p>
+                </div>
+                <PieChart className="h-5 w-5 text-violet-300" />
+              </div>
+
+              {categorySummary.length === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4 text-sm font-semibold text-slate-500">
+                  Sem categorias nesta fatura.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {categorySummary.slice(0, 5).map((row) => {
+                    const percent = billTotal > 0 ? (row.total / billTotal) * 100 : 0;
+                    const barWidth = Math.max(4, (row.total / topCategoryTotal) * 100);
+                    return (
+                      <div key={row.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-sm">{row.icon}</span>
+                        <div className="min-w-0">
+                          <div className="mb-1 flex items-center justify-between gap-2">
+                            <p className="truncate text-sm font-bold text-slate-300">{row.name}</p>
+                            <p className="currency text-xs font-black text-white tabular-nums">{fmt(row.total)}</p>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-white/[0.07]">
+                            <div className="h-full rounded-full bg-violet-500" style={{ width: `${barWidth}%` }} />
+                          </div>
+                        </div>
+                        <span className="w-10 text-right text-xs font-bold text-slate-500">{percent.toFixed(0)}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-[1.75rem] border border-white/10 bg-[#090d16]/95 p-5 shadow-xl shadow-black/20 backdrop-blur-xl">
+              <div className="grid gap-3">
+                <Button
+                  onClick={openPayBill}
+                  disabled={unpaidTotal <= 0}
+                  className="h-12 rounded-xl bg-violet-600 text-base font-black text-white shadow-lg shadow-violet-600/25 hover:bg-violet-500 disabled:opacity-50"
+                >
+                  <Wallet className="mr-2 h-4 w-4" /> Pagar {fmt(unpaidTotal)}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowNewTx(true)}
+                  className="h-12 rounded-xl border-white/10 bg-white/[0.035] text-base font-black text-slate-100 hover:bg-white/[0.07]"
+                >
+                  <Plus className="mr-2 h-4 w-4" /> Nova compra
+                </Button>
+                <p className="flex items-center justify-center gap-2 text-xs font-semibold text-slate-500">
+                  <ShieldCheck className="h-3.5 w-3.5" /> Ambiente seguro e criptografado
+                </p>
+              </div>
+            </div>
+
+            {!getCardDefaultAccount(currentCard.id) ? (
+              <div className="rounded-[1.75rem] border border-amber-300/20 bg-amber-400/[0.045] p-5">
+                <div className="mb-3 flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-400/10 text-amber-200"><Wallet className="h-5 w-5" /></span>
+                  <div>
+                    <p className="font-black text-white">Conta de pagamento</p>
+                    <p className="mt-1 text-sm text-slate-400">Vincule uma conta para as compras do cartão refletirem no saldo corretamente.</p>
+                  </div>
+                </div>
+                <Select onValueChange={(v) => {
+                  setCardDefaultAccount(currentCard.id, v);
+                  setDefaultAcctBump(b => b + 1);
+                  toast.success('Conta padrão vinculada!');
+                }}>
+                  <SelectTrigger className="h-11 rounded-xl border-white/10 bg-slate-950/70"><SelectValue placeholder="Selecionar conta padrão..." /></SelectTrigger>
+                  <SelectContent>
+                    {accounts.filter(a => !a.archived).map(a => (
+                      <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (() => {
+              const acctId = getCardDefaultAccount(currentCard.id);
+              const acct = accounts.find(a => a.id === acctId);
+              return (
+                <div className="rounded-[1.75rem] border border-emerald-300/20 bg-emerald-400/[0.045] p-5">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-200"><Check className="h-5 w-5" /></span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-black text-white">Pagamento vinculado</p>
+                      <p className="mt-1 truncate text-sm font-semibold text-slate-300">{acct?.icon} {acct?.name || 'Conta vinculada'}</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button onClick={() => applyDefaultAccountToHistory(currentCard.id)} className="rounded-lg bg-white/[0.05] px-3 py-1.5 text-xs font-bold text-emerald-200 hover:bg-white/[0.08]">
+                          Sincronizar antigas
+                        </button>
+                        <button onClick={() => { setCardDefaultAccount(currentCard.id, null); setDefaultAcctBump(b => b + 1); toast.success('Conta padrão removida'); }} className="rounded-lg bg-white/[0.05] px-3 py-1.5 text-xs font-bold text-slate-400 hover:bg-white/[0.08]">
+                          Remover
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </aside>
+        </div>
+      ) : (
+        <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.025] px-6 py-12 text-center">
+          <Zap className="mx-auto mb-3 h-8 w-8 text-slate-600" />
+          <p className="text-sm font-bold text-slate-400">Selecione um cartão para ver a fatura.</p>
         </div>
       )}
-
       {/* ── Add Card Dialog ────────────────────────────────────────── */}
       <Dialog open={showNewCard} onOpenChange={setShowNewCard}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Novo Cartao de Credito</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Novo Cartão de Crédito</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label>Nome do cartao</Label><Input placeholder="Ex: Nubank" value={newCard.name} onChange={(e) => setNewCard((p) => ({ ...p, name: e.target.value }))} /></div>
+            <div><Label>Nome do cartão</Label><Input placeholder="Ex: Nubank" value={newCard.name} onChange={(e) => setNewCard((p) => ({ ...p, name: e.target.value }))} /></div>
             <div>
               <Label>Cor</Label>
               <div className="flex gap-2 mt-2 flex-wrap">
@@ -1101,7 +1163,7 @@ export default function CreditCardsPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>Nova Compra - {currentCard?.name}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label>Descricao</Label><Input placeholder="Ex: iFood, Academia..." value={newTx.description} onChange={(e) => setNewTx((p) => ({ ...p, description: e.target.value }))} /></div>
+            <div><Label>Descrição</Label><Input placeholder="Ex: iFood, Academia..." value={newTx.description} onChange={(e) => setNewTx((p) => ({ ...p, description: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Valor total (R$)</Label><Input type="number" placeholder="0,00" value={newTx.amount} onChange={(e) => setNewTx((p) => ({ ...p, amount: e.target.value }))} /></div>
               <div>

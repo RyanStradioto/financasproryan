@@ -137,6 +137,7 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
           category_id: categoryId || null,
           description,
           amount: numAmount,
+          amount_mode: (parseInt(startInstallment) || 1) > 1 ? 'installment' : 'total',
           date,
           bill_month: getCreditCardBillMonth(date, selectedCard.closing_day),
           installments: parseInt(installments) || 1,

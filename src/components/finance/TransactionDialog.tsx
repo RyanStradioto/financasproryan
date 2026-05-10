@@ -142,6 +142,7 @@ export default function TransactionDialog({ type, children, defaultAccountId }: 
           credit_card_id: selectedCardId,
           description,
           amount: numAmount,
+          amount_mode: 'total',
           date,
           bill_month: billMonth,
           category_id: categoryId || null,
@@ -251,7 +252,9 @@ export default function TransactionDialog({ type, children, defaultAccountId }: 
                 : amountFocused ? 'bg-expense/10 border-2 border-expense/60' : 'bg-expense/8 border border-expense/20'
             }`}
           >
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Valor</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              {payWithCard && type === 'expense' ? 'Valor total da compra' : 'Valor'}
+            </p>
             <div className="flex items-center gap-2 overflow-hidden">
               <span className={`text-xl font-bold shrink-0 ${ type === 'income' ? 'text-income' : 'text-expense'}`}>R$</span>
               <input
@@ -464,7 +467,7 @@ export default function TransactionDialog({ type, children, defaultAccountId }: 
                 <div className="rounded-xl bg-primary/5 border border-primary/15 p-3 text-xs text-muted-foreground">
                   💳 <span className="font-semibold text-foreground">{installments}x</span> de{' '}
                   <span className="font-semibold text-foreground currency">
-                    R$ {amount ? (parseFloat(amount.replace(/\./g, '').replace(',', '.')) / parseInt(installments)).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}
+                    R$ {amount ? (parseFloat(amount.replace(/\./g, '').replace(',', '.')) / parseInt(installments)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0,00'}
                   </span>
                   {' '}nas próximas faturas
                 </div>

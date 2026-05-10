@@ -36,6 +36,20 @@ function getNextWeeklySend(now = new Date()): string {
   return formatScheduleDate(next);
 }
 
+function getCurrentMonthContext(now = new Date()) {
+  const saoPauloNow = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+  const year = saoPauloNow.getFullYear();
+  const month = saoPauloNow.getMonth() + 1;
+  const day = saoPauloNow.getDate();
+  const daysInMonth = new Date(year, month, 0).getDate();
+  return {
+    elapsedDays: Math.max(day, 1),
+    daysInMonth,
+    startDate: `${year}-${String(month).padStart(2, "0")}-01`,
+    endDate: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+  };
+}
+
 function decodeJwtPayload(token: string | null): Record<string, unknown> | null {
   if (!token) return null;
   const parts = token.split(".");
@@ -63,6 +77,8 @@ function generateWeeklyInsights(
   avgDaily: number,
   categories: CatItem[],
   projectedMonthly: number,
+  projectionReady: boolean,
+  monthToDateExpenses: number,
 ): string[] {
   const tips: string[] = [];
 
@@ -79,8 +95,10 @@ function generateWeeklyInsights(
     tips.push(`Voce gastou ${((totalExpenses / totalIncome) * 100).toFixed(0)}% da receita desta semana. Tente manter abaixo de 80%.`);
   }
 
-  if (projectedMonthly > 0) {
-    tips.push(`No ritmo atual, sua projecao de gastos para o mes e de ${fmt(projectedMonthly)}. Compare com seu salario para ajustar.`);
+  if (projectionReady && projectedMonthly > 0) {
+    tips.push(`Pelo ritmo do mes ate agora, a tendencia de gastos e ${fmt(projectedMonthly)}. Use como referencia, nao como previsao fechada.`);
+  } else if (monthToDateExpenses > 0) {
+    tips.push(`Ainda e cedo para projetar o mes com seguranca. Ate agora, o gasto acumulado do mes e ${fmt(monthToDateExpenses)}.`);
   }
 
   const overBudget = categories.filter((c) => c.budget > 0 && c.value > c.budget * 0.3);
@@ -113,6 +131,8 @@ function buildWeeklyHtml(p: {
   balance: number;
   avgDaily: number;
   projectedMonthly: number;
+  projectionReady: boolean;
+  monthToDateExpenses: number;
   categories: CatItem[];
   topExpenses: TxItem[];
   insights: string[];
@@ -124,11 +144,16 @@ function buildWeeklyHtml(p: {
   const ratioExpPct = p.totalIncome > 0
     ? Math.min(Math.round((p.totalExpenses / p.totalIncome) * 100), 100)
     : 100;
+  const projectionTitle = p.projectionReady ? "Tendencia do mes" : "Gasto no mes";
+  const projectionValue = p.projectionReady ? p.projectedMonthly : p.monthToDateExpenses;
+  const projectionNote = p.projectionReady
+    ? "baseada no mes atual"
+    : "projecao segura apos dia 10";
 
-  const headerBg   = "#0d1b2a";
+  const headerBg   = "linear-gradient(135deg,#081624 0%,#0d2b3d 52%,#063b35 100%)";
   const accentBlue = "#3b82f6";
 
-  /* â”€â”€ Category rows â”€â”€ */
+  /* Category rows */
   const catRows = p.categories.slice(0, 6).map((c) => {
     const pct    = p.totalExpenses > 0 ? Math.round((c.value / p.totalExpenses) * 100) : 0;
     const barPct = Math.min(pct, 100);
@@ -148,7 +173,7 @@ function buildWeeklyHtml(p: {
       </tr>`;
   }).join("");
 
-  /* â”€â”€ Top expense rows â”€â”€ */
+  /* Top expense rows */
   const txRows = p.topExpenses.slice(0, 5).map((t, i) => `
     <tr style="background:${i % 2 === 0 ? "#f9fafb" : "#ffffff"};">
       <td style="padding:8px 12px;font-size:13px;color:#111827;">${t.description || "Sem descricao"}</td>
@@ -157,7 +182,7 @@ function buildWeeklyHtml(p: {
       <td style="padding:8px 12px;font-size:13px;font-weight:700;color:#dc2626;text-align:right;white-space:nowrap;">${fmt(t.amount)}</td>
     </tr>`).join("");
 
-  /* â”€â”€ Insight rows â”€â”€ */
+  /* Insight rows */
   const insightRows = p.insights.map((t) => `
     <tr>
       <td style="padding:3px 0 3px 6px;vertical-align:top;">
@@ -174,6 +199,15 @@ function buildWeeklyHtml(p: {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <title>Resumo Semanal | FinancasPro</title>
+  <style>
+    @media screen and (max-width:620px) {
+      body { padding: 0 !important; }
+      table[width="600"] { width: 100% !important; max-width: 100% !important; }
+      td { box-sizing: border-box !important; }
+      td[width="31%"], td[width="48%"] { display: block !important; width: 100% !important; padding: 0 0 10px 0 !important; }
+      th, td { word-break: break-word !important; }
+    }
+  </style>
 </head>
 <body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f5f9;padding:28px 0;">
@@ -225,7 +259,7 @@ function buildWeeklyHtml(p: {
               <div style="border-radius:12px;background:${balancePositive ? "#f0fdf4" : "#fef2f2"};border:1px solid ${balancePositive ? "#bbf7d0" : "#fecaca"};padding:14px 16px;">
                 <div style="font-size:10px;color:${balancePositive ? "#15803d" : "#b91c1c"};font-weight:700;text-transform:uppercase;letter-spacing:1px;">Saldo</div>
                 <div style="font-size:22px;color:${balancePositive ? "#166534" : "#991b1b"};font-weight:800;margin-top:6px;letter-spacing:-0.5px;">${fmt(p.balance)}</div>
-                <div style="font-size:11px;color:${balancePositive ? "#16a34a" : "#dc2626"};margin-top:4px;">${balancePositive ? "Semana positiva âœ“" : "Semana negativa"}</div>
+                <div style="font-size:11px;color:${balancePositive ? "#16a34a" : "#dc2626"};margin-top:4px;">${balancePositive ? "Semana positiva &#10003;" : "Semana negativa"}</div>
               </div>
             </td>
           </tr>
@@ -245,9 +279,9 @@ function buildWeeklyHtml(p: {
             </td>
             <td width="4%"></td>
             <td style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;" width="48%">
-              <div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700;letter-spacing:1px;">Projecao mensal</div>
-              <div style="font-size:18px;color:#0f172a;font-weight:800;margin-top:4px;">${fmt(p.projectedMonthly)}</div>
-              <div style="font-size:11px;color:#94a3b8;margin-top:2px;">no ritmo atual</div>
+              <div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700;letter-spacing:1px;">${projectionTitle}</div>
+              <div style="font-size:18px;color:#0f172a;font-weight:800;margin-top:4px;">${fmt(projectionValue)}</div>
+              <div style="font-size:11px;color:#94a3b8;margin-top:2px;">${projectionNote}</div>
             </td>
           </tr>
         </table>
@@ -404,7 +438,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    /* â”€â”€ Date range: last 7 days â”€â”€ */
+    /* Date range: last 7 days */
     const now      = new Date();
     const rangeEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     const rangeStart = new Date(rangeEnd);
@@ -431,20 +465,26 @@ Deno.serve(async (req) => {
             auth: { persistSession: false },
           });
 
-      const [incRes, expRes, catRes] = await Promise.all([
+      const monthContext = getCurrentMonthContext(now);
+
+      const [incRes, expRes, catRes, monthExpRes] = await Promise.all([
         dc.from("income").select("id,amount,date,description,account_id")
           .eq("user_id", profile.user_id).gte("date", startDate).lte("date", endDate),
         dc.from("expenses").select("id,amount,date,description,category_id,status")
           .eq("user_id", profile.user_id).gte("date", startDate).lte("date", endDate),
         dc.from("categories").select("id,name,icon,monthly_budget").eq("user_id", profile.user_id),
+        dc.from("expenses").select("id,amount,date")
+          .eq("user_id", profile.user_id).gte("date", monthContext.startDate).lte("date", monthContext.endDate),
       ]);
 
       if (incRes.error) throw incRes.error;
       if (expRes.error) throw expRes.error;
+      if (monthExpRes.error) throw monthExpRes.error;
 
       const income     = incRes.data  || [];
       const expenses   = expRes.data  || [];
       const categories = catRes.data  || [];
+      const monthExpenses = monthExpRes.data || [];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const totalIncome   = income.reduce((s: number, i: Record<string, unknown>)   => s + Number(i.amount), 0);
@@ -452,13 +492,17 @@ Deno.serve(async (req) => {
       const totalExpenses = expenses.reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0);
       const balance       = totalIncome - totalExpenses;
       const avgDaily      = totalExpenses / 7;
-      const projectedMonthly = avgDaily * 30;
+      const monthToDateExpenses = monthExpenses.reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0);
+      const projectionReady = monthContext.elapsedDays >= 10;
+      const projectedMonthly = projectionReady && monthContext.elapsedDays > 0
+        ? (monthToDateExpenses / monthContext.elapsedDays) * monthContext.daysInMonth
+        : monthToDateExpenses;
 
       /* Category breakdown */
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const catMap = new Map<string, CatItem>();
       for (const cat of categories) {
-        catMap.set(String(cat.id), { name: String(cat.name), icon: String(cat.icon || "ðŸ·ï¸"), budget: Number(cat.monthly_budget) || 0, value: 0 });
+        catMap.set(String(cat.id), { name: String(cat.name), icon: String(cat.icon || "tag"), budget: Number(cat.monthly_budget) || 0, value: 0 });
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       for (const e of expenses) {
@@ -483,7 +527,16 @@ Deno.serve(async (req) => {
           date: String(e.date),
         }));
 
-      const insights = generateWeeklyInsights(totalIncome, totalExpenses, balance, avgDaily, catBreakdown, projectedMonthly);
+      const insights = generateWeeklyInsights(
+        totalIncome,
+        totalExpenses,
+        balance,
+        avgDaily,
+        catBreakdown,
+        projectedMonthly,
+        projectionReady,
+        monthToDateExpenses,
+      );
 
       const html = buildWeeklyHtml({
         firstName: profile.first_name || "",
@@ -493,6 +546,8 @@ Deno.serve(async (req) => {
         balance,
         avgDaily,
         projectedMonthly,
+        projectionReady,
+        monthToDateExpenses,
         categories: catBreakdown,
         topExpenses,
         insights,
@@ -510,7 +565,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             sender: { name: "FinancasPro", email: "amaralstradiotoryan@gmail.com" },
             to: [{ email: profile.email }],
-            subject: `ðŸ“Š Resumo da Semana | ${weekLabel}`,
+            subject: `Resumo Semanal | ${weekLabel}`,
             htmlContent: html,
           }),
         });
