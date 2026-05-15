@@ -106,29 +106,31 @@ export default function DailyFlowChart({ income, expenses, month, maskCurrency }
   return (
     <div className="rounded-3xl border border-white/10 bg-[#0b101a]/90 shadow-2xl shadow-black/20 backdrop-blur-xl p-4 sm:p-5">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-500/5 border border-violet-400/15 flex items-center justify-center">
-            <CalendarDays className="w-4 h-4 text-violet-300" />
-          </div>
-          <div>
-            <h3 className="text-sm font-black text-white leading-tight">Gastos e receitas por dia</h3>
-            <p className="text-[11px] text-slate-500 mt-0.5">Fluxo diário do mês</p>
+      <div className="flex flex-col gap-3 mb-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-500/5 border border-violet-400/15 flex items-center justify-center shrink-0">
+              <CalendarDays className="w-4 h-4 text-violet-300" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-white leading-tight">Gastos e receitas por dia</h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">Fluxo diário do mês</p>
+            </div>
           </div>
         </div>
 
         {hasData && (
           <div className="flex flex-wrap gap-2">
-            <div className="rounded-xl border border-emerald-300/15 bg-emerald-400/[0.07] px-2.5 py-1.5">
+            <div className="rounded-xl border border-emerald-300/15 bg-emerald-400/[0.07] px-2.5 py-1.5 flex-1 min-w-[80px]">
               <p className="text-[9px] font-black uppercase tracking-widest text-emerald-200/60">Receitas</p>
               <p className="text-xs font-black text-emerald-200 tabular-nums">{maskCurrency(formatCurrency(totalIncome))}</p>
             </div>
-            <div className="rounded-xl border border-rose-300/15 bg-rose-400/[0.07] px-2.5 py-1.5">
+            <div className="rounded-xl border border-rose-300/15 bg-rose-400/[0.07] px-2.5 py-1.5 flex-1 min-w-[80px]">
               <p className="text-[9px] font-black uppercase tracking-widest text-rose-200/60">Despesas</p>
               <p className="text-xs font-black text-rose-200 tabular-nums">{maskCurrency(formatCurrency(totalExpenses))}</p>
             </div>
             {peakDay && peakDay.expenses > 0 && (
-              <div className="rounded-xl border border-amber-300/15 bg-amber-400/[0.07] px-2.5 py-1.5">
+              <div className="rounded-xl border border-amber-300/15 bg-amber-400/[0.07] px-2.5 py-1.5 flex-1 min-w-[110px]">
                 <p className="text-[9px] font-black uppercase tracking-widest text-amber-200/60">Dia mais pesado</p>
                 <p className="text-xs font-black text-amber-200">Dia {peakDay.day} · {maskCurrency(formatCurrency(peakDay.expenses))}</p>
               </div>
@@ -156,7 +158,7 @@ export default function DailyFlowChart({ income, expenses, month, maskCurrency }
                 <stop offset="100%" stopColor="#be123c" stopOpacity={0.5} />
               </linearGradient>
             </defs>
-            <div style={{ height: 260 }}>
+            <div className="h-[200px] sm:h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={data} margin={{ top: 10, right: 8, left: 0, bottom: 0 }} barGap={2} barCategoryGap="18%">
                   <CartesianGrid
@@ -193,8 +195,8 @@ export default function DailyFlowChart({ income, expenses, month, maskCurrency }
                     axisLine={false}
                     tickLine={false}
                     tick={{ fill: 'rgba(100,116,139,0.7)', fontSize: 9, fontWeight: 700 }}
-                    tickFormatter={v => v === 0 ? '' : `R$${Math.round(v / 1000) > 0 ? Math.round(v / 1000) + 'k' : v}`}
-                    width={36}
+                    tickFormatter={v => v === 0 ? '' : `${Math.round(v / 1000) > 0 ? Math.round(v / 1000) + 'k' : v}`}
+                    width={24}
                   />
                   <RechartsTooltip
                     cursor={{ fill: 'rgba(139,92,246,0.06)', radius: 6 }}

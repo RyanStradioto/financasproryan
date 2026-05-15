@@ -120,7 +120,7 @@ function KpiCard({
   const sparkColor = trend === 'up' ? 'hsl(160, 84%, 39%)' : trend === 'down' ? 'hsl(0, 72%, 51%)' : 'hsl(217, 91%, 60%)';
 
   return (
-    <div className={cn('relative min-h-[122px] rounded-3xl border border-border/60 bg-gradient-to-br from-card/95 via-card/75 to-background/55 p-4 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-border hover:shadow-xl hover:shadow-black/5 sm:p-5 group overflow-hidden animate-slide-up', color)}>
+    <div className={cn('relative min-h-[96px] sm:min-h-[116px] rounded-3xl border border-border/60 bg-gradient-to-br from-card/95 via-card/75 to-background/55 p-3 sm:p-4 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-border hover:shadow-xl hover:shadow-black/5 group overflow-hidden animate-slide-up', color)}>
       {/* Decorative gradient blob */}
       <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-[0.06] group-hover:opacity-[0.10] group-hover:scale-110 transition-all duration-500 pointer-events-none" style={{ background: `radial-gradient(circle, ${sparkColor} 0%, transparent 70%)` }} />
 
@@ -133,7 +133,7 @@ function KpiCard({
             )}>
               <Icon className="w-4 h-4" />
             </div>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.1em]">{label}</p>
+            <p className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase tracking-[0.08em] sm:tracking-[0.1em]">{label}</p>
           </div>
           {delta !== null && delta !== undefined && (
             <span className={cn(
@@ -149,8 +149,8 @@ function KpiCard({
         {/* Value + sparkline */}
         <div className="flex items-end justify-between mt-1 gap-2">
           <div className="min-w-0 flex-1">
-            <p className="text-base sm:text-lg lg:text-xl font-extrabold currency tracking-tight leading-none whitespace-nowrap tabular-nums truncate">{displayValue}</p>
-            {sub && <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1.5 leading-tight line-clamp-2">{sub}</p>}
+            <p className="text-sm sm:text-base lg:text-lg font-extrabold currency tracking-tight leading-none whitespace-nowrap tabular-nums truncate">{displayValue}</p>
+            {sub && <p className="text-[10px] text-muted-foreground mt-1 leading-tight line-clamp-2 hidden sm:block">{sub}</p>}
           </div>
           {sparklineData && sparklineData.length > 1 && (
             <div className="shrink-0 -mr-1 opacity-60 group-hover:opacity-100 transition-opacity hidden sm:block">
@@ -1191,7 +1191,7 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="space-y-4 pb-10 animate-fade-in w-full max-w-full overflow-x-hidden">
+    <div className="space-y-3 sm:space-y-4 pb-16 sm:pb-10 animate-fade-in w-full max-w-full overflow-x-hidden">
       <ErrorBoundary fallback={null} label="StickyBar">
         <StickySummaryBar
           balance={balance}
@@ -1201,7 +1201,7 @@ export default function Dashboard() {
         />
       </ErrorBoundary>
 
-      <section className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#070b12] p-4 shadow-xl shadow-black/30 sm:rounded-3xl sm:p-5">
+      <section className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#070b12] p-3 shadow-xl shadow-black/30 sm:rounded-3xl sm:p-5">
         <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-emerald-500/14 blur-3xl" />
         <div className="pointer-events-none absolute bottom-0 left-1/2 h-56 w-56 -translate-x-1/2 rounded-full bg-sky-500/10 blur-3xl" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(16,185,129,0.12),transparent_26%),radial-gradient(circle_at_92%_12%,rgba(59,130,246,0.16),transparent_28%)]" />
@@ -1213,7 +1213,7 @@ export default function Dashboard() {
               <p className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-200/80">
                 {greeting.text}{profile?.first_name ? `, ${profile.first_name}` : ''} 👋
               </p>
-              <h1 className="mt-1 text-xl font-black tracking-tight text-white sm:text-2xl lg:text-3xl">
+              <h1 className="mt-1 text-lg font-black tracking-tight text-white sm:text-2xl lg:text-3xl">
                 Visão financeira do mês
               </h1>
               <p className="mt-1 text-xs font-semibold text-slate-400 sm:text-sm">
@@ -1221,23 +1221,25 @@ export default function Dashboard() {
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <MonthSelector month={month} onChange={setMonth} />
-              <TransactionDialog type="income" defaultAccountId={accountFocusId === '__all__' ? undefined : accountFocusId}>
-                <button className="flex h-9 items-center justify-center rounded-xl bg-emerald-500 px-4 text-xs font-black text-slate-950 shadow-md shadow-emerald-500/20 transition-all hover:bg-emerald-400">
-                  <ArrowUpRight className="mr-1.5 h-4 w-4" /> Receita
-                </button>
-              </TransactionDialog>
-              <TransactionDialog type="expense" defaultAccountId={accountFocusId === '__all__' ? undefined : accountFocusId}>
-                <button className="flex h-9 items-center justify-center rounded-xl bg-red-500 px-4 text-xs font-black text-white shadow-md shadow-red-500/20 transition-all hover:bg-red-400">
-                  <ArrowDownRight className="mr-1.5 h-4 w-4" /> Despesa
-                </button>
-              </TransactionDialog>
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <TransactionDialog type="income" defaultAccountId={accountFocusId === '__all__' ? undefined : accountFocusId}>
+                  <button className="flex h-9 flex-1 sm:flex-none items-center justify-center rounded-xl bg-emerald-500 px-3 sm:px-4 text-xs font-black text-slate-950 shadow-md shadow-emerald-500/20 transition-all hover:bg-emerald-400 whitespace-nowrap">
+                    <ArrowUpRight className="mr-1 h-4 w-4 shrink-0" /> Receita
+                  </button>
+                </TransactionDialog>
+                <TransactionDialog type="expense" defaultAccountId={accountFocusId === '__all__' ? undefined : accountFocusId}>
+                  <button className="flex h-9 flex-1 sm:flex-none items-center justify-center rounded-xl bg-red-500 px-3 sm:px-4 text-xs font-black text-white shadow-md shadow-red-500/20 transition-all hover:bg-red-400 whitespace-nowrap">
+                    <ArrowDownRight className="mr-1 h-4 w-4 shrink-0" /> Despesa
+                  </button>
+                </TransactionDialog>
+              </div>
             </div>
           </div>
 
           {/* Account picker — scrollable row on mobile */}
-          <div className="overflow-x-auto pb-1 -mx-4 px-4 sm:-mx-5 sm:px-5">
+          <div className="overflow-x-auto pb-1 -mx-3 px-3 sm:-mx-5 sm:px-5">
             <div className="flex gap-2 w-max">
               <button
                 onClick={() => setAccountFocusId('__all__')}
@@ -1287,7 +1289,7 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <section className="grid gap-3 grid-cols-2 sm:grid-cols-3 xl:grid-cols-5">
+      <section className="grid gap-2 sm:gap-3 grid-cols-2 sm:grid-cols-3 xl:grid-cols-5">
         <KpiCard label="Saldo total" value={maskCurrency(formatCurrency(balance))} icon={Wallet} color="from-emerald-400/14" trend="neutral" sparklineData={balanceSparkline} delta={null} sub={isGlobalView ? `${activeAccounts.length} contas ativas` : focusLabel} />
         <KpiCard label="Sobra no mês" value={maskCurrency(formatCurrency(monthResult))} icon={PiggyBank} color={monthResult >= 0 ? 'from-emerald-400/14' : 'from-red-400/14'} trend={monthResult >= 0 ? 'up' : 'down'} sparklineData={balanceSparkline} delta={null} sub={`${Math.max(0, savings).toFixed(0)}% de poupança`} />
         <KpiCard label="Receitas" value={maskCurrency(formatCurrency(totalIncome))} icon={TrendingUp} color="from-emerald-400/14" trend="up" sparklineData={incomeSparkline} delta={incomeDelta} deltaInverted={false} sub={deltaCopy(incomeDelta)} />
@@ -1303,7 +1305,7 @@ export default function Dashboard() {
 
             <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
               <div className="space-y-2">
-                <div className="rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2.5 text-sm font-semibold text-slate-300">
+                <div className="rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2.5 text-xs sm:text-sm font-semibold text-slate-300">
                   <span className={monthResult >= 0 ? 'text-emerald-300' : 'text-red-300'}>{monthResult >= 0 ? 'Mês positivo' : 'Mês negativo'}:</span> {monthResult >= 0 ? 'sobra de' : 'déficit de'} {maskCurrency(formatCurrency(Math.abs(monthResult)))}.
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -1359,7 +1361,7 @@ export default function Dashboard() {
             </div>
 
             <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
-              <div className="mb-2 flex flex-wrap justify-between gap-2 text-xs font-bold text-slate-400">
+              <div className="mb-2 flex flex-wrap justify-between gap-1 text-[10px] sm:text-xs font-bold text-slate-400">
                 <span>{maskCurrency(formatCurrency(allowance.remainingBudget))} restantes</span>
                 <span>{daysLeft} dias até o fim</span>
               </div>
@@ -1392,7 +1394,7 @@ export default function Dashboard() {
 
       <section className="space-y-2.5">
         <SectionHeader title="O que merece atenção" subtitle="Prioridades do mês" icon={BellRing} iconColor="text-amber-300" />
-        <div className="grid gap-2.5 grid-cols-1 min-[420px]:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-2 grid-cols-2 xl:grid-cols-4">
           {attentionCards.map((item) => {
             const Icon = item.icon;
             const toneClass = item.tone === 'success' ? 'text-emerald-300 bg-emerald-400/10 border-emerald-300/20' : item.tone === 'danger' ? 'text-red-300 bg-red-400/10 border-red-300/20' : item.tone === 'info' ? 'text-sky-300 bg-sky-400/10 border-sky-300/20' : 'text-amber-300 bg-amber-400/10 border-amber-300/20';
@@ -1417,22 +1419,20 @@ export default function Dashboard() {
           <PremiumCard className="relative self-start overflow-hidden p-4 sm:p-5">
           <div className="pointer-events-none absolute -left-24 -top-28 h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
           <div className="pointer-events-none absolute -right-20 top-10 h-64 w-64 rounded-full bg-sky-400/10 blur-3xl" />
-          <div className="relative mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <SectionHeader title="Evolução financeira" subtitle="Receitas, despesas e saldo nos últimos meses." icon={BarChart3} iconColor="text-sky-300" />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <span className="rounded-xl border border-emerald-300/15 bg-emerald-400/[0.07] px-2.5 py-1.5">
-                <span className="block text-[9px] font-black uppercase tracking-[0.15em] text-emerald-200/70">Receitas</span>
-                <span className="currency mt-0.5 block text-xs font-black text-emerald-200">{maskCurrency(formatCurrency(evolutionSummary.currentIncome))}</span>
+          <div className="relative mb-3 space-y-2">
+            <SectionHeader title="Evolução financeira" subtitle="Receitas, despesas e saldo nos últimos meses." icon={BarChart3} iconColor="text-sky-300" />
+            <div className="flex flex-wrap gap-1.5">
+              <span className="rounded-lg border border-emerald-300/15 bg-emerald-400/[0.07] px-2 py-1 flex items-center gap-1.5">
+                <span className="text-[9px] font-black uppercase text-emerald-200/60">Rec</span>
+                <span className="currency text-[10px] font-black text-emerald-200">{maskCurrency(formatCurrency(evolutionSummary.currentIncome))}</span>
               </span>
-              <span className="rounded-xl border border-rose-300/15 bg-rose-400/[0.07] px-2.5 py-1.5">
-                <span className="block text-[9px] font-black uppercase tracking-[0.15em] text-rose-200/70">Despesas</span>
-                <span className="currency mt-0.5 block text-xs font-black text-rose-200">{maskCurrency(formatCurrency(evolutionSummary.currentExpenses))}</span>
+              <span className="rounded-lg border border-rose-300/15 bg-rose-400/[0.07] px-2 py-1 flex items-center gap-1.5">
+                <span className="text-[9px] font-black uppercase text-rose-200/60">Desp</span>
+                <span className="currency text-[10px] font-black text-rose-200">{maskCurrency(formatCurrency(evolutionSummary.currentExpenses))}</span>
               </span>
-              <span className="rounded-xl border border-sky-300/15 bg-sky-400/[0.07] px-2.5 py-1.5">
-                <span className="block text-[9px] font-black uppercase tracking-[0.15em] text-sky-200/70">Saldo</span>
-                <span className={cn('currency mt-0.5 block text-xs font-black', evolutionSummary.currentBalance >= 0 ? 'text-sky-200' : 'text-rose-200')}>{maskCurrency(formatCurrency(evolutionSummary.currentBalance))}</span>
+              <span className="rounded-lg border border-sky-300/15 bg-sky-400/[0.07] px-2 py-1 flex items-center gap-1.5">
+                <span className="text-[9px] font-black uppercase text-sky-200/60">Saldo</span>
+                <span className={cn('currency text-[10px] font-black', evolutionSummary.currentBalance >= 0 ? 'text-sky-200' : 'text-rose-200')}>{maskCurrency(formatCurrency(evolutionSummary.currentBalance))}</span>
               </span>
             </div>
           </div>
@@ -1483,7 +1483,7 @@ export default function Dashboard() {
                 </defs>
                 <CartesianGrid stroke="rgba(148,163,184,0.07)" strokeDasharray="3 10" vertical={false} />
                 <XAxis dataKey="label" axisLine={false} tickLine={false} padding={{ left: 20, right: 20 }} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 800, letterSpacing: '0.03em' }} />
-                <YAxis width={46} axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 10, fontWeight: 700 }} tickFormatter={(v) => `R$${Math.round(Number(v) / 1000)}k`} />
+                <YAxis width={30} axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 9, fontWeight: 700 }} tickFormatter={(v) => `${Math.round(Number(v) / 1000)}k`} />
                 <RechartsTooltip
                   cursor={{ stroke: 'rgba(165,180,252,0.18)', strokeWidth: 1, strokeDasharray: '4 6' }}
                   content={({ active, payload, label }) => {
@@ -1526,7 +1526,7 @@ export default function Dashboard() {
                   <SectionHeader title="Ritmo semanal" subtitle={`${weeklyFlowData.length} semanas · distribuição de entradas e saídas`} icon={BarChart3} iconColor="text-cyan-300" />
                 </div>
 
-                <div className="h-[210px] rounded-2xl border border-white/[0.06] bg-[#050810]/80 p-3 shadow-inner shadow-black/30">
+                <div className="h-[170px] sm:h-[210px] rounded-2xl border border-white/[0.06] bg-[#050810]/80 p-3 shadow-inner shadow-black/30">
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={weeklyFlowData} margin={{ top: 12, right: 8, left: -14, bottom: 0 }} barGap={4} barCategoryGap="25%">
                       <defs>
@@ -1547,7 +1547,7 @@ export default function Dashboard() {
                       </defs>
                       <CartesianGrid stroke="rgba(148,163,184,0.06)" strokeDasharray="3 8" vertical={false} />
                       <XAxis dataKey="week" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 900 }} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 10, fontWeight: 700 }} tickFormatter={(v) => `R$${Math.round(Number(v) / 1000)}k`} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 9, fontWeight: 700 }} tickFormatter={(v) => `${Math.round(Number(v) / 1000)}k`} width={24} />
                       <RechartsTooltip
                         cursor={{ fill: 'rgba(129,140,248,0.06)', radius: 8 }}
                         content={({ active, payload, label }) => {
@@ -1571,22 +1571,22 @@ export default function Dashboard() {
               </div>
 
               <div className="grid gap-2 grid-cols-3 lg:grid-cols-1">
-                <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
-                  <p className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-500">Melhor</p>
-                  <p className="mt-1 text-sm font-black text-white">{weeklyFlowSummary.bestWeek?.week ?? '-'}</p>
-                  <p className={cn('currency text-xs font-black', (weeklyFlowSummary.bestWeek?.balance ?? 0) >= 0 ? 'text-emerald-300' : 'text-rose-300')}>
+                <div className="rounded-xl border border-white/10 bg-white/[0.035] p-2.5 sm:p-3">
+                  <p className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500">Melhor</p>
+                  <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-black text-white">{weeklyFlowSummary.bestWeek?.week ?? '-'}</p>
+                  <p className={cn('currency text-[10px] sm:text-xs font-black truncate', (weeklyFlowSummary.bestWeek?.balance ?? 0) >= 0 ? 'text-emerald-300' : 'text-rose-300')}>
                     {maskCurrency(formatCurrency(weeklyFlowSummary.bestWeek?.balance ?? 0))}
                   </p>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
-                  <p className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-500">Mais pesada</p>
-                  <p className="mt-1 text-sm font-black text-white">{weeklyFlowSummary.heaviestWeek?.week ?? '-'}</p>
-                  <p className="currency text-xs font-black text-rose-300">{maskCurrency(formatCurrency(weeklyFlowSummary.heaviestWeek?.expenses ?? 0))}</p>
+                <div className="rounded-xl border border-white/10 bg-white/[0.035] p-2.5 sm:p-3">
+                  <p className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500">+ pesada</p>
+                  <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-black text-white">{weeklyFlowSummary.heaviestWeek?.week ?? '-'}</p>
+                  <p className="currency text-[10px] sm:text-xs font-black text-rose-300 truncate">{maskCurrency(formatCurrency(weeklyFlowSummary.heaviestWeek?.expenses ?? 0))}</p>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
-                  <p className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-500">Média/sem.</p>
-                  <p className="currency mt-1 text-xs font-black text-cyan-200">{maskCurrency(formatCurrency(weeklyFlowSummary.averageExpense))}</p>
-                  <p className="text-[10px] font-semibold text-slate-500">por semana</p>
+                <div className="rounded-xl border border-white/10 bg-white/[0.035] p-2.5 sm:p-3">
+                  <p className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500">Média/sem</p>
+                  <p className="currency mt-0.5 sm:mt-1 text-[10px] sm:text-xs font-black text-cyan-200 truncate">{maskCurrency(formatCurrency(weeklyFlowSummary.averageExpense))}</p>
+                  <p className="text-[10px] font-semibold text-slate-600 hidden sm:block">por semana</p>
                 </div>
               </div>
             </div>
@@ -1708,12 +1708,12 @@ export default function Dashboard() {
             <div className="mb-3">
               <SectionHeader title="Mês atual vs anterior" subtitle="3 métricas comparadas" icon={BarChart3} iconColor="text-sky-300" />
             </div>
-            <div className="rounded-2xl border border-white/[0.06] bg-[#050810]/80 p-3 shadow-inner shadow-black/30 h-[235px]">
+            <div className="rounded-2xl border border-white/[0.06] bg-[#050810]/80 p-3 shadow-inner shadow-black/30 h-[185px] sm:h-[235px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={monthCompareData} margin={{ top: 10, right: 4, left: -20, bottom: 0 }} barGap={5} barCategoryGap="30%">
                   <CartesianGrid stroke="rgba(148,163,184,0.06)" strokeDasharray="3 8" vertical={false} />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 900 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 10, fontWeight: 700 }} tickFormatter={(v) => `R$${Math.round(Number(v) / 1000)}k`} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 9, fontWeight: 700 }} tickFormatter={(v) => `${Math.round(Number(v) / 1000)}k`} width={24} />
                   <RechartsTooltip
                     cursor={{ fill: 'rgba(129,140,248,0.06)', radius: 8 }}
                     content={({ active, payload, label }) => {
@@ -1834,7 +1834,7 @@ export default function Dashboard() {
             <SectionHeader title="Alocação" subtitle="Contas vs investimentos" icon={Landmark} iconColor="text-violet-300" action={{ label: 'Detalhes', href: '/investimentos' }} />
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center xl:flex-col">
-            <div className="h-[120px] w-full sm:w-[120px] sm:shrink-0 xl:w-full xl:h-[130px]">
+            <div className="h-[110px] sm:h-[120px] w-full sm:w-[120px] sm:shrink-0 xl:w-full xl:h-[130px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={allocationData.length ? allocationData : [{ name: 'Sem dados', value: 1, fill: '#334155' }]} dataKey="value" innerRadius={36} outerRadius={56} paddingAngle={4}>

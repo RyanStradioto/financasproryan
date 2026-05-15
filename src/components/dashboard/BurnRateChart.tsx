@@ -86,7 +86,7 @@ export default function BurnRateChart({
         </div>
       </div>
 
-      <div className="w-full" style={{ height: 280 }}>
+      <div className="w-full h-[200px] sm:h-[260px] lg:h-[280px]">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={chartData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
             <defs>
@@ -104,11 +104,11 @@ export default function BurnRateChart({
               interval="preserveStartEnd"
             />
             <YAxis
-              tickFormatter={v => `R$ ${(Number(v) / 1000).toFixed(1)}k`}
-              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+              tickFormatter={v => `${Math.round(Number(v) / 1000)}k`}
+              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 9 }}
               axisLine={false}
               tickLine={false}
-              width={50}
+              width={32}
             />
             <RechartsTooltip
               content={({ active, payload, label }) => {
