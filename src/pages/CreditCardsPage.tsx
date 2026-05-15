@@ -670,7 +670,7 @@ export default function CreditCardsPage() {
                 <p className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-violet-200/80">
                   <Sparkles className="h-3.5 w-3.5" /> Central de cartões
                 </p>
-                <h1 className="truncate text-3xl font-black tracking-tight text-white sm:text-4xl">Cartões de Crédito</h1>
+                <h1 className="truncate text-3xl font-black tracking-tight text-foreground sm:text-4xl">Cartões de Crédito</h1>
                 <p className="mt-1.5 text-sm font-medium text-muted-foreground dark:text-slate-400">
                   {currentCard
                     ? <><span className="font-extrabold text-violet-200">{currentCard.name}</span> · fecha dia {currentCard.closing_day} · vence dia {currentCard.due_day}</>
@@ -727,7 +727,7 @@ export default function CreditCardsPage() {
                               <CreditCard className="h-[18px] w-[18px]" />
                             </span>
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-black text-white">{card.name}</p>
+                              <p className="truncate text-sm font-black text-foreground">{card.name}</p>
                               <p className="text-[11px] font-semibold text-muted-foreground">{cardUsage.toFixed(0)}% comprometido</p>
                             </div>
                           </div>
@@ -757,7 +757,7 @@ export default function CreditCardsPage() {
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-violet-200"><Receipt className="h-5 w-5" /></span>
                   <p className="text-sm font-bold text-foreground/80 dark:text-slate-300">Fatura atual</p>
                 </div>
-                <p className="currency text-2xl font-black text-white tabular-nums">{fmt(billTotal)}</p>
+                <p className="currency text-2xl font-black text-foreground tabular-nums">{fmt(billTotal)}</p>
                 <p className="mt-1 text-sm font-extrabold text-amber-300">{fmt(unpaidTotal)} em aberto</p>
               </div>
 
@@ -775,7 +775,7 @@ export default function CreditCardsPage() {
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-violet-200"><CalendarDays className="h-5 w-5" /></span>
                   <p className="text-sm font-bold text-foreground/80 dark:text-slate-300">Próximo vencimento</p>
                 </div>
-                <p className="text-2xl font-black text-white tabular-nums">
+                <p className="text-2xl font-black text-foreground tabular-nums">
                   {billDueDate ? billDueDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '') : '--'}
                 </p>
                 <p className={cn('mt-1 text-sm font-semibold', daysUntilDue < 0 ? 'text-red-300' : daysUntilDue <= 7 ? 'text-amber-300' : 'text-muted-foreground dark:text-slate-400')}>
@@ -788,7 +788,7 @@ export default function CreditCardsPage() {
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-500/15 text-slate-200"><Layers3 className="h-5 w-5" /></span>
                   <p className="text-sm font-bold text-foreground/80 dark:text-slate-300">Parcelas futuras</p>
                 </div>
-                <p className="text-2xl font-black text-white tabular-nums">{selectedFutureInstallmentCount}</p>
+                <p className="text-2xl font-black text-foreground tabular-nums">{selectedFutureInstallmentCount}</p>
                 <p className="mt-1 text-sm font-semibold text-muted-foreground dark:text-slate-400">parcelas futuras</p>
               </div>
             </div>
@@ -801,7 +801,7 @@ export default function CreditCardsPage() {
           <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl border border-violet-300/20 bg-violet-500/10">
             <CreditCard className="h-10 w-10 text-violet-200/70" />
           </div>
-          <p className="text-lg font-black text-white">Nenhum cartão cadastrado</p>
+          <p className="text-lg font-black text-foreground">Nenhum cartão cadastrado</p>
           <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground dark:text-slate-400">Adicione seu primeiro cartão para controlar faturas, parcelas e limite em um só lugar.</p>
           <Button onClick={() => setShowNewCard(true)} className="mt-5 rounded-xl bg-violet-600 text-white hover:bg-violet-500">
             <Plus className="mr-2 h-4 w-4" /> Adicionar cartão
@@ -813,7 +813,7 @@ export default function CreditCardsPage() {
             <section className="rounded-[1.75rem] border border-border/60 dark:border-white/10 bg-card/95 dark:bg-[#090d16]/95 p-4 shadow-xl shadow-black/20 backdrop-blur-xl sm:p-5">
               <div className="mb-5 flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-black tracking-tight text-white">Linha do tempo das faturas</h2>
+                  <h2 className="text-lg font-black tracking-tight text-foreground">Linha do tempo das faturas</h2>
                   <p className="mt-1 text-sm text-muted-foreground">Total, pago e aberto por mês. Ao pagar, o aberto diminui aqui também.</p>
                 </div>
                 <div className="flex shrink-0 gap-2">
@@ -841,11 +841,11 @@ export default function CreditCardsPage() {
                       <div className="absolute -bottom-8 -right-8 h-20 w-20 rounded-full bg-violet-500/10 blur-2xl" />
                       <div className="relative space-y-3">
                         <div className="flex items-start justify-between gap-2">
-                          <p className="text-base font-black text-white">{shortMonthLabel(item.month)}</p>
+                          <p className="text-base font-black text-foreground">{shortMonthLabel(item.month)}</p>
                           {isCurrent && <span className="rounded-full bg-violet-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">Atual</span>}
                         </div>
                         <div>
-                          <p className="currency text-lg font-black text-white tabular-nums">{fmt(item.total)}</p>
+                          <p className="currency text-lg font-black text-foreground tabular-nums">{fmt(item.total)}</p>
                           <p className="mt-1 text-[11px] font-semibold text-muted-foreground">{item.count} compra{item.count === 1 ? '' : 's'}</p>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-[11px] font-bold">
@@ -862,7 +862,7 @@ export default function CreditCardsPage() {
             <section className="rounded-[1.75rem] border border-border/60 dark:border-white/10 bg-card/95 dark:bg-[#090d16]/95 p-4 shadow-xl shadow-black/20 backdrop-blur-xl sm:p-5">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                  <h2 className="text-2xl font-black capitalize tracking-tight text-white">{monthLabel(billMonth)}</h2>
+                  <h2 className="text-2xl font-black capitalize tracking-tight text-foreground">{monthLabel(billMonth)}</h2>
                   <p className="mt-2 text-sm font-semibold text-muted-foreground dark:text-slate-400">
                     <span className="text-emerald-300">Pago {fmt(paidTotal)}</span>
                     <span className="mx-2 text-muted-foreground/70">•</span>
@@ -923,7 +923,7 @@ export default function CreditCardsPage() {
               {transactions.length === 0 ? (
                 <div className="mt-8 flex flex-col items-center rounded-3xl border border-dashed border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.025] px-6 py-12 text-center">
                   <Receipt className="mb-3 h-9 w-9 text-muted-foreground/70" />
-                  <p className="font-black text-white">Nenhuma compra nesta fatura</p>
+                  <p className="font-black text-foreground">Nenhuma compra nesta fatura</p>
                   <p className="mt-1 text-sm text-muted-foreground">Adicione uma compra para começar o acompanhamento do mês.</p>
                 </div>
               ) : openTransactions.length === 0 && paidTransactions.length === 0 ? (
@@ -965,7 +965,7 @@ export default function CreditCardsPage() {
                     <p className="text-xl font-black">{currentCard.name}</p>
                     <p className="mt-1 text-xs font-semibold text-violet-100/70">Crédito • final virtual</p>
                   </div>
-                  <span className="text-3xl font-black text-white/20">nu</span>
+                  <span className="text-3xl font-black text-foreground/20">nu</span>
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -999,7 +999,7 @@ export default function CreditCardsPage() {
             <div className="rounded-[1.75rem] border border-border/60 dark:border-white/10 bg-card/95 dark:bg-[#090d16]/95 p-5 shadow-xl shadow-black/20 backdrop-blur-xl">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-lg font-black text-white">Resumo por categoria</h3>
+                  <h3 className="text-lg font-black text-foreground">Resumo por categoria</h3>
                   <p className="text-sm text-muted-foreground">Distribuição da fatura selecionada</p>
                 </div>
                 <PieChart className="h-5 w-5 text-violet-300" />
@@ -1020,7 +1020,7 @@ export default function CreditCardsPage() {
                         <div className="min-w-0">
                           <div className="mb-1 flex items-center justify-between gap-2">
                             <p className="truncate text-sm font-bold text-foreground/80 dark:text-slate-300">{row.name}</p>
-                            <p className="currency text-xs font-black text-white tabular-nums">{fmt(row.total)}</p>
+                            <p className="currency text-xs font-black text-foreground tabular-nums">{fmt(row.total)}</p>
                           </div>
                           <div className="h-2 overflow-hidden rounded-full bg-muted/60 dark:bg-white/[0.07]">
                             <div className="h-full rounded-full bg-violet-500" style={{ width: `${barWidth}%` }} />
@@ -1039,7 +1039,7 @@ export default function CreditCardsPage() {
                 <Button
                   onClick={openPayBill}
                   disabled={unpaidTotal <= 0}
-                  className="h-12 rounded-xl bg-violet-600 text-base font-black text-white shadow-lg shadow-violet-600/25 hover:bg-violet-500 disabled:opacity-50"
+                  className="h-12 rounded-xl bg-violet-600 text-base font-black text-foreground shadow-lg shadow-violet-600/25 hover:bg-violet-500 disabled:opacity-50"
                 >
                   <Wallet className="mr-2 h-4 w-4" /> Pagar {fmt(unpaidTotal)}
                 </Button>
@@ -1061,7 +1061,7 @@ export default function CreditCardsPage() {
                 <div className="mb-3 flex items-start gap-3">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-400/10 text-amber-200"><Wallet className="h-5 w-5" /></span>
                   <div>
-                    <p className="font-black text-white">Conta de pagamento</p>
+                    <p className="font-black text-foreground">Conta de pagamento</p>
                     <p className="mt-1 text-sm text-muted-foreground dark:text-slate-400">Vincule uma conta para as compras do cartão refletirem no saldo corretamente.</p>
                   </div>
                 </div>
@@ -1086,7 +1086,7 @@ export default function CreditCardsPage() {
                   <div className="flex items-start gap-3">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-200"><Check className="h-5 w-5" /></span>
                     <div className="min-w-0 flex-1">
-                      <p className="font-black text-white">Pagamento vinculado</p>
+                      <p className="font-black text-foreground">Pagamento vinculado</p>
                       <p className="mt-1 truncate text-sm font-semibold text-foreground/80 dark:text-slate-300">{acct?.icon} {acct?.name || 'Conta vinculada'}</p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         <button onClick={() => applyDefaultAccountToHistory(currentCard.id)} className="rounded-lg bg-muted/50 dark:bg-white/[0.05] px-3 py-1.5 text-xs font-bold text-emerald-200 hover:bg-muted/70 dark:bg-white/[0.08]">

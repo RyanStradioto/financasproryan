@@ -45,7 +45,7 @@ const CustomTooltip = ({
             <div key={i} className="flex items-center justify-between gap-4 text-xs">
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
-                <span className="text-slate-400 font-semibold">{p.name}</span>
+                <span className="text-muted-foreground dark:text-slate-400 font-semibold">{p.name}</span>
               </div>
               <span className="font-black tabular-nums" style={{ color: p.color }}>
                 {maskCurrency(formatCurrency(Math.abs(p.value)))}
@@ -113,8 +113,8 @@ export default function DailyFlowChart({ income, expenses, month, maskCurrency }
               <CalendarDays className="w-4 h-4 text-violet-300" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-white leading-tight">Gastos e receitas por dia</h3>
-              <p className="text-[11px] text-slate-500 mt-0.5">Fluxo diário do mês</p>
+              <h3 className="text-sm font-black text-foreground leading-tight">Gastos e receitas por dia</h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Fluxo diário do mês</p>
             </div>
           </div>
         </div>
@@ -141,9 +141,9 @@ export default function DailyFlowChart({ income, expenses, month, maskCurrency }
 
       {!hasData ? (
         <div className="flex flex-col items-center justify-center py-14 text-center">
-          <TrendingUp className="w-10 h-10 text-slate-700 mb-3" />
-          <p className="text-sm font-semibold text-slate-500">Nenhuma movimentação neste mês</p>
-          <p className="text-xs text-slate-600 mt-1">Lance receitas e despesas para ver o fluxo diário</p>
+          <TrendingUp className="w-10 h-10 text-muted-foreground/50 mb-3" />
+          <p className="text-sm font-semibold text-muted-foreground">Nenhuma movimentação neste mês</p>
+          <p className="text-xs text-muted-foreground/70 mt-1">Lance receitas e despesas para ver o fluxo diário</p>
         </div>
       ) : (
         <>

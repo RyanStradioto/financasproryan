@@ -25,7 +25,7 @@ export default function SectionHeader({ title, subtitle, icon: Icon, iconColor =
         </div>
       </div>
       {action && (
-        <a href={action.href} className="shrink-0 text-[11px] font-bold text-slate-400 hover:text-white transition-colors">
+        <a href={action.href} className="shrink-0 text-[11px] font-bold text-muted-foreground hover:text-foreground transition-colors">
           {action.label} →
         </a>
       )}

@@ -939,7 +939,7 @@ export default function Dashboard() {
               <p className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-200/80">
                 {greeting.text}{profile?.first_name ? `, ${profile.first_name}` : ''} 👋
               </p>
-              <h1 className="mt-1 text-lg font-black tracking-tight text-white sm:text-2xl lg:text-3xl">
+              <h1 className="mt-1 text-lg font-black tracking-tight text-foreground sm:text-2xl lg:text-3xl">
                 Visão financeira do mês
               </h1>
               <p className="mt-1 text-xs font-semibold text-muted-foreground sm:text-sm">
@@ -1085,7 +1085,7 @@ export default function Dashboard() {
 
             <div>
               <p className="currency text-2xl sm:text-3xl font-black text-amber-200 tabular-nums">{maskCurrency(formatCurrency(allowance.perDayAllowance))}</p>
-              <p className="mt-0.5 text-xs font-semibold text-slate-400">por dia restante</p>
+              <p className="mt-0.5 text-xs font-semibold text-muted-foreground dark:text-slate-400">por dia restante</p>
             </div>
 
             <div className="rounded-xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.035] p-3">
@@ -1100,7 +1100,7 @@ export default function Dashboard() {
 
             <div className="flex items-start gap-2.5 rounded-xl border border-amber-300/20 bg-amber-400/[0.06] px-3 py-2.5">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-200" />
-              <p className="text-xs font-semibold text-slate-300">
+              <p className="text-xs font-semibold text-foreground/80 dark:text-slate-300">
                 Hoje: {maskCurrency(formatCurrency(todaySpent))} · {todaySpent > allowance.perDayAllowance ? 'acima do ideal' : 'dentro do ideal'}
               </p>
             </div>
@@ -1135,7 +1135,7 @@ export default function Dashboard() {
                   <span className="block truncate text-xs font-black text-foreground">{item.title}</span>
                   <span className="mt-0.5 block truncate text-xs font-bold text-muted-foreground">{item.value}</span>
                 </span>
-                <ChevronRight className="h-3.5 w-3.5 text-slate-600 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-300 shrink-0" />
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/70 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground/80 dark:text-slate-300 shrink-0" />
               </button>
             );
           })}
@@ -1314,7 +1314,7 @@ export default function Dashboard() {
                 <div className="rounded-xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.035] p-2.5 sm:p-3">
                   <p className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500">Média/sem</p>
                   <p className="currency mt-0.5 sm:mt-1 text-[10px] sm:text-xs font-black text-cyan-200 truncate">{maskCurrency(formatCurrency(weeklyFlowSummary.averageExpense))}</p>
-                  <p className="text-[10px] font-semibold text-slate-600 hidden sm:block">por semana</p>
+                  <p className="text-[10px] font-semibold text-muted-foreground/70 hidden sm:block">por semana</p>
                 </div>
               </div>
             </div>
@@ -1352,7 +1352,7 @@ export default function Dashboard() {
                 return (
                   <div key={cat.name}>
                     <div className="mb-1.5 flex items-center justify-between gap-3 text-xs font-bold">
-                      <span className="truncate text-slate-300">{cat.icon} {cat.name}</span>
+                      <span className="truncate text-foreground/80 dark:text-slate-300">{cat.icon} {cat.name}</span>
                       <span className="shrink-0 text-slate-500">{pct.toFixed(0)}% · {maskCurrency(formatCurrency(cat.value))}</span>
                     </div>
                     <div className="h-1.5 overflow-hidden rounded-full bg-border/50 dark:bg-white/10">
@@ -1499,7 +1499,7 @@ export default function Dashboard() {
               <Trophy className="h-10 w-10 text-slate-700" />
               <div>
                 <p className="text-xs font-semibold text-muted-foreground">Sem orçamentos definidos</p>
-                <p className="text-[11px] text-slate-600 mt-1">Defina metas nas <a href="/categorias" className="text-emerald-400 hover:underline">categorias</a> para acompanhar aqui</p>
+                <p className="text-[11px] text-muted-foreground/70 mt-1">Defina metas nas <a href="/categorias" className="text-emerald-400 hover:underline">categorias</a> para acompanhar aqui</p>
               </div>
             </div>
           )}
@@ -1532,7 +1532,7 @@ export default function Dashboard() {
             <p className="text-xs font-semibold text-muted-foreground">{maskCurrency(formatCurrency(currentTotalAll))} de {maskCurrency(formatCurrency(monthPace.totalBudget || currentTotalAll))}</p>
             <div className="flex flex-wrap gap-1.5">
               <span className={cn('rounded-full px-2.5 py-1 text-[11px] font-black', monthPace.onTrack ? 'bg-emerald-400/10 text-emerald-300' : 'bg-red-400/10 text-red-300')}>{monthPace.onTrack ? 'No ritmo certo' : 'Acima do ritmo'}</span>
-              {monthPace.paceVsPrev !== null && <span className="rounded-full bg-white/[0.05] px-2.5 py-1 text-[11px] font-black text-slate-300">{Math.abs(monthPace.paceVsPrev).toFixed(0)}% {monthPace.paceVsPrev > 0 ? 'mais rápido' : 'mais lento'}</span>}
+              {monthPace.paceVsPrev !== null && <span className="rounded-full bg-white/[0.05] px-2.5 py-1 text-[11px] font-black text-foreground/80 dark:text-slate-300">{Math.abs(monthPace.paceVsPrev).toFixed(0)}% {monthPace.paceVsPrev > 0 ? 'mais rápido' : 'mais lento'}</span>}
             </div>
           </div>
         </PremiumCard>
@@ -1550,7 +1550,7 @@ export default function Dashboard() {
                 <div className="rounded-xl border border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.025] p-4 text-center">
                   <ShieldCheck className="h-8 w-8 text-emerald-300/40 mx-auto mb-2" />
                   <p className="text-xs font-semibold text-muted-foreground">Nenhum gasto atípico detectado</p>
-                  <p className="text-[10px] text-slate-600 mt-0.5">Seus gastos estão dentro do padrão</p>
+                  <p className="text-[10px] text-muted-foreground/70 mt-0.5">Seus gastos estão dentro do padrão</p>
                 </div>
               </div>
             )}
@@ -1576,7 +1576,7 @@ export default function Dashboard() {
                 const pct = allocationTotal > 0 ? (item.value / allocationTotal) * 100 : 0;
                 return (
                   <div key={item.name} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.025] px-3 py-2">
-                    <span className="flex items-center gap-1.5 text-xs font-bold text-slate-300"><span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: item.fill }} /> {item.name}</span>
+                    <span className="flex items-center gap-1.5 text-xs font-bold text-foreground/80 dark:text-slate-300"><span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: item.fill }} /> {item.name}</span>
                     <span className="text-right text-xs font-black text-foreground">{maskCurrency(formatCurrency(item.value))}<span className="ml-1.5 text-[10px] text-slate-500">{pct.toFixed(0)}%</span></span>
                   </div>
                 );
@@ -1630,7 +1630,7 @@ export default function Dashboard() {
       {orphanExpensesTotal > 0 && (
         <button onClick={() => setOrphanFixOpen(true)} className="flex w-full items-center gap-3 rounded-xl border border-amber-300/20 bg-amber-400/[0.06] px-3 py-3 text-left transition-colors hover:bg-amber-400/10">
           <AlertTriangle className="h-4 w-4 shrink-0 text-amber-300" />
-          <span className="min-w-0 flex-1 text-xs font-semibold text-slate-300">
+          <span className="min-w-0 flex-1 text-xs font-semibold text-foreground/80 dark:text-slate-300">
             {orphanExpensesCount} despesa{orphanExpensesCount !== 1 ? 's' : ''} sem conta · {maskCurrency(formatCurrency(orphanExpensesTotal))}. Clique para corrigir.
           </span>
           <ChevronRight className="h-3.5 w-3.5 text-slate-500 shrink-0" />
