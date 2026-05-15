@@ -338,7 +338,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+      <div className="lg:columns-2 lg:gap-6 space-y-6 lg:space-y-0 [&>*]:break-inside-avoid [&>*]:lg:mb-6">
 
       <div className="stat-card space-y-6">
         <div className="flex items-center gap-2 text-sm font-semibold">

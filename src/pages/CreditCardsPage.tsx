@@ -565,7 +565,7 @@ export default function CreditCardsPage() {
           'grid grid-cols-[auto_1fr] gap-3 rounded-2xl border px-3 py-3 transition-all sm:grid-cols-[auto_minmax(0,1.3fr)_120px_150px_90px_auto] sm:items-center',
           isPaid
             ? 'border-emerald-400/15 bg-emerald-400/[0.055] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]'
-            : 'border-white/[0.08] bg-white/[0.025] hover:border-violet-400/25 hover:bg-white/[0.045]',
+            : 'border-border/40 dark:border-white/[0.08] bg-muted/40 dark:bg-white/[0.025] hover:border-violet-400/25 hover:bg-muted/50 dark:bg-white/[0.045]',
         )}
       >
         <button
@@ -583,21 +583,21 @@ export default function CreditCardsPage() {
 
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-2">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-900/80 text-sm">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-slate-900/80 text-sm">
               {categoryIcon}
             </span>
             <div className="min-w-0">
-              <p className={cn('truncate text-sm font-extrabold tracking-tight', isPaid ? 'text-slate-100' : 'text-white')}>
+              <p className={cn('truncate text-sm font-extrabold tracking-tight', isPaid ? 'text-foreground' : 'text-white')}>
                 {t.description}
               </p>
-              <p className="mt-0.5 text-[11px] font-medium text-slate-500 sm:hidden">
+              <p className="mt-0.5 text-[11px] font-medium text-muted-foreground sm:hidden">
                 {formatDate(t.date)} · {categoryName}
               </p>
             </div>
           </div>
         </div>
 
-        <p className="col-start-2 text-xs font-semibold text-slate-400 sm:col-auto">
+        <p className="col-start-2 text-xs font-semibold text-muted-foreground dark:text-slate-400 sm:col-auto">
           {formatDate(t.date)}
         </p>
 
@@ -606,7 +606,7 @@ export default function CreditCardsPage() {
             value={t.category_id ?? ''}
             onChange={(e) => updateTx.mutate({ id: t.id, category_id: e.target.value || null })}
             onClick={(e) => e.stopPropagation()}
-            className="max-w-full cursor-pointer rounded-full border border-white/10 bg-slate-950/70 px-2.5 py-1 text-[11px] font-semibold text-slate-300 outline-none transition-colors hover:border-violet-400/35"
+            className="max-w-full cursor-pointer rounded-full border border-border/60 dark:border-white/10 bg-muted/30 dark:bg-slate-950/70 px-2.5 py-1 text-[11px] font-semibold text-foreground/80 dark:text-slate-300 outline-none transition-colors hover:border-violet-400/35"
             style={{ fontFamily: 'inherit' }}
           >
             <option value="">Sem categoria</option>
@@ -636,7 +636,7 @@ export default function CreditCardsPage() {
           <button
             onClick={() => deleteTx.mutate(t.id)}
             title="Excluir compra"
-            className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-red-500/10 hover:text-red-300 sm:hidden"
+            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-300 sm:hidden"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -645,7 +645,7 @@ export default function CreditCardsPage() {
         <button
           onClick={() => deleteTx.mutate(t.id)}
           title="Excluir compra"
-          className="hidden rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-red-500/10 hover:text-red-300 sm:block"
+          className="hidden rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-300 sm:block"
         >
           <MoreVertical className="h-4 w-4" />
         </button>
@@ -655,7 +655,7 @@ export default function CreditCardsPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#070a12] p-4 shadow-2xl shadow-black/30 sm:p-6 xl:p-7">
+      <div className="relative overflow-hidden rounded-[2rem] border border-border/60 dark:border-white/10 bg-card dark:bg-[#070a12] p-4 shadow-2xl shadow-black/30 sm:p-6 xl:p-7">
         <div className="pointer-events-none absolute -right-28 -top-28 h-72 w-72 rounded-full bg-violet-600/25 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(124,58,237,0.18),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.05),transparent_42%)]" />
@@ -671,7 +671,7 @@ export default function CreditCardsPage() {
                   <Sparkles className="h-3.5 w-3.5" /> Central de cartões
                 </p>
                 <h1 className="truncate text-3xl font-black tracking-tight text-white sm:text-4xl">Cartões de Crédito</h1>
-                <p className="mt-1.5 text-sm font-medium text-slate-400">
+                <p className="mt-1.5 text-sm font-medium text-muted-foreground dark:text-slate-400">
                   {currentCard
                     ? <><span className="font-extrabold text-violet-200">{currentCard.name}</span> · fecha dia {currentCard.closing_day} · vence dia {currentCard.due_day}</>
                     : 'Cadastre um cartão para acompanhar faturas, limite e parcelas.'}
@@ -683,7 +683,7 @@ export default function CreditCardsPage() {
               <Button
                 variant="outline"
                 onClick={() => setShowNewCard(true)}
-                className="h-11 rounded-xl border-white/10 bg-white/[0.035] px-4 text-slate-100 hover:bg-white/[0.07]"
+                className="h-11 rounded-xl border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.035] px-4 text-foreground hover:bg-muted/60 dark:bg-white/[0.07]"
               >
                 <Plus className="mr-2 h-4 w-4" /> Novo cartão
               </Button>
@@ -715,20 +715,20 @@ export default function CreditCardsPage() {
                       className={cn(
                         'group relative h-[92px] w-[230px] overflow-hidden rounded-2xl border p-4 text-left transition-all',
                         isSelected
-                          ? 'border-violet-300/60 bg-white/[0.08] shadow-xl shadow-violet-950/30'
-                          : 'border-white/10 bg-white/[0.035] hover:border-violet-300/35 hover:bg-white/[0.055]',
+                          ? 'border-violet-300/60 bg-muted/70 dark:bg-white/[0.08] shadow-xl shadow-violet-950/30'
+                          : 'border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.035] hover:border-violet-300/35 hover:bg-white/[0.055]',
                       )}
                     >
                       <div className="absolute -right-8 -top-12 h-28 w-28 rounded-full opacity-30 blur-xl" style={{ backgroundColor: card.color }} />
                       <div className="relative flex h-full flex-col justify-between">
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex min-w-0 items-center gap-2.5">
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-black/25 text-white shadow-inner" style={{ color: card.color }}>
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border/60 dark:border-white/10 bg-black/25 text-white shadow-inner" style={{ color: card.color }}>
                               <CreditCard className="h-[18px] w-[18px]" />
                             </span>
                             <div className="min-w-0">
                               <p className="truncate text-sm font-black text-white">{card.name}</p>
-                              <p className="text-[11px] font-semibold text-slate-500">{cardUsage.toFixed(0)}% comprometido</p>
+                              <p className="text-[11px] font-semibold text-muted-foreground">{cardUsage.toFixed(0)}% comprometido</p>
                             </div>
                           </div>
                           {isSelected && <Check className="h-4 w-4 shrink-0 text-violet-200" />}
@@ -737,7 +737,7 @@ export default function CreditCardsPage() {
                           <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
                             <div className="h-full rounded-full bg-violet-400" style={{ width: `${cardUsage}%` }} />
                           </div>
-                          <div className="flex justify-between text-[11px] font-bold text-slate-400">
+                          <div className="flex justify-between text-[11px] font-bold text-muted-foreground dark:text-slate-400">
                             <span>{fmt(cardCommitment)}</span>
                             <span>{fmt(Number(card.credit_limit))}</span>
                           </div>
@@ -752,44 +752,44 @@ export default function CreditCardsPage() {
 
           {currentCard && (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
+              <div className="rounded-2xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
                 <div className="mb-3 flex items-center gap-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-violet-200"><Receipt className="h-5 w-5" /></span>
-                  <p className="text-sm font-bold text-slate-300">Fatura atual</p>
+                  <p className="text-sm font-bold text-foreground/80 dark:text-slate-300">Fatura atual</p>
                 </div>
                 <p className="currency text-2xl font-black text-white tabular-nums">{fmt(billTotal)}</p>
                 <p className="mt-1 text-sm font-extrabold text-amber-300">{fmt(unpaidTotal)} em aberto</p>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
+              <div className="rounded-2xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
                 <div className="mb-3 flex items-center gap-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300"><Wallet className="h-5 w-5" /></span>
-                  <p className="text-sm font-bold text-slate-300">Limite disponível</p>
+                  <p className="text-sm font-bold text-foreground/80 dark:text-slate-300">Limite disponível</p>
                 </div>
                 <p className="currency text-2xl font-black text-emerald-300 tabular-nums">{fmt(availableLimit)}</p>
-                <p className="mt-1 text-sm font-semibold text-slate-400">{Math.max(0, 100 - committedLimitPercent).toFixed(0)}% livre</p>
+                <p className="mt-1 text-sm font-semibold text-muted-foreground dark:text-slate-400">{Math.max(0, 100 - committedLimitPercent).toFixed(0)}% livre</p>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
+              <div className="rounded-2xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
                 <div className="mb-3 flex items-center gap-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-violet-200"><CalendarDays className="h-5 w-5" /></span>
-                  <p className="text-sm font-bold text-slate-300">Próximo vencimento</p>
+                  <p className="text-sm font-bold text-foreground/80 dark:text-slate-300">Próximo vencimento</p>
                 </div>
                 <p className="text-2xl font-black text-white tabular-nums">
                   {billDueDate ? billDueDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '') : '--'}
                 </p>
-                <p className={cn('mt-1 text-sm font-semibold', daysUntilDue < 0 ? 'text-red-300' : daysUntilDue <= 7 ? 'text-amber-300' : 'text-slate-400')}>
+                <p className={cn('mt-1 text-sm font-semibold', daysUntilDue < 0 ? 'text-red-300' : daysUntilDue <= 7 ? 'text-amber-300' : 'text-muted-foreground dark:text-slate-400')}>
                   {daysUntilDue < 0 ? `venceu há ${Math.abs(daysUntilDue)} dias` : `faltam ${daysUntilDue} dias`}
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
+              <div className="rounded-2xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
                 <div className="mb-3 flex items-center gap-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-500/15 text-slate-200"><Layers3 className="h-5 w-5" /></span>
-                  <p className="text-sm font-bold text-slate-300">Parcelas futuras</p>
+                  <p className="text-sm font-bold text-foreground/80 dark:text-slate-300">Parcelas futuras</p>
                 </div>
                 <p className="text-2xl font-black text-white tabular-nums">{selectedFutureInstallmentCount}</p>
-                <p className="mt-1 text-sm font-semibold text-slate-400">parcelas futuras</p>
+                <p className="mt-1 text-sm font-semibold text-muted-foreground dark:text-slate-400">parcelas futuras</p>
               </div>
             </div>
           )}
@@ -802,7 +802,7 @@ export default function CreditCardsPage() {
             <CreditCard className="h-10 w-10 text-violet-200/70" />
           </div>
           <p className="text-lg font-black text-white">Nenhum cartão cadastrado</p>
-          <p className="mx-auto mt-1 max-w-sm text-sm text-slate-400">Adicione seu primeiro cartão para controlar faturas, parcelas e limite em um só lugar.</p>
+          <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground dark:text-slate-400">Adicione seu primeiro cartão para controlar faturas, parcelas e limite em um só lugar.</p>
           <Button onClick={() => setShowNewCard(true)} className="mt-5 rounded-xl bg-violet-600 text-white hover:bg-violet-500">
             <Plus className="mr-2 h-4 w-4" /> Adicionar cartão
           </Button>
@@ -810,15 +810,15 @@ export default function CreditCardsPage() {
       ) : currentCard ? (
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
           <div className="min-w-0 space-y-5">
-            <section className="rounded-[1.75rem] border border-white/10 bg-[#090d16]/95 p-4 shadow-xl shadow-black/20 backdrop-blur-xl sm:p-5">
+            <section className="rounded-[1.75rem] border border-border/60 dark:border-white/10 bg-card/95 dark:bg-[#090d16]/95 p-4 shadow-xl shadow-black/20 backdrop-blur-xl sm:p-5">
               <div className="mb-5 flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-black tracking-tight text-white">Linha do tempo das faturas</h2>
-                  <p className="mt-1 text-sm text-slate-500">Total, pago e aberto por mês. Ao pagar, o aberto diminui aqui também.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Total, pago e aberto por mês. Ao pagar, o aberto diminui aqui também.</p>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <button onClick={() => setBillMonth(prevMonth(billMonth))} className="rounded-xl border border-white/10 bg-white/[0.035] p-2 text-slate-300 transition-colors hover:bg-white/[0.07]"><ChevronLeft className="h-4 w-4" /></button>
-                  <button onClick={() => setBillMonth(nextMonth(billMonth))} className="rounded-xl border border-white/10 bg-white/[0.035] p-2 text-slate-300 transition-colors hover:bg-white/[0.07]"><ChevronRight className="h-4 w-4" /></button>
+                  <button onClick={() => setBillMonth(prevMonth(billMonth))} className="rounded-xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.035] p-2 text-foreground/80 dark:text-slate-300 transition-colors hover:bg-muted/60 dark:bg-white/[0.07]"><ChevronLeft className="h-4 w-4" /></button>
+                  <button onClick={() => setBillMonth(nextMonth(billMonth))} className="rounded-xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.035] p-2 text-foreground/80 dark:text-slate-300 transition-colors hover:bg-muted/60 dark:bg-white/[0.07]"><ChevronRight className="h-4 w-4" /></button>
                 </div>
               </div>
 
@@ -835,7 +835,7 @@ export default function CreditCardsPage() {
                         'relative overflow-hidden rounded-2xl border p-4 text-left transition-all',
                         isSelected
                           ? 'border-violet-300/60 bg-violet-500/15 shadow-lg shadow-violet-950/30'
-                          : 'border-white/10 bg-white/[0.03] hover:border-violet-300/30 hover:bg-white/[0.05]',
+                          : 'border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.03] hover:border-violet-300/30 hover:bg-muted/50 dark:bg-white/[0.05]',
                       )}
                     >
                       <div className="absolute -bottom-8 -right-8 h-20 w-20 rounded-full bg-violet-500/10 blur-2xl" />
@@ -846,7 +846,7 @@ export default function CreditCardsPage() {
                         </div>
                         <div>
                           <p className="currency text-lg font-black text-white tabular-nums">{fmt(item.total)}</p>
-                          <p className="mt-1 text-[11px] font-semibold text-slate-500">{item.count} compra{item.count === 1 ? '' : 's'}</p>
+                          <p className="mt-1 text-[11px] font-semibold text-muted-foreground">{item.count} compra{item.count === 1 ? '' : 's'}</p>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-[11px] font-bold">
                           <span className="text-emerald-300">Pago {fmt(item.paid)}</span>
@@ -859,30 +859,30 @@ export default function CreditCardsPage() {
               </div>
             </section>
 
-            <section className="rounded-[1.75rem] border border-white/10 bg-[#090d16]/95 p-4 shadow-xl shadow-black/20 backdrop-blur-xl sm:p-5">
+            <section className="rounded-[1.75rem] border border-border/60 dark:border-white/10 bg-card/95 dark:bg-[#090d16]/95 p-4 shadow-xl shadow-black/20 backdrop-blur-xl sm:p-5">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <h2 className="text-2xl font-black capitalize tracking-tight text-white">{monthLabel(billMonth)}</h2>
-                  <p className="mt-2 text-sm font-semibold text-slate-400">
+                  <p className="mt-2 text-sm font-semibold text-muted-foreground dark:text-slate-400">
                     <span className="text-emerald-300">Pago {fmt(paidTotal)}</span>
-                    <span className="mx-2 text-slate-600">•</span>
+                    <span className="mx-2 text-muted-foreground/70">•</span>
                     <span className="text-amber-300">Em aberto {fmt(unpaidTotal)}</span>
-                    <span className="mx-2 text-slate-600">•</span>
+                    <span className="mx-2 text-muted-foreground/70">•</span>
                     <span>{transactions.length} compra{transactions.length === 1 ? '' : 's'}</span>
                   </p>
                 </div>
                 <div className="lg:text-right">
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Total da fatura</p>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">Total da fatura</p>
                   <p className="currency mt-1 text-3xl font-black text-red-300 tabular-nums">{fmt(billTotal)}</p>
                 </div>
               </div>
 
               <div className="mt-5 space-y-2">
-                <div className="flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-slate-400">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-muted-foreground dark:text-slate-400">
                   <span>Uso do limite — {fmt(billTotal)} de {fmt(Number(currentCard.credit_limit))}</span>
                   <span className={cn('font-black', limitUsagePercent > 80 ? 'text-red-300' : limitUsagePercent > 50 ? 'text-amber-300' : 'text-emerald-300')}>{limitUsagePercent.toFixed(0)}%</span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-white/[0.08]">
+                <div className="h-2 overflow-hidden rounded-full bg-muted/70 dark:bg-white/[0.08]">
                   <div
                     className={cn('h-full rounded-full transition-all', limitUsagePercent > 80 ? 'bg-red-400' : limitUsagePercent > 50 ? 'bg-amber-300' : 'bg-emerald-400')}
                     style={{ width: `${limitUsagePercent}%` }}
@@ -901,7 +901,7 @@ export default function CreditCardsPage() {
                         'shrink-0 rounded-xl border px-3.5 py-2 text-sm font-bold transition-colors',
                         txFilter === option.id
                           ? 'border-violet-300/50 bg-violet-500 text-white shadow-lg shadow-violet-950/20'
-                          : 'border-white/10 bg-white/[0.025] text-slate-300 hover:bg-white/[0.055]',
+                          : 'border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.025] text-foreground/80 dark:text-slate-300 hover:bg-white/[0.055]',
                       )}
                     >
                       {option.label}
@@ -910,24 +910,24 @@ export default function CreditCardsPage() {
                 </div>
 
                 <div className="relative w-full lg:max-w-sm">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={txSearch}
                     onChange={(e) => setTxSearch(e.target.value)}
                     placeholder="Buscar compra, categoria ou valor..."
-                    className="h-11 rounded-xl border-white/10 bg-slate-950/70 pl-9 text-sm text-slate-100 placeholder:text-slate-600 focus-visible:ring-violet-500/60"
+                    className="h-11 rounded-xl border-border/60 dark:border-white/10 bg-muted/30 dark:bg-slate-950/70 pl-9 text-sm text-foreground placeholder:text-muted-foreground/70 focus-visible:ring-violet-500/60"
                   />
                 </div>
               </div>
 
               {transactions.length === 0 ? (
-                <div className="mt-8 flex flex-col items-center rounded-3xl border border-dashed border-white/10 bg-white/[0.025] px-6 py-12 text-center">
-                  <Receipt className="mb-3 h-9 w-9 text-slate-600" />
+                <div className="mt-8 flex flex-col items-center rounded-3xl border border-dashed border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.025] px-6 py-12 text-center">
+                  <Receipt className="mb-3 h-9 w-9 text-muted-foreground/70" />
                   <p className="font-black text-white">Nenhuma compra nesta fatura</p>
-                  <p className="mt-1 text-sm text-slate-500">Adicione uma compra para começar o acompanhamento do mês.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Adicione uma compra para começar o acompanhamento do mês.</p>
                 </div>
               ) : openTransactions.length === 0 && paidTransactions.length === 0 ? (
-                <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.025] px-6 py-10 text-center text-sm font-semibold text-slate-500">
+                <div className="mt-8 rounded-3xl border border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.025] px-6 py-10 text-center text-sm font-semibold text-muted-foreground">
                   Nenhuma compra encontrada com os filtros atuais.
                 </div>
               ) : (
@@ -936,7 +936,7 @@ export default function CreditCardsPage() {
                     <div>
                       <div className="mb-3 flex items-center justify-between gap-3">
                         <h3 className="text-sm font-black uppercase tracking-[0.18em] text-amber-300">Em aberto</h3>
-                        <span className="text-xs font-bold text-slate-500">{openTransactions.length} item{openTransactions.length === 1 ? '' : 's'}</span>
+                        <span className="text-xs font-bold text-muted-foreground">{openTransactions.length} item{openTransactions.length === 1 ? '' : 's'}</span>
                       </div>
                       <div className="space-y-2">{openTransactions.map(renderTransactionRow)}</div>
                     </div>
@@ -946,7 +946,7 @@ export default function CreditCardsPage() {
                     <div>
                       <div className="mb-3 flex items-center justify-between gap-3">
                         <h3 className="text-sm font-black uppercase tracking-[0.18em] text-emerald-300">Pagas</h3>
-                        <span className="text-xs font-bold text-slate-500">{paidTransactions.length} item{paidTransactions.length === 1 ? '' : 's'}</span>
+                        <span className="text-xs font-bold text-muted-foreground">{paidTransactions.length} item{paidTransactions.length === 1 ? '' : 's'}</span>
                       </div>
                       <div className="space-y-2">{paidTransactions.map(renderTransactionRow)}</div>
                     </div>
@@ -996,17 +996,17 @@ export default function CreditCardsPage() {
               </div>
             </div>
 
-            <div className="rounded-[1.75rem] border border-white/10 bg-[#090d16]/95 p-5 shadow-xl shadow-black/20 backdrop-blur-xl">
+            <div className="rounded-[1.75rem] border border-border/60 dark:border-white/10 bg-card/95 dark:bg-[#090d16]/95 p-5 shadow-xl shadow-black/20 backdrop-blur-xl">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-lg font-black text-white">Resumo por categoria</h3>
-                  <p className="text-sm text-slate-500">Distribuição da fatura selecionada</p>
+                  <p className="text-sm text-muted-foreground">Distribuição da fatura selecionada</p>
                 </div>
                 <PieChart className="h-5 w-5 text-violet-300" />
               </div>
 
               {categorySummary.length === 0 ? (
-                <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4 text-sm font-semibold text-slate-500">
+                <div className="rounded-2xl border border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.025] p-4 text-sm font-semibold text-muted-foreground">
                   Sem categorias nesta fatura.
                 </div>
               ) : (
@@ -1016,17 +1016,17 @@ export default function CreditCardsPage() {
                     const barWidth = Math.max(4, (row.total / topCategoryTotal) * 100);
                     return (
                       <div key={row.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-sm">{row.icon}</span>
+                        <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.04] text-sm">{row.icon}</span>
                         <div className="min-w-0">
                           <div className="mb-1 flex items-center justify-between gap-2">
-                            <p className="truncate text-sm font-bold text-slate-300">{row.name}</p>
+                            <p className="truncate text-sm font-bold text-foreground/80 dark:text-slate-300">{row.name}</p>
                             <p className="currency text-xs font-black text-white tabular-nums">{fmt(row.total)}</p>
                           </div>
-                          <div className="h-2 overflow-hidden rounded-full bg-white/[0.07]">
+                          <div className="h-2 overflow-hidden rounded-full bg-muted/60 dark:bg-white/[0.07]">
                             <div className="h-full rounded-full bg-violet-500" style={{ width: `${barWidth}%` }} />
                           </div>
                         </div>
-                        <span className="w-10 text-right text-xs font-bold text-slate-500">{percent.toFixed(0)}%</span>
+                        <span className="w-10 text-right text-xs font-bold text-muted-foreground">{percent.toFixed(0)}%</span>
                       </div>
                     );
                   })}
@@ -1034,7 +1034,7 @@ export default function CreditCardsPage() {
               )}
             </div>
 
-            <div className="rounded-[1.75rem] border border-white/10 bg-[#090d16]/95 p-5 shadow-xl shadow-black/20 backdrop-blur-xl">
+            <div className="rounded-[1.75rem] border border-border/60 dark:border-white/10 bg-card/95 dark:bg-[#090d16]/95 p-5 shadow-xl shadow-black/20 backdrop-blur-xl">
               <div className="grid gap-3">
                 <Button
                   onClick={openPayBill}
@@ -1046,11 +1046,11 @@ export default function CreditCardsPage() {
                 <Button
                   variant="outline"
                   onClick={() => setShowNewTx(true)}
-                  className="h-12 rounded-xl border-white/10 bg-white/[0.035] text-base font-black text-slate-100 hover:bg-white/[0.07]"
+                  className="h-12 rounded-xl border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.035] text-base font-black text-foreground hover:bg-muted/60 dark:bg-white/[0.07]"
                 >
                   <Plus className="mr-2 h-4 w-4" /> Nova compra
                 </Button>
-                <p className="flex items-center justify-center gap-2 text-xs font-semibold text-slate-500">
+                <p className="flex items-center justify-center gap-2 text-xs font-semibold text-muted-foreground">
                   <ShieldCheck className="h-3.5 w-3.5" /> Ambiente seguro e criptografado
                 </p>
               </div>
@@ -1062,7 +1062,7 @@ export default function CreditCardsPage() {
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-400/10 text-amber-200"><Wallet className="h-5 w-5" /></span>
                   <div>
                     <p className="font-black text-white">Conta de pagamento</p>
-                    <p className="mt-1 text-sm text-slate-400">Vincule uma conta para as compras do cartão refletirem no saldo corretamente.</p>
+                    <p className="mt-1 text-sm text-muted-foreground dark:text-slate-400">Vincule uma conta para as compras do cartão refletirem no saldo corretamente.</p>
                   </div>
                 </div>
                 <Select onValueChange={(v) => {
@@ -1070,7 +1070,7 @@ export default function CreditCardsPage() {
                   setDefaultAcctBump(b => b + 1);
                   toast.success('Conta padrão vinculada!');
                 }}>
-                  <SelectTrigger className="h-11 rounded-xl border-white/10 bg-slate-950/70"><SelectValue placeholder="Selecionar conta padrão..." /></SelectTrigger>
+                  <SelectTrigger className="h-11 rounded-xl border-border/60 dark:border-white/10 bg-muted/30 dark:bg-slate-950/70"><SelectValue placeholder="Selecionar conta padrão..." /></SelectTrigger>
                   <SelectContent>
                     {accounts.filter(a => !a.archived).map(a => (
                       <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
@@ -1087,12 +1087,12 @@ export default function CreditCardsPage() {
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-200"><Check className="h-5 w-5" /></span>
                     <div className="min-w-0 flex-1">
                       <p className="font-black text-white">Pagamento vinculado</p>
-                      <p className="mt-1 truncate text-sm font-semibold text-slate-300">{acct?.icon} {acct?.name || 'Conta vinculada'}</p>
+                      <p className="mt-1 truncate text-sm font-semibold text-foreground/80 dark:text-slate-300">{acct?.icon} {acct?.name || 'Conta vinculada'}</p>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <button onClick={() => applyDefaultAccountToHistory(currentCard.id)} className="rounded-lg bg-white/[0.05] px-3 py-1.5 text-xs font-bold text-emerald-200 hover:bg-white/[0.08]">
+                        <button onClick={() => applyDefaultAccountToHistory(currentCard.id)} className="rounded-lg bg-muted/50 dark:bg-white/[0.05] px-3 py-1.5 text-xs font-bold text-emerald-200 hover:bg-muted/70 dark:bg-white/[0.08]">
                           Sincronizar antigas
                         </button>
-                        <button onClick={() => { setCardDefaultAccount(currentCard.id, null); setDefaultAcctBump(b => b + 1); toast.success('Conta padrão removida'); }} className="rounded-lg bg-white/[0.05] px-3 py-1.5 text-xs font-bold text-slate-400 hover:bg-white/[0.08]">
+                        <button onClick={() => { setCardDefaultAccount(currentCard.id, null); setDefaultAcctBump(b => b + 1); toast.success('Conta padrão removida'); }} className="rounded-lg bg-muted/50 dark:bg-white/[0.05] px-3 py-1.5 text-xs font-bold text-muted-foreground dark:text-slate-400 hover:bg-muted/70 dark:bg-white/[0.08]">
                           Remover
                         </button>
                       </div>
@@ -1104,9 +1104,9 @@ export default function CreditCardsPage() {
           </aside>
         </div>
       ) : (
-        <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.025] px-6 py-12 text-center">
-          <Zap className="mx-auto mb-3 h-8 w-8 text-slate-600" />
-          <p className="text-sm font-bold text-slate-400">Selecione um cartão para ver a fatura.</p>
+        <div className="rounded-[1.75rem] border border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.025] px-6 py-12 text-center">
+          <Zap className="mx-auto mb-3 h-8 w-8 text-muted-foreground/70" />
+          <p className="text-sm font-bold text-muted-foreground dark:text-slate-400">Selecione um cartão para ver a fatura.</p>
         </div>
       )}
       {/* ── Add Card Dialog ────────────────────────────────────────── */}
