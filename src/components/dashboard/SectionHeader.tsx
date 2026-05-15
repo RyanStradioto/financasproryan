@@ -20,8 +20,8 @@ export default function SectionHeader({ title, subtitle, icon: Icon, iconColor =
           </div>
         )}
         <div className="min-w-0">
-          <h2 className="text-sm font-black text-white leading-tight">{title}</h2>
-          {subtitle && <p className="text-[11px] text-slate-500 mt-0.5">{subtitle}</p>}
+          <h2 className="text-sm font-black text-foreground leading-tight">{title}</h2>
+          {subtitle && <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>}
         </div>
       </div>
       {action && (

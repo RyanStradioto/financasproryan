@@ -36,8 +36,8 @@ const CustomTooltip = ({
 }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-xl border border-white/15 bg-[#0d1420]/95 backdrop-blur-md px-3.5 py-2.5 shadow-2xl shadow-black/50 min-w-[160px]">
-      <p className="text-[11px] font-black text-slate-300 mb-2">Dia {label}</p>
+    <div className="rounded-xl border border-border/70 bg-popover/95 backdrop-blur-md px-3.5 py-2.5 shadow-2xl shadow-black/20 min-w-[160px]">
+      <p className="text-[11px] font-black text-foreground mb-2">Dia {label}</p>
       <div className="space-y-1.5">
         {payload.map((p, i) => {
           if (p.name === 'Saldo' && p.value === 0) return null;
@@ -104,7 +104,7 @@ export default function DailyFlowChart({ income, expenses, month, maskCurrency }
   const hasData = totalIncome > 0 || totalExpenses > 0;
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-[#0b101a]/90 shadow-2xl shadow-black/20 backdrop-blur-xl p-4 sm:p-5">
+    <div className="rounded-3xl border border-border/60 dark:border-white/10 bg-card/95 dark:bg-[#0b101a]/90 shadow-xl dark:shadow-2xl shadow-black/10 dark:shadow-black/20 backdrop-blur-xl p-4 sm:p-5">
       {/* Header */}
       <div className="flex flex-col gap-3 mb-4">
         <div className="flex items-center justify-between gap-2">
@@ -147,7 +147,7 @@ export default function DailyFlowChart({ income, expenses, month, maskCurrency }
         </div>
       ) : (
         <>
-          <div className="rounded-2xl border border-white/[0.06] bg-[#070b12]/70 p-3 shadow-inner shadow-black/30 overflow-hidden">
+          <div className="rounded-2xl border border-border/40 dark:border-white/[0.06] bg-muted/40 dark:bg-[#070b12]/70 p-3 shadow-inner shadow-black/20 dark:shadow-black/30 overflow-hidden">
             <defs>
               <linearGradient id="dailyIncomeGrad" x1="0" x2="0" y1="0" y2="1">
                 <stop offset="0%" stopColor="#34d399" stopOpacity={0.95} />
@@ -250,7 +250,7 @@ export default function DailyFlowChart({ income, expenses, month, maskCurrency }
           </div>
 
           {/* Legend */}
-          <div className="flex flex-wrap items-center gap-3 mt-3 text-[10px] font-bold text-slate-500">
+          <div className="flex flex-wrap items-center gap-3 mt-3 text-[10px] font-bold text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-2.5 rounded-sm bg-emerald-400/80" />
               Receitas

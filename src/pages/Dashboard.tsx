@@ -235,7 +235,7 @@ function BalanceBreakdown({
   const mismatch = Math.abs(calculated - balance) > 0.5;
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm p-4 space-y-3">
+    <div className="rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm p-4 space-y-3">
       <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
         Composicao do saldo — {accName}
       </p>
@@ -1185,7 +1185,7 @@ export default function Dashboard() {
   ];
 
   const PremiumCard = ({ children, className = '' }: { children: ReactNode; className?: string }) => (
-    <div className={cn('rounded-[1.75rem] border border-white/10 bg-[#0b101a]/90 shadow-2xl shadow-black/20 backdrop-blur-xl', className)}>
+    <div className={cn('rounded-[1.75rem] border border-border/60 dark:border-white/10 bg-card/95 dark:bg-[#0b101a]/90 shadow-md dark:shadow-2xl shadow-black/5 dark:shadow-black/20 backdrop-blur-xl', className)}>
       {children}
     </div>
   );
@@ -1201,7 +1201,7 @@ export default function Dashboard() {
         />
       </ErrorBoundary>
 
-      <section className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#070b12] p-3 shadow-xl shadow-black/30 sm:rounded-3xl sm:p-5">
+      <section className="relative overflow-hidden rounded-2xl border border-border/60 dark:border-white/10 bg-card dark:bg-[#070b12] p-3 shadow-lg shadow-black/5 dark:shadow-xl dark:shadow-black/30 sm:rounded-3xl sm:p-5">
         <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-emerald-500/14 blur-3xl" />
         <div className="pointer-events-none absolute bottom-0 left-1/2 h-56 w-56 -translate-x-1/2 rounded-full bg-sky-500/10 blur-3xl" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(16,185,129,0.12),transparent_26%),radial-gradient(circle_at_92%_12%,rgba(59,130,246,0.16),transparent_28%)]" />
@@ -1216,7 +1216,7 @@ export default function Dashboard() {
               <h1 className="mt-1 text-lg font-black tracking-tight text-white sm:text-2xl lg:text-3xl">
                 Visão financeira do mês
               </h1>
-              <p className="mt-1 text-xs font-semibold text-slate-400 sm:text-sm">
+              <p className="mt-1 text-xs font-semibold text-muted-foreground sm:text-sm">
                 {monthTitleCapitalized} · {isGlobalView ? 'visão consolidada' : `conta: ${focusLabel}`}
               </p>
             </div>
@@ -1247,14 +1247,14 @@ export default function Dashboard() {
                   'group flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all',
                   isGlobalView
                     ? 'border-emerald-300/45 bg-emerald-400/10 shadow-md shadow-emerald-950/20'
-                    : 'border-white/10 bg-white/[0.035] hover:border-emerald-300/30 hover:bg-white/[0.055]',
+                    : 'border-border/50 dark:border-white/10 bg-muted/30 dark:bg-muted/50 dark:bg-white/[0.035] hover:border-emerald-300/30',
                 )}
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-300/20 bg-emerald-400/12 text-emerald-200">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-300/20 bg-emerald-400/12 text-emerald-500 dark:text-emerald-200">
                   <Landmark className="h-4 w-4" />
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-xs font-black text-white whitespace-nowrap">Todas as contas</span>
+                  <span className="block text-xs font-black text-foreground whitespace-nowrap">Todas as contas</span>
                   <span className="currency mt-0.5 block text-xs font-black text-emerald-300 tabular-nums whitespace-nowrap">{maskCurrency(formatCurrency(accumulatedBalance))}</span>
                 </span>
               </button>
@@ -1270,13 +1270,13 @@ export default function Dashboard() {
                     onClick={() => setAccountFocusId(account.id)}
                     className={cn(
                       'group flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all',
-                      active ? 'bg-white/[0.075] shadow-md shadow-black/20' : 'border-white/10 bg-white/[0.035] hover:bg-white/[0.055]',
+                      active ? 'bg-muted/60 dark:bg-white/[0.075] shadow-md shadow-black/10 dark:shadow-black/20' : 'border-border/50 dark:border-white/10 bg-muted/30 dark:bg-muted/50 dark:bg-white/[0.035] hover:bg-muted/50 dark:hover:bg-white/[0.055]',
                     )}
                     style={active ? { borderColor: colorWithOpacity(brand.color, 0.55), boxShadow: `0 12px 28px -20px ${brand.color}` } : undefined}
                   >
                     <BrandLogoBadge logoUrl={brand.logoUrl} label={account.name} color={brand.color} icon={brand.icon || account.icon} active={active} size="sm" />
                     <span className="min-w-0">
-                      <span className="block truncate text-xs font-black text-white max-w-[120px]">{account.name}</span>
+                      <span className="block truncate text-xs font-black text-foreground max-w-[120px]">{account.name}</span>
                       <span className={cn('currency mt-0.5 block truncate text-xs font-black tabular-nums', accountBalance >= 0 ? 'text-emerald-300' : 'text-red-300')}>
                         {maskCurrency(formatCurrency(accountBalance))}
                       </span>
@@ -1289,12 +1289,14 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <section className="grid gap-2 sm:gap-3 grid-cols-2 sm:grid-cols-3 xl:grid-cols-5">
+      <section className="grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-5">
         <KpiCard label="Saldo total" value={maskCurrency(formatCurrency(balance))} icon={Wallet} color="from-emerald-400/14" trend="neutral" sparklineData={balanceSparkline} delta={null} sub={isGlobalView ? `${activeAccounts.length} contas ativas` : focusLabel} />
         <KpiCard label="Sobra no mês" value={maskCurrency(formatCurrency(monthResult))} icon={PiggyBank} color={monthResult >= 0 ? 'from-emerald-400/14' : 'from-red-400/14'} trend={monthResult >= 0 ? 'up' : 'down'} sparklineData={balanceSparkline} delta={null} sub={`${Math.max(0, savings).toFixed(0)}% de poupança`} />
         <KpiCard label="Receitas" value={maskCurrency(formatCurrency(totalIncome))} icon={TrendingUp} color="from-emerald-400/14" trend="up" sparklineData={incomeSparkline} delta={incomeDelta} deltaInverted={false} sub={deltaCopy(incomeDelta)} />
         <KpiCard label="Despesas" value={maskCurrency(formatCurrency(currentTotalAll))} icon={TrendingDown} color="from-red-400/14" trend="down" sparklineData={expenseSparkline} delta={expenseDelta} deltaInverted={true} sub={deltaCopy(expenseDelta, true)} />
-        <KpiCard label="Saúde financeira" value={`${healthScore}/100`} icon={Gauge} color={healthScore >= 70 ? 'from-emerald-400/14' : healthScore >= 45 ? 'from-amber-400/14' : 'from-red-400/14'} trend={healthScore >= 70 ? 'up' : healthScore >= 45 ? 'neutral' : 'down'} sub={healthCopy} />
+        <div className="col-span-2 lg:col-span-1">
+          <KpiCard label="Saúde financeira" value={`${healthScore}/100`} icon={Gauge} color={healthScore >= 70 ? 'from-emerald-400/14' : healthScore >= 45 ? 'from-amber-400/14' : 'from-red-400/14'} trend={healthScore >= 70 ? 'up' : healthScore >= 45 ? 'neutral' : 'down'} sub={healthCopy} />
+        </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
@@ -1305,31 +1307,31 @@ export default function Dashboard() {
 
             <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
               <div className="space-y-2">
-                <div className="rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2.5 text-xs sm:text-sm font-semibold text-slate-300">
-                  <span className={monthResult >= 0 ? 'text-emerald-300' : 'text-red-300'}>{monthResult >= 0 ? 'Mês positivo' : 'Mês negativo'}:</span> {monthResult >= 0 ? 'sobra de' : 'déficit de'} {maskCurrency(formatCurrency(Math.abs(monthResult)))}.
+                <div className="rounded-xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.035] px-3 py-2.5 text-xs sm:text-sm font-semibold text-foreground/80">
+                  <span className={monthResult >= 0 ? 'text-emerald-500 dark:text-emerald-300' : 'text-red-500 dark:text-red-300'}>{monthResult >= 0 ? 'Mês positivo' : 'Mês negativo'}:</span> {monthResult >= 0 ? 'sobra de' : 'déficit de'} {maskCurrency(formatCurrency(Math.abs(monthResult)))}.
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2.5">
-                    <p className="text-[10px] font-bold text-slate-500">Poupança</p>
-                    <p className="mt-0.5 text-sm font-black text-white">{Math.max(0, savings).toFixed(0)}% da renda</p>
+                  <div className="rounded-xl border border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.025] px-3 py-2.5">
+                    <p className="text-[10px] font-bold text-muted-foreground">Poupança</p>
+                    <p className="mt-0.5 text-sm font-black text-foreground">{Math.max(0, savings).toFixed(0)}% da renda</p>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2.5">
-                    <p className="text-[10px] font-bold text-slate-500">Receitas</p>
-                    <p className="mt-0.5 text-sm font-black text-emerald-300">{deltaCopy(incomeDelta)}</p>
+                  <div className="rounded-xl border border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.025] px-3 py-2.5">
+                    <p className="text-[10px] font-bold text-muted-foreground">Receitas</p>
+                    <p className="mt-0.5 text-sm font-black text-emerald-600 dark:text-emerald-300">{deltaCopy(incomeDelta)}</p>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2.5">
-                    <p className="text-[10px] font-bold text-slate-500">Despesas</p>
-                    <p className="mt-0.5 text-sm font-black text-red-300">{deltaCopy(expenseDelta, true)}</p>
+                  <div className="rounded-xl border border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.025] px-3 py-2.5">
+                    <p className="text-[10px] font-bold text-muted-foreground">Despesas</p>
+                    <p className="mt-0.5 text-sm font-black text-red-600 dark:text-red-300">{deltaCopy(expenseDelta, true)}</p>
                   </div>
                   <button onClick={() => window.location.href = '/cartoes'} className="rounded-xl border border-sky-300/20 bg-sky-400/10 px-3 py-2.5 text-left transition-colors hover:bg-sky-400/15">
-                    <p className="text-[10px] font-bold text-sky-200/70">Cartões</p>
-                    <p className="mt-0.5 text-sm font-black text-sky-200">{maskCurrency(formatCurrency(unpaidCCTotal))}</p>
+                    <p className="text-[10px] font-bold text-sky-600/80 dark:text-sky-200/70">Cartões</p>
+                    <p className="mt-0.5 text-sm font-black text-sky-600 dark:text-sky-200">{maskCurrency(formatCurrency(unpaidCCTotal))}</p>
                   </button>
                 </div>
               </div>
 
               {/* Health gauge — visible only on sm+ */}
-              <div className="hidden sm:flex mx-auto h-36 w-36 items-center justify-center rounded-full border border-white/10 bg-white/[0.025] p-3 shadow-inner">
+              <div className="hidden sm:flex mx-auto h-36 w-36 items-center justify-center rounded-full border border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.025] p-3 shadow-inner">
                 <div className="relative flex h-28 w-28 items-center justify-center rounded-full" style={{ background: `conic-gradient(${healthColor} ${healthScore * 3.6}deg, rgba(255,255,255,0.08) 0deg)` }}>
                   <div className="flex h-22 w-22 flex-col items-center justify-center rounded-full bg-[#0b101a] text-center shadow-xl shadow-black/40" style={{ width: '4.8rem', height: '4.8rem' }}>
                     <p className="text-2xl font-black text-white leading-none">{healthScore}</p>
@@ -1341,8 +1343,8 @@ export default function Dashboard() {
             </div>
 
             {/* Health score row on mobile */}
-            <div className="flex sm:hidden items-center gap-3 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2.5">
-              <div className="h-2 flex-1 rounded-full bg-white/10">
+            <div className="flex sm:hidden items-center gap-3 rounded-xl border border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.025] px-3 py-2.5">
+              <div className="h-2 flex-1 rounded-full bg-border/60">
                 <div className="h-full rounded-full transition-all" style={{ width: `${healthScore}%`, backgroundColor: healthColor }} />
               </div>
               <span className="text-sm font-black shrink-0" style={{ color: healthColor }}>{healthScore}/100 · {healthCopy}</span>
@@ -1360,12 +1362,12 @@ export default function Dashboard() {
               <p className="mt-0.5 text-xs font-semibold text-slate-400">por dia restante</p>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
-              <div className="mb-2 flex flex-wrap justify-between gap-1 text-[10px] sm:text-xs font-bold text-slate-400">
+            <div className="rounded-xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.035] p-3">
+              <div className="mb-2 flex flex-wrap justify-between gap-1 text-[10px] sm:text-xs font-bold text-muted-foreground">
                 <span>{maskCurrency(formatCurrency(allowance.remainingBudget))} restantes</span>
                 <span>{daysLeft} dias até o fim</span>
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div className="h-1.5 overflow-hidden rounded-full bg-border/50 dark:bg-white/10">
                 <div className="h-full rounded-full bg-gradient-to-r from-amber-300 to-orange-400" style={{ width: `${Math.min(100, (currentTotalAll / totalBudget) * 100)}%` }} />
               </div>
             </div>
@@ -1399,13 +1401,13 @@ export default function Dashboard() {
             const Icon = item.icon;
             const toneClass = item.tone === 'success' ? 'text-emerald-300 bg-emerald-400/10 border-emerald-300/20' : item.tone === 'danger' ? 'text-red-300 bg-red-400/10 border-red-300/20' : item.tone === 'info' ? 'text-sky-300 bg-sky-400/10 border-sky-300/20' : 'text-amber-300 bg-amber-400/10 border-amber-300/20';
             return (
-              <button key={item.title} onClick={() => { window.location.href = item.href; }} className="group flex items-center gap-3 rounded-xl border border-white/10 bg-[#0b101a]/85 p-3 text-left shadow-sm transition-all hover:border-white/20">
+              <button key={item.title} onClick={() => { window.location.href = item.href; }} className="group flex items-center gap-3 rounded-xl border border-border/60 dark:border-white/10 bg-card dark:bg-[#0b101a]/85 p-3 text-left shadow-sm transition-all hover:border-border dark:hover:border-white/20">
                 <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border', toneClass)}>
                   <Icon className="h-4 w-4" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-xs font-black text-white">{item.title}</span>
-                  <span className="mt-0.5 block truncate text-xs font-bold text-slate-400">{item.value}</span>
+                  <span className="block truncate text-xs font-black text-foreground">{item.title}</span>
+                  <span className="mt-0.5 block truncate text-xs font-bold text-muted-foreground">{item.value}</span>
                 </span>
                 <ChevronRight className="h-3.5 w-3.5 text-slate-600 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-300 shrink-0" />
               </button>
@@ -1436,7 +1438,7 @@ export default function Dashboard() {
               </span>
             </div>
           </div>
-          <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#050810]/90 p-3 shadow-inner shadow-black/40">
+          <div className="relative overflow-hidden rounded-2xl border border-border/40 dark:border-white/[0.08] bg-muted/40 dark:bg-[#050810]/90 p-3 shadow-inner shadow-black/10 dark:shadow-black/40">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(16,185,129,0.09),transparent_50%),radial-gradient(ellipse_at_bottom_right,rgba(56,189,248,0.07),transparent_50%)]" />
             <div className="relative h-[260px] sm:h-[290px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -1504,7 +1506,7 @@ export default function Dashboard() {
             </ResponsiveContainer>
           </div>
           </div>
-          <div className="relative mt-3 flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-slate-400">
+          <div className="relative mt-3 flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-muted-foreground">
             <div className="flex flex-wrap gap-3">
               <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Receitas</span>
               <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-400" /> Despesas</span>
@@ -1526,7 +1528,7 @@ export default function Dashboard() {
                   <SectionHeader title="Ritmo semanal" subtitle={`${weeklyFlowData.length} semanas · distribuição de entradas e saídas`} icon={BarChart3} iconColor="text-cyan-300" />
                 </div>
 
-                <div className="h-[170px] sm:h-[210px] rounded-2xl border border-white/[0.06] bg-[#050810]/80 p-3 shadow-inner shadow-black/30">
+                <div className="h-[170px] sm:h-[210px] rounded-2xl border border-border/40 dark:border-white/[0.06] bg-muted/40 dark:bg-[#050810]/80 p-3 shadow-inner shadow-black/10 dark:shadow-black/30">
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={weeklyFlowData} margin={{ top: 12, right: 8, left: -14, bottom: 0 }} barGap={4} barCategoryGap="25%">
                       <defs>
@@ -1571,19 +1573,19 @@ export default function Dashboard() {
               </div>
 
               <div className="grid gap-2 grid-cols-3 lg:grid-cols-1">
-                <div className="rounded-xl border border-white/10 bg-white/[0.035] p-2.5 sm:p-3">
+                <div className="rounded-xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.035] p-2.5 sm:p-3">
                   <p className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500">Melhor</p>
-                  <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-black text-white">{weeklyFlowSummary.bestWeek?.week ?? '-'}</p>
+                  <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-black text-foreground">{weeklyFlowSummary.bestWeek?.week ?? '-'}</p>
                   <p className={cn('currency text-[10px] sm:text-xs font-black truncate', (weeklyFlowSummary.bestWeek?.balance ?? 0) >= 0 ? 'text-emerald-300' : 'text-rose-300')}>
                     {maskCurrency(formatCurrency(weeklyFlowSummary.bestWeek?.balance ?? 0))}
                   </p>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.035] p-2.5 sm:p-3">
+                <div className="rounded-xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.035] p-2.5 sm:p-3">
                   <p className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500">+ pesada</p>
-                  <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-black text-white">{weeklyFlowSummary.heaviestWeek?.week ?? '-'}</p>
+                  <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-black text-foreground">{weeklyFlowSummary.heaviestWeek?.week ?? '-'}</p>
                   <p className="currency text-[10px] sm:text-xs font-black text-rose-300 truncate">{maskCurrency(formatCurrency(weeklyFlowSummary.heaviestWeek?.expenses ?? 0))}</p>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.035] p-2.5 sm:p-3">
+                <div className="rounded-xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.035] p-2.5 sm:p-3">
                   <p className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500">Média/sem</p>
                   <p className="currency mt-0.5 sm:mt-1 text-[10px] sm:text-xs font-black text-cyan-200 truncate">{maskCurrency(formatCurrency(weeklyFlowSummary.averageExpense))}</p>
                   <p className="text-[10px] font-semibold text-slate-600 hidden sm:block">por semana</p>
@@ -1600,10 +1602,10 @@ export default function Dashboard() {
             </div>
             <div className="space-y-2">
               {recentActivity.map((tx) => (
-                <div key={tx.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2.5">
+                <div key={tx.id} className="flex items-center gap-3 rounded-xl border border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.025] px-3 py-2.5">
                   <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm', tx.type === 'income' ? 'bg-emerald-400/10 text-emerald-300' : 'bg-red-400/10 text-red-300')}>{tx.icon}</span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-black text-white">{tx.description}</p>
+                    <p className="truncate text-xs font-black text-foreground">{tx.description}</p>
                     <p className="mt-0.5 text-[10px] font-semibold text-slate-500">{formatDate(tx.date)} · {tx.label}</p>
                   </div>
                   <p className={cn('currency shrink-0 text-xs font-black tabular-nums', tx.type === 'income' ? 'text-emerald-300' : 'text-red-300')}>
@@ -1627,7 +1629,7 @@ export default function Dashboard() {
                       <span className="truncate text-slate-300">{cat.icon} {cat.name}</span>
                       <span className="shrink-0 text-slate-500">{pct.toFixed(0)}% · {maskCurrency(formatCurrency(cat.value))}</span>
                     </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-border/50 dark:bg-white/10">
                       <div className="h-full rounded-full bg-gradient-to-r from-emerald-300 to-sky-400" style={{ width: `${Math.min(100, pct)}%` }} />
                     </div>
                   </div>
@@ -1647,21 +1649,21 @@ export default function Dashboard() {
             </div>
             <div className="space-y-2">
               {topExpenses.length === 0 ? (
-                <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3 text-xs font-semibold text-slate-500">Nenhuma despesa neste mês.</div>
+                <div className="rounded-xl border border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.025] p-3 text-xs font-semibold text-muted-foreground">Nenhuma despesa neste mês.</div>
               ) : topExpenses.map((item, index) => {
                 const cat = categories.find(c => c.id === item.category_id);
                 const pct = currentTotalAll > 0 ? (item.amount / currentTotalAll) * 100 : 0;
                 return (
-                  <div key={`${item.kind}-${item.id}`} className="group rounded-xl border border-white/10 bg-white/[0.025] p-2.5 transition-all hover:border-rose-300/25 hover:bg-rose-400/[0.04]">
+                  <div key={`${item.kind}-${item.id}`} className="group rounded-xl border border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.025] p-2.5 transition-all hover:border-rose-300/25 hover:bg-rose-400/[0.04]">
                     <div className="flex items-center gap-2.5">
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-rose-300/15 bg-rose-400/10 text-[10px] font-black text-rose-200">#{index + 1}</span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-black text-white">{item.description}</p>
+                        <p className="truncate text-xs font-black text-foreground">{item.description}</p>
                         <p className="mt-0.5 text-[10px] font-semibold text-slate-500">{formatDate(item.date)} · {cat?.icon} {cat?.name || 'Sem cat.'}</p>
                       </div>
                       <p className="currency shrink-0 text-xs font-black text-rose-200">{maskCurrency(formatCurrency(item.amount))}</p>
                     </div>
-                    <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/10">
+                    <div className="mt-2 h-1 overflow-hidden rounded-full bg-border/50 dark:bg-white/10">
                       <div className="h-full rounded-full bg-gradient-to-r from-rose-300 to-red-500" style={{ width: `${Math.min(100, pct)}%` }} />
                     </div>
                   </div>
@@ -1679,20 +1681,20 @@ export default function Dashboard() {
             </div>
             <div className="space-y-2">
               {topIncomes.length === 0 ? (
-                <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3 text-xs font-semibold text-slate-500">Nenhuma receita neste mês.</div>
+                <div className="rounded-xl border border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.025] p-3 text-xs font-semibold text-muted-foreground">Nenhuma receita neste mês.</div>
               ) : topIncomes.map((item, index) => {
                 const pct = totalIncome > 0 ? (Number(item.amount) / totalIncome) * 100 : 0;
                 return (
-                  <div key={item.id} className="group rounded-xl border border-white/10 bg-white/[0.025] p-2.5 transition-all hover:border-emerald-300/25 hover:bg-emerald-400/[0.04]">
+                  <div key={item.id} className="group rounded-xl border border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.025] p-2.5 transition-all hover:border-emerald-300/25 hover:bg-emerald-400/[0.04]">
                     <div className="flex items-center gap-2.5">
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-emerald-300/15 bg-emerald-400/10 text-[10px] font-black text-emerald-200">#{index + 1}</span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-black text-white">{item.description || 'Receita'}</p>
+                        <p className="truncate text-xs font-black text-foreground">{item.description || 'Receita'}</p>
                         <p className="mt-0.5 text-[10px] font-semibold text-slate-500">{formatDate(item.date)} · {item.status || 'concluido'}</p>
                       </div>
                       <p className="currency shrink-0 text-xs font-black text-emerald-200">{maskCurrency(formatCurrency(Number(item.amount)))}</p>
                     </div>
-                    <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/10">
+                    <div className="mt-2 h-1 overflow-hidden rounded-full bg-border/50 dark:bg-white/10">
                       <div className="h-full rounded-full bg-gradient-to-r from-emerald-300 to-teal-400" style={{ width: `${Math.min(100, pct)}%` }} />
                     </div>
                   </div>
@@ -1708,7 +1710,7 @@ export default function Dashboard() {
             <div className="mb-3">
               <SectionHeader title="Mês atual vs anterior" subtitle="3 métricas comparadas" icon={BarChart3} iconColor="text-sky-300" />
             </div>
-            <div className="rounded-2xl border border-white/[0.06] bg-[#050810]/80 p-3 shadow-inner shadow-black/30 h-[185px] sm:h-[235px]">
+            <div className="rounded-2xl border border-border/40 dark:border-white/[0.06] bg-muted/40 dark:bg-[#050810]/80 p-3 shadow-inner shadow-black/10 dark:shadow-black/30 h-[185px] sm:h-[235px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={monthCompareData} margin={{ top: 10, right: 4, left: -20, bottom: 0 }} barGap={5} barCategoryGap="30%">
                   <CartesianGrid stroke="rgba(148,163,184,0.06)" strokeDasharray="3 8" vertical={false} />
@@ -1734,7 +1736,7 @@ export default function Dashboard() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-3 flex flex-wrap gap-3 text-[10px] font-bold text-slate-500">
+            <div className="mt-3 flex flex-wrap gap-3 text-[10px] font-bold text-muted-foreground">
               <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-slate-600/60" /> Mês anterior</span>
               <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-emerald-400/80" /> Mês atual</span>
             </div>
@@ -1770,7 +1772,7 @@ export default function Dashboard() {
             <div className="flex flex-col items-center justify-center py-10 text-center gap-3">
               <Trophy className="h-10 w-10 text-slate-700" />
               <div>
-                <p className="text-xs font-semibold text-slate-500">Sem orçamentos definidos</p>
+                <p className="text-xs font-semibold text-muted-foreground">Sem orçamentos definidos</p>
                 <p className="text-[11px] text-slate-600 mt-1">Defina metas nas <a href="/categorias" className="text-emerald-400 hover:underline">categorias</a> para acompanhar aqui</p>
               </div>
             </div>
@@ -1781,7 +1783,7 @@ export default function Dashboard() {
           <div className="mb-4">
             <SectionHeader title="Mapa de calor" subtitle={monthTitleCapitalized} icon={CalendarRange} iconColor="text-orange-300" />
           </div>
-          <div className="rounded-2xl border border-white/[0.06] bg-[#050810]/80 p-3.5">
+          <div className="rounded-2xl border border-border/40 dark:border-white/[0.06] bg-muted/40 dark:bg-[#050810]/80 p-3.5">
             <WeeklyHeatmap month={currentMonthDate} data={scopedExpenseHeatmapData} />
           </div>
         </PremiumCard>
@@ -1794,14 +1796,14 @@ export default function Dashboard() {
           </div>
           <div className="space-y-3">
             <div>
-              <div className="mb-1 flex justify-between text-xs font-bold text-slate-400"><span>Avanço do mês</span><span>{monthPace.monthProgress.toFixed(0)}%</span></div>
+              <div className="mb-1 flex justify-between text-xs font-bold text-muted-foreground"><span>Avanço do mês</span><span>{monthPace.monthProgress.toFixed(0)}%</span></div>
               <div className="h-1.5 rounded-full bg-white/10"><div className="h-full rounded-full bg-emerald-400" style={{ width: `${monthPace.monthProgress}%` }} /></div>
             </div>
             <div>
-              <div className="mb-1 flex justify-between text-xs font-bold text-slate-400"><span>Gastos do mês</span><span>{monthPace.spendProgress.toFixed(0)}%</span></div>
+              <div className="mb-1 flex justify-between text-xs font-bold text-muted-foreground"><span>Gastos do mês</span><span>{monthPace.spendProgress.toFixed(0)}%</span></div>
               <div className="h-1.5 rounded-full bg-white/10"><div className={cn('h-full rounded-full', monthPace.onTrack ? 'bg-emerald-400' : 'bg-red-400')} style={{ width: `${Math.min(100, monthPace.spendProgress)}%` }} /></div>
             </div>
-            <p className="text-xs font-semibold text-slate-500">{maskCurrency(formatCurrency(currentTotalAll))} de {maskCurrency(formatCurrency(monthPace.totalBudget || currentTotalAll))}</p>
+            <p className="text-xs font-semibold text-muted-foreground">{maskCurrency(formatCurrency(currentTotalAll))} de {maskCurrency(formatCurrency(monthPace.totalBudget || currentTotalAll))}</p>
             <div className="flex flex-wrap gap-1.5">
               <span className={cn('rounded-full px-2.5 py-1 text-[11px] font-black', monthPace.onTrack ? 'bg-emerald-400/10 text-emerald-300' : 'bg-red-400/10 text-red-300')}>{monthPace.onTrack ? 'No ritmo certo' : 'Acima do ritmo'}</span>
               {monthPace.paceVsPrev !== null && <span className="rounded-full bg-white/[0.05] px-2.5 py-1 text-[11px] font-black text-slate-300">{Math.abs(monthPace.paceVsPrev).toFixed(0)}% {monthPace.paceVsPrev > 0 ? 'mais rápido' : 'mais lento'}</span>}
@@ -1819,9 +1821,9 @@ export default function Dashboard() {
             {anomalies.length === 0 && (
               <div className="space-y-3">
                 <SectionHeader title="Gastos atípicos" subtitle="Fora do padrão" icon={AlertTriangle} iconColor="text-amber-300" action={{ label: 'Ver despesas', href: '/despesas' }} />
-                <div className="rounded-xl border border-white/10 bg-white/[0.025] p-4 text-center">
+                <div className="rounded-xl border border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.025] p-4 text-center">
                   <ShieldCheck className="h-8 w-8 text-emerald-300/40 mx-auto mb-2" />
-                  <p className="text-xs font-semibold text-slate-500">Nenhum gasto atípico detectado</p>
+                  <p className="text-xs font-semibold text-muted-foreground">Nenhum gasto atípico detectado</p>
                   <p className="text-[10px] text-slate-600 mt-0.5">Seus gastos estão dentro do padrão</p>
                 </div>
               </div>
@@ -1847,9 +1849,9 @@ export default function Dashboard() {
               {allocationData.map((item) => {
                 const pct = allocationTotal > 0 ? (item.value / allocationTotal) * 100 : 0;
                 return (
-                  <div key={item.name} className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2">
+                  <div key={item.name} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.025] px-3 py-2">
                     <span className="flex items-center gap-1.5 text-xs font-bold text-slate-300"><span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: item.fill }} /> {item.name}</span>
-                    <span className="text-right text-xs font-black text-white">{maskCurrency(formatCurrency(item.value))}<span className="ml-1.5 text-[10px] text-slate-500">{pct.toFixed(0)}%</span></span>
+                    <span className="text-right text-xs font-black text-foreground">{maskCurrency(formatCurrency(item.value))}<span className="ml-1.5 text-[10px] text-slate-500">{pct.toFixed(0)}%</span></span>
                   </div>
                 );
               })}
