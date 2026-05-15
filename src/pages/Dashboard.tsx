@@ -45,6 +45,7 @@ import AnomalyAlerts from '@/components/dashboard/AnomalyAlerts';
 import PixCounters from '@/components/dashboard/PixCounters';
 import StickySummaryBar from '@/components/dashboard/StickySummaryBar';
 import SixMonthStack from '@/components/dashboard/SixMonthStack';
+import SectionHeader from '@/components/dashboard/SectionHeader';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 /** Safe wrapper: runs an analytics fn and returns a fallback if it throws. */
@@ -1286,41 +1287,18 @@ export default function Dashboard() {
       </section>
 
       <section className="grid gap-3 grid-cols-2 sm:grid-cols-3 xl:grid-cols-5">
-        {kpiCards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <PremiumCard key={card.label} className={cn('relative overflow-hidden bg-gradient-to-br to-[#0b101a] p-3 sm:p-4', card.accent)}>
-              <div className="absolute -right-8 -top-10 h-24 w-24 rounded-full bg-white/5 blur-2xl" />
-              <div className="relative flex h-full flex-col justify-between gap-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 leading-tight">{card.label}</p>
-                  <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.045]', card.tone)}>
-                    <Icon className="h-3.5 w-3.5" />
-                  </span>
-                </div>
-                <div>
-                  <p className={cn('currency truncate text-base sm:text-lg font-black tracking-tight tabular-nums', card.tone)}>{card.value}</p>
-                  <p className="mt-0.5 text-[10px] sm:text-xs font-semibold text-slate-500 truncate">{card.sub}</p>
-                </div>
-              </div>
-            </PremiumCard>
-          );
-        })}
+        <KpiCard label="Saldo total" value={maskCurrency(formatCurrency(balance))} icon={Wallet} color="from-emerald-400/14" trend="neutral" sparklineData={balanceSparkline} delta={null} sub={isGlobalView ? `${activeAccounts.length} contas ativas` : focusLabel} />
+        <KpiCard label="Sobra no mês" value={maskCurrency(formatCurrency(monthResult))} icon={PiggyBank} color={monthResult >= 0 ? 'from-emerald-400/14' : 'from-red-400/14'} trend={monthResult >= 0 ? 'up' : 'down'} sparklineData={balanceSparkline} delta={null} sub={`${Math.max(0, savings).toFixed(0)}% de poupança`} />
+        <KpiCard label="Receitas" value={maskCurrency(formatCurrency(totalIncome))} icon={TrendingUp} color="from-emerald-400/14" trend="up" sparklineData={incomeSparkline} delta={incomeDelta} deltaInverted={false} sub={deltaCopy(incomeDelta)} />
+        <KpiCard label="Despesas" value={maskCurrency(formatCurrency(currentTotalAll))} icon={TrendingDown} color="from-red-400/14" trend="down" sparklineData={expenseSparkline} delta={expenseDelta} deltaInverted={true} sub={deltaCopy(expenseDelta, true)} />
+        <KpiCard label="Saúde financeira" value={`${healthScore}/100`} icon={Gauge} color={healthScore >= 70 ? 'from-emerald-400/14' : healthScore >= 45 ? 'from-amber-400/14' : 'from-red-400/14'} trend={healthScore >= 70 ? 'up' : healthScore >= 45 ? 'neutral' : 'down'} sub={healthCopy} />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
         <PremiumCard className="relative overflow-hidden p-4 sm:p-5">
           <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-emerald-400/10 blur-3xl" />
           <div className="relative space-y-4">
-            <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-300/20 bg-emerald-400/10 text-emerald-200">
-                <BrainCircuit className="h-4 w-4" />
-              </span>
-              <div>
-                <h2 className="text-base font-black text-white">Resumo inteligente</h2>
-                <p className="text-xs text-slate-500">Diagnóstico rápido do mês.</p>
-              </div>
-            </div>
+            <SectionHeader title="Resumo inteligente" subtitle="Diagnóstico rápido do mês." icon={BrainCircuit} iconColor="text-emerald-300" />
 
             <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
               <div className="space-y-2">
@@ -1372,15 +1350,7 @@ export default function Dashboard() {
         <PremiumCard className="relative overflow-hidden p-4 sm:p-5">
           <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-amber-400/12 blur-3xl" />
           <div className="relative space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-black text-white">Allowance diária</h2>
-                <p className="text-xs text-slate-500">Quanto ainda dá gastar por dia.</p>
-              </div>
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-300/20 bg-amber-400/10 text-amber-200">
-                <Target className="h-4 w-4" />
-              </span>
-            </div>
+            <SectionHeader title="Allowance diária" subtitle="Quanto ainda dá gastar por dia." icon={Target} iconColor="text-amber-300" />
 
             <div>
               <p className="currency text-2xl sm:text-3xl font-black text-amber-200 tabular-nums">{maskCurrency(formatCurrency(allowance.perDayAllowance))}</p>
@@ -1407,11 +1377,20 @@ export default function Dashboard() {
         </PremiumCard>
       </section>
 
+      <ErrorBoundary fallback={null} label="BurnRate">
+        <BurnRateChart
+          points={burnRate.points}
+          projectedTotal={burnRate.projectedTotal}
+          willOverrun={burnRate.willOverrun}
+          monthBudget={monthPace.totalBudget}
+          todaySpent={todaySpent}
+          dayOfMonth={monthPace.dayOfMonth}
+          maskCurrency={maskCurrency}
+        />
+      </ErrorBoundary>
+
       <section className="space-y-2.5">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-black text-white">O que merece atenção</h2>
-          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-600">Prioridades</span>
-        </div>
+        <SectionHeader title="O que merece atenção" subtitle="Prioridades do mês" icon={BellRing} iconColor="text-amber-300" />
         <div className="grid gap-2.5 grid-cols-1 min-[420px]:grid-cols-2 xl:grid-cols-4">
           {attentionCards.map((item) => {
             const Icon = item.icon;
@@ -1439,8 +1418,7 @@ export default function Dashboard() {
           <div className="pointer-events-none absolute -right-20 top-10 h-64 w-64 rounded-full bg-sky-400/10 blur-3xl" />
           <div className="relative mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <h2 className="text-base font-black text-white">Evolução financeira</h2>
-              <p className="mt-0.5 text-xs text-slate-500">Receitas, despesas e saldo nos últimos meses.</p>
+              <SectionHeader title="Evolução financeira" subtitle="Receitas, despesas e saldo nos últimos meses." icon={BarChart3} iconColor="text-sky-300" />
             </div>
             <div className="flex flex-wrap gap-2">
               <span className="rounded-xl border border-emerald-300/15 bg-emerald-400/[0.07] px-2.5 py-1.5">
@@ -1542,14 +1520,8 @@ export default function Dashboard() {
             <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-cyan-400/10 blur-3xl" />
             <div className="relative grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px]">
               <div className="min-w-0">
-                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h2 className="text-base font-black text-white">Ritmo semanal</h2>
-                    <p className="text-xs text-slate-500">Como entradas e saídas se distribuem no mês.</p>
-                  </div>
-                  <span className="w-fit rounded-full border border-cyan-300/15 bg-cyan-400/[0.07] px-2.5 py-1 text-[11px] font-black text-cyan-200">
-                    {weeklyFlowData.length} semanas
-                  </span>
+                <div className="mb-3">
+                  <SectionHeader title="Ritmo semanal" subtitle={`${weeklyFlowData.length} semanas · distribuição de entradas e saídas`} icon={BarChart3} iconColor="text-cyan-300" />
                 </div>
 
                 <div className="h-[190px] rounded-xl border border-white/10 bg-[#070b12]/75 p-2.5">
@@ -1615,9 +1587,8 @@ export default function Dashboard() {
 
         <div className="space-y-4">
           <PremiumCard className="p-4 sm:p-5">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-base font-black text-white">Transações recentes</h2>
-              <a href="/relatorio" className="text-xs font-black text-emerald-300 hover:underline">Ver todas</a>
+            <div className="mb-3">
+              <SectionHeader title="Transações recentes" icon={Clock} iconColor="text-sky-300" action={{ label: 'Ver todas', href: '/relatorio' }} />
             </div>
             <div className="space-y-2">
               {recentActivity.map((tx) => (
@@ -1636,9 +1607,8 @@ export default function Dashboard() {
           </PremiumCard>
 
           <PremiumCard className="p-4 sm:p-5">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-base font-black text-white">Categorias principais</h2>
-              <a href="/categorias" className="text-xs font-black text-emerald-300 hover:underline">Ver todas</a>
+            <div className="mb-3">
+              <SectionHeader title="Categorias principais" icon={Target} iconColor="text-emerald-300" action={{ label: 'Ver todas', href: '/categorias' }} />
             </div>
             <div className="space-y-3">
               {catBreakdown.slice(0, 5).map((cat) => {
@@ -1664,12 +1634,8 @@ export default function Dashboard() {
         <PremiumCard className="relative overflow-hidden p-4 sm:p-5">
           <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-rose-400/10 blur-3xl" />
           <div className="relative">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-rose-200/70">Ranking</p>
-                <h2 className="text-base font-black text-white">Top 5 despesas</h2>
-              </div>
-              <a href="/despesas" className="text-xs font-black text-rose-200 hover:underline">Ver todas</a>
+            <div className="mb-3">
+              <SectionHeader title="Top 5 despesas" subtitle="Maiores do mês" icon={TrendingDown} iconColor="text-rose-300" action={{ label: 'Ver todas', href: '/despesas' }} />
             </div>
             <div className="space-y-2">
               {topExpenses.length === 0 ? (
@@ -1700,12 +1666,8 @@ export default function Dashboard() {
         <PremiumCard className="relative overflow-hidden p-4 sm:p-5">
           <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-emerald-400/10 blur-3xl" />
           <div className="relative">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200/70">Ranking</p>
-                <h2 className="text-base font-black text-white">Top 5 receitas</h2>
-              </div>
-              <a href="/receitas" className="text-xs font-black text-emerald-200 hover:underline">Ver todas</a>
+            <div className="mb-3">
+              <SectionHeader title="Top 5 receitas" subtitle="Maiores do mês" icon={TrendingUp} iconColor="text-emerald-300" action={{ label: 'Ver todas', href: '/receitas' }} />
             </div>
             <div className="space-y-2">
               {topIncomes.length === 0 ? (
@@ -1735,12 +1697,8 @@ export default function Dashboard() {
         <PremiumCard className="relative overflow-hidden p-4 sm:p-5 md:col-span-2 xl:col-span-1">
           <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-blue-400/10 blur-3xl" />
           <div className="relative">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-sky-200/70">Comparativo</p>
-                <h2 className="text-base font-black text-white">Mês atual vs anterior</h2>
-              </div>
-              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-black text-slate-300">3 métricas</span>
+            <div className="mb-3">
+              <SectionHeader title="Mês atual vs anterior" subtitle="3 métricas comparadas" icon={BarChart3} iconColor="text-sky-300" />
             </div>
             <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -1778,12 +1736,8 @@ export default function Dashboard() {
 
       <section className="grid gap-4 lg:grid-cols-2">
         <PremiumCard className="p-4 sm:p-5">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200/70">Orçamento</p>
-              <h2 className="text-base font-black text-white">Metas por categoria</h2>
-            </div>
-            <a href="/categorias" className="text-xs font-black text-emerald-300 hover:underline">Ajustar</a>
+          <div className="mb-3">
+            <SectionHeader title="Metas por categoria" subtitle="Orçamento vs. real" icon={Trophy} iconColor="text-emerald-300" action={{ label: 'Ajustar', href: '/categorias' }} />
           </div>
           {budgetsWithData.length > 0 ? (
             <BudgetRings budgets={budgetsWithData.slice(0, 5)} size={144} />
@@ -1793,12 +1747,8 @@ export default function Dashboard() {
         </PremiumCard>
 
         <PremiumCard className="p-4 sm:p-5">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange-200/70">Calendário</p>
-              <h2 className="text-base font-black text-white">Mapa de calor</h2>
-            </div>
-            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-black text-slate-300">{monthTitleCapitalized}</span>
+          <div className="mb-3">
+            <SectionHeader title="Mapa de calor" subtitle={monthTitleCapitalized} icon={CalendarRange} iconColor="text-orange-300" />
           </div>
           <div className="rounded-xl border border-white/10 bg-[#070b12]/75 p-3">
             <WeeklyHeatmap month={currentMonthDate} data={scopedExpenseHeatmapData} />
@@ -1808,12 +1758,8 @@ export default function Dashboard() {
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <PremiumCard className="p-4 sm:p-5">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-black text-white">Visão do mês</h2>
-              <p className="text-xs text-slate-500">Dia {monthPace.dayOfMonth} de {monthPace.lastDayOfMonth}</p>
-            </div>
-            <Activity className="h-4 w-4 text-emerald-300 shrink-0" />
+          <div className="mb-3">
+            <SectionHeader title="Visão do mês" subtitle={`Dia ${monthPace.dayOfMonth} de ${monthPace.lastDayOfMonth}`} icon={Activity} iconColor="text-emerald-300" />
           </div>
           <div className="space-y-3">
             <div>
@@ -1833,36 +1779,28 @@ export default function Dashboard() {
         </PremiumCard>
 
         <PremiumCard className="p-4 sm:p-5">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-black text-white">Gastos atípicos</h2>
-              <p className="text-xs text-slate-500">Fora do padrão</p>
-            </div>
-            <a href="/despesas" className="text-xs font-black text-emerald-300 hover:underline">Ver todas</a>
-          </div>
-          <div className="space-y-2">
-            {atypicalRows.map((row) => (
-              <div key={row.id} className="rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2.5">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-black text-white">{row.description}</p>
-                    <p className="mt-0.5 text-[10px] font-semibold text-slate-500">{formatDate(row.date)} · {row.category}</p>
-                  </div>
-                  <span className="rounded-full bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-black text-amber-300 shrink-0">{row.badge}</span>
+          <ErrorBoundary fallback={null} label="AnomalyAlerts">
+            <AnomalyAlerts
+              anomalies={anomalies}
+              categories={categories.map(c => ({ id: c.id, name: c.name, icon: c.icon || '📊' }))}
+              maskCurrency={maskCurrency}
+            />
+            {anomalies.length === 0 && (
+              <div className="space-y-3">
+                <SectionHeader title="Gastos atípicos" subtitle="Fora do padrão" icon={AlertTriangle} iconColor="text-amber-300" action={{ label: 'Ver despesas', href: '/despesas' }} />
+                <div className="rounded-xl border border-white/10 bg-white/[0.025] p-4 text-center">
+                  <ShieldCheck className="h-8 w-8 text-emerald-300/40 mx-auto mb-2" />
+                  <p className="text-xs font-semibold text-slate-500">Nenhum gasto atípico detectado</p>
+                  <p className="text-[10px] text-slate-600 mt-0.5">Seus gastos estão dentro do padrão</p>
                 </div>
-                <p className="currency mt-1.5 text-xs font-black text-red-300">{maskCurrency(formatCurrency(row.amount))}</p>
               </div>
-            ))}
-          </div>
+            )}
+          </ErrorBoundary>
         </PremiumCard>
 
         <PremiumCard className="p-4 sm:p-5 sm:col-span-2 xl:col-span-1">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-black text-white">Alocação</h2>
-              <p className="text-xs text-slate-500">Contas vs investimentos</p>
-            </div>
-            <a href="/investimentos" className="text-xs font-black text-emerald-300 hover:underline">Detalhes</a>
+          <div className="mb-3">
+            <SectionHeader title="Alocação" subtitle="Contas vs investimentos" icon={Landmark} iconColor="text-violet-300" action={{ label: 'Detalhes', href: '/investimentos' }} />
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center xl:flex-col">
             <div className="h-[120px] w-full sm:w-[120px] sm:shrink-0 xl:w-full xl:h-[130px]">
@@ -1891,6 +1829,44 @@ export default function Dashboard() {
           </div>
         </PremiumCard>
       </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <ErrorBoundary fallback={null} label="TopCategoriesDelta">
+          <PremiumCard className="p-4 sm:p-5">
+            <TopCategoriesDelta
+              deltas={categoryDeltas}
+              categories={categories}
+              maskCurrency={maskCurrency}
+              limit={5}
+            />
+          </PremiumCard>
+        </ErrorBoundary>
+
+        <ErrorBoundary fallback={null} label="RecurringExpenses">
+          <PremiumCard className="p-4 sm:p-5">
+            <RecurringExpenses
+              recurring={recurring}
+              categories={categories.map(c => ({ id: c.id, name: c.name, icon: c.icon || '🔁' }))}
+              maskCurrency={maskCurrency}
+              limit={6}
+            />
+          </PremiumCard>
+        </ErrorBoundary>
+      </section>
+
+      {pixCounterparties.length > 0 && (
+        <ErrorBoundary fallback={null} label="PixCounters">
+          <PremiumCard className="p-4 sm:p-5">
+            <PixCounters
+              counterparties={pixCounterparties}
+              maskCurrency={maskCurrency}
+              maskText={maskText}
+              isVisible={isVisible}
+              limit={5}
+            />
+          </PremiumCard>
+        </ErrorBoundary>
+      )}
 
       {orphanExpensesTotal > 0 && (
         <button onClick={() => setOrphanFixOpen(true)} className="flex w-full items-center gap-3 rounded-xl border border-amber-300/20 bg-amber-400/[0.06] px-3 py-3 text-left transition-colors hover:bg-amber-400/10">
