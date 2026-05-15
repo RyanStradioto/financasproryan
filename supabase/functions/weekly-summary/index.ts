@@ -61,8 +61,9 @@ function decodeJwtPayload(token: string | null): Record<string, unknown> | null 
   } catch { return null; }
 }
 
-interface CatItem   { name: string; icon: string; value: number; budget: number; }
-interface TxItem    { description: string; amount: number; category: string; date: string; }
+interface CatItem      { name: string; icon: string; value: number; budget: number; }
+interface TxItem       { description: string; amount: number; category: string; date: string; }
+interface AccountItem  { name: string; icon: string; income: number; expenses: number; net: number; }
 
 function dayLabel(dateStr: string): string {
   const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
@@ -135,6 +136,9 @@ function buildWeeklyHtml(p: {
   monthToDateExpenses: number;
   categories: CatItem[];
   topExpenses: TxItem[];
+  accounts: AccountItem[];
+  prevWeekIncome: number;
+  prevWeekExpenses: number;
   insights: string[];
   incomeCount: number;
   expenseCount: number;
@@ -152,6 +156,28 @@ function buildWeeklyHtml(p: {
 
   const headerBg   = "linear-gradient(135deg,#081624 0%,#0d2b3d 52%,#063b35 100%)";
   const accentBlue = "#3b82f6";
+
+  // Delta vs semana anterior
+  const incomeDelta = p.prevWeekIncome > 0
+    ? Math.round(((p.totalIncome - p.prevWeekIncome) / p.prevWeekIncome) * 100)
+    : null;
+  const expensesDelta = p.prevWeekExpenses > 0
+    ? Math.round(((p.totalExpenses - p.prevWeekExpenses) / p.prevWeekExpenses) * 100)
+    : null;
+
+  // Account rows
+  const accountRows = p.accounts.slice(0, 6).map((a) => {
+    const netColor = a.net >= 0 ? "#16a34a" : "#dc2626";
+    const netSign = a.net >= 0 ? "+" : "";
+    return `
+      <tr>
+        <td style="padding:9px 0;font-size:14px;color:#1f2937;white-space:nowrap;width:1%;">${a.icon}&nbsp;</td>
+        <td style="padding:9px 8px 9px 2px;font-size:13px;color:#1f2937;font-weight:600;">${a.name}</td>
+        <td style="padding:9px 8px;font-size:12px;color:#15803d;text-align:right;white-space:nowrap;">${a.income > 0 ? "+" + fmt(a.income) : "—"}</td>
+        <td style="padding:9px 8px;font-size:12px;color:#dc2626;text-align:right;white-space:nowrap;">${a.expenses > 0 ? "−" + fmt(a.expenses) : "—"}</td>
+        <td style="padding:9px 0 9px 8px;font-size:13px;font-weight:700;color:${netColor};text-align:right;white-space:nowrap;">${netSign}${fmt(a.net)}</td>
+      </tr>`;
+  }).join("");
 
   /* Category rows */
   const catRows = p.categories.slice(0, 6).map((c) => {
@@ -306,6 +332,48 @@ function buildWeeklyHtml(p: {
             ${fmt(p.totalExpenses)} de ${fmt(p.totalIncome)} recebidos esta semana
           </div>
         </div>
+      </td>
+    </tr>` : ""}
+
+    <!-- vs SEMANA ANTERIOR -->
+    ${(incomeDelta !== null || expensesDelta !== null) ? `
+    <tr>
+      <td style="background:#ffffff;padding:0 28px 20px;">
+        <div style="background:#fafafa;border:1px solid #e5e7eb;border-radius:10px;padding:12px 16px;">
+          <div style="font-size:11px;color:#64748b;text-transform:uppercase;font-weight:700;letter-spacing:1px;margin-bottom:8px;">vs. Semana anterior</div>
+          <table width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td style="font-size:12px;color:#374151;">Receitas</td>
+              <td align="right" style="font-size:13px;font-weight:700;color:${(incomeDelta ?? 0) >= 0 ? '#16a34a' : '#dc2626'};">
+                ${incomeDelta !== null ? fmtPct(incomeDelta) : "—"}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding-top:4px;font-size:12px;color:#374151;">Despesas</td>
+              <td align="right" style="padding-top:4px;font-size:13px;font-weight:700;color:${(expensesDelta ?? 0) <= 0 ? '#16a34a' : '#dc2626'};">
+                ${expensesDelta !== null ? fmtPct(expensesDelta) : "—"}
+              </td>
+            </tr>
+          </table>
+        </div>
+      </td>
+    </tr>` : ""}
+
+    <!-- POR CONTA -->
+    ${p.accounts.length > 0 ? `
+    <tr>
+      <td style="background:#ffffff;padding:8px 28px 20px;">
+        <div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:4px;">&#x1F3E6; Movimentação por conta</div>
+        <div style="font-size:12px;color:#94a3b8;margin-bottom:12px;">Receita, despesa e saldo líquido em cada conta esta semana</div>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:10px;overflow:hidden;border:1px solid #e5e7eb;">
+          <tr style="background:#f8fafc;">
+            <th style="padding:8px 12px;font-size:10px;font-weight:700;color:#64748b;text-align:left;text-transform:uppercase;letter-spacing:0.5px;" colspan="2">Conta</th>
+            <th style="padding:8px 8px;font-size:10px;font-weight:700;color:#64748b;text-align:right;text-transform:uppercase;letter-spacing:0.5px;">Entrou</th>
+            <th style="padding:8px 8px;font-size:10px;font-weight:700;color:#64748b;text-align:right;text-transform:uppercase;letter-spacing:0.5px;">Saiu</th>
+            <th style="padding:8px 12px;font-size:10px;font-weight:700;color:#64748b;text-align:right;text-transform:uppercase;letter-spacing:0.5px;">Saldo</th>
+          </tr>
+          ${accountRows}
+        </table>
       </td>
     </tr>` : ""}
 
@@ -467,14 +535,27 @@ Deno.serve(async (req) => {
 
       const monthContext = getCurrentMonthContext(now);
 
-      const [incRes, expRes, catRes, monthExpRes] = await Promise.all([
+      // Janela da semana anterior para comparação
+      const prevRangeEnd = new Date(rangeStart);
+      prevRangeEnd.setUTCDate(prevRangeEnd.getUTCDate() - 1);
+      const prevRangeStart = new Date(prevRangeEnd);
+      prevRangeStart.setUTCDate(prevRangeStart.getUTCDate() - 6);
+      const prevStartDate = prevRangeStart.toISOString().split("T")[0];
+      const prevEndDate = prevRangeEnd.toISOString().split("T")[0];
+
+      const [incRes, expRes, catRes, accRes, monthExpRes, prevIncRes, prevExpRes] = await Promise.all([
         dc.from("income").select("id,amount,date,description,account_id")
           .eq("user_id", profile.user_id).gte("date", startDate).lte("date", endDate),
-        dc.from("expenses").select("id,amount,date,description,category_id,status")
+        dc.from("expenses").select("id,amount,date,description,category_id,account_id,status")
           .eq("user_id", profile.user_id).gte("date", startDate).lte("date", endDate),
         dc.from("categories").select("id,name,icon,monthly_budget").eq("user_id", profile.user_id),
+        dc.from("accounts").select("id,name,icon,archived").eq("user_id", profile.user_id),
         dc.from("expenses").select("id,amount,date")
           .eq("user_id", profile.user_id).gte("date", monthContext.startDate).lte("date", monthContext.endDate),
+        dc.from("income").select("id,amount")
+          .eq("user_id", profile.user_id).gte("date", prevStartDate).lte("date", prevEndDate),
+        dc.from("expenses").select("id,amount")
+          .eq("user_id", profile.user_id).gte("date", prevStartDate).lte("date", prevEndDate),
       ]);
 
       if (incRes.error) throw incRes.error;
@@ -484,7 +565,13 @@ Deno.serve(async (req) => {
       const income     = incRes.data  || [];
       const expenses   = expRes.data  || [];
       const categories = catRes.data  || [];
+      const accounts   = (accRes.data || []).filter((a: Record<string, unknown>) => !a.archived);
       const monthExpenses = monthExpRes.data || [];
+      const prevIncomeData = prevIncRes.data || [];
+      const prevExpensesData = prevExpRes.data || [];
+
+      const prevWeekIncome = prevIncomeData.reduce((s: number, i: Record<string, unknown>) => s + Number(i.amount), 0);
+      const prevWeekExpenses = prevExpensesData.reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const totalIncome   = income.reduce((s: number, i: Record<string, unknown>)   => s + Number(i.amount), 0);
@@ -527,6 +614,30 @@ Deno.serve(async (req) => {
           date: String(e.date),
         }));
 
+      /* Account breakdown */
+      const accountMap = new Map<string, AccountItem>();
+      for (const a of accounts) {
+        accountMap.set(String(a.id), {
+          name: String(a.name),
+          icon: String(a.icon || "🏦"),
+          income: 0,
+          expenses: 0,
+          net: 0,
+        });
+      }
+      for (const i of income) {
+        const acc = accountMap.get(String(i.account_id));
+        if (acc) acc.income += Number(i.amount);
+      }
+      for (const e of expenses) {
+        const acc = accountMap.get(String(e.account_id));
+        if (acc) acc.expenses += Number(e.amount);
+      }
+      const accountBreakdown: AccountItem[] = Array.from(accountMap.values())
+        .map((a) => ({ ...a, net: a.income - a.expenses }))
+        .filter((a) => a.income > 0 || a.expenses > 0)
+        .sort((a, b) => Math.abs(b.net) - Math.abs(a.net));
+
       const insights = generateWeeklyInsights(
         totalIncome,
         totalExpenses,
@@ -550,6 +661,9 @@ Deno.serve(async (req) => {
         monthToDateExpenses,
         categories: catBreakdown,
         topExpenses,
+        accounts: accountBreakdown,
+        prevWeekIncome,
+        prevWeekExpenses,
         insights,
         incomeCount: income.length,
         expenseCount: expenses.length,

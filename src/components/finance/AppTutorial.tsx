@@ -31,107 +31,106 @@ type TutorialStep = {
 type TutorialContextValue = { openTutorial: (force?: boolean) => void };
 const TutorialContext = createContext<TutorialContextValue | null>(null);
 
-const TUTORIAL_VERSION = 'v4';
-const WIDGET_W = 300;
+const TUTORIAL_VERSION = 'v5';
+const WIDGET_W = 320;
 
 const tutorialSteps: TutorialStep[] = [
   {
-    title: 'Configure seu app agora',
+    title: 'Bem-vindo ao FinancasPro',
     description: '',
     icon: Rocket,
-    badge: 'Início',
+    badge: 'Vamos começar',
     color: 'from-violet-500 to-primary',
   },
   {
-    title: 'Configurações',
-    description: 'Preencha seu salário mensal e jornada de trabalho. Clique no campo destacado abaixo.',
+    title: 'Seus dados pessoais',
+    description: 'Comece informando seu salário e jornada de trabalho. Isso permite calcular automaticamente quantas horas você "trabalhou" para cada despesa.',
     icon: Settings,
-    badge: 'Passo 1 de 7',
+    badge: '1 de 7 · Você',
     color: 'from-blue-500 to-cyan-500',
     route: '/configuracoes',
     highlightTarget: 'salary-input',
     checklist: [
-      { label: 'Preenchi meu salário mensal', required: true },
-      { label: 'Preenchi horas por dia e dias por semana' },
-      { label: 'Cliquei em Salvar Configurações' },
+      { label: 'Salário mensal preenchido', required: true },
+      { label: 'Horas por dia e dias por semana definidos' },
     ],
   },
   {
-    title: 'Categorias',
-    description: 'Clique em "Nova Categoria" (destacado) e crie categorias como Alimentação, Casa, Lazer.',
+    title: 'Crie suas categorias',
+    description: 'Organize seus gastos em categorias (Alimentação, Casa, Lazer...). Você pode definir um orçamento por categoria para receber alertas quando passar do limite.',
     icon: Grid3X3,
-    badge: 'Passo 2 de 7',
+    badge: '2 de 7 · Categorias',
     color: 'from-emerald-500 to-teal-500',
     route: '/categorias',
     highlightTarget: 'new-category',
     checklist: [
-      { label: 'Criei pelo menos uma categoria', required: true },
-      { label: 'Defini orçamento em pelo menos uma categoria' },
+      { label: 'Criei pelo menos 3 categorias', required: true },
+      { label: 'Defini orçamento em pelo menos uma' },
     ],
   },
   {
-    title: 'Contas',
-    description: 'Clique em "Nova Conta" e cadastre onde seu dinheiro fica: banco, carteira ou digital.',
+    title: 'Cadastre suas contas',
+    description: 'Adicione onde seu dinheiro fica: conta corrente, poupança, carteira digital. Informe o saldo inicial para que o app calcule seu patrimônio corretamente.',
     icon: Landmark,
-    badge: 'Passo 3 de 7',
+    badge: '3 de 7 · Contas',
     color: 'from-orange-500 to-amber-500',
     route: '/contas',
     highlightTarget: 'new-account',
     checklist: [
       { label: 'Cadastrei pelo menos uma conta', required: true },
-      { label: 'Informei o saldo inicial' },
+      { label: 'Informei o saldo inicial atual' },
     ],
   },
   {
     title: 'Cartões de crédito',
-    description: 'Clique em "Novo Cartão" para cadastrar seus cartões e controlar faturas.',
+    description: 'Se você usa cartão, cadastre aqui para controlar a fatura. Caso contrário, pode pular este passo tranquilamente.',
     icon: CreditCard,
-    badge: 'Passo 4 de 7',
+    badge: '4 de 7 · Cartões',
     color: 'from-pink-500 to-rose-500',
     route: '/cartoes',
     highlightTarget: 'new-card',
     checklist: [
-      { label: 'Não uso cartão de crédito (pode avançar)' },
-      { label: 'Cadastrei meu cartão com limite e vencimento' },
+      { label: 'Não uso cartão (pode avançar)' },
+      { label: 'Cadastrei cartão com limite e vencimento' },
     ],
   },
   {
     title: 'Investimentos',
-    description: 'Clique em "Novo Ativo" para registrar metas e investimentos.',
+    description: 'Registre suas aplicações, reservas e metas. Opcional — pode pular se ainda não investe.',
     icon: BarChart3,
-    badge: 'Passo 5 de 7',
+    badge: '5 de 7 · Investimentos',
     color: 'from-purple-500 to-indigo-500',
     route: '/investimentos',
     highlightTarget: 'new-investment',
     checklist: [
-      { label: 'Não tenho investimentos ainda (pode avançar)' },
-      { label: 'Cadastrei pelo menos um investimento ou meta' },
+      { label: 'Ainda não invisto (pode avançar)' },
+      { label: 'Cadastrei pelo menos um ativo ou meta' },
     ],
   },
   {
-    title: 'Receitas',
-    description: 'Clique em "Nova Receita" e registre seu salário ou renda do mês.',
+    title: 'Lance suas receitas',
+    description: 'Registre seu salário ou outras entradas do mês e escolha em qual conta o dinheiro chegou. Sem receita lançada, seu saldo não bate.',
     icon: TrendingUp,
-    badge: 'Passo 6 de 7',
+    badge: '6 de 7 · Receitas',
     color: 'from-green-500 to-emerald-500',
     route: '/receitas',
     highlightTarget: 'new-income',
     checklist: [
-      { label: 'Registrei meu salário ou renda deste mês', required: true },
-      { label: 'Escolhi a conta que recebeu o dinheiro' },
+      { label: 'Lancei minha receita do mês', required: true },
+      { label: 'Escolhi a conta que recebeu o valor' },
     ],
   },
   {
-    title: 'Despesas',
-    description: 'Clique em "Nova Despesa" e registre seus gastos com categoria e conta.',
+    title: 'Lance suas despesas',
+    description: 'Pronto, agora a parte que importa: registre seus gastos com categoria e conta. Quanto mais detalhado, mais útil ficam os insights.',
     icon: TrendingDown,
-    badge: 'Passo 7 de 7',
+    badge: '7 de 7 · Despesas',
     color: 'from-red-500 to-orange-500',
     route: '/despesas',
     highlightTarget: 'new-expense',
     checklist: [
-      { label: 'Registrei pelo menos uma despesa', required: true },
-      { label: 'Escolhi categoria e conta corretamente' },
+      { label: 'Lancei pelo menos uma despesa', required: true },
+      { label: 'Categoria e conta selecionadas' },
     ],
   },
 ];
@@ -407,10 +406,10 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
                 <Rocket className="w-9 h-9 text-white" />
               </div>
               <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-widest text-primary">Configuração guiada</p>
-                <h2 className="text-2xl font-extrabold tracking-tight">Configure seu app agora</h2>
+                <p className="text-xs font-bold uppercase tracking-widest text-primary">Tour guiado · ~3 min</p>
+                <h2 className="text-2xl font-extrabold tracking-tight">Bem-vindo ao FinancasPro</h2>
                 <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
-                  Vamos te guiar em <strong className="text-foreground">7 passos rápidos</strong>. Cada passo destaca exatamente o botão que você precisa clicar — e o progresso é detectado automaticamente.
+                  Vamos te guiar em <strong className="text-foreground">7 passos curtos</strong> para você sair daqui com o app totalmente configurado e usando. O progresso é detectado automaticamente — não precisa marcar nada manualmente.
                 </p>
               </div>
               <div className="grid grid-cols-4 gap-2">
@@ -428,10 +427,10 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
                   onClick={handleNext}
                   className="w-full h-12 rounded-2xl bg-gradient-to-r from-primary to-violet-600 text-white font-bold text-sm shadow-lg shadow-primary/30 hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                 >
-                  Começar agora <ArrowRight className="w-4 h-4" />
+                  Vamos começar <ArrowRight className="w-4 h-4" />
                 </button>
                 <button onClick={closeTutorial} className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1">
-                  Pular — já sei configurar
+                  Pular tour — explorar sozinho
                 </button>
               </div>
             </div>

@@ -63,7 +63,6 @@ const TYPE_CONFIG = {
 function InsightCard({ insight }: { insight: Insight }) {
   const cfg = TYPE_CONFIG[insight.type] || TYPE_CONFIG.tip;
   const Icon = cfg.icon;
-  const { isVisible } = useSensitiveData();
   return (
     <div className={cn('group relative overflow-hidden rounded-2xl border p-4 sm:p-5 transition-all hover:shadow-md', cfg.border, cfg.bg)}>
       <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full opacity-[0.08] group-hover:opacity-[0.14] transition-opacity pointer-events-none" style={{ background: `radial-gradient(circle, ${cfg.accent} 0%, transparent 70%)` }} />
@@ -79,7 +78,7 @@ function InsightCard({ insight }: { insight: Insight }) {
               {cfg.label}
             </span>
           </div>
-          <p className={cn('text-[13px] text-muted-foreground leading-relaxed', !isVisible && 'blur-sm select-none')}>{insight.description}</p>
+          <p className="text-[13px] text-muted-foreground leading-relaxed">{insight.description}</p>
         </div>
       </div>
     </div>
@@ -202,7 +201,10 @@ export default function InsightsPage() {
     }
 
     return insights.slice(0, 10);
-  }, [income, expenses, prevIncome, prevExpenses, categories, investments, ccTotal, balance, savingsRate, totalIncome, totalExpenses, investmentTotal]);
+  // maskCurrency é parte de fmt — incluir nas deps faz os insights recomputarem
+  // quando o toggle ocultar/mostrar valores muda. Sem isso, descrições ficam stale.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [income, expenses, prevIncome, prevExpenses, categories, investments, ccTotal, balance, savingsRate, totalIncome, totalExpenses, investmentTotal, maskCurrency]);
 
   const insightCounts = useMemo(() => ({
     achievement: localInsights.filter(i => i.type === 'achievement').length,

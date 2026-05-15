@@ -45,7 +45,7 @@ function decodeJwtPayload(token: string | null): Record<string, unknown> | null 
 
 interface CatItem { name: string; icon: string; value: number; budget: number; }
 interface TxItem  { description: string; amount: number; category: string; date: string; }
-interface AccItem { name: string; icon: string; balance: number; }
+interface AccItem { name: string; icon: string; balance: number; income: number; expenses: number; net: number; }
 
 function monthLabel(year: number, month: number): string {
   const raw = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" })
@@ -210,11 +210,19 @@ function buildMonthlyHtml(p: {
     </tr>`).join("");
 
   /* Account rows */
-  const accRows = p.accounts.slice(0, 5).map((a) => `
-    <tr>
-      <td style="padding:6px 0;font-size:13px;color:#1f2937;">${a.icon}&nbsp;&nbsp;${a.name}</td>
-      <td style="padding:6px 0;font-size:13px;font-weight:700;color:${a.balance >= 0 ? "#166534" : "#dc2626"};text-align:right;">${fmt(a.balance)}</td>
-    </tr>`).join("");
+  const accRows = p.accounts.slice(0, 6).map((a, i) => {
+    const netColor = a.net >= 0 ? "#16a34a" : "#dc2626";
+    const netSign = a.net >= 0 ? "+" : "";
+    const bgColor = i % 2 === 0 ? "#ffffff" : "#fafbfc";
+    return `
+    <tr style="background:${bgColor};">
+      <td style="padding:9px 12px;font-size:13px;color:#1f2937;font-weight:600;white-space:nowrap;">${a.icon}&nbsp;&nbsp;${a.name}</td>
+      <td style="padding:9px 8px;font-size:12px;color:#15803d;text-align:right;white-space:nowrap;">${a.income > 0 ? "+" + fmt(a.income) : "—"}</td>
+      <td style="padding:9px 8px;font-size:12px;color:#dc2626;text-align:right;white-space:nowrap;">${a.expenses > 0 ? "−" + fmt(a.expenses) : "—"}</td>
+      <td style="padding:9px 8px;font-size:13px;font-weight:700;color:${netColor};text-align:right;white-space:nowrap;">${netSign}${fmt(a.net)}</td>
+      <td style="padding:9px 12px;font-size:13px;font-weight:800;color:${a.balance >= 0 ? "#0f172a" : "#dc2626"};text-align:right;white-space:nowrap;">${fmt(a.balance)}</td>
+    </tr>`;
+  }).join("");
 
   /* Insight rows */
   const insightRows = p.insights.map((t) => `
@@ -399,12 +407,18 @@ function buildMonthlyHtml(p: {
     <tr>
       <td style="background:#ffffff;padding:0 28px 20px;">
         <div style="border-top:1px solid #f1f5f9;padding-top:16px;">
-          <div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:12px;">&#x1F3E6; Saldo das contas</div>
-          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;">
-            <table width="100%" cellpadding="0" cellspacing="0" border="0">
-              ${accRows}
-            </table>
-          </div>
+          <div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:4px;">&#x1F3E6; Movimentação por conta</div>
+          <div style="font-size:12px;color:#94a3b8;margin-bottom:12px;">Entrou, saiu, saldo líquido do mês e saldo atual</div>
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:10px;overflow:hidden;border:1px solid #e5e7eb;">
+            <tr style="background:#f8fafc;">
+              <th style="padding:8px 12px;font-size:10px;font-weight:700;color:#64748b;text-align:left;text-transform:uppercase;letter-spacing:0.5px;">Conta</th>
+              <th style="padding:8px 8px;font-size:10px;font-weight:700;color:#64748b;text-align:right;text-transform:uppercase;letter-spacing:0.5px;">Entrou</th>
+              <th style="padding:8px 8px;font-size:10px;font-weight:700;color:#64748b;text-align:right;text-transform:uppercase;letter-spacing:0.5px;">Saiu</th>
+              <th style="padding:8px 8px;font-size:10px;font-weight:700;color:#64748b;text-align:right;text-transform:uppercase;letter-spacing:0.5px;">Net</th>
+              <th style="padding:8px 12px;font-size:10px;font-weight:700;color:#64748b;text-align:right;text-transform:uppercase;letter-spacing:0.5px;">Saldo</th>
+            </tr>
+            ${accRows}
+          </table>
         </div>
       </td>
     </tr>` : ""}
@@ -523,7 +537,7 @@ Deno.serve(async (req) => {
       const [incRes, expRes, catRes, prevIncRes, prevExpRes, accRes, cardEqRes, prevCardEqRes] = await Promise.all([
         dc.from("income").select("id,amount,date,description,account_id")
           .eq("user_id", profile.user_id).gte("date", reportRange.startDate).lte("date", reportRange.endDate),
-        dc.from("expenses").select("id,amount,date,description,category_id,notes")
+        dc.from("expenses").select("id,amount,date,description,category_id,account_id,notes")
           .eq("user_id", profile.user_id).gte("date", reportRange.startDate).lte("date", reportRange.endDate),
         dc.from("categories").select("id,name,icon,monthly_budget").eq("user_id", profile.user_id),
         dc.from("income").select("amount")
@@ -602,13 +616,26 @@ Deno.serve(async (req) => {
           date: String(e.date),
         }));
 
-      /* Account balances use initial_balance as a lightweight summary proxy. */
+      /* Per-account breakdown with real income/expense flow */
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const accItems: AccItem[] = accounts.map((a: any) => ({
-        name: String(a.name),
-        icon: String(a.icon || "bank"),
-        balance: Number(a.initial_balance) || 0,
-      })).sort((a: AccItem, b: AccItem) => b.balance - a.balance);
+      const accItems: AccItem[] = accounts.map((a: any) => {
+        const id = String(a.id);
+        const accIncome = income
+          .filter((i: Record<string, unknown>) => String(i.account_id) === id)
+          .reduce((s: number, i: Record<string, unknown>) => s + Number(i.amount), 0);
+        const accExpenses = normalExpenses
+          .filter((e: Record<string, unknown>) => String(e.account_id) === id)
+          .reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0);
+        const initBal = Number(a.initial_balance) || 0;
+        return {
+          name: String(a.name),
+          icon: String(a.icon || "🏦"),
+          balance: initBal + accIncome - accExpenses,
+          income: accIncome,
+          expenses: accExpenses,
+          net: accIncome - accExpenses,
+        };
+      }).sort((a: AccItem, b: AccItem) => b.balance - a.balance);
 
       const insights = generateMonthlyInsights(
         totalIncome, totalExpenses, balance, savingsRate, avgDaily,
