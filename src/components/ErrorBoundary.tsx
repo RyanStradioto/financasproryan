@@ -13,6 +13,40 @@ interface State {
   error: Error | null;
 }
 
+/** Detecta erros causados por chunk JS antigo apos deploy. */
+function isChunkLoadError(error: Error | null): boolean {
+  if (!error) return false;
+  const msg = error.message || '';
+  const name = error.name || '';
+  return (
+    name === 'ChunkLoadError' ||
+    /Failed to fetch dynamically imported module/i.test(msg) ||
+    /Loading chunk \d+ failed/i.test(msg) ||
+    /Importing a module script failed/i.test(msg) ||
+    /error loading dynamically imported module/i.test(msg)
+  );
+}
+
+/** Recarrega a pagina com cache busting via query param. */
+function hardReloadPage() {
+  const url = new URL(window.location.href);
+  url.searchParams.set('_v', Date.now().toString(36));
+  window.location.replace(url.toString());
+}
+
+// Limita auto-reloads para nao entrar em loop infinito se algo deu MUITO errado
+const RELOAD_KEY = 'financaspro:last-chunk-reload';
+function tryAutoReload(): boolean {
+  try {
+    const last = Number(sessionStorage.getItem(RELOAD_KEY) || '0');
+    if (Date.now() - last < 10_000) return false; // ja recarregou ha menos de 10s
+    sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
+    return true;
+  } catch {
+    return true;
+  }
+}
+
 export default class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false, error: null };
 
@@ -21,9 +55,15 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    // Log so it's visible in console + sentry-equivalent could go here
     // eslint-disable-next-line no-console
     console.error('[ErrorBoundary]', this.props.label || 'unlabeled', error, info);
+
+    // Erro de chunk antigo = stale tab apos deploy. Reload automatico.
+    if (isChunkLoadError(error) && tryAutoReload()) {
+      // eslint-disable-next-line no-console
+      console.warn('[ErrorBoundary] ChunkLoadError detectado, recarregando pagina...');
+      hardReloadPage();
+    }
   }
 
   reset = () => {

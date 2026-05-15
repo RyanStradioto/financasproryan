@@ -44,13 +44,13 @@ const queryClient = new QueryClient({
     queries: {
       // Considera dados frescos por 5 min — evita refetch ao navegar entre páginas
       staleTime: 5 * 60 * 1000,
-      // Mantém em cache por 30 min mesmo após a query ficar inativa (volta a tela = aparece instantaneamente)
+      // Mantém em cache por 30 min mesmo após a query ficar inativa
       gcTime: 30 * 60 * 1000,
-      // Não refazer ao trocar de aba/janela (irritante e desnecessário)
+      // Não refazer ao trocar de aba/janela
       refetchOnWindowFocus: false,
       // Só refetch ao reconectar se realmente necessário
       refetchOnReconnect: 'always',
-      // Retry com backoff razoável — não inundar quando offline
+      // Retry com backoff razoável
       retry: 1,
     },
   },
