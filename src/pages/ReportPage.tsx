@@ -32,6 +32,23 @@ function getMonthOptions() {
   return opts;
 }
 
+/** Quick period presets — calcula start/end relativo a hoje. */
+function getQuickPresets() {
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const monthsAgo = (n: number) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - n, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
+  return [
+    { label: 'Este mês', start: currentMonth, end: currentMonth },
+    { label: '3 meses', start: monthsAgo(2), end: currentMonth },
+    { label: '6 meses', start: monthsAgo(5), end: currentMonth },
+    { label: 'Este ano', start: `${now.getFullYear()}-01`, end: currentMonth },
+    { label: '12 meses', start: monthsAgo(11), end: currentMonth },
+  ];
+}
+
 type TooltipPayload = { color?: string; fill?: string; name?: string; dataKey?: string; value?: number };
 
 function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: TooltipPayload[]; label?: string }) {
@@ -118,6 +135,43 @@ export default function ReportPage() {
 
   const pendingIncome = incomeInRange.filter(i => i.status !== 'concluido').reduce((s, i) => s + Number(i.amount), 0);
   const pendingExpenses = expensesInRange.filter(e => e.status !== 'concluido').reduce((s, e) => s + Number(e.amount), 0);
+
+  // ── Período ANTERIOR (mesma duração, deslocado para trás) ────────────────
+  const prevPeriod = useMemo(() => {
+    if (!generated || monthsInRange.length === 0) return null;
+    const len = monthsInRange.length;
+    const [sy, sm] = startMonth.split('-').map(Number);
+    const prevEnd = new Date(sy, sm - 2); // mês imediatamente antes do startMonth
+    const prevStart = new Date(prevEnd.getFullYear(), prevEnd.getMonth() - (len - 1));
+    const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    return { startMonth: fmt(prevStart), endMonth: fmt(prevEnd) };
+  }, [generated, monthsInRange.length, startMonth]);
+
+  const prevTotals = useMemo(() => {
+    if (!prevPeriod) return { income: 0, expenses: 0, balance: 0 };
+    const inRange = (m?: string) => !!m && m >= prevPeriod.startMonth && m <= prevPeriod.endMonth;
+    const prevIncome = allIncome
+      .filter(i => i.status === 'concluido' && inRange(i.date?.substring(0, 7)))
+      .reduce((s, i) => s + Number(i.amount), 0);
+    const prevExpNonCC = allExpenses
+      .filter(e => e.status === 'concluido' && inRange(e.date?.substring(0, 7)) && !isCCMirror(e.notes) && !isBillPayment(e.notes))
+      .reduce((s, e) => s + Number(e.amount), 0);
+    const prevCC = allCCTransactions
+      .filter(t => inRange(t.bill_month))
+      .reduce((s, t) => s + Number(t.amount), 0);
+    const prevExp = prevExpNonCC + prevCC;
+    return { income: prevIncome, expenses: prevExp, balance: prevIncome - prevExp };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prevPeriod, allIncome, allExpenses, allCCTransactions]);
+
+  /** Calcula delta percentual entre atual e anterior. Retorna null se prev=0. */
+  const pctDelta = (current: number, prev: number): number | null => {
+    if (prev === 0) return current === 0 ? 0 : null;
+    return ((current - prev) / Math.abs(prev)) * 100;
+  };
+  const incomeDelta   = prevPeriod ? pctDelta(totalIncome, prevTotals.income) : null;
+  const expenseDelta  = prevPeriod ? pctDelta(totalExpenses, prevTotals.expenses) : null;
+  const balanceDelta  = prevPeriod ? pctDelta(balance, prevTotals.balance) : null;
 
   // Category breakdown: combine non-CC expenses + CC transactions by category
   const catBreakdown = categories
@@ -357,8 +411,33 @@ export default function ReportPage() {
           </div>
           <div>
             <h3 className="text-sm font-bold leading-tight">Selecionar Período</h3>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Escolha o intervalo de meses para análise</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Use um atalho ou escolha os meses manualmente</p>
           </div>
+        </div>
+
+        {/* Quick presets */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {getQuickPresets().map((preset) => {
+            const isActive = startMonth === preset.start && endMonth === preset.end;
+            return (
+              <button
+                key={preset.label}
+                onClick={() => {
+                  setStartMonth(preset.start);
+                  setEndMonth(preset.end);
+                  setGenerated(true);
+                }}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border',
+                  isActive
+                    ? 'bg-primary text-primary-foreground border-primary shadow-sm shadow-primary/20'
+                    : 'bg-card hover:bg-muted/60 border-border/60 hover:border-primary/40 text-foreground/80'
+                )}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
         </div>
 
         <div className="grid sm:grid-cols-[1fr_1fr_auto_auto] items-end gap-3">
@@ -448,12 +527,23 @@ export default function ReportPage() {
                   <div className="w-9 h-9 rounded-xl bg-income/10 flex items-center justify-center text-income">
                     <TrendingUp className="w-4 h-4" />
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Receitas</span>
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    {incomeDelta !== null && (
+                      <span className={cn(
+                        'inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md',
+                        incomeDelta >= 0 ? 'bg-income/15 text-income' : 'bg-expense/15 text-expense',
+                      )}>
+                        {incomeDelta >= 0 ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
+                        {Math.abs(incomeDelta).toFixed(0)}%
+                      </span>
+                    )}
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Receitas</span>
+                  </div>
                 </div>
                 <p className="text-lg sm:text-xl font-extrabold currency text-income tabular-nums whitespace-nowrap truncate">{fmt(totalIncome)}</p>
-                {pendingIncome > 0 && (
-                  <p className="text-[10px] text-muted-foreground mt-1.5 line-clamp-1">+ {fmt(pendingIncome)} pendente</p>
-                )}
+                <p className="text-[10px] text-muted-foreground mt-1.5 line-clamp-1">
+                  {pendingIncome > 0 ? `+ ${fmt(pendingIncome)} pendente` : (prevPeriod ? `Anterior: ${fmt(prevTotals.income)}` : 'No período selecionado')}
+                </p>
               </div>
             </div>
 
@@ -464,12 +554,23 @@ export default function ReportPage() {
                   <div className="w-9 h-9 rounded-xl bg-expense/10 flex items-center justify-center text-expense">
                     <TrendingDown className="w-4 h-4" />
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Despesas</span>
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    {expenseDelta !== null && (
+                      <span className={cn(
+                        'inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md',
+                        expenseDelta <= 0 ? 'bg-income/15 text-income' : 'bg-expense/15 text-expense',
+                      )}>
+                        {expenseDelta >= 0 ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
+                        {Math.abs(expenseDelta).toFixed(0)}%
+                      </span>
+                    )}
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Despesas</span>
+                  </div>
                 </div>
                 <p className="text-lg sm:text-xl font-extrabold currency text-expense tabular-nums whitespace-nowrap truncate">{fmt(totalExpenses)}</p>
-                {pendingExpenses > 0 && (
-                  <p className="text-[10px] text-muted-foreground mt-1.5 line-clamp-1">+ {fmt(pendingExpenses)} pendente</p>
-                )}
+                <p className="text-[10px] text-muted-foreground mt-1.5 line-clamp-1">
+                  {pendingExpenses > 0 ? `+ ${fmt(pendingExpenses)} pendente` : (prevPeriod ? `Anterior: ${fmt(prevTotals.expenses)}` : 'No período selecionado')}
+                </p>
               </div>
             </div>
 
@@ -483,7 +584,18 @@ export default function ReportPage() {
                   <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center', balance >= 0 ? 'bg-info/10 text-info' : 'bg-expense/10 text-expense')}>
                     <Wallet className="w-4 h-4" />
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Saldo</span>
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    {balanceDelta !== null && (
+                      <span className={cn(
+                        'inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md',
+                        balanceDelta >= 0 ? 'bg-income/15 text-income' : 'bg-expense/15 text-expense',
+                      )}>
+                        {balanceDelta >= 0 ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
+                        {Math.abs(balanceDelta).toFixed(0)}%
+                      </span>
+                    )}
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Saldo</span>
+                  </div>
                 </div>
                 <p className={cn('text-lg sm:text-xl font-extrabold currency tabular-nums whitespace-nowrap truncate', balance >= 0 ? 'text-info' : 'text-expense')}>{fmt(balance)}</p>
                 <p className="text-[10px] text-muted-foreground mt-1.5">{balance >= 0 ? '✅ Período positivo' : '⚠️ Período negativo'}</p>

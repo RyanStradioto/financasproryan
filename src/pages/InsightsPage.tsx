@@ -200,7 +200,9 @@ export default function InsightsPage() {
       insights.push({ type: 'warning', icon: '🚨', title: 'Você gastou mais do que ganhou', description: `Déficit de ${fmt(Math.abs(savings))} no mês. Revise gastos não essenciais com urgência.` });
     }
 
-    return insights.slice(0, 10);
+    // Ordena por severidade: warning > tip > achievement (mostra primeiro o que pede atenção)
+    const order: Record<Insight['type'], number> = { warning: 0, tip: 1, achievement: 2 };
+    return insights.sort((a, b) => order[a.type] - order[b.type]).slice(0, 10);
   // maskCurrency é parte de fmt — incluir nas deps faz os insights recomputarem
   // quando o toggle ocultar/mostrar valores muda. Sem isso, descrições ficam stale.
   // eslint-disable-next-line react-hooks/exhaustive-deps

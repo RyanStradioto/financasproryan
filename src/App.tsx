@@ -1,5 +1,7 @@
 ﻿import { lazy, Suspense } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider, type Persister } from "@tanstack/react-query-persist-client";
+import { get, set, del } from "idb-keyval";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -44,8 +46,10 @@ const queryClient = new QueryClient({
     queries: {
       // Considera dados frescos por 5 min — evita refetch ao navegar entre páginas
       staleTime: 5 * 60 * 1000,
-      // Mantém em cache por 30 min mesmo após a query ficar inativa
-      gcTime: 30 * 60 * 1000,
+      // Mantém em cache por 24h. Combinado com o persister via IndexedDB,
+      // isso faz o primeiro load mostrar os ultimos dados conhecidos
+      // instantaneamente (e refazer fetch silenciosamente em background).
+      gcTime: 24 * 60 * 60 * 1000,
       // Não refazer ao trocar de aba/janela
       refetchOnWindowFocus: false,
       // Só refetch ao reconectar se realmente necessário
@@ -55,6 +59,21 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+/** Persister que grava o estado do React Query no IndexedDB via idb-keyval. */
+const IDB_KEY = 'financaspro:rq-cache:v1';
+const idbPersister: Persister = {
+  persistClient: (client) => set(IDB_KEY, client),
+  restoreClient: () => get(IDB_KEY),
+  removeClient: () => del(IDB_KEY),
+};
+
+/**
+ * Bust do cache — incrementar quando schema das queries mudar para invalidar
+ * tudo que estava persistido. Trocar isto descarta o cache antigo em todos
+ * os usuarios automaticamente.
+ */
+const CACHE_BUSTER = 'rq-v1';
 
 function ProtectedRoutes() {
   const { user, loading, isRecoveryMode } = useAuth();
@@ -98,7 +117,18 @@ function ProtectedRoutes() {
 
 const App = () => (
   <ErrorBoundary label="App">
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister: idbPersister,
+        buster: CACHE_BUSTER,
+        maxAge: 24 * 60 * 60 * 1000,
+        // So persiste queries que terminaram em sucesso (evita salvar erros/loading)
+        dehydrateOptions: {
+          shouldDehydrateQuery: (q) => q.state.status === 'success',
+        },
+      }}
+    >
       <AuthProvider>
         <TooltipProvider>
           <Sonner />
@@ -107,7 +137,7 @@ const App = () => (
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   </ErrorBoundary>
 );
 
