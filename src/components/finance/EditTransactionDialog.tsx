@@ -257,8 +257,8 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
                 <Select value={paymentMethod} onValueChange={handlePaymentMethodChange}>
                   <SelectTrigger className="h-11" style={{ fontSize: '14px' }}><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="account">Conta / Debito / PIX</SelectItem>
-                    <SelectItem value="credit_card">Cartao de credito</SelectItem>
+                    <SelectItem value="account">Conta / Débito / PIX</SelectItem>
+                    <SelectItem value="credit_card">Cartão de crédito</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

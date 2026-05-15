@@ -25,6 +25,7 @@ import { useCategories, useAccounts, useAddExpense } from '@/hooks/useFinanceDat
 import { getMonthYear, formatCurrency, formatDate, calcBillMonth } from '@/lib/format';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { cn } from '@/lib/utils';
+import { CARD_COLORS } from '@/lib/colors';
 import { toast } from 'sonner';
 
 function prevMonth(m: string) {
@@ -57,7 +58,6 @@ function addMonths(m: string, count: number) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-const CARD_COLORS = ['#6366f1', '#ec4899', '#f97316', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444', '#0ea5e9', '#f59e0b'];
 
 type TxFilter = 'all' | 'pending' | 'paid' | 'installments' | 'uncategorized';
 

@@ -18,7 +18,9 @@ export function setCardDefaultAccount(cardId: string, accountId: string | null) 
   try {
     if (accountId) localStorage.setItem(ccDefaultAccountKey(cardId), accountId);
     else localStorage.removeItem(ccDefaultAccountKey(cardId));
-  } catch {}
+  } catch (err) {
+    console.warn('setCardDefaultAccount: localStorage falhou', err);
+  }
 }
 
 export function useCreditCards() {

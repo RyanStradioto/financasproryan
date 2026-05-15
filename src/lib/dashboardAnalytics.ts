@@ -11,6 +11,17 @@
  *   - Executive summary phrases
  */
 
+// ─── Constants ──────────────────────────────────────────────────────────────
+
+/** Quantos múltiplos da média de uma categoria contam como anomalia. */
+export const ANOMALY_MULTIPLIER_THRESHOLD = 2.5;
+
+/** Mínimo de transações de mesma descrição para detectar gasto recorrente. */
+export const RECURRING_MIN_OCCURRENCES = 3;
+
+/** Margem (% sobre o orçamento mensal) acima da qual marcamos "vai estourar". */
+export const BURN_RATE_OVERRUN_THRESHOLD = 1.05;
+
 export interface MoneyLine {
   amount: number;
   date: string;          // YYYY-MM-DD
@@ -106,7 +117,7 @@ export function computeBurnRate(opts: {
   return {
     points,
     projectedTotal,
-    willOverrun: monthBudget > 0 && projectedTotal > monthBudget * 1.05,
+    willOverrun: monthBudget > 0 && projectedTotal > monthBudget * BURN_RATE_OVERRUN_THRESHOLD,
   };
 }
 
@@ -131,7 +142,7 @@ export function detectAnomalies(opts: {
   historicalExpenses: MoneyLine[];   // last 90 days excluding current
   threshold?: number;
 }): Anomaly[] {
-  const { currentExpenses, historicalExpenses, threshold = 2.5 } = opts;
+  const { currentExpenses, historicalExpenses, threshold = ANOMALY_MULTIPLIER_THRESHOLD } = opts;
 
   // Build category averages from historical data
   const categoryStats: Record<string, { sum: number; count: number }> = {};
@@ -192,7 +203,7 @@ export function detectRecurring(opts: {
   expenses: MoneyLine[];
   minOccurrences?: number;
 }): RecurringExpense[] {
-  const { expenses, minOccurrences = 3 } = opts;
+  const { expenses, minOccurrences = RECURRING_MIN_OCCURRENCES } = opts;
 
   // Group by normalized description
   const groups: Record<string, MoneyLine[]> = {};

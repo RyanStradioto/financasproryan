@@ -257,57 +257,34 @@ export function useDeleteIncomeWithHistory() {
   const qc = useQueryClient();
   const { user } = useAuth();
 
-  console.log('🔧 Hook useDeleteIncomeWithHistory inicializado, user:', user?.id);
-
   return useMutation({
     mutationFn: async (item: Income) => {
-      console.log('🔄 Iniciando exclusão com histórico para receita:', item.id, 'user:', user?.id);
-
       if (!user?.id) {
         throw new Error('Usuário não autenticado');
       }
 
-      // Primeiro, vamos tentar apenas excluir sem backup para testar
-      console.log('🧪 Testando exclusão direta primeiro...');
-
       const { error } = await supabase.from('income').delete().eq('id', item.id);
-
       if (error) {
-        console.error('❌ Erro na exclusão direta:', error);
         throw new Error(`Erro na exclusão: ${error.message}`);
       }
 
-      console.log('✅ Exclusão direta funcionou! Agora tentando backup...');
-
-      // Agora tenta o backup
+      // Tenta criar backup (não-crítico)
       try {
-        const { error: backupError } = await supabase.from('recent_deletions').insert({
+        await supabase.from('recent_deletions').insert({
           user_id: user.id,
           table_name: 'income',
           record_id: item.id,
           payload: item,
         });
-
-        if (backupError) {
-          console.warn('⚠️ Backup falhou, mas exclusão foi bem-sucedida:', backupError);
-          // Não lança erro aqui, pois a exclusão principal funcionou
-        } else {
-          console.log('✅ Backup criado com sucesso');
-        }
       } catch (backupErr) {
-        console.warn('⚠️ Erro no backup (não crítico):', backupErr);
+        console.warn('Backup de exclusão falhou (não crítico):', backupErr);
       }
 
-      console.log('✅ Receita excluída com sucesso');
       return item;
     },
-    onSuccess: (data) => {
-      console.log('🎉 Exclusão completada com sucesso:', data.id);
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['income'] });
       qc.invalidateQueries({ queryKey: ['recent-deletions'] });
-    },
-    onError: (error) => {
-      console.error('💥 Erro na mutation:', error);
     },
   });
 }
@@ -342,12 +319,8 @@ export function useDeleteExpenseWithHistory() {
   const qc = useQueryClient();
   const { user } = useAuth();
 
-  console.log('🔧 Hook useDeleteExpenseWithHistory inicializado, user:', user?.id);
-
   return useMutation({
     mutationFn: async (item: Expense) => {
-      console.log('🔄 Iniciando exclusão com histórico para despesa:', item.id, 'user:', user?.id);
-
       if (!user?.id) {
         throw new Error('Usuário não autenticado');
       }
@@ -360,29 +333,19 @@ export function useDeleteExpenseWithHistory() {
       });
 
       if (backupError) {
-        console.error('❌ Erro ao fazer backup:', backupError);
         throw new Error(`Erro no backup: ${backupError.message}`);
       }
 
-      console.log('✅ Backup criado com sucesso');
-
       const { error } = await supabase.from('expenses').delete().eq('id', item.id);
-
       if (error) {
-        console.error('❌ Erro ao excluir despesa:', error);
         throw new Error(`Erro na exclusão: ${error.message}`);
       }
 
-      console.log('✅ Despesa excluída com sucesso');
       return item;
     },
-    onSuccess: (data) => {
-      console.log('🎉 Exclusão completada com sucesso:', data.id);
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['expenses'] });
       qc.invalidateQueries({ queryKey: ['recent-deletions'] });
-    },
-    onError: (error) => {
-      console.error('💥 Erro na mutation:', error);
     },
   });
 }

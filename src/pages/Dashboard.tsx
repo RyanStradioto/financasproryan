@@ -1,5 +1,5 @@
-import { useState, useMemo, type ElementType, type ReactNode } from 'react';
-import { TrendingUp, TrendingDown, Wallet, PiggyBank, Pencil, BarChart3, ArrowUpRight, ArrowDownRight, Target, Clock, ChevronRight, BellRing, Sparkles, CreditCard, Activity, CalendarRange, Flame, Trophy, AlertTriangle, ShieldCheck, Gauge, Landmark, Search, BrainCircuit } from 'lucide-react';
+import { useState, useMemo, type ReactNode } from 'react';
+import { TrendingUp, TrendingDown, Wallet, PiggyBank, BarChart3, ArrowUpRight, ArrowDownRight, Target, Clock, ChevronRight, BellRing, CreditCard, Activity, CalendarRange, Flame, Trophy, AlertTriangle, ShieldCheck, Gauge, Landmark, BrainCircuit } from 'lucide-react';
 import { useIncome, useExpenses, useAccounts, type Income, type Expense } from '@/hooks/useFinanceData';
 import { useNetWorth } from '@/hooks/useInvestments';
 import { useCCTransactionsForMonth, useCreditCards, useCreditCardTransactions } from '@/hooks/useCreditCards';
@@ -7,11 +7,6 @@ import { getMonthYear, formatCurrency, formatDate, getStatusColor, getStatusLabe
 import MonthSelector from '@/components/finance/MonthSelector';
 import TransactionDialog from '@/components/finance/TransactionDialog';
 import EditTransactionDialog from '@/components/finance/EditTransactionDialog';
-import TrendChart from '@/components/finance/TrendChart';
-import CashFlowForecast from '@/components/finance/CashFlowForecast';
-import SmartAlerts from '@/components/finance/SmartAlerts';
-import Achievements from '@/components/finance/Achievements';
-import SparklineChart from '@/components/finance/SparklineChart';
 import EconomyGauge from '@/components/finance/EconomyGauge';
 import BudgetRings from '@/components/finance/BudgetRings';
 import WeeklyHeatmap from '@/components/finance/WeeklyHeatmap';
@@ -47,7 +42,10 @@ import StickySummaryBar from '@/components/dashboard/StickySummaryBar';
 import SixMonthStack from '@/components/dashboard/SixMonthStack';
 import SectionHeader from '@/components/dashboard/SectionHeader';
 import DailyFlowChart from '@/components/dashboard/DailyFlowChart';
+import KpiCard from '@/components/dashboard/KpiCard';
+import BrandLogoBadge from '@/components/dashboard/BrandLogoBadge';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { colorWithOpacity } from '@/lib/colors';
 
 /** Safe wrapper: runs an analytics fn and returns a fallback if it throws. */
 function safeRun<T>(fn: () => T, fallback: T, label?: string): T {
@@ -58,21 +56,6 @@ function safeRun<T>(fn: () => T, fallback: T, label?: string): T {
     console.warn('[dashboard analytics]', label || 'unknown', e);
     return fallback;
   }
-}
-
-const CHART_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
-
-function colorWithOpacity(hex: string, opacity: number) {
-  const cleanHex = hex.replace('#', '');
-  const normalized = cleanHex.length === 3
-    ? cleanHex.split('').map((char) => char + char).join('')
-    : cleanHex;
-  const int = Number.parseInt(normalized, 16);
-  if (Number.isNaN(int)) return `rgba(37, 99, 235, ${opacity})`;
-  const r = (int >> 16) & 255;
-  const g = (int >> 8) & 255;
-  const b = int & 255;
-  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
 function ChartTooltipCard({
@@ -100,183 +83,7 @@ function ChartTooltipCard({
   );
 }
 
-// Premium KPI card: colored gradient accent, MoM delta chip, sparkline
-function KpiCard({
-  label, value, sub, color, icon: Icon, trend, sparklineData, delta, deltaInverted,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  color: string;
-  icon: ElementType;
-  trend?: 'up' | 'down' | 'neutral';
-  sparklineData?: number[];
-  delta?: number | null;
-  deltaInverted?: boolean; // true for expenses (less = good)
-}) {
-  const { maskCurrency, maskText } = useSensitiveData();
-  const displayValue = value.startsWith('R$') ? maskCurrency(value) : maskText(value);
-  const deltaIsGood = delta == null ? null : (deltaInverted ? delta < 0 : delta > 0);
-  const sparkColor = trend === 'up' ? 'hsl(160, 84%, 39%)' : trend === 'down' ? 'hsl(0, 72%, 51%)' : 'hsl(217, 91%, 60%)';
 
-  return (
-    <div className={cn('relative min-h-[96px] sm:min-h-[116px] rounded-3xl border border-border/60 bg-gradient-to-br from-card/95 via-card/75 to-background/55 p-3 sm:p-4 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-border hover:shadow-xl hover:shadow-black/5 group overflow-hidden animate-slide-up', color)}>
-      {/* Decorative gradient blob */}
-      <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-[0.06] group-hover:opacity-[0.10] group-hover:scale-110 transition-all duration-500 pointer-events-none" style={{ background: `radial-gradient(circle, ${sparkColor} 0%, transparent 70%)` }} />
-
-      <div className="relative z-10 flex h-full flex-col justify-between gap-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className={cn('w-8 h-8 rounded-xl items-center justify-center flex shrink-0',
-              trend === 'up' ? 'bg-income/10 text-income' : trend === 'down' ? 'bg-expense/10 text-expense' : 'bg-primary/10 text-primary'
-            )}>
-              <Icon className="w-4 h-4" />
-            </div>
-            <p className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase tracking-[0.08em] sm:tracking-[0.1em]">{label}</p>
-          </div>
-          {delta !== null && delta !== undefined && (
-            <span className={cn(
-              'inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md',
-              deltaIsGood ? 'bg-income/10 text-income' : 'bg-expense/10 text-expense',
-            )}>
-              {delta > 0 ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
-              {Math.abs(delta).toFixed(0)}%
-            </span>
-          )}
-        </div>
-
-        {/* Value + sparkline */}
-        <div className="flex items-end justify-between mt-1 gap-2">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm sm:text-base lg:text-lg font-extrabold currency tracking-tight leading-none whitespace-nowrap tabular-nums truncate">{displayValue}</p>
-            {sub && <p className="text-[10px] text-muted-foreground mt-1 leading-tight line-clamp-2 hidden sm:block">{sub}</p>}
-          </div>
-          {sparklineData && sparklineData.length > 1 && (
-            <div className="shrink-0 -mr-1 opacity-60 group-hover:opacity-100 transition-opacity hidden sm:block">
-              <SparklineChart data={sparklineData} color={sparkColor} width={48} height={22} />
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function BrandLogoBadge({
-  logoUrl,
-  label,
-  color,
-  icon,
-  active = false,
-  global = false,
-  size = 'md',
-}: {
-  logoUrl?: string;
-  label: string;
-  color: string;
-  icon?: string;
-  active?: boolean;
-  global?: boolean;
-  size?: 'sm' | 'md' | 'lg';
-}) {
-  const isLg = size === 'lg';
-  const isSm = size === 'sm';
-  const shellSize = isLg ? 'h-20 w-20 rounded-[1.5rem]' : isSm ? 'h-8 w-8 rounded-xl' : 'h-12 w-12 rounded-2xl';
-  const logoSize = isLg ? 'h-12 w-12' : isSm ? 'h-5 w-5' : 'h-8 w-8';
-  const iconSize = isLg ? 'h-9 w-9' : isSm ? 'h-4 w-4' : 'h-6 w-6';
-
-  if (global) {
-    return (
-      <span className={cn(
-        'relative flex shrink-0 items-center justify-center border border-primary/25 bg-primary/10 text-primary shadow-lg shadow-primary/10',
-        shellSize,
-      )}>
-        <Wallet className={iconSize} />
-      </span>
-    );
-  }
-
-  return (
-    <span
-      className={cn(
-        'relative flex shrink-0 items-center justify-center border shadow-lg transition-transform group-hover:scale-105',
-        shellSize,
-        active ? 'border-white/20' : 'border-border/50',
-      )}
-      style={{
-        background: `linear-gradient(145deg, ${colorWithOpacity(color, active ? 0.24 : 0.14)}, hsl(var(--card) / 0.92))`,
-        boxShadow: active ? `0 18px 44px -24px ${color}` : undefined,
-      }}
-    >
-      {logoUrl ? (
-        <span className={cn('flex items-center justify-center rounded-lg bg-white p-1 shadow-sm', isLg ? 'h-14 w-14' : isSm ? 'h-6 w-6' : 'h-9 w-9')}>
-          <img src={logoUrl} alt={label} className={cn('object-contain', logoSize)} />
-        </span>
-      ) : (
-        <span className="text-2xl">{icon || '$'}</span>
-      )}
-    </span>
-  );
-}
-
-// ─── Balance Breakdown Component ──────────────────────────────────────────────
-function BalanceBreakdown({
-  accName, balance, initBal, cumulativeIncome, cumulativeExpenses,
-  orphanExpensesTotal, orphanExpensesCount, maskCurrency,
-}: {
-  accName: string; accId: string; balance: number; initBal: number;
-  cumulativeIncome: number; cumulativeExpenses: number;
-  orphanExpensesTotal: number; orphanExpensesCount: number;
-  maskCurrency: (v: string) => string;
-}) {
-  const calculated = initBal + cumulativeIncome - cumulativeExpenses;
-  // Sanity: if calculated doesn't match balance, flag it
-  const mismatch = Math.abs(calculated - balance) > 0.5;
-
-  return (
-    <div className="rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm p-4 space-y-3">
-      <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-        Composicao do saldo — {accName}
-      </p>
-      <div className="space-y-1.5">
-        <div className="flex justify-between text-xs">
-          <span className="text-muted-foreground">Saldo inicial configurado</span>
-          <span className="font-semibold tabular-nums">{maskCurrency(formatCurrency(initBal))}</span>
-        </div>
-        <div className="flex justify-between text-xs">
-          <span className="text-muted-foreground">+ Receitas atribuidas a esta conta</span>
-          <span className="font-semibold text-income tabular-nums">+{maskCurrency(formatCurrency(cumulativeIncome))}</span>
-        </div>
-        <div className="flex justify-between text-xs">
-          <span className="text-muted-foreground">- Despesas atribuidas a esta conta</span>
-          <span className="font-semibold text-expense tabular-nums">-{maskCurrency(formatCurrency(cumulativeExpenses))}</span>
-        </div>
-        <div className="h-px bg-border/40 my-1" />
-        <div className="flex justify-between text-sm font-bold">
-          <span>= Saldo calculado</span>
-          <span className={balance >= 0 ? 'text-income' : 'text-expense'}>{maskCurrency(formatCurrency(balance))}</span>
-        </div>
-      </div>
-      {orphanExpensesTotal > 0 && (
-        <div className="rounded-lg bg-warning/10 border border-warning/25 px-3 py-2.5 space-y-1">
-          <p className="text-xs font-semibold text-warning flex items-center gap-1.5">
-            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-            {orphanExpensesCount} despesa{orphanExpensesCount !== 1 ? 's' : ''} sem conta: {maskCurrency(formatCurrency(orphanExpensesTotal))}
-          </p>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
-            Essas despesas foram lancadas sem selecionar uma conta bancaria. Elas nao aparecem no saldo desta conta (nem de nenhuma outra), o que pode explicar a diferenca com o saldo real. Abra cada despesa em Despesas e escolha a conta correta.
-          </p>
-        </div>
-      )}
-      {mismatch && (
-        <p className="text-[10px] text-muted-foreground/60 italic">
-          Nota: pode haver pequena variacao por arredondamento ou despesas sem conta.
-        </p>
-      )}
-    </div>
-  );
-}
 
 export default function Dashboard() {
   const { maskCurrency, maskText, isVisible } = useSensitiveData();
@@ -539,13 +346,6 @@ export default function Dashboard() {
     }).sort((a, b) => b.budget - a.budget)
   , [categories, scopedNonCCExpenses, scopedCCTransactions, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
 
-  // -"€-"€ Recent transactions (sem espelhos CC) -"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€-"€
-  const recentTransactions = useMemo(() => [
-    ...scopedIncome.map(i => ({ ...i, type: 'income' as const })),
-    ...scopedNonCCExpenses.map(e => ({ ...e, type: 'expense' as const })),
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5)
-  , [scopedIncome, scopedNonCCExpenses]);
-
   const scopedExpenseHeatmapData = useMemo(() => [
     ...scopedNonCCExpenses
       .filter(e => e.status === 'concluido')
@@ -553,7 +353,6 @@ export default function Dashboard() {
     ...scopedCCTransactions.map(t => ({ date: t.date, amount: Number(t.amount) })),
   ], [scopedNonCCExpenses, scopedCCTransactions]);
 
-  const workTimeTotal = hourlyRate > 0 ? calcWorkTime(totalExpensesPaid) : null;
   const accountInsights = useMemo(() => {
     return accounts
       .filter(a => !a.archived)
@@ -585,13 +384,7 @@ export default function Dashboard() {
   );
   const isGlobalView = accountFocusId === '__all__';
   const currentAccent = focusedBrand?.color || '#2563eb';
-  const accentSoft = colorWithOpacity(currentAccent, 0.12);
-  const accentBorder = colorWithOpacity(currentAccent, 0.45);
-  const accentGlow = colorWithOpacity(currentAccent, 0.2);
   const focusLabel = isGlobalView ? 'Todas as contas' : focusedAccountInsight?.acc.name || 'Conta foco';
-  const focusSubLabel = isGlobalView
-    ? `${activeAccounts.length} contas ativas`
-    : `Saldo atual: ${maskCurrency(formatCurrency(focusedAccountInsight?.balance || 0))}`;
 
   const balance = accountFocusId === '__all__' ? accumulatedBalance : (focusedAccountInsight?.balance ?? 0);
   const focusedInvestmentTotal = accountFocusId === '__all__' ? investmentTotal : 0;
@@ -1116,73 +909,6 @@ export default function Dashboard() {
     }),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5),
   [scopedIncome, scopedNonCCExpenses, scopedCCTransactions, categories, categoryByTxId, categoryByMatchKey, categoryByLooseKey]);
-
-  const atypicalRows = anomalies.length > 0
-    ? anomalies.slice(0, 3).map((item) => {
-      const cat = categories.find(c => c.id === item.category_id);
-      return {
-        id: `${item.description}-${item.date}`,
-        description: item.description || 'Gasto atípico',
-        date: item.date,
-        category: cat?.name || 'Categoria',
-        amount: item.amount,
-        badge: `${item.multiplier?.toFixed(1) || '2.0'}x média`,
-      };
-    })
-    : topExpenses.slice(0, 3).map((item, index) => {
-      const cat = categories.find(c => c.id === item.category_id);
-      return {
-        id: `${item.kind}-${item.id}`,
-        description: item.description,
-        date: item.date,
-        category: cat?.name || 'Categoria',
-        amount: item.amount,
-        badge: `${(3.3 - index * 0.4).toFixed(1)}x média`,
-      };
-    });
-
-  const kpiCards = [
-    {
-      label: 'Saldo total',
-      value: maskCurrency(formatCurrency(balance)),
-      sub: isGlobalView ? `${activeAccounts.length} contas ativas` : focusLabel,
-      icon: Wallet,
-      tone: 'text-emerald-300',
-      accent: 'from-emerald-400/18',
-    },
-    {
-      label: 'Sobra no mês',
-      value: maskCurrency(formatCurrency(monthResult)),
-      sub: `${Math.max(0, savings).toFixed(0)}% de poupança`,
-      icon: PiggyBank,
-      tone: monthResult >= 0 ? 'text-emerald-300' : 'text-red-300',
-      accent: monthResult >= 0 ? 'from-emerald-400/18' : 'from-red-400/18',
-    },
-    {
-      label: 'Receitas',
-      value: maskCurrency(formatCurrency(totalIncome)),
-      sub: deltaCopy(incomeDelta),
-      icon: TrendingUp,
-      tone: 'text-emerald-300',
-      accent: 'from-emerald-400/18',
-    },
-    {
-      label: 'Despesas',
-      value: maskCurrency(formatCurrency(currentTotalAll)),
-      sub: deltaCopy(expenseDelta, true),
-      icon: TrendingDown,
-      tone: 'text-red-300',
-      accent: 'from-red-400/18',
-    },
-    {
-      label: 'Saúde financeira',
-      value: `${healthScore}/100`,
-      sub: healthCopy,
-      icon: Gauge,
-      tone: healthScore >= 70 ? 'text-emerald-300' : healthScore >= 45 ? 'text-amber-300' : 'text-red-300',
-      accent: healthScore >= 70 ? 'from-emerald-400/18' : healthScore >= 45 ? 'from-amber-400/18' : 'from-red-400/18',
-    },
-  ];
 
   const PremiumCard = ({ children, className = '' }: { children: ReactNode; className?: string }) => (
     <div className={cn('rounded-[1.75rem] border border-border/60 dark:border-white/10 bg-card/95 dark:bg-[#0b101a]/90 shadow-md dark:shadow-2xl shadow-black/5 dark:shadow-black/20 backdrop-blur-xl', className)}>

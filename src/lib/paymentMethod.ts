@@ -55,7 +55,7 @@ export function detectCreditCardExpense(
     return {
       isCreditCard: true,
       cardId: marker.cardId,
-      cardName: card?.name ?? 'Cartao de credito',
+      cardName: card?.name ?? 'Cartão de crédito',
       billMonth: marker.billMonth,
       transactionId: marker.transactionId,
     };
@@ -72,14 +72,14 @@ export function detectCreditCardExpense(
     return {
       isCreditCard: true,
       cardId: matchedCard?.id,
-      cardName: matchedCard?.name ?? 'Cartao de credito',
+      cardName: matchedCard?.name ?? 'Cartão de crédito',
     };
   }
 
   if (noteSuggestsCard) {
     return {
       isCreditCard: true,
-      cardName: 'Cartao de credito',
+      cardName: 'Cartão de crédito',
     };
   }
 
