@@ -46,6 +46,7 @@ import PixCounters from '@/components/dashboard/PixCounters';
 import StickySummaryBar from '@/components/dashboard/StickySummaryBar';
 import SixMonthStack from '@/components/dashboard/SixMonthStack';
 import SectionHeader from '@/components/dashboard/SectionHeader';
+import DailyFlowChart from '@/components/dashboard/DailyFlowChart';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 /** Safe wrapper: runs an analytics fn and returns a fallback if it throws. */
@@ -1435,55 +1436,56 @@ export default function Dashboard() {
               </span>
             </div>
           </div>
-          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#070b12]/80 p-3 shadow-inner shadow-black/30">
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(16,185,129,0.08),transparent_42%,rgba(56,189,248,0.08))]" />
-            <div className="relative h-[220px] sm:h-[250px]">
+          <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#050810]/90 p-3 shadow-inner shadow-black/40">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(16,185,129,0.09),transparent_50%),radial-gradient(ellipse_at_bottom_right,rgba(56,189,248,0.07),transparent_50%)]" />
+            <div className="relative h-[260px] sm:h-[290px]">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={sixMonthData} margin={{ top: 16, right: 20, left: 0, bottom: 4 }}>
+                <ComposedChart data={sixMonthData} margin={{ top: 20, right: 20, left: 0, bottom: 4 }}>
                 <defs>
                   <linearGradient id="dashboardIncomeArea" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="#34d399" stopOpacity={0.34} />
-                    <stop offset="72%" stopColor="#34d399" stopOpacity={0.06} />
+                    <stop offset="0%" stopColor="#34d399" stopOpacity={0.28} />
+                    <stop offset="60%" stopColor="#34d399" stopOpacity={0.05} />
                     <stop offset="100%" stopColor="#34d399" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="dashboardExpenseArea" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="#fb7185" stopOpacity={0.22} />
-                    <stop offset="72%" stopColor="#fb7185" stopOpacity={0.04} />
+                    <stop offset="0%" stopColor="#fb7185" stopOpacity={0.20} />
+                    <stop offset="65%" stopColor="#fb7185" stopOpacity={0.03} />
                     <stop offset="100%" stopColor="#fb7185" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="dashboardBalanceArea" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.24} />
-                    <stop offset="74%" stopColor="#38bdf8" stopOpacity={0.035} />
-                    <stop offset="100%" stopColor="#38bdf8" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#818cf8" stopOpacity={0.20} />
+                    <stop offset="70%" stopColor="#818cf8" stopOpacity={0.02} />
+                    <stop offset="100%" stopColor="#818cf8" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="dashboardIncomeStroke" x1="0" x2="1" y1="0" y2="0">
-                    <stop offset="0%" stopColor="#5eead4" />
-                    <stop offset="55%" stopColor="#34d399" />
-                    <stop offset="100%" stopColor="#22c55e" />
+                    <stop offset="0%" stopColor="#6ee7b7" />
+                    <stop offset="50%" stopColor="#34d399" />
+                    <stop offset="100%" stopColor="#10b981" />
                   </linearGradient>
                   <linearGradient id="dashboardExpenseStroke" x1="0" x2="1" y1="0" y2="0">
                     <stop offset="0%" stopColor="#fda4af" />
-                    <stop offset="55%" stopColor="#fb7185" />
+                    <stop offset="50%" stopColor="#fb7185" />
                     <stop offset="100%" stopColor="#f43f5e" />
                   </linearGradient>
                   <linearGradient id="dashboardBalanceStroke" x1="0" x2="1" y1="0" y2="0">
-                    <stop offset="0%" stopColor="#7dd3fc" />
-                    <stop offset="55%" stopColor="#38bdf8" />
-                    <stop offset="100%" stopColor="#60a5fa" />
+                    <stop offset="0%" stopColor="#a5b4fc" />
+                    <stop offset="50%" stopColor="#818cf8" />
+                    <stop offset="100%" stopColor="#6366f1" />
                   </linearGradient>
-                  <filter id="dashboardChartGlow" x="-40%" y="-40%" width="180%" height="180%">
-                    <feGaussianBlur stdDeviation="2.5" result="coloredBlur" />
-                    <feMerge>
-                      <feMergeNode in="coloredBlur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
+                  <filter id="dashboardGlowIncome" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                  </filter>
+                  <filter id="dashboardGlowExpense" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
                   </filter>
                 </defs>
-                <CartesianGrid stroke="rgba(148,163,184,0.11)" strokeDasharray="4 10" vertical={false} />
-                <XAxis dataKey="label" axisLine={false} tickLine={false} padding={{ left: 18, right: 18 }} tick={{ fill: '#7c8aa3', fontSize: 12, fontWeight: 800 }} />
-                <YAxis width={48} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 700 }} tickFormatter={(v) => `R$${Math.round(Number(v) / 1000)}k`} />
+                <CartesianGrid stroke="rgba(148,163,184,0.07)" strokeDasharray="3 10" vertical={false} />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} padding={{ left: 20, right: 20 }} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 800, letterSpacing: '0.03em' }} />
+                <YAxis width={46} axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 10, fontWeight: 700 }} tickFormatter={(v) => `R$${Math.round(Number(v) / 1000)}k`} />
                 <RechartsTooltip
-                  cursor={{ stroke: 'rgba(148,163,184,0.24)', strokeWidth: 1, strokeDasharray: '4 6' }}
+                  cursor={{ stroke: 'rgba(165,180,252,0.18)', strokeWidth: 1, strokeDasharray: '4 6' }}
                   content={({ active, payload, label }) => {
                     const rows = (payload || [])
                       .filter((p) => p.value !== null && p.value !== undefined)
@@ -1495,9 +1497,9 @@ export default function Dashboard() {
                     return active && rows.length ? <ChartTooltipCard title={String(label)} rows={rows} /> : null;
                   }}
                 />
-                <Area name="Saldo" type="natural" dataKey="sobra" stroke="url(#dashboardBalanceStroke)" strokeWidth={3.25} strokeLinecap="round" strokeLinejoin="round" fill="url(#dashboardBalanceArea)" dot={{ r: 4.5, fill: '#38bdf8', stroke: '#07101a', strokeWidth: 2 }} activeDot={{ r: 7, fill: '#38bdf8', stroke: '#e0f2fe', strokeWidth: 2 }} />
-                <Line name="Receitas" type="natural" dataKey="income" stroke="url(#dashboardIncomeStroke)" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" dot={{ r: 5, fill: '#34d399', stroke: '#07101a', strokeWidth: 2.5 }} activeDot={{ r: 8, fill: '#34d399', stroke: '#ecfdf5', strokeWidth: 2 }} filter="url(#dashboardChartGlow)" />
-                <Line name="Despesas" type="natural" dataKey="expenses" stroke="url(#dashboardExpenseStroke)" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" dot={{ r: 5, fill: '#fb7185', stroke: '#07101a', strokeWidth: 2.5 }} activeDot={{ r: 8, fill: '#fb7185', stroke: '#fff1f2', strokeWidth: 2 }} />
+                <Area name="Saldo" type="monotone" dataKey="sobra" stroke="url(#dashboardBalanceStroke)" strokeWidth={3} strokeLinecap="round" fill="url(#dashboardBalanceArea)" dot={{ r: 5, fill: '#818cf8', stroke: '#050810', strokeWidth: 2.5 }} activeDot={{ r: 8, fill: '#818cf8', stroke: '#e0e7ff', strokeWidth: 2 }} />
+                <Line name="Receitas" type="monotone" dataKey="income" stroke="url(#dashboardIncomeStroke)" strokeWidth={3.5} strokeLinecap="round" dot={{ r: 5.5, fill: '#34d399', stroke: '#050810', strokeWidth: 2.5 }} activeDot={{ r: 9, fill: '#34d399', stroke: '#d1fae5', strokeWidth: 2 }} filter="url(#dashboardGlowIncome)" />
+                <Line name="Despesas" type="monotone" dataKey="expenses" stroke="url(#dashboardExpenseStroke)" strokeWidth={3.5} strokeLinecap="round" dot={{ r: 5.5, fill: '#fb7185', stroke: '#050810', strokeWidth: 2.5 }} activeDot={{ r: 9, fill: '#fb7185', stroke: '#ffe4e6', strokeWidth: 2 }} filter="url(#dashboardGlowExpense)" />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -1524,24 +1526,30 @@ export default function Dashboard() {
                   <SectionHeader title="Ritmo semanal" subtitle={`${weeklyFlowData.length} semanas · distribuição de entradas e saídas`} icon={BarChart3} iconColor="text-cyan-300" />
                 </div>
 
-                <div className="h-[190px] rounded-xl border border-white/10 bg-[#070b12]/75 p-2.5">
+                <div className="h-[210px] rounded-2xl border border-white/[0.06] bg-[#050810]/80 p-3 shadow-inner shadow-black/30">
                   <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={weeklyFlowData} margin={{ top: 12, right: 14, left: -10, bottom: 0 }} barGap={6}>
+                    <ComposedChart data={weeklyFlowData} margin={{ top: 12, right: 8, left: -14, bottom: 0 }} barGap={4} barCategoryGap="25%">
                       <defs>
                         <linearGradient id="weeklyIncomeBar" x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="0%" stopColor="#5eead4" stopOpacity={0.95} />
-                          <stop offset="100%" stopColor="#10b981" stopOpacity={0.45} />
+                          <stop offset="0%" stopColor="#34d399" stopOpacity={1} />
+                          <stop offset="50%" stopColor="#10b981" stopOpacity={0.85} />
+                          <stop offset="100%" stopColor="#059669" stopOpacity={0.5} />
                         </linearGradient>
                         <linearGradient id="weeklyExpenseBar" x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="0%" stopColor="#fb7185" stopOpacity={0.92} />
-                          <stop offset="100%" stopColor="#be123c" stopOpacity={0.45} />
+                          <stop offset="0%" stopColor="#fb7185" stopOpacity={1} />
+                          <stop offset="50%" stopColor="#f43f5e" stopOpacity={0.85} />
+                          <stop offset="100%" stopColor="#be123c" stopOpacity={0.5} />
                         </linearGradient>
+                        <filter id="weeklyBarGlow" x="-30%" y="-30%" width="160%" height="160%">
+                          <feGaussianBlur stdDeviation="4" result="blur" />
+                          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                        </filter>
                       </defs>
-                      <CartesianGrid stroke="rgba(148,163,184,0.09)" strokeDasharray="4 10" vertical={false} />
-                      <XAxis dataKey="week" axisLine={false} tickLine={false} tick={{ fill: '#7c8aa3', fontSize: 12, fontWeight: 800 }} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 700 }} tickFormatter={(v) => `R$${Math.round(Number(v) / 1000)}k`} />
+                      <CartesianGrid stroke="rgba(148,163,184,0.06)" strokeDasharray="3 8" vertical={false} />
+                      <XAxis dataKey="week" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 900 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 10, fontWeight: 700 }} tickFormatter={(v) => `R$${Math.round(Number(v) / 1000)}k`} />
                       <RechartsTooltip
-                        cursor={{ fill: 'rgba(148,163,184,0.08)' }}
+                        cursor={{ fill: 'rgba(129,140,248,0.06)', radius: 8 }}
                         content={({ active, payload, label }) => {
                           const week = weeklyFlowData.find(item => item.week === label);
                           const rows = (payload || [])
@@ -1554,9 +1562,9 @@ export default function Dashboard() {
                           return active && rows.length ? <ChartTooltipCard title={`${label}${week ? ` • dias ${week.range}` : ''}`} rows={rows} /> : null;
                         }}
                       />
-                      <Bar name="Receitas" dataKey="income" fill="url(#weeklyIncomeBar)" radius={[9, 9, 3, 3]} maxBarSize={34} />
-                      <Bar name="Despesas" dataKey="expenses" fill="url(#weeklyExpenseBar)" radius={[9, 9, 3, 3]} maxBarSize={34} />
-                      <Line name="Saldo" type="monotone" dataKey="balance" stroke="#38bdf8" strokeWidth={2.75} strokeLinecap="round" dot={{ r: 3.5, fill: '#38bdf8', stroke: '#07101a', strokeWidth: 2 }} />
+                      <Bar name="Receitas" dataKey="income" fill="url(#weeklyIncomeBar)" radius={[10, 10, 3, 3]} maxBarSize={32} />
+                      <Bar name="Despesas" dataKey="expenses" fill="url(#weeklyExpenseBar)" radius={[10, 10, 3, 3]} maxBarSize={32} />
+                      <Line name="Saldo" type="monotone" dataKey="balance" stroke="#818cf8" strokeWidth={2.5} strokeLinecap="round" dot={{ r: 4, fill: '#818cf8', stroke: '#050810', strokeWidth: 2.5 }} activeDot={{ r: 7, fill: '#818cf8', stroke: '#e0e7ff', strokeWidth: 2 }} />
                     </ComposedChart>
                   </ResponsiveContainer>
                 </div>
@@ -1700,14 +1708,14 @@ export default function Dashboard() {
             <div className="mb-3">
               <SectionHeader title="Mês atual vs anterior" subtitle="3 métricas comparadas" icon={BarChart3} iconColor="text-sky-300" />
             </div>
-            <div className="h-[220px]">
+            <div className="rounded-2xl border border-white/[0.06] bg-[#050810]/80 p-3 shadow-inner shadow-black/30 h-[235px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthCompareData} margin={{ top: 8, right: 4, left: -20, bottom: 0 }} barGap={6}>
-                  <CartesianGrid stroke="rgba(148,163,184,0.09)" strokeDasharray="4 10" vertical={false} />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#7c8aa3', fontSize: 11, fontWeight: 800 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }} tickFormatter={(v) => `R$${Math.round(Number(v) / 1000)}k`} />
+                <BarChart data={monthCompareData} margin={{ top: 10, right: 4, left: -20, bottom: 0 }} barGap={5} barCategoryGap="30%">
+                  <CartesianGrid stroke="rgba(148,163,184,0.06)" strokeDasharray="3 8" vertical={false} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 900 }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 10, fontWeight: 700 }} tickFormatter={(v) => `R$${Math.round(Number(v) / 1000)}k`} />
                   <RechartsTooltip
-                    cursor={{ fill: 'rgba(148,163,184,0.08)' }}
+                    cursor={{ fill: 'rgba(129,140,248,0.06)', radius: 8 }}
                     content={({ active, payload, label }) => {
                       const rows = (payload || [])
                         .filter((p) => p.value !== null && p.value !== undefined)
@@ -1719,38 +1727,61 @@ export default function Dashboard() {
                       return active && rows.length ? <ChartTooltipCard title={String(label)} rows={rows} /> : null;
                     }}
                   />
-                  <Bar name="Anterior" dataKey="anterior" fill="rgba(148,163,184,0.35)" radius={[6, 6, 2, 2]} maxBarSize={28} />
-                  <Bar name="Atual" dataKey="atual" radius={[6, 6, 2, 2]} maxBarSize={28}>
+                  <Bar name="Anterior" dataKey="anterior" fill="rgba(148,163,184,0.20)" radius={[8, 8, 2, 2]} maxBarSize={30} />
+                  <Bar name="Atual" dataKey="atual" radius={[8, 8, 2, 2]} maxBarSize={30}>
                     {monthCompareData.map((entry) => <Cell key={entry.name} fill={entry.colorAtual} />)}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-2 flex flex-wrap gap-3 text-xs font-bold text-slate-400">
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-slate-500" /> Anterior</span>
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Atual</span>
+            <div className="mt-3 flex flex-wrap gap-3 text-[10px] font-bold text-slate-500">
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-slate-600/60" /> Mês anterior</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-emerald-400/80" /> Mês atual</span>
             </div>
           </div>
         </PremiumCard>
       </section>
 
+      <ErrorBoundary fallback={null} label="DailyFlow">
+        <DailyFlowChart
+          income={scopedIncome
+            .filter(i => i.status === 'concluido')
+            .map(i => ({ date: i.date, amount: Number(i.amount) }))}
+          expenses={[
+            ...scopedNonCCExpenses
+              .filter(e => e.status === 'concluido')
+              .map(e => ({ date: e.date, amount: Number(e.amount) })),
+            ...scopedCCTransactions
+              .map(t => ({ date: t.date, amount: Number(t.amount) })),
+          ]}
+          month={month}
+          maskCurrency={maskCurrency}
+        />
+      </ErrorBoundary>
+
       <section className="grid gap-4 lg:grid-cols-2">
         <PremiumCard className="p-4 sm:p-5">
-          <div className="mb-3">
+          <div className="mb-4">
             <SectionHeader title="Metas por categoria" subtitle="Orçamento vs. real" icon={Trophy} iconColor="text-emerald-300" action={{ label: 'Ajustar', href: '/categorias' }} />
           </div>
           {budgetsWithData.length > 0 ? (
-            <BudgetRings budgets={budgetsWithData.slice(0, 5)} size={144} />
+            <BudgetRings budgets={budgetsWithData.slice(0, 5)} size={160} />
           ) : (
-            <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3 text-xs font-semibold text-slate-500">Cadastre orçamentos nas categorias para acompanhar metas aqui.</div>
+            <div className="flex flex-col items-center justify-center py-10 text-center gap-3">
+              <Trophy className="h-10 w-10 text-slate-700" />
+              <div>
+                <p className="text-xs font-semibold text-slate-500">Sem orçamentos definidos</p>
+                <p className="text-[11px] text-slate-600 mt-1">Defina metas nas <a href="/categorias" className="text-emerald-400 hover:underline">categorias</a> para acompanhar aqui</p>
+              </div>
+            </div>
           )}
         </PremiumCard>
 
         <PremiumCard className="p-4 sm:p-5">
-          <div className="mb-3">
+          <div className="mb-4">
             <SectionHeader title="Mapa de calor" subtitle={monthTitleCapitalized} icon={CalendarRange} iconColor="text-orange-300" />
           </div>
-          <div className="rounded-xl border border-white/10 bg-[#070b12]/75 p-3">
+          <div className="rounded-2xl border border-white/[0.06] bg-[#050810]/80 p-3.5">
             <WeeklyHeatmap month={currentMonthDate} data={scopedExpenseHeatmapData} />
           </div>
         </PremiumCard>
