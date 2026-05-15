@@ -587,7 +587,7 @@ export default function CreditCardsPage() {
               {categoryIcon}
             </span>
             <div className="min-w-0">
-              <p className={cn('truncate text-sm font-extrabold tracking-tight', isPaid ? 'text-foreground' : 'text-white')}>
+              <p className={cn('truncate text-sm font-extrabold tracking-tight', isPaid ? 'text-foreground/70 line-through' : 'text-foreground')}>
                 {t.description}
               </p>
               <p className="mt-0.5 text-[11px] font-medium text-muted-foreground sm:hidden">
@@ -618,25 +618,25 @@ export default function CreditCardsPage() {
 
         <div className="col-start-2 flex flex-wrap gap-1.5 sm:col-auto">
           {t.is_installment && (
-            <span className="rounded-full border border-violet-300/25 bg-violet-500/15 px-2 py-0.5 text-[11px] font-extrabold text-violet-200">
+            <span className="rounded-full border border-violet-300/25 bg-violet-500/15 px-2 py-0.5 text-[11px] font-extrabold text-violet-600 dark:text-violet-200">
               {t.installment_number}/{t.total_installments}x
             </span>
           )}
           {t.is_recurring && (
-            <span className="rounded-full border border-amber-300/25 bg-amber-400/10 px-2 py-0.5 text-[11px] font-extrabold text-amber-200">
+            <span className="rounded-full border border-amber-300/25 bg-amber-400/10 px-2 py-0.5 text-[11px] font-extrabold text-amber-600 dark:text-amber-200">
               Recorrente
             </span>
           )}
         </div>
 
         <div className="col-start-2 flex items-center justify-between gap-3 sm:col-auto sm:justify-end">
-          <span className={cn('currency text-sm font-black tabular-nums', isPaid ? 'text-emerald-200' : 'text-white')}>
+          <span className={cn('currency text-sm font-black tabular-nums', isPaid ? 'text-emerald-600 dark:text-emerald-600 dark:text-emerald-200' : 'text-foreground')}>
             {fmt(Number(t.amount))}
           </span>
           <button
             onClick={() => deleteTx.mutate(t.id)}
             title="Excluir compra"
-            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-300 sm:hidden"
+            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-600 dark:text-red-300 sm:hidden"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -645,7 +645,7 @@ export default function CreditCardsPage() {
         <button
           onClick={() => deleteTx.mutate(t.id)}
           title="Excluir compra"
-          className="hidden rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-300 sm:block"
+          className="hidden rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-600 dark:text-red-300 sm:block"
         >
           <MoreVertical className="h-4 w-4" />
         </button>
@@ -664,16 +664,16 @@ export default function CreditCardsPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex min-w-0 items-start gap-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-violet-300/20 bg-violet-500/15 shadow-inner shadow-violet-500/10">
-                <CreditCard className="h-7 w-7 text-violet-300" />
+                <CreditCard className="h-7 w-7 text-violet-600 dark:text-violet-300" />
               </div>
               <div className="min-w-0">
-                <p className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-violet-200/80">
+                <p className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-violet-600 dark:text-violet-200/80">
                   <Sparkles className="h-3.5 w-3.5" /> Central de cartões
                 </p>
                 <h1 className="truncate text-3xl font-black tracking-tight text-foreground sm:text-4xl">Cartões de Crédito</h1>
                 <p className="mt-1.5 text-sm font-medium text-muted-foreground dark:text-slate-400">
                   {currentCard
-                    ? <><span className="font-extrabold text-violet-200">{currentCard.name}</span> · fecha dia {currentCard.closing_day} · vence dia {currentCard.due_day}</>
+                    ? <><span className="font-extrabold text-violet-600 dark:text-violet-200">{currentCard.name}</span> · fecha dia {currentCard.closing_day} · vence dia {currentCard.due_day}</>
                     : 'Cadastre um cartão para acompanhar faturas, limite e parcelas.'}
                 </p>
               </div>
@@ -731,7 +731,7 @@ export default function CreditCardsPage() {
                               <p className="text-[11px] font-semibold text-muted-foreground">{cardUsage.toFixed(0)}% comprometido</p>
                             </div>
                           </div>
-                          {isSelected && <Check className="h-4 w-4 shrink-0 text-violet-200" />}
+                          {isSelected && <Check className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-200" />}
                         </div>
                         <div className="space-y-1.5">
                           <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
@@ -754,38 +754,38 @@ export default function CreditCardsPage() {
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-2xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
                 <div className="mb-3 flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-violet-200"><Receipt className="h-5 w-5" /></span>
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-200"><Receipt className="h-5 w-5" /></span>
                   <p className="text-sm font-bold text-foreground/80 dark:text-slate-300">Fatura atual</p>
                 </div>
                 <p className="currency text-2xl font-black text-foreground tabular-nums">{fmt(billTotal)}</p>
-                <p className="mt-1 text-sm font-extrabold text-amber-300">{fmt(unpaidTotal)} em aberto</p>
+                <p className="mt-1 text-sm font-extrabold text-amber-600 dark:text-amber-300">{fmt(unpaidTotal)} em aberto</p>
               </div>
 
               <div className="rounded-2xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
                 <div className="mb-3 flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300"><Wallet className="h-5 w-5" /></span>
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-300"><Wallet className="h-5 w-5" /></span>
                   <p className="text-sm font-bold text-foreground/80 dark:text-slate-300">Limite disponível</p>
                 </div>
-                <p className="currency text-2xl font-black text-emerald-300 tabular-nums">{fmt(availableLimit)}</p>
+                <p className="currency text-2xl font-black text-emerald-600 dark:text-emerald-300 tabular-nums">{fmt(availableLimit)}</p>
                 <p className="mt-1 text-sm font-semibold text-muted-foreground dark:text-slate-400">{Math.max(0, 100 - committedLimitPercent).toFixed(0)}% livre</p>
               </div>
 
               <div className="rounded-2xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
                 <div className="mb-3 flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-violet-200"><CalendarDays className="h-5 w-5" /></span>
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-200"><CalendarDays className="h-5 w-5" /></span>
                   <p className="text-sm font-bold text-foreground/80 dark:text-slate-300">Próximo vencimento</p>
                 </div>
                 <p className="text-2xl font-black text-foreground tabular-nums">
                   {billDueDate ? billDueDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '') : '--'}
                 </p>
-                <p className={cn('mt-1 text-sm font-semibold', daysUntilDue < 0 ? 'text-red-300' : daysUntilDue <= 7 ? 'text-amber-300' : 'text-muted-foreground dark:text-slate-400')}>
+                <p className={cn('mt-1 text-sm font-semibold', daysUntilDue < 0 ? 'text-red-600 dark:text-red-300' : daysUntilDue <= 7 ? 'text-amber-600 dark:text-amber-300' : 'text-muted-foreground dark:text-slate-400')}>
                   {daysUntilDue < 0 ? `venceu há ${Math.abs(daysUntilDue)} dias` : `faltam ${daysUntilDue} dias`}
                 </p>
               </div>
 
               <div className="rounded-2xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
                 <div className="mb-3 flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-500/15 text-slate-200"><Layers3 className="h-5 w-5" /></span>
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-500/15 text-foreground/80 dark:text-slate-200"><Layers3 className="h-5 w-5" /></span>
                   <p className="text-sm font-bold text-foreground/80 dark:text-slate-300">Parcelas futuras</p>
                 </div>
                 <p className="text-2xl font-black text-foreground tabular-nums">{selectedFutureInstallmentCount}</p>
@@ -799,7 +799,7 @@ export default function CreditCardsPage() {
       {cards.length === 0 ? (
         <div className="rounded-[2rem] border border-dashed border-violet-400/30 bg-violet-500/[0.035] px-6 py-16 text-center">
           <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl border border-violet-300/20 bg-violet-500/10">
-            <CreditCard className="h-10 w-10 text-violet-200/70" />
+            <CreditCard className="h-10 w-10 text-violet-600 dark:text-violet-200/70" />
           </div>
           <p className="text-lg font-black text-foreground">Nenhum cartão cadastrado</p>
           <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground dark:text-slate-400">Adicione seu primeiro cartão para controlar faturas, parcelas e limite em um só lugar.</p>
@@ -849,8 +849,8 @@ export default function CreditCardsPage() {
                           <p className="mt-1 text-[11px] font-semibold text-muted-foreground">{item.count} compra{item.count === 1 ? '' : 's'}</p>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-[11px] font-bold">
-                          <span className="text-emerald-300">Pago {fmt(item.paid)}</span>
-                          <span className="text-right text-amber-300">Aberto {fmt(item.open)}</span>
+                          <span className="text-emerald-600 dark:text-emerald-300">Pago {fmt(item.paid)}</span>
+                          <span className="text-right text-amber-600 dark:text-amber-300">Aberto {fmt(item.open)}</span>
                         </div>
                       </div>
                     </button>
@@ -864,23 +864,23 @@ export default function CreditCardsPage() {
                 <div>
                   <h2 className="text-2xl font-black capitalize tracking-tight text-foreground">{monthLabel(billMonth)}</h2>
                   <p className="mt-2 text-sm font-semibold text-muted-foreground dark:text-slate-400">
-                    <span className="text-emerald-300">Pago {fmt(paidTotal)}</span>
+                    <span className="text-emerald-600 dark:text-emerald-300">Pago {fmt(paidTotal)}</span>
                     <span className="mx-2 text-muted-foreground/70">•</span>
-                    <span className="text-amber-300">Em aberto {fmt(unpaidTotal)}</span>
+                    <span className="text-amber-600 dark:text-amber-300">Em aberto {fmt(unpaidTotal)}</span>
                     <span className="mx-2 text-muted-foreground/70">•</span>
                     <span>{transactions.length} compra{transactions.length === 1 ? '' : 's'}</span>
                   </p>
                 </div>
                 <div className="lg:text-right">
                   <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">Total da fatura</p>
-                  <p className="currency mt-1 text-3xl font-black text-red-300 tabular-nums">{fmt(billTotal)}</p>
+                  <p className="currency mt-1 text-3xl font-black text-red-600 dark:text-red-300 tabular-nums">{fmt(billTotal)}</p>
                 </div>
               </div>
 
               <div className="mt-5 space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-muted-foreground dark:text-slate-400">
                   <span>Uso do limite — {fmt(billTotal)} de {fmt(Number(currentCard.credit_limit))}</span>
-                  <span className={cn('font-black', limitUsagePercent > 80 ? 'text-red-300' : limitUsagePercent > 50 ? 'text-amber-300' : 'text-emerald-300')}>{limitUsagePercent.toFixed(0)}%</span>
+                  <span className={cn('font-black', limitUsagePercent > 80 ? 'text-red-600 dark:text-red-300' : limitUsagePercent > 50 ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300')}>{limitUsagePercent.toFixed(0)}%</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-muted/70 dark:bg-white/[0.08]">
                   <div
@@ -935,7 +935,7 @@ export default function CreditCardsPage() {
                   {openTransactions.length > 0 && (
                     <div>
                       <div className="mb-3 flex items-center justify-between gap-3">
-                        <h3 className="text-sm font-black uppercase tracking-[0.18em] text-amber-300">Em aberto</h3>
+                        <h3 className="text-sm font-black uppercase tracking-[0.18em] text-amber-600 dark:text-amber-300">Em aberto</h3>
                         <span className="text-xs font-bold text-muted-foreground">{openTransactions.length} item{openTransactions.length === 1 ? '' : 's'}</span>
                       </div>
                       <div className="space-y-2">{openTransactions.map(renderTransactionRow)}</div>
@@ -945,7 +945,7 @@ export default function CreditCardsPage() {
                   {paidTransactions.length > 0 && (
                     <div>
                       <div className="mb-3 flex items-center justify-between gap-3">
-                        <h3 className="text-sm font-black uppercase tracking-[0.18em] text-emerald-300">Pagas</h3>
+                        <h3 className="text-sm font-black uppercase tracking-[0.18em] text-emerald-600 dark:text-emerald-300">Pagas</h3>
                         <span className="text-xs font-bold text-muted-foreground">{paidTransactions.length} item{paidTransactions.length === 1 ? '' : 's'}</span>
                       </div>
                       <div className="space-y-2">{paidTransactions.map(renderTransactionRow)}</div>
@@ -1002,7 +1002,7 @@ export default function CreditCardsPage() {
                   <h3 className="text-lg font-black text-foreground">Resumo por categoria</h3>
                   <p className="text-sm text-muted-foreground">Distribuição da fatura selecionada</p>
                 </div>
-                <PieChart className="h-5 w-5 text-violet-300" />
+                <PieChart className="h-5 w-5 text-violet-600 dark:text-violet-300" />
               </div>
 
               {categorySummary.length === 0 ? (
@@ -1059,7 +1059,7 @@ export default function CreditCardsPage() {
             {!getCardDefaultAccount(currentCard.id) ? (
               <div className="rounded-[1.75rem] border border-amber-300/20 bg-amber-400/[0.045] p-5">
                 <div className="mb-3 flex items-start gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-400/10 text-amber-200"><Wallet className="h-5 w-5" /></span>
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-400/10 text-amber-600 dark:text-amber-200"><Wallet className="h-5 w-5" /></span>
                   <div>
                     <p className="font-black text-foreground">Conta de pagamento</p>
                     <p className="mt-1 text-sm text-muted-foreground dark:text-slate-400">Vincule uma conta para as compras do cartão refletirem no saldo corretamente.</p>
@@ -1084,12 +1084,12 @@ export default function CreditCardsPage() {
               return (
                 <div className="rounded-[1.75rem] border border-emerald-300/20 bg-emerald-400/[0.045] p-5">
                   <div className="flex items-start gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-200"><Check className="h-5 w-5" /></span>
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-600 dark:text-emerald-200"><Check className="h-5 w-5" /></span>
                     <div className="min-w-0 flex-1">
                       <p className="font-black text-foreground">Pagamento vinculado</p>
                       <p className="mt-1 truncate text-sm font-semibold text-foreground/80 dark:text-slate-300">{acct?.icon} {acct?.name || 'Conta vinculada'}</p>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <button onClick={() => applyDefaultAccountToHistory(currentCard.id)} className="rounded-lg bg-muted/50 dark:bg-white/[0.05] px-3 py-1.5 text-xs font-bold text-emerald-200 hover:bg-muted/70 dark:bg-white/[0.08]">
+                        <button onClick={() => applyDefaultAccountToHistory(currentCard.id)} className="rounded-lg bg-muted/50 dark:bg-white/[0.05] px-3 py-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-200 hover:bg-muted/70 dark:bg-white/[0.08]">
                           Sincronizar antigas
                         </button>
                         <button onClick={() => { setCardDefaultAccount(currentCard.id, null); setDefaultAcctBump(b => b + 1); toast.success('Conta padrão removida'); }} className="rounded-lg bg-muted/50 dark:bg-white/[0.05] px-3 py-1.5 text-xs font-bold text-muted-foreground dark:text-slate-400 hover:bg-muted/70 dark:bg-white/[0.08]">
