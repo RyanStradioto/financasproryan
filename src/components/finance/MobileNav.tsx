@@ -49,7 +49,7 @@ export default function MobileNav() {
   const moreActive = moreLinks.some((link) => isActive(location.pathname, link.to));
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card/90 backdrop-blur-xl border-t border-border/50 z-50 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_24px_rgba(0,0,0,0.08)]">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border/50 z-50 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_24px_rgba(0,0,0,0.08)]">
       <div className="flex px-1">
         {links.map(({ to, icon: Icon, label }) => {
           const active = isActive(location.pathname, to);

@@ -22,8 +22,9 @@ export default function StickySummaryBar({ balance, perDayAllowance, monthBudget
 
   useEffect(() => {
     const onScroll = () => {
-      // show bar after scrolling past hero (~ 200px)
-      setVisible(window.scrollY > 200);
+      // Only show after user has scrolled past the entire hero block (~360px).
+      // Keeps the bar from overlapping the welcome card title on mobile.
+      setVisible(window.scrollY > 360);
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
@@ -31,13 +32,16 @@ export default function StickySummaryBar({ balance, perDayAllowance, monthBudget
   }, []);
 
   return (
-    <div className={cn(
-      'fixed top-[52px] left-0 right-0 z-30 lg:hidden transition-transform duration-300',
-      visible ? 'translate-y-0' : '-translate-y-full',
-    )}>
-      <div className="bg-card/95 backdrop-blur-xl border-b border-border/60 shadow-md px-3 py-2">
+    <div
+      aria-hidden={!visible}
+      className={cn(
+        'fixed top-[52px] left-0 right-0 z-40 lg:hidden transition-transform duration-300',
+        visible ? 'translate-y-0' : '-translate-y-full pointer-events-none',
+      )}
+    >
+      <div className="bg-card border-b border-border/60 shadow-md px-3 py-2">
         <div className="flex items-center justify-between gap-3 max-w-[1600px] mx-auto">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
               <Wallet className="w-3.5 h-3.5 text-primary" />
             </div>
@@ -51,7 +55,7 @@ export default function StickySummaryBar({ balance, perDayAllowance, monthBudget
             </div>
           </div>
           {monthBudgetSet && perDayAllowance > 0 && (
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-2 min-w-0 shrink-0">
               <div className="w-7 h-7 rounded-lg bg-income/15 flex items-center justify-center shrink-0">
                 <Flame className="w-3.5 h-3.5 text-income" />
               </div>

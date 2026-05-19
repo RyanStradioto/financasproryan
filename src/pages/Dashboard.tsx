@@ -927,7 +927,7 @@ export default function Dashboard() {
         />
       </ErrorBoundary>
 
-      <section className="relative overflow-hidden rounded-2xl border border-border/60 dark:border-white/10 bg-card dark:bg-[#070b12] p-3 shadow-lg shadow-black/5 dark:shadow-xl dark:shadow-black/30 sm:rounded-3xl sm:p-5">
+      <section className="relative overflow-hidden rounded-2xl border border-border/60 dark:border-white/10 bg-card dark:bg-[#070b12] p-4 shadow-lg shadow-black/5 dark:shadow-xl dark:shadow-black/30 sm:rounded-3xl sm:p-5">
         <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-emerald-500/14 blur-3xl" />
         <div className="pointer-events-none absolute bottom-0 left-1/2 h-56 w-56 -translate-x-1/2 rounded-full bg-sky-500/10 blur-3xl" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(16,185,129,0.12),transparent_26%),radial-gradient(circle_at_92%_12%,rgba(59,130,246,0.16),transparent_28%)]" />
@@ -939,7 +939,7 @@ export default function Dashboard() {
               <p className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-700 dark:text-emerald-200/80">
                 {greeting.text}{profile?.first_name ? `, ${profile.first_name}` : ''} 👋
               </p>
-              <h1 className="mt-1 text-lg font-black tracking-tight text-foreground sm:text-2xl lg:text-3xl">
+              <h1 className="mt-1 text-xl font-black tracking-tight text-foreground sm:text-2xl lg:text-3xl">
                 Visão financeira do mês
               </h1>
               <p className="mt-1 text-xs font-semibold text-muted-foreground sm:text-sm">
@@ -947,16 +947,16 @@ export default function Dashboard() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-col gap-2 min-[430px]:flex-row min-[430px]:items-center min-[430px]:flex-wrap">
               <MonthSelector month={month} onChange={setMonth} />
-              <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="flex items-center gap-2 w-full min-[430px]:w-auto min-w-0">
                 <TransactionDialog type="income" defaultAccountId={accountFocusId === '__all__' ? undefined : accountFocusId}>
-                  <button className="flex h-9 flex-1 sm:flex-none items-center justify-center rounded-xl bg-emerald-500 px-3 sm:px-4 text-xs font-black text-slate-950 shadow-md shadow-emerald-500/20 transition-all hover:bg-emerald-400 whitespace-nowrap">
+                  <button className="flex h-10 flex-1 min-[430px]:flex-none items-center justify-center rounded-xl bg-emerald-500 px-3 sm:px-4 text-xs font-black text-slate-950 shadow-md shadow-emerald-500/20 transition-all hover:bg-emerald-400 active:scale-95 whitespace-nowrap">
                     <ArrowUpRight className="mr-1 h-4 w-4 shrink-0" /> Receita
                   </button>
                 </TransactionDialog>
                 <TransactionDialog type="expense" defaultAccountId={accountFocusId === '__all__' ? undefined : accountFocusId}>
-                  <button className="flex h-9 flex-1 sm:flex-none items-center justify-center rounded-xl bg-red-500 px-3 sm:px-4 text-xs font-black text-white shadow-md shadow-red-500/20 transition-all hover:bg-red-400 whitespace-nowrap">
+                  <button className="flex h-10 flex-1 min-[430px]:flex-none items-center justify-center rounded-xl bg-red-500 px-3 sm:px-4 text-xs font-black text-white shadow-md shadow-red-500/20 transition-all hover:bg-red-400 active:scale-95 whitespace-nowrap">
                     <ArrowDownRight className="mr-1 h-4 w-4 shrink-0" /> Despesa
                   </button>
                 </TransactionDialog>

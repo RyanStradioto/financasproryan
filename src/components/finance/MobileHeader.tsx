@@ -80,7 +80,7 @@ export default function MobileHeader() {
 
   return (
     <>
-      <header className="lg:hidden sticky top-0 z-40 bg-card/85 backdrop-blur-xl border-b border-border/50 px-3 py-2.5 flex items-center justify-between gap-2 sm:px-4 sm:py-3">
+      <header className="lg:hidden sticky top-0 z-50 bg-card border-b border-border/50 px-3 py-2.5 flex items-center justify-between gap-2 sm:px-4 sm:py-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-md shadow-primary/25 shrink-0">
             <Wallet className="w-4 h-4 text-primary-foreground" />
