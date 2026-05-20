@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, TrendingUp, TrendingDown, Grid3X3, Landmark, CalendarDays,
   Settings, LogOut, Wallet, Moon, Sun, Upload, Brain, BarChart3, CreditCard,
-  FileText, Trash2, Eye, EyeOff, Target, Sparkles, ChevronRight,
+  FileText, Trash2, Eye, EyeOff, Target, Sparkles, ChevronRight, Rocket,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
@@ -33,6 +33,7 @@ const toolLinks: LinkItem[] = [
   { to: '/relatorio', icon: FileText, label: 'Relatório' },
   { to: '/insights', icon: Brain, label: 'Insights IA' },
   { to: '/importar', icon: Upload, label: 'Importar' },
+  { to: '/bem-vindo', icon: Rocket, label: 'Primeiros passos' },
   { to: '/lixeira', icon: Trash2, label: 'Lixeira' },
   { to: '/configuracoes', icon: Settings, label: 'Configurações' },
 ];

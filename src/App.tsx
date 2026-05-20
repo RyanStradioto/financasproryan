@@ -1,17 +1,20 @@
-﻿import { lazy, Suspense } from "react";
+﻿import { lazy, Suspense, useEffect, useRef } from "react";
 import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider, type Persister } from "@tanstack/react-query-persist-client";
 import { get, set, del } from "idb-keyval";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { useAccounts, useIncome, useExpenses } from "@/hooks/useFinanceData";
+import { isWelcomeDismissed } from "@/lib/welcomeState";
 import Auth from "./pages/Auth";
 import AppLayout from "./components/finance/AppLayout";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 // Rotas pesadas carregadas sob demanda para reduzir o bundle inicial
 const Dashboard       = lazy(() => import("./pages/Dashboard"));
+const WelcomePage     = lazy(() => import("./pages/WelcomePage"));
 const PlanningPage    = lazy(() => import("./pages/PlanningPage"));
 const IncomePage      = lazy(() => import("./pages/IncomePage"));
 const ExpensesPage    = lazy(() => import("./pages/ExpensesPage"));
@@ -75,6 +78,47 @@ const idbPersister: Persister = {
  */
 const CACHE_BUSTER = 'rq-v1';
 
+/**
+ * On the FIRST visit after login, route truly-empty accounts to /bem-vindo so
+ * they see an onboarding screen instead of a vacant dashboard. We only redirect
+ * once per session (guard via ref) so users who manually navigate to /
+ * afterwards are respected.
+ *
+ * "Empty" = no accounts AND no transactions yet AND not previously dismissed.
+ */
+function NewUserRedirector() {
+  const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const redirectedRef = useRef(false);
+
+  const { data: accounts, isLoading: accountsLoading } = useAccounts();
+  const { data: income, isLoading: incomeLoading } = useIncome();
+  const { data: expenses, isLoading: expensesLoading } = useExpenses();
+
+  useEffect(() => {
+    if (!user || redirectedRef.current) return;
+    if (accountsLoading || incomeLoading || expensesLoading) return;
+    if (location.pathname !== '/') return;
+    if (isWelcomeDismissed(user.id)) return;
+
+    const isEmpty =
+      (accounts?.length ?? 0) === 0 &&
+      (income?.length ?? 0) === 0 &&
+      (expenses?.length ?? 0) === 0;
+
+    if (isEmpty) {
+      redirectedRef.current = true;
+      navigate('/bem-vindo', { replace: true });
+    } else {
+      // User already has data; mark dismissed so we never bug them again.
+      redirectedRef.current = true;
+    }
+  }, [user, location.pathname, navigate, accounts, income, expenses, accountsLoading, incomeLoading, expensesLoading]);
+
+  return null;
+}
+
 function ProtectedRoutes() {
   const { user, loading, isRecoveryMode } = useAuth();
 
@@ -90,10 +134,12 @@ function ProtectedRoutes() {
 
   return (
     <AppLayout>
+      <NewUserRedirector />
       <ErrorBoundary label="Pagina">
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/"             element={<ErrorBoundary label="Dashboard"><Dashboard /></ErrorBoundary>} />
+            <Route path="/bem-vindo"    element={<ErrorBoundary label="Welcome"><WelcomePage /></ErrorBoundary>} />
             <Route path="/receitas"     element={<IncomePage />} />
             <Route path="/despesas"     element={<ExpensesPage />} />
             <Route path="/categorias"   element={<CategoriesPage />} />

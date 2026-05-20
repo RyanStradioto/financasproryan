@@ -9,6 +9,7 @@ import {
   Lightbulb,
   MoreHorizontal,
   PiggyBank,
+  Rocket,
   Settings,
   Tags,
   Trash2,
@@ -28,6 +29,7 @@ const links = [
 ];
 
 const moreLinks = [
+  { to: '/bem-vindo', icon: Rocket, label: 'Primeiros passos' },
   { to: '/categorias', icon: Tags, label: 'Categorias' },
   { to: '/contas', icon: Landmark, label: 'Contas' },
   { to: '/planejamento', icon: WalletCards, label: 'Planejamento' },
