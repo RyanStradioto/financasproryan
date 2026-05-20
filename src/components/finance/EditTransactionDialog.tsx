@@ -8,7 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { useCategories, useAccounts, useUpdateIncome, useUpdateExpense, useDeleteExpense, type Income, type Expense } from '@/hooks/useFinanceData';
 import { useAddCreditCardTransaction, useCreditCards } from '@/hooks/useCreditCards';
 import { useFileUpload } from '@/hooks/useFileUpload';
-import { detectCreditCardExpense, stripCreditCardMarkers } from '@/lib/paymentMethod';
+import { detectCreditCardExpense, stripCreditCardMarkers, parseStructuredCardMarker } from '@/lib/paymentMethod';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Paperclip, X, FileText, ExternalLink } from 'lucide-react';
 
@@ -34,6 +36,7 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
   const [attachmentName, setAttachmentName] = useState<string | null>(null);
 
+  const qc = useQueryClient();
   const { data: categories } = useCategories();
   const { data: accounts } = useAccounts();
   const { data: creditCards } = useCreditCards();
@@ -148,12 +151,38 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
 
         await deleteExpense.mutateAsync(transaction.id);
       } else {
-        const cleanNotes = stripCreditCardMarkers(notes) || null;
+        // Check if this expense is a CC mirror (linked to a credit_card_transaction).
+        // If it is, we MUST also update the CC transaction amount so that the fatura total
+        // stays in sync with the balance deduction — otherwise the two diverge by exactly
+        // the edited delta (the classic "4 cents off" bug when the user corrects a amount).
+        const ccMarker = parseStructuredCardMarker(transaction.notes);
+        const userNotes = stripCreditCardMarkers(notes) || null;
+
+        // Rebuild notes: if it was a CC mirror, preserve the structural marker so the
+        // expense stays linked to the CC transaction for future edits and balance logic.
+        const finalNotes = ccMarker?.transactionId
+          ? `[Cartao de credito|card:${ccMarker.cardId}|bill:${ccMarker.billMonth}|tx:${ccMarker.transactionId}]${userNotes ? ` ${userNotes}` : ''}`
+          : userNotes;
+
         await updateExpense.mutateAsync({
           ...baseData,
           category_id: categoryId || null,
-          notes: cleanNotes,
+          notes: finalNotes,
         });
+
+        // Sync CC transaction amount if this was a mirror and the amount changed
+        if (ccMarker?.transactionId && numAmount !== Number(transaction.amount)) {
+          const { error: ccErr } = await supabase
+            .from('credit_card_transactions')
+            .update({ amount: numAmount })
+            .eq('id', ccMarker.transactionId);
+          if (ccErr) {
+            console.warn('[EditTransactionDialog] CC transaction sync failed:', ccErr);
+          } else {
+            qc.invalidateQueries({ queryKey: ['cc-transactions'] });
+            qc.invalidateQueries({ queryKey: ['cc-all-future'] });
+          }
+        }
       }
 
       toast.success('Transacao atualizada!');
