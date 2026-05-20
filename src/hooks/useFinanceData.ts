@@ -530,7 +530,10 @@ export function useUpdateExpense() {
         (payload) => supabase.from('expenses').update(payload as TablesInsert<'expenses'>).eq('id', id),
       );
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['expenses'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+      qc.invalidateQueries({ queryKey: ['accumulated-balance'] });
+    },
   });
 }
 
@@ -544,7 +547,10 @@ export function useUpdateIncome() {
         (payload) => supabase.from('income').update(payload as TablesInsert<'income'>).eq('id', id),
       );
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['income'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['income'] });
+      qc.invalidateQueries({ queryKey: ['accumulated-balance'] });
+    },
   });
 }
 

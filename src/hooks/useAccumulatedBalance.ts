@@ -54,16 +54,22 @@ export function useAccumulatedBalance(month: string) {
         supabase.from('accounts').select('id, name, initial_balance').eq('archived', false),
       ]);
 
+      // Helper: convert a monetary value to integer cents to avoid floating-point drift.
+      // e.g. 70.04 in IEEE-754 float is 70.0400000000000034... — summing many such values
+      // accumulates a visible error in the cents column. Working in integers avoids this.
+      const toCents = (v: number) => Math.round(Number(v) * 100);
+      const fromCents = (c: number) => c / 100;
+
       const byAccount: Record<string, number> = {};
       const initialBalanceByAccount: Record<string, number> = {};
-      let totalInitialBalance = 0;
+      let totalInitialBalanceCents = 0;
 
       if (accountsData.data) {
         accountsData.data.forEach(acc => {
-          const initBal = Number(acc.initial_balance) || 0;
-          byAccount[acc.id] = initBal;
-          initialBalanceByAccount[acc.id] = initBal;
-          totalInitialBalance += initBal;
+          const initBal = toCents(Number(acc.initial_balance) || 0);
+          byAccount[acc.id] = fromCents(initBal);
+          initialBalanceByAccount[acc.id] = fromCents(initBal);
+          totalInitialBalanceCents += initBal;
         });
       }
 
@@ -76,27 +82,33 @@ export function useAccumulatedBalance(month: string) {
       // Expenses that actually hit bank accounts (have account_id assigned)
       const realExpenses = expenseData.filter(e => e.account_id !== null && e.account_id !== undefined);
 
-      // "Orphan" expenses: no account_id AND not a CC mirror — these reduce the total but
-      // don't appear in any account breakdown. They're usually input errors (forgot to pick account).
+      // "Orphan" expenses: no account_id AND not a CC mirror.
+      // They're usually input errors (forgot to pick account).
       const orphanExpenses = expenseData.filter(e => !e.account_id && !isCCMirror(e));
 
       // Income with no account assigned — not counted in any account balance
       const orphanIncome = incomeData.filter(i => !i.account_id);
 
-      const totalIncome       = incomeData.reduce((s, i) => s + Number(i.amount), 0);
-      const totalRealExpenses = realExpenses.reduce((s, e) => s + Number(e.amount), 0);
-      const orphanExpensesTotal = orphanExpenses.reduce((s, e) => s + Number(e.amount), 0);
-      const orphanIncomeTotal   = orphanIncome.reduce((s, i) => s + Number(i.amount), 0);
+      // Sum in cents to prevent floating-point accumulation errors
+      const totalIncomeCents       = incomeData.reduce((s, i) => s + toCents(i.amount), 0);
+      const totalRealExpensesCents = realExpenses.reduce((s, e) => s + toCents(e.amount), 0);
+      const orphanExpensesCents    = orphanExpenses.reduce((s, e) => s + toCents(e.amount), 0);
+      const orphanIncomeCents      = orphanIncome.reduce((s, i) => s + toCents(i.amount), 0);
+
+      const totalIncome         = fromCents(totalIncomeCents);
+      const totalRealExpenses   = fromCents(totalRealExpensesCents);
+      const orphanExpensesTotal = fromCents(orphanExpensesCents);
+      const orphanIncomeTotal   = fromCents(orphanIncomeCents);
 
       // Build per-account balances (only from rows with a known account_id)
       incomeData.forEach(i => {
         if (!i.account_id) return;
-        byAccount[i.account_id] = (byAccount[i.account_id] || 0) + Number(i.amount);
+        byAccount[i.account_id] = fromCents(toCents(byAccount[i.account_id] || 0) + toCents(i.amount));
       });
 
       realExpenses.forEach(e => {
         if (!e.account_id) return;
-        byAccount[e.account_id] = (byAccount[e.account_id] || 0) - Number(e.amount);
+        byAccount[e.account_id] = fromCents(toCents(byAccount[e.account_id] || 0) - toCents(e.amount));
       });
 
       // Cumulative income and expenses per account (for breakdown display)
@@ -104,15 +116,19 @@ export function useAccumulatedBalance(month: string) {
       const cumulativeExpensesByAccount: Record<string, number> = {};
       incomeData.forEach(i => {
         if (!i.account_id) return;
-        cumulativeIncomeByAccount[i.account_id] = (cumulativeIncomeByAccount[i.account_id] || 0) + Number(i.amount);
+        cumulativeIncomeByAccount[i.account_id] = fromCents(
+          toCents(cumulativeIncomeByAccount[i.account_id] || 0) + toCents(i.amount)
+        );
       });
       realExpenses.forEach(e => {
         if (!e.account_id) return;
-        cumulativeExpensesByAccount[e.account_id] = (cumulativeExpensesByAccount[e.account_id] || 0) + Number(e.amount);
+        cumulativeExpensesByAccount[e.account_id] = fromCents(
+          toCents(cumulativeExpensesByAccount[e.account_id] || 0) + toCents(e.amount)
+        );
       });
 
       return {
-        total: totalInitialBalance + totalIncome - totalRealExpenses,
+        total: fromCents(totalInitialBalanceCents + totalIncomeCents - totalRealExpensesCents),
         byAccount,
         initialBalanceByAccount,
         cumulativeIncomeByAccount,
