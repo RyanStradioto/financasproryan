@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAccounts, useAddAccount, useUpdateAccount, useIncome, useExpenses } from '@/hooks/useFinanceData';
 import { useInvestmentTransactions } from '@/hooks/useInvestments';
-import { formatCurrency } from '@/lib/format';
+import { useAccumulatedBalance } from '@/hooks/useAccumulatedBalance';
+import { formatCurrency, getMonthYear } from '@/lib/format';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Landmark, TrendingUp, TrendingDown, Wallet, Info, Pencil } from 'lucide-react';
+import { Plus, Landmark, TrendingUp, TrendingDown, Wallet, Info, Pencil, ChevronDown, ChevronUp, AlertTriangle, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { accountBrandFromRow, getAccountBrandPresets, resolveAccountBrand } from '@/lib/accountBrand';
 
@@ -105,6 +106,38 @@ export default function AccountsPage() {
   const totalInitialBalance = activeAccounts.reduce((s, a) => s + Number(a.initial_balance), 0);
   const totalInvestmentTransfers = allTransactions.reduce((s, t) => s + getInvestmentAccountImpact(t.type, Number(t.amount)), 0);
   const globalBalance = totalInitialBalance + totalIncomeAll - totalExpensesAll + totalInvestmentTransfers;
+
+  // ── Diagnóstico de Saldo ──────────────────────────────────────────────────
+  const { data: diagData } = useAccumulatedBalance(getMonthYear());
+  const [showDiag, setShowDiag] = useState(false);
+  const [diagSearch, setDiagSearch] = useState('');
+
+  const diagExpenses = diagData?._debug?.realExpenses ?? [];
+  const diagIncome   = diagData?._debug?.incomeRows   ?? [];
+
+  // Detecta descrições repetidas (possíveis duplicatas)
+  const duplicateDescs = useMemo(() => {
+    const counts: Record<string, number> = {};
+    diagExpenses.forEach(e => {
+      const key = (e.description ?? '').toLowerCase().trim();
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    return new Set(Object.entries(counts).filter(([, n]) => n > 1).map(([k]) => k));
+  }, [diagExpenses]);
+
+  const filteredDiagExpenses = useMemo(() => {
+    const q = diagSearch.toLowerCase().trim();
+    return diagExpenses
+      .filter(e => !q || (e.description ?? '').toLowerCase().includes(q))
+      .sort((a, b) => b.amount - a.amount);
+  }, [diagExpenses, diagSearch]);
+
+  const filteredDiagIncome = useMemo(() => {
+    const q = diagSearch.toLowerCase().trim();
+    return diagIncome
+      .filter(i => !q || (i.description ?? '').toLowerCase().includes(q))
+      .sort((a, b) => b.amount - a.amount);
+  }, [diagIncome, diagSearch]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -303,6 +336,122 @@ export default function AccountsPage() {
           <p>Adicione sua primeira conta bancária</p>
         </div>
       )}
+
+      {/* ── Diagnóstico de Saldo ─────────────────────────────────────────── */}
+      <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 overflow-hidden">
+        <button
+          className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-amber-400/10 transition-colors"
+          onClick={() => setShowDiag(v => !v)}
+        >
+          <div className="flex items-center gap-2.5">
+            <Search className="w-4 h-4 text-amber-500 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-foreground">Diagnóstico de Saldo</p>
+              <p className="text-xs text-muted-foreground">
+                Veja exatamente quais lançamentos estão sendo somados no saldo · útil para encontrar duplicatas
+              </p>
+            </div>
+          </div>
+          {showDiag ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
+        </button>
+
+        {showDiag && (
+          <div className="px-4 pb-4 space-y-4 border-t border-amber-400/20">
+            {/* Resumo */}
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              {[
+                { label: 'Saldo inicial', value: diagData?._debug?.totalInitialBalance ?? 0, color: '' },
+                { label: 'Total receitas', value: diagData?._debug?.totalIncome ?? 0, color: 'text-income' },
+                { label: 'Total despesas', value: diagData?._debug?.totalRealExpenses ?? 0, color: 'text-expense' },
+                { label: 'Saldo calculado', value: diagData?.total ?? 0, color: (diagData?.total ?? 0) >= 0 ? 'text-income' : 'text-expense' },
+              ].map(item => (
+                <div key={item.label} className="rounded-xl bg-background/60 border border-border/50 p-3">
+                  <p className="text-muted-foreground mb-1">{item.label}</p>
+                  <p className={`font-bold font-mono tabular-nums ${item.color}`}>{formatCurrency(item.value)}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Busca */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+              <input
+                value={diagSearch}
+                onChange={e => setDiagSearch(e.target.value)}
+                placeholder="Buscar lançamento (ex: tenis, adidas...)"
+                className="w-full pl-9 pr-3 h-9 rounded-xl border border-border/60 bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
+              />
+            </div>
+
+            {duplicateDescs.size > 0 && (
+              <div className="flex items-start gap-2 rounded-xl bg-amber-400/10 border border-amber-400/30 p-3 text-xs text-amber-700 dark:text-amber-300">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Possíveis duplicatas detectadas:</strong>{' '}
+                  {Array.from(duplicateDescs).map(d => `"${d}"`).join(', ')}.{' '}
+                  Verifique se há lançamentos repetidos abaixo.
+                </span>
+              </div>
+            )}
+
+            {/* Despesas */}
+            {filteredDiagExpenses.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-2">
+                  DESPESAS CONTADAS NO SALDO ({filteredDiagExpenses.length}{diagSearch ? ` filtradas` : ` total`})
+                </p>
+                <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
+                  {filteredDiagExpenses.map(e => {
+                    const isDup = duplicateDescs.has((e.description ?? '').toLowerCase().trim());
+                    return (
+                      <div
+                        key={e.id}
+                        className={`flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs ${
+                          isDup ? 'bg-amber-400/10 border border-amber-400/30' : 'bg-muted/40'
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <span className="font-medium truncate block">{e.description ?? '(sem descrição)'}</span>
+                          <span className="text-muted-foreground">{e.date}</span>
+                          {e.isCCMarker && <span className="ml-2 text-blue-500">● Cartão CC</span>}
+                          {e.isFaturaItem && <span className="ml-2 text-purple-500">● Fatura CC</span>}
+                        </div>
+                        <span className="font-mono font-bold text-expense shrink-0">
+                          -{formatCurrency(e.amount)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Receitas */}
+            {filteredDiagIncome.length > 0 && diagSearch && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-2">
+                  RECEITAS ENCONTRADAS ({filteredDiagIncome.length})
+                </p>
+                <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+                  {filteredDiagIncome.map(i => (
+                    <div key={i.id} className="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-3 py-2 text-xs">
+                      <div className="min-w-0">
+                        <span className="font-medium truncate block">{i.description ?? '(sem descrição)'}</span>
+                        <span className="text-muted-foreground">{i.date}</span>
+                      </div>
+                      <span className="font-mono font-bold text-income shrink-0">+{formatCurrency(i.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {diagExpenses.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-4">Carregando dados...</p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

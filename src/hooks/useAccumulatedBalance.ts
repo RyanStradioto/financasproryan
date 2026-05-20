@@ -29,10 +29,10 @@ export function useAccumulatedBalance(month: string) {
       const endDate = `${month}-${String(lastDay).padStart(2, '0')}`;
 
       const [incomeData, expenseData, accountsData] = await Promise.all([
-        queryWithSoftDeleteFallback<{ amount: number; account_id: string | null; description: string | null }>((supportsSoftDelete) => {
+        queryWithSoftDeleteFallback<{ id: string; amount: number; account_id: string | null; description: string | null; date: string }>((supportsSoftDelete) => {
           let query = supabase
             .from('income')
-            .select('amount, account_id, description')
+            .select('id, amount, account_id, description, date')
             .lte('date', endDate)
             .eq('status', 'concluido');
           if (supportsSoftDelete) {
@@ -40,10 +40,10 @@ export function useAccumulatedBalance(month: string) {
           }
           return query;
         }),
-        queryWithSoftDeleteFallback<{ amount: number; account_id: string | null; notes: string | null; description: string | null }>((supportsSoftDelete) => {
+        queryWithSoftDeleteFallback<{ id: string; amount: number; account_id: string | null; notes: string | null; description: string | null; date: string }>((supportsSoftDelete) => {
           let query = supabase
             .from('expenses')
-            .select('amount, account_id, notes, description')
+            .select('id, amount, account_id, notes, description, date')
             .lte('date', endDate)
             .eq('status', 'concluido');
           if (supportsSoftDelete) {
@@ -138,6 +138,29 @@ export function useAccumulatedBalance(month: string) {
         orphanIncomeTotal,
         orphanExpensesCount: orphanExpenses.length,
         orphanIncomeCount: orphanIncome.length,
+        // Raw rows (for balance reconciliation diagnostic)
+        _debug: {
+          realExpenses: realExpenses.map(e => ({
+            id: e.id,
+            description: e.description,
+            amount: Number(e.amount),
+            date: e.date,
+            account_id: e.account_id,
+            isCCMarker: !!e.notes?.includes('[Cartao de credito|card:'),
+            isFaturaItem: !!e.notes?.includes('[FATURA_CARTAO'),
+          })),
+          incomeRows: incomeData.map(i => ({
+            id: i.id,
+            description: i.description,
+            amount: Number(i.amount),
+            date: i.date,
+            account_id: i.account_id,
+          })),
+          totalInitialBalance: fromCents(totalInitialBalanceCents),
+          totalIncome: fromCents(totalIncomeCents),
+          totalRealExpenses: fromCents(totalRealExpensesCents),
+          endDate,
+        },
       };
     },
     enabled: !!user && !!month,
