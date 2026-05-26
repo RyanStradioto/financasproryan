@@ -99,6 +99,10 @@ function formatCurrencyInput(value: number) {
   return Number(value || 0).toFixed(2).replace('.', ',');
 }
 
+function formatNumberInput(value: number) {
+  return Number(value || 0).toFixed(2);
+}
+
 function normalizeBudgetSplits(splits: BudgetSplit[]) {
   const byAccount = new Map<string, number>();
 
@@ -413,11 +417,11 @@ export default function CategoriesPage() {
 
   const openEdit = (cat: typeof categoriesWithStats[0]) => {
     const existingSplits = categoryAccountBudgets
-      .filter((budgetRow) => budgetRow.category_id === cat.id)
-      .map((budgetRow) => ({
-        accountId: budgetRow.account_id,
-        budget: formatCurrencyInput(Number(budgetRow.monthly_budget || 0)),
-      }));
+        .filter((budgetRow) => budgetRow.category_id === cat.id)
+        .map((budgetRow) => ({
+          accountId: budgetRow.account_id,
+          budget: formatNumberInput(Number(budgetRow.monthly_budget || 0)),
+        }));
     setEditId(cat.id);
     setEditName(cat.name);
     setEditIcon(cat.icon);

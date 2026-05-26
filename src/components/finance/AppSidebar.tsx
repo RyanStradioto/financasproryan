@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, TrendingUp, TrendingDown, Grid3X3, Landmark, CalendarDays,
   Settings, LogOut, Wallet, Moon, Sun, Upload, Brain, BarChart3, CreditCard,
-  FileText, Trash2, Eye, EyeOff, Target, Sparkles, ChevronRight, Rocket,
+  FileText, Trash2, Eye, EyeOff, Sparkles, ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
@@ -19,7 +19,6 @@ type LinkItem = {
 
 const mainLinks: LinkItem[] = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard', accent: 'primary' },
-  { to: '/planejamento', icon: Target, label: 'Planejamento', accent: 'primary' },
   { to: '/receitas', icon: TrendingUp, label: 'Receitas', accent: 'income' },
   { to: '/despesas', icon: TrendingDown, label: 'Despesas', accent: 'expense' },
   { to: '/investimentos', icon: BarChart3, label: 'Investimentos', accent: 'info' },
@@ -33,7 +32,6 @@ const toolLinks: LinkItem[] = [
   { to: '/relatorio', icon: FileText, label: 'Relatório' },
   { to: '/insights', icon: Brain, label: 'Insights IA' },
   { to: '/importar', icon: Upload, label: 'Importar' },
-  { to: '/bem-vindo', icon: Rocket, label: 'Primeiros passos' },
   { to: '/lixeira', icon: Trash2, label: 'Lixeira' },
   { to: '/configuracoes', icon: Settings, label: 'Configurações' },
 ];

@@ -9,14 +9,12 @@ import {
   Lightbulb,
   MoreHorizontal,
   PiggyBank,
-  Rocket,
   Settings,
   Tags,
   Trash2,
   TrendingDown,
   TrendingUp,
   Upload,
-  WalletCards,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -29,10 +27,8 @@ const links = [
 ];
 
 const moreLinks = [
-  { to: '/bem-vindo', icon: Rocket, label: 'Primeiros passos' },
   { to: '/categorias', icon: Tags, label: 'Categorias' },
   { to: '/contas', icon: Landmark, label: 'Contas' },
-  { to: '/planejamento', icon: WalletCards, label: 'Planejamento' },
   { to: '/calendario', icon: CalendarDays, label: 'Calendário' },
   { to: '/investimentos', icon: PiggyBank, label: 'Investimentos' },
   { to: '/insights', icon: Lightbulb, label: 'Insights' },

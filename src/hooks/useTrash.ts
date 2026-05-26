@@ -5,7 +5,7 @@ import { isMissingDeletedAtError } from '@/lib/softDeleteCompat';
 
 export type TrashedItem = {
   id: string;
-  table: 'income' | 'expenses';
+  table: 'income' | 'expenses' | 'credit_card_transactions';
   description: string;
   amount: number;
   date: string;
@@ -19,7 +19,7 @@ export function useTrash() {
     queryKey: ['trash', user?.id],
     queryFn: async () => {
       const now = new Date();
-      const [incomeRes, expensesRes] = await Promise.all([
+      const [incomeRes, expensesRes, creditCardRes] = await Promise.all([
         supabase
           .from('income')
           .select('id, description, amount, date, deleted_at')
@@ -27,6 +27,11 @@ export function useTrash() {
           .order('deleted_at', { ascending: false }),
         supabase
           .from('expenses')
+          .select('id, description, amount, date, deleted_at, notes')
+          .not('deleted_at', 'is', null)
+          .order('deleted_at', { ascending: false }),
+        supabase
+          .from('credit_card_transactions')
           .select('id, description, amount, date, deleted_at')
           .not('deleted_at', 'is', null)
           .order('deleted_at', { ascending: false }),
@@ -39,6 +44,7 @@ export function useTrash() {
       }
       if (incomeRes.error) throw incomeRes.error;
       if (expensesRes.error) throw expensesRes.error;
+      if (creditCardRes.error && !isMissingDeletedAtError(creditCardRes.error)) throw creditCardRes.error;
 
       const items: TrashedItem[] = [];
 
@@ -59,6 +65,7 @@ export function useTrash() {
       }
 
       for (const item of (expensesRes.data || [])) {
+        if (item.notes && /\[Cartao de credito\b/i.test(item.notes)) continue;
         const deletedDate = new Date(item.deleted_at!);
         const diffDays = Math.ceil((deletedDate.getTime() + 30 * 86400000 - now.getTime()) / 86400000);
         if (diffDays > 0) {
@@ -74,6 +81,24 @@ export function useTrash() {
         }
       }
 
+      if (!creditCardRes.error) {
+        for (const item of (creditCardRes.data || [])) {
+          const deletedDate = new Date(item.deleted_at!);
+          const diffDays = Math.ceil((deletedDate.getTime() + 30 * 86400000 - now.getTime()) / 86400000);
+          if (diffDays > 0) {
+            items.push({
+              id: item.id,
+              table: 'credit_card_transactions',
+              description: item.description || 'Compra no cartao',
+              amount: Number(item.amount),
+              date: item.date,
+              deleted_at: item.deleted_at!,
+              days_remaining: diffDays,
+            });
+          }
+        }
+      }
+
       return items.sort((a, b) => new Date(b.deleted_at).getTime() - new Date(a.deleted_at).getTime());
     },
     enabled: !!user,
@@ -83,17 +108,24 @@ export function useTrash() {
 export function useRestoreItem() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, table }: { id: string; table: 'income' | 'expenses' }) => {
-      const { error } = await supabase
-        .from(table)
-        .update({ deleted_at: null })
-        .eq('id', id);
+    mutationFn: async ({ id, table }: { id: string; table: TrashedItem['table'] }) => {
+      const { error } = await supabase.from(table).update({ deleted_at: null }).eq('id', id);
       if (error) throw error;
+
+      if (table === 'credit_card_transactions') {
+        const { error: mirrorError } = await supabase
+          .from('expenses')
+          .update({ deleted_at: null })
+          .like('notes', `%tx:${id}%`);
+        if (mirrorError && !isMissingDeletedAtError(mirrorError)) throw mirrorError;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['trash'] });
       qc.invalidateQueries({ queryKey: ['income'] });
       qc.invalidateQueries({ queryKey: ['expenses'] });
+      qc.invalidateQueries({ queryKey: ['cc-transactions'] });
+      qc.invalidateQueries({ queryKey: ['cc-all-future'] });
       qc.invalidateQueries({ queryKey: ['accumulated-balance'] });
     },
   });
@@ -102,12 +134,23 @@ export function useRestoreItem() {
 export function usePermanentDelete() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, table }: { id: string; table: 'income' | 'expenses' }) => {
+    mutationFn: async ({ id, table }: { id: string; table: TrashedItem['table'] }) => {
       const { error } = await supabase.from(table).delete().eq('id', id);
       if (error) throw error;
+
+      if (table === 'credit_card_transactions') {
+        const { error: mirrorError } = await supabase
+          .from('expenses')
+          .delete()
+          .like('notes', `%tx:${id}%`);
+        if (mirrorError) throw mirrorError;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['trash'] });
+      qc.invalidateQueries({ queryKey: ['cc-transactions'] });
+      qc.invalidateQueries({ queryKey: ['cc-all-future'] });
+      qc.invalidateQueries({ queryKey: ['expenses'] });
     },
   });
 }

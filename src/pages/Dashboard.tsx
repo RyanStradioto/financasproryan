@@ -1,6 +1,6 @@
 import { useState, useMemo, type ReactNode } from 'react';
 import { TrendingUp, TrendingDown, Wallet, PiggyBank, BarChart3, ArrowUpRight, ArrowDownRight, Target, Clock, ChevronRight, BellRing, CreditCard, Activity, CalendarRange, Flame, Trophy, AlertTriangle, ShieldCheck, Gauge, Landmark, BrainCircuit } from 'lucide-react';
-import { useIncome, useExpenses, useAccounts, type Income, type Expense } from '@/hooks/useFinanceData';
+import { useIncome, useExpenses, useAccounts, useCategoryAccountBudgets, type Income, type Expense } from '@/hooks/useFinanceData';
 import { useNetWorth } from '@/hooks/useInvestments';
 import { useCCTransactionsForMonth, useCreditCards, useCreditCardTransactions } from '@/hooks/useCreditCards';
 import { getMonthYear, formatCurrency, formatDate, getStatusColor, getStatusLabel } from '@/lib/format';
@@ -107,6 +107,7 @@ export default function Dashboard() {
   const { data: prevCCTransactions = [] } = useCCTransactionsForMonth(prevMonth);
   const { data: categories = [] } = useCategories();
   const { data: accounts = [] } = useAccounts();
+  const { data: categoryAccountBudgets = [] } = useCategoryAccountBudgets();
   const { data: creditCards = [] } = useCreditCards();
   const { data: creditTransactions = [] } = useCreditCardTransactions();
   const { investmentTotal } = useNetWorth();
@@ -432,6 +433,20 @@ export default function Dashboard() {
   const ccDelta = pctDelta(totalCCThisMonth, prevTotalCC);
 
   // ── Visão do Mês: Pace tracker ─────────────────────────────────
+  const focusedBudget = useMemo(() => {
+    if (accountFocusId === '__all__') {
+      return categories.reduce((s, c) => s + (Number(c.monthly_budget) || 0), 0);
+    }
+
+    const splitBudget = categoryAccountBudgets
+      .filter((budget) => budget.account_id === accountFocusId)
+      .reduce((s, budget) => s + Number(budget.monthly_budget || 0), 0);
+
+    return splitBudget > 0
+      ? splitBudget
+      : categories.reduce((s, c) => s + (Number(c.monthly_budget) || 0), 0);
+  }, [accountFocusId, categories, categoryAccountBudgets]);
+
   const monthPace = useMemo(() => {
     const today = new Date();
     const [y, m] = month.split('-').map(Number);
@@ -440,7 +455,7 @@ export default function Dashboard() {
     const dayOfMonth = isCurrentMonth ? today.getDate() : lastDayOfMonth;
     const monthProgress = (dayOfMonth / lastDayOfMonth) * 100;
 
-    const totalBudget = categories.reduce((s, c) => s + (Number(c.monthly_budget) || 0), 0);
+    const totalBudget = focusedBudget;
     const spendProgress = totalBudget > 0 ? (currentTotalAll / totalBudget) * 100 : 0;
 
     // Compare pace: how does today's spending vs same day last month?
@@ -465,7 +480,7 @@ export default function Dashboard() {
       paceVsPrev,
       onTrack: totalBudget > 0 ? spendProgress <= monthProgress + 5 : null,
     };
-  }, [month, categories, currentTotalAll, scopedPrevNonCCExpenses, scopedPrevCCTransactions]);
+  }, [month, focusedBudget, currentTotalAll, scopedPrevNonCCExpenses, scopedPrevCCTransactions]);
 
   // ── Saúde Financeira: 0–100 score combinando vários sinais ─────
   const healthScore = useMemo(() => {
@@ -572,7 +587,7 @@ export default function Dashboard() {
     todaySpent,
   }), {
     remainingDays: 30, remainingBudget: 0, perDayAllowance: 0,
-    todaySpent: 0, monthBudget: 0, monthSpent: 0,
+    todayAllowanceRemaining: 0, todaySpent: 0, monthBudget: 0, monthSpent: 0,
   }, 'allowance'), [monthPace, currentTotalAll, todaySpent]);
 
   const burnRate = useMemo(() => safeRun(() => {
@@ -921,7 +936,7 @@ export default function Dashboard() {
       <ErrorBoundary fallback={null} label="StickyBar">
         <StickySummaryBar
           balance={balance}
-          perDayAllowance={allowance.perDayAllowance}
+          perDayAllowance={allowance.todayAllowanceRemaining}
           monthBudgetSet={monthPace.totalBudget > 0}
           maskCurrency={maskCurrency}
         />
@@ -1084,8 +1099,8 @@ export default function Dashboard() {
             <SectionHeader title="Allowance diária" subtitle="Quanto ainda dá gastar por dia." icon={Target} iconColor="text-amber-600 dark:text-amber-300" />
 
             <div>
-              <p className="currency text-2xl sm:text-3xl font-black text-amber-700 dark:text-amber-200 tabular-nums">{maskCurrency(formatCurrency(allowance.perDayAllowance))}</p>
-              <p className="mt-0.5 text-xs font-semibold text-muted-foreground dark:text-slate-400">por dia restante</p>
+              <p className="currency text-2xl sm:text-3xl font-black text-amber-700 dark:text-amber-200 tabular-nums">{maskCurrency(formatCurrency(allowance.todayAllowanceRemaining))}</p>
+              <p className="mt-0.5 text-xs font-semibold text-muted-foreground dark:text-slate-400">disponivel hoje</p>
             </div>
 
             <div className="rounded-xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.035] p-3">

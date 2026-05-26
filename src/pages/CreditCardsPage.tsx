@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, CreditCard, Trash2, Check, ChevronLeft, ChevronRight, Wallet, CalendarDays, Zap, Receipt, Sparkles, Search, MoreVertical, ShieldCheck, Layers3, PieChart } from 'lucide-react';
+import { Plus, CreditCard, Trash2, Check, ChevronLeft, ChevronRight, Wallet, CalendarDays, Zap, Receipt, Sparkles, Search, ShieldCheck, Layers3, PieChart, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ import {
   useAllFutureCCTransactions,
   getCardDefaultAccount,
   setCardDefaultAccount,
+  type CreditCardTransaction,
 } from '@/hooks/useCreditCards';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -78,6 +79,13 @@ export default function CreditCardsPage() {
   // Per-item quick-pay state
   const [payItem, setPayItem] = useState<{ id: string; description: string; amount: number } | null>(null);
   const [payItemAccountId, setPayItemAccountId] = useState('');
+  const [editingTx, setEditingTx] = useState<CreditCardTransaction | null>(null);
+  const [editTx, setEditTx] = useState({
+    description: '',
+    amount: '',
+    date: '',
+    category_id: '',
+  });
 
   const { user } = useAuth();
   const { data: cards = [] } = useCreditCards();
@@ -266,7 +274,8 @@ export default function CreditCardsPage() {
       // Instead, rely on the next render to find it; persist a pending mapping.
       if (newCard.payment_account_id) {
         // Store pending payment account by name+createdAt; we'll resolve on next render
-        try { localStorage.setItem('cc_pending_default_account', JSON.stringify({ name: newCard.name, accountId: newCard.payment_account_id })); } catch {}
+        try { localStorage.setItem('cc_pending_default_account', JSON.stringify({ name: newCard.name, accountId: newCard.payment_account_id })); }
+        catch (storageErr) { console.warn('Nao foi possivel salvar a conta padrao pendente', storageErr); }
       }
       toast.success('Cartão adicionado!');
       setShowNewCard(false);
@@ -286,7 +295,9 @@ export default function CreditCardsPage() {
         localStorage.removeItem('cc_pending_default_account');
         setDefaultAcctBump(b => b + 1);
       }
-    } catch {}
+    } catch (storageErr) {
+      console.warn('Nao foi possivel resolver a conta padrao pendente', storageErr);
+    }
   }, [cards]);
 
   // Apply default payment account to ALL existing CC data for a card.
@@ -311,10 +322,10 @@ export default function CreditCardsPage() {
       // Step 1: fetch ALL CC transactions for this card
       const { data: ccTxData, error: ccTxErr } = await supabase
         .from('credit_card_transactions')
-        .select('id, description, amount, date, bill_month, category_id, notes, paid')
+        .select('id, description, amount, date, bill_month, category_id, notes, paid, deleted_at')
         .eq('credit_card_id', cardId);
       if (ccTxErr) throw ccTxErr;
-      const allCcTxs = ccTxData || [];
+      const allCcTxs = (ccTxData || []).filter(tx => !tx.deleted_at);
 
       // Step 2: find all existing CC mirror expenses for this card
       const { data: mirrors, error: selErr } = await supabase
@@ -327,7 +338,7 @@ export default function CreditCardsPage() {
       // Build set of CC tx ids that already have a mirror expense
       const mirroredTxIds = new Set<string>();
       for (const m of mirrorList) {
-        const match = m.notes?.match(/tx:([^\|\]\s]+)/);
+        const match = m.notes?.match(/tx:([^|\]\s]+)/);
         if (match) mirroredTxIds.add(match[1]);
       }
 
@@ -369,7 +380,7 @@ export default function CreditCardsPage() {
       // Step 5: sync status of existing mirrors based on their CC tx paid flag
       const mirrorTxMap: Array<{ mirrorId: string; txId: string }> = [];
       for (const m of mirrorList) {
-        const match = m.notes?.match(/tx:([^\|\]\s]+)/);
+        const match = m.notes?.match(/tx:([^|\]\s]+)/);
         if (match) mirrorTxMap.push({ mirrorId: m.id, txId: match[1] });
       }
 
@@ -444,13 +455,47 @@ export default function CreditCardsPage() {
 
   // Default payment account per card — remembered in localStorage so future
   // payments use the same account without re-asking.
+  const openEditTx = (tx: CreditCardTransaction) => {
+    setEditingTx(tx);
+    setEditTx({
+      description: tx.description || '',
+      amount: Number(tx.amount).toFixed(2),
+      date: tx.date,
+      category_id: tx.category_id || '',
+    });
+  };
+
+  const handleSaveEditTx = async () => {
+    if (!editingTx) return;
+    const amount = parseFloat(editTx.amount.replace(',', '.'));
+    if (!editTx.description.trim()) return toast.error('Informe a descriÃ§Ã£o');
+    if (!amount || amount <= 0) return toast.error('Informe um valor vÃ¡lido');
+    if (!editTx.date) return toast.error('Informe a data');
+
+    try {
+      await updateTx.mutateAsync({
+        id: editingTx.id,
+        description: editTx.description.trim(),
+        amount,
+        date: editTx.date,
+        bill_month: currentCard ? calcBillMonth(editTx.date, Number(currentCard.closing_day)) : editingTx.bill_month,
+        category_id: editTx.category_id || null,
+      });
+      toast.success('Compra atualizada e dashboard sincronizada');
+      setEditingTx(null);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
   const defaultPayAccountKey = (cardId: string) => `cc_default_pay_account_${cardId}`;
   const getDefaultPayAccount = (cardId: string): string => {
     try { return localStorage.getItem(defaultPayAccountKey(cardId)) || ''; }
     catch { return ''; }
   };
   const setDefaultPayAccount = (cardId: string, accountId: string) => {
-    try { localStorage.setItem(defaultPayAccountKey(cardId), accountId); } catch {}
+    try { localStorage.setItem(defaultPayAccountKey(cardId), accountId); }
+    catch (storageErr) { console.warn('Nao foi possivel salvar a conta padrao do cartao', storageErr); }
   };
 
   // Open Pay Bill dialog with smart defaults
@@ -633,22 +678,40 @@ export default function CreditCardsPage() {
           <span className={cn('currency text-sm font-black tabular-nums', isPaid ? 'text-emerald-600 dark:text-emerald-600 dark:text-emerald-200' : 'text-foreground')}>
             {fmt(Number(t.amount))}
           </span>
+          <div className="flex items-center gap-1 sm:hidden">
+            <button
+              onClick={() => openEditTx(t)}
+              title="Editar compra"
+              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-violet-500/10 hover:text-violet-600"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => deleteTx.mutate(t.id)}
+              title="Excluir compra"
+              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-600 dark:text-red-300"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="hidden items-center justify-end gap-1 sm:flex">
+          <button
+            onClick={() => openEditTx(t)}
+            title="Editar compra"
+            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-violet-500/10 hover:text-violet-600"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
           <button
             onClick={() => deleteTx.mutate(t.id)}
             title="Excluir compra"
-            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-600 dark:text-red-300 sm:hidden"
+            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-600 dark:text-red-300"
           >
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
-
-        <button
-          onClick={() => deleteTx.mutate(t.id)}
-          title="Excluir compra"
-          className="hidden rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-600 dark:text-red-300 sm:block"
-        >
-          <MoreVertical className="h-4 w-4" />
-        </button>
       </div>
     );
   };
@@ -1211,6 +1274,48 @@ export default function CreditCardsPage() {
       </Dialog>
 
       {/* ── Pay Bill Dialog ────────────────────────────────────────── */}
+      {/* Edit Transaction Dialog */}
+      <Dialog open={!!editingTx} onOpenChange={(open) => !open && setEditingTx(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Editar compra</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>DescriÃ§Ã£o</Label><Input value={editTx.description} onChange={(e) => setEditTx((p) => ({ ...p, description: e.target.value }))} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Valor (R$)</Label>
+                <Input type="number" step="0.01" min="0.01" value={editTx.amount} onChange={(e) => setEditTx((p) => ({ ...p, amount: e.target.value }))} />
+              </div>
+              <div>
+                <Label>Data</Label>
+                <Input type="date" value={editTx.date} onChange={(e) => setEditTx((p) => ({ ...p, date: e.target.value }))} />
+              </div>
+            </div>
+            {currentCard && editTx.date && (
+              <div className="flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium" style={{ backgroundColor: `${currentCard.color}10`, borderColor: `${currentCard.color}30`, color: currentCard.color }}>
+                <CreditCard className="w-3.5 h-3.5 shrink-0" />
+                <span>Fatura recalculada: <strong className="capitalize">{monthLabel(calcBillMonth(editTx.date, Number(currentCard.closing_day)))}</strong></span>
+              </div>
+            )}
+            <div>
+              <Label>Categoria</Label>
+              <Select value={editTx.category_id || '__none__'} onValueChange={(v) => setEditTx((p) => ({ ...p, category_id: v === '__none__' ? '' : v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Sem categoria</SelectItem>
+                  {activeCategories.map((c) => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingTx(null)}>Cancelar</Button>
+            <Button onClick={handleSaveEditTx} disabled={updateTx.isPending} style={{ backgroundColor: currentCard?.color }} className="text-white">
+              Salvar alteraÃ§Ãµes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showPayBill} onOpenChange={setShowPayBill}>
         <DialogContent>
           <DialogHeader>

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTrash, useRestoreItem, usePermanentDelete, type TrashedItem } from '@/hooks/useTrash';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
-import { Trash2, RotateCcw, AlertTriangle, Clock, TrendingUp, TrendingDown, Sparkles } from 'lucide-react';
+import { Trash2, RotateCcw, AlertTriangle, Clock, TrendingUp, TrendingDown, Sparkles, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
@@ -36,6 +36,7 @@ export default function TrashPage() {
 
   const incomeItems = items.filter((item) => item.table === 'income');
   const expenseItems = items.filter((item) => item.table === 'expenses');
+  const creditCardItems = items.filter((item) => item.table === 'credit_card_transactions');
 
   return (
     <div className="space-y-5 md:space-y-6 animate-fade-in">
@@ -116,6 +117,26 @@ export default function TrashPage() {
         </section>
       )}
 
+      {creditCardItems.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-primary" />
+            Compras de cartao excluidas ({creditCardItems.length})
+          </h2>
+          <div className="space-y-3">
+            {creditCardItems.map((item) => (
+              <TrashItemCard
+                key={item.id}
+                item={item}
+                onRestore={handleRestore}
+                onDelete={() => setConfirmDelete(item)}
+                isPending={restoreItem.isPending}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
       <Dialog open={!!confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(null)}>
         <DialogContent>
           <DialogHeader>
@@ -161,14 +182,15 @@ function TrashItemCard({
   const { maskCurrency } = useSensitiveData();
   const fmt = (v: number) => maskCurrency(formatCurrency(v));
   const isIncome = item.table === 'income';
+  const isCard = item.table === 'credit_card_transactions';
   const urgencyClass =
     item.days_remaining <= 5 ? 'text-destructive' : item.days_remaining <= 10 ? 'text-warning' : 'text-muted-foreground';
 
   return (
     <div className="stat-card p-4 sm:p-5 transition-all hover:shadow-md">
       <div className="flex items-start gap-3 sm:gap-4">
-        <div className={`mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${isIncome ? 'bg-income/10' : 'bg-expense/10'}`}>
-          {isIncome ? <TrendingUp className="w-5 h-5 text-income" /> : <TrendingDown className="w-5 h-5 text-expense" />}
+        <div className={`mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${isIncome ? 'bg-income/10' : isCard ? 'bg-primary/10' : 'bg-expense/10'}`}>
+          {isIncome ? <TrendingUp className="w-5 h-5 text-income" /> : isCard ? <CreditCard className="w-5 h-5 text-primary" /> : <TrendingDown className="w-5 h-5 text-expense" />}
         </div>
 
         <div className="min-w-0 flex-1 space-y-3">
@@ -184,7 +206,7 @@ function TrashItemCard({
               </div>
             </div>
 
-            <div className={`inline-flex w-fit items-center rounded-2xl px-3 py-2 text-base font-bold tabular-nums ${isIncome ? 'bg-income/10 text-income' : 'bg-expense/10 text-expense'}`}>
+            <div className={`inline-flex w-fit items-center rounded-2xl px-3 py-2 text-base font-bold tabular-nums ${isIncome ? 'bg-income/10 text-income' : isCard ? 'bg-primary/10 text-primary' : 'bg-expense/10 text-expense'}`}>
               {fmt(item.amount)}
             </div>
           </div>

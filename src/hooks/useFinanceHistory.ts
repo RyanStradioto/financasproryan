@@ -67,13 +67,18 @@ export function useFinanceHistory(monthsBack = 6, accountId: string = '__all__')
         // Credit card transactions are bucketed by bill_month, not date — that's the month the
         // user actually has to pay them, which is what we want to surface in the trend.
         (async () => {
-          const { data, error } = await supabase
-            .from('credit_card_transactions')
-            .select('bill_month, amount, credit_card_id')
-            .gte('bill_month', firstMonth)
-            .lte('bill_month', lastMonth);
-          if (error) throw error;
-          return (data ?? []) as { bill_month: string; amount: number; credit_card_id: string }[];
+          const data = await queryWithSoftDeleteFallback<{ bill_month: string; amount: number; credit_card_id: string }>((supportsSoftDelete) => {
+            let query = supabase
+              .from('credit_card_transactions')
+              .select('bill_month, amount, credit_card_id')
+              .gte('bill_month', firstMonth)
+              .lte('bill_month', lastMonth);
+            if (supportsSoftDelete) {
+              query = query.is('deleted_at', null);
+            }
+            return query;
+          });
+          return data as { bill_month: string; amount: number; credit_card_id: string }[];
         })(),
         supabase.from('accounts').select('id, name').eq('archived', false),
         supabase.from('credit_cards').select('id, name').eq('archived', false)

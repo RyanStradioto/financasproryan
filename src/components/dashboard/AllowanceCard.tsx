@@ -15,7 +15,7 @@ interface Props {
 }
 
 export default function AllowanceCard({ allowance, todaySpent = 0, maskCurrency }: Props) {
-  const { remainingDays, perDayAllowance, remainingBudget, monthBudget, monthSpent } = allowance;
+  const { remainingDays, perDayAllowance, todayAllowanceRemaining, remainingBudget, monthBudget, monthSpent } = allowance;
   const exceededToday = todaySpent > perDayAllowance && perDayAllowance > 0;
   const noBudget = monthBudget === 0;
   const overBudget = monthSpent > monthBudget && monthBudget > 0;
@@ -84,9 +84,9 @@ export default function AllowanceCard({ allowance, todaySpent = 0, maskCurrency 
           <div className="space-y-2">
             <div className="flex items-baseline gap-2">
               <p className={cn('text-3xl sm:text-4xl font-extrabold tabular-nums', accentText)}>
-                {maskCurrency(formatCurrency(perDayAllowance))}
+                {maskCurrency(formatCurrency(todayAllowanceRemaining))}
               </p>
-              <p className="text-xs text-muted-foreground">/dia</p>
+              <p className="text-xs text-muted-foreground">hoje</p>
             </div>
             <p className="text-xs text-muted-foreground">
               {maskCurrency(formatCurrency(remainingBudget))} restantes ÷ {remainingDays} dias

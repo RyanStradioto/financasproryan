@@ -36,6 +36,7 @@ export interface AllowanceResult {
   remainingDays: number;
   remainingBudget: number;     // total budget left
   perDayAllowance: number;     // remainingBudget / remainingDays (clamped at 0)
+  todayAllowanceRemaining: number;
   todaySpent: number;          // already spent today (warns if > perDayAllowance)
   monthBudget: number;
   monthSpent: number;
@@ -52,10 +53,12 @@ export function computeAllowance(opts: {
   const remainingDays = Math.max(1, lastDayOfMonth - dayOfMonth + 1);
   const remainingBudget = Math.max(0, monthBudget - monthSpent);
   const perDayAllowance = remainingBudget / remainingDays;
+  const todayAllowanceRemaining = Math.max(0, perDayAllowance - todaySpent);
   return {
     remainingDays,
     remainingBudget,
     perDayAllowance,
+    todayAllowanceRemaining,
     todaySpent,
     monthBudget,
     monthSpent,

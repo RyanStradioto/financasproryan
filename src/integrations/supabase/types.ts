@@ -139,6 +139,7 @@ export type Database = {
           created_at: string
           credit_card_id: string
           date: string
+          deleted_at: string | null
           description: string
           id: string
           installment_group_id: string | null
@@ -158,6 +159,7 @@ export type Database = {
           created_at?: string
           credit_card_id: string
           date?: string
+          deleted_at?: string | null
           description?: string
           id?: string
           installment_group_id?: string | null
@@ -177,6 +179,7 @@ export type Database = {
           created_at?: string
           credit_card_id?: string
           date?: string
+          deleted_at?: string | null
           description?: string
           id?: string
           installment_group_id?: string | null

@@ -1,7 +1,8 @@
 import { useState, useRef, useMemo } from 'react';
 import { useIncome, useExpenses, useCategories, useAccounts } from '@/hooks/useFinanceData';
-import { useCreditCardTransactions } from '@/hooks/useCreditCards';
+import { useCreditCardTransactions, useCreditCards } from '@/hooks/useCreditCards';
 import { formatCurrency, getMonthLabel } from '@/lib/format';
+import { resolveAccountBrand } from '@/lib/accountBrand';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -79,6 +80,7 @@ export default function ReportPage() {
   const currentMonth = monthOptions[monthOptions.length - 1].value;
   const [startMonth, setStartMonth] = useState(currentMonth);
   const [endMonth, setEndMonth] = useState(currentMonth);
+  const [accountId, setAccountId] = useState('__all__');
   const [generated, setGenerated] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
@@ -102,10 +104,30 @@ export default function ReportPage() {
   const { data: allCCTransactions = [] } = useCreditCardTransactions();
   const { data: categories = [] } = useCategories();
   const { data: accounts = [] } = useAccounts();
+  const { data: creditCards = [] } = useCreditCards();
+
+  const selectedAccount = accounts.find((account) => account.id === accountId);
+  const matchingCardIds = useMemo(() => {
+    if (accountId === '__all__' || !selectedAccount) return null;
+    const accountBrand = resolveAccountBrand(selectedAccount.name).name;
+    return creditCards
+      .filter((card) => resolveAccountBrand(card.name).name === accountBrand)
+      .map((card) => card.id);
+  }, [accountId, selectedAccount, creditCards]);
+  const cardAccountId = useMemo(() => {
+    const map = new Map<string, string>();
+    creditCards.forEach((card) => {
+      const cardBrand = resolveAccountBrand(card.name).name;
+      const account = accounts.find((acc) => resolveAccountBrand(acc.name).name === cardBrand);
+      if (account) map.set(card.id, account.id);
+    });
+    return map;
+  }, [accounts, creditCards]);
 
   const incomeInRange = allIncome.filter(i => {
     const m = i.date?.substring(0, 7);
-    return m && m >= startMonth && m <= endMonth;
+    if (!m || m < startMonth || m > endMonth) return false;
+    return accountId === '__all__' || i.account_id === accountId;
   });
 
   // Filter out CC mirror rows and bill payment markers — the actual CC charges come in via
@@ -119,11 +141,13 @@ export default function ReportPage() {
   const expensesInRange = allExpenses.filter(e => {
     const m = e.date?.substring(0, 7);
     if (!m || m < startMonth || m > endMonth) return false;
+    if (accountId !== '__all__' && e.account_id !== accountId) return false;
     return !isCCMirror(e.notes) && !isBillPayment(e.notes);
   });
 
   const ccTransactionsInRange = allCCTransactions.filter(t => {
-    return t.bill_month && t.bill_month >= startMonth && t.bill_month <= endMonth;
+    if (!t.bill_month || t.bill_month < startMonth || t.bill_month > endMonth) return false;
+    return !matchingCardIds || matchingCardIds.includes(t.credit_card_id);
   });
 
   const totalIncome = incomeInRange.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0);
@@ -151,18 +175,18 @@ export default function ReportPage() {
     if (!prevPeriod) return { income: 0, expenses: 0, balance: 0 };
     const inRange = (m?: string) => !!m && m >= prevPeriod.startMonth && m <= prevPeriod.endMonth;
     const prevIncome = allIncome
-      .filter(i => i.status === 'concluido' && inRange(i.date?.substring(0, 7)))
+      .filter(i => i.status === 'concluido' && inRange(i.date?.substring(0, 7)) && (accountId === '__all__' || i.account_id === accountId))
       .reduce((s, i) => s + Number(i.amount), 0);
     const prevExpNonCC = allExpenses
-      .filter(e => e.status === 'concluido' && inRange(e.date?.substring(0, 7)) && !isCCMirror(e.notes) && !isBillPayment(e.notes))
+      .filter(e => e.status === 'concluido' && inRange(e.date?.substring(0, 7)) && (accountId === '__all__' || e.account_id === accountId) && !isCCMirror(e.notes) && !isBillPayment(e.notes))
       .reduce((s, e) => s + Number(e.amount), 0);
     const prevCC = allCCTransactions
-      .filter(t => inRange(t.bill_month))
+      .filter(t => inRange(t.bill_month) && (!matchingCardIds || matchingCardIds.includes(t.credit_card_id)))
       .reduce((s, t) => s + Number(t.amount), 0);
     const prevExp = prevExpNonCC + prevCC;
     return { income: prevIncome, expenses: prevExp, balance: prevIncome - prevExp };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prevPeriod, allIncome, allExpenses, allCCTransactions]);
+  }, [prevPeriod, allIncome, allExpenses, allCCTransactions, accountId, matchingCardIds]);
 
   /** Calcula delta percentual entre atual e anterior. Retorna null se prev=0. */
   const pctDelta = (current: number, prev: number): number | null => {
@@ -226,13 +250,16 @@ export default function ReportPage() {
     .map(acc => {
       const accIncome = incomeInRange.filter(i => i.account_id === acc.id && i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0);
       const accExpense = expensesInRange.filter(e => e.account_id === acc.id && e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0);
+      const accCardExpense = ccTransactionsInRange
+        .filter((tx) => cardAccountId.get(tx.credit_card_id) === acc.id)
+        .reduce((s, tx) => s + Number(tx.amount), 0);
       return {
         id: acc.id,
         icon: acc.icon,
         name: acc.name,
         income: accIncome,
-        expense: accExpense,
-        balance: accIncome - accExpense,
+        expense: accExpense + accCardExpense,
+        balance: accIncome - accExpense - accCardExpense,
       };
     })
     .filter(a => a.income > 0 || a.expense > 0)
@@ -440,7 +467,7 @@ export default function ReportPage() {
           })}
         </div>
 
-        <div className="grid sm:grid-cols-[1fr_1fr_auto_auto] items-end gap-3">
+        <div className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_auto_auto]">
           <div className="space-y-1.5">
             <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Mês Inicial</Label>
             <Select value={startMonth} onValueChange={setStartMonth}>
@@ -459,6 +486,18 @@ export default function ReportPage() {
               <SelectContent>
                 {monthOptions.filter(o => o.value >= startMonth).map(o => (
                   <SelectItem key={o.value} value={o.value} className="capitalize">{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Conta</Label>
+            <Select value={accountId} onValueChange={(value) => { setAccountId(value); setGenerated(false); }}>
+              <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Todas as contas</SelectItem>
+                {accounts.filter((account) => !account.archived).map((account) => (
+                  <SelectItem key={account.id} value={account.id}>{account.icon} {account.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -507,6 +546,9 @@ export default function ReportPage() {
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-card/70 border border-border/60 text-[11px] font-semibold">
                   <Calendar className="w-3 h-3" /> {monthsInRange.length} {monthsInRange.length === 1 ? 'mês' : 'meses'}
+                </span>
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-card/70 border border-border/60 text-[11px] font-semibold">
+                  <Wallet className="w-3 h-3" /> {selectedAccount ? selectedAccount.name : 'Todas as contas'}
                 </span>
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-income/10 border border-income/20 text-income text-[11px] font-semibold">
                   <TrendingUp className="w-3 h-3" /> {incomeInRange.length} receitas

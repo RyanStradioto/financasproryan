@@ -457,7 +457,8 @@ export function useReplaceCategoryAccountBudgets() {
       const { error: deleteError } = await supabase
         .from('category_account_budgets')
         .delete()
-        .eq('category_id', categoryId);
+        .eq('category_id', categoryId)
+        .eq('user_id', user!.id);
       if (deleteError) {
         if (isMissingRelationError(deleteError, 'category_account_budgets')) return;
         throw deleteError;
@@ -479,7 +480,10 @@ export function useReplaceCategoryAccountBudgets() {
         .insert(rows as TablesInsert<'category_account_budgets'>[]);
       if (insertError) throw insertError;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['category-account-budgets'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['category-account-budgets'] });
+      qc.invalidateQueries({ queryKey: ['categories'] });
+    },
   });
 }
 

@@ -50,6 +50,23 @@ function getCurrentMonthContext(now = new Date()) {
   };
 }
 
+function isCreditCardMirrorExpense(notes: unknown): boolean {
+  return typeof notes === "string" && notes.includes("[Cartao de credito|");
+}
+
+function isBillPaymentExpense(notes: unknown): boolean {
+  return typeof notes === "string" && (
+    notes.includes("[FATURA_CARTAO]") ||
+    notes.includes("[FATURA_CARTAO_ITEM|")
+  );
+}
+
+function isReportExpense(row: Record<string, unknown>): boolean {
+  if (isBillPaymentExpense(row.notes)) return false;
+  if (isCreditCardMirrorExpense(row.notes)) return true;
+  return row.status === "concluido";
+}
+
 function decodeJwtPayload(token: string | null): Record<string, unknown> | null {
   if (!token) return null;
   const parts = token.split(".");
@@ -456,6 +473,15 @@ Deno.serve(async (req) => {
     const dataServiceRole  = Deno.env.get("DATA_SUPABASE_SERVICE_ROLE_KEY");
     const cronSecret       = Deno.env.get("CRON_SECRET");
 
+    if (!brevoApiKey) {
+      return new Response(JSON.stringify({
+        error: "BREVO_API_KEY is not configured. Weekly summaries are sent through Brevo, so this secret is required.",
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const authHeader        = req.headers.get("Authorization");
     const userJwt           = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
     const jwtPayload        = decodeJwtPayload(userJwt);
@@ -520,6 +546,8 @@ Deno.serve(async (req) => {
     const nextScheduledSend = getNextWeeklySend(now);
 
     const results = [];
+    const deliveryFailures: Array<{ email: string; status: number; error: unknown }> = [];
+    let sentCount = 0;
 
     for (const profile of profilesToProcess) {
       if (!profile.email) continue;
@@ -544,18 +572,18 @@ Deno.serve(async (req) => {
       const prevEndDate = prevRangeEnd.toISOString().split("T")[0];
 
       const [incRes, expRes, catRes, accRes, monthExpRes, prevIncRes, prevExpRes] = await Promise.all([
-        dc.from("income").select("id,amount,date,description,account_id")
-          .eq("user_id", profile.user_id).gte("date", startDate).lte("date", endDate),
-        dc.from("expenses").select("id,amount,date,description,category_id,account_id,status")
-          .eq("user_id", profile.user_id).gte("date", startDate).lte("date", endDate),
+        dc.from("income").select("id,amount,date,description,account_id,status")
+          .eq("user_id", profile.user_id).gte("date", startDate).lte("date", endDate).is("deleted_at", null),
+        dc.from("expenses").select("id,amount,date,description,category_id,account_id,status,notes")
+          .eq("user_id", profile.user_id).gte("date", startDate).lte("date", endDate).is("deleted_at", null),
         dc.from("categories").select("id,name,icon,monthly_budget").eq("user_id", profile.user_id),
         dc.from("accounts").select("id,name,icon,archived").eq("user_id", profile.user_id),
-        dc.from("expenses").select("id,amount,date")
-          .eq("user_id", profile.user_id).gte("date", monthContext.startDate).lte("date", monthContext.endDate),
-        dc.from("income").select("id,amount")
-          .eq("user_id", profile.user_id).gte("date", prevStartDate).lte("date", prevEndDate),
-        dc.from("expenses").select("id,amount")
-          .eq("user_id", profile.user_id).gte("date", prevStartDate).lte("date", prevEndDate),
+        dc.from("expenses").select("id,amount,date,status,notes")
+          .eq("user_id", profile.user_id).gte("date", monthContext.startDate).lte("date", monthContext.endDate).is("deleted_at", null),
+        dc.from("income").select("id,amount,status")
+          .eq("user_id", profile.user_id).gte("date", prevStartDate).lte("date", prevEndDate).is("deleted_at", null),
+        dc.from("expenses").select("id,amount,status,notes")
+          .eq("user_id", profile.user_id).gte("date", prevStartDate).lte("date", prevEndDate).is("deleted_at", null),
       ]);
 
       if (incRes.error) throw incRes.error;
@@ -569,17 +597,20 @@ Deno.serve(async (req) => {
       const monthExpenses = monthExpRes.data || [];
       const prevIncomeData = prevIncRes.data || [];
       const prevExpensesData = prevExpRes.data || [];
+      const reportExpenses = expenses.filter((e: Record<string, unknown>) => isReportExpense(e));
+      const reportMonthExpenses = monthExpenses.filter((e: Record<string, unknown>) => isReportExpense(e));
+      const reportPrevExpenses = prevExpensesData.filter((e: Record<string, unknown>) => isReportExpense(e));
 
-      const prevWeekIncome = prevIncomeData.reduce((s: number, i: Record<string, unknown>) => s + Number(i.amount), 0);
-      const prevWeekExpenses = prevExpensesData.reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0);
+      const prevWeekIncome = prevIncomeData.filter((i: Record<string, unknown>) => i.status === "concluido").reduce((s: number, i: Record<string, unknown>) => s + Number(i.amount), 0);
+      const prevWeekExpenses = reportPrevExpenses.reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const totalIncome   = income.reduce((s: number, i: Record<string, unknown>)   => s + Number(i.amount), 0);
+      const totalIncome   = income.filter((i: Record<string, unknown>) => i.status === "concluido").reduce((s: number, i: Record<string, unknown>)   => s + Number(i.amount), 0);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const totalExpenses = expenses.reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0);
+      const totalExpenses = reportExpenses.reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0);
       const balance       = totalIncome - totalExpenses;
       const avgDaily      = totalExpenses / 7;
-      const monthToDateExpenses = monthExpenses.reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0);
+      const monthToDateExpenses = reportMonthExpenses.reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0);
       const projectionReady = monthContext.elapsedDays >= 10;
       const projectedMonthly = projectionReady && monthContext.elapsedDays > 0
         ? (monthToDateExpenses / monthContext.elapsedDays) * monthContext.daysInMonth
@@ -592,7 +623,7 @@ Deno.serve(async (req) => {
         catMap.set(String(cat.id), { name: String(cat.name), icon: String(cat.icon || "tag"), budget: Number(cat.monthly_budget) || 0, value: 0 });
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      for (const e of expenses) {
+      for (const e of reportExpenses) {
         const c = catMap.get(String(e.category_id));
         if (c) c.value += Number(e.amount);
       }
@@ -603,7 +634,7 @@ Deno.serve(async (req) => {
       /* Top expenses */
       const catNameMap = new Map(categories.map((c: Record<string, unknown>) => [String(c.id), `${c.icon || ""} ${c.name}`]));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const topExpenses: TxItem[] = [...expenses]
+      const topExpenses: TxItem[] = [...reportExpenses]
         .sort((a: Record<string, unknown>, b: Record<string, unknown>) => Number(b.amount) - Number(a.amount))
         .slice(0, 5)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -625,11 +656,11 @@ Deno.serve(async (req) => {
           net: 0,
         });
       }
-      for (const i of income) {
+      for (const i of income.filter((row: Record<string, unknown>) => row.status === "concluido")) {
         const acc = accountMap.get(String(i.account_id));
         if (acc) acc.income += Number(i.amount);
       }
-      for (const e of expenses) {
+      for (const e of reportExpenses) {
         const acc = accountMap.get(String(e.account_id));
         if (acc) acc.expenses += Number(e.amount);
       }
@@ -670,25 +701,51 @@ Deno.serve(async (req) => {
         nextScheduledSend,
       });
 
-      results.push({ email: profile.email, totalIncome, totalExpenses, balance });
-
-      if (brevoApiKey) {
-        const res = await fetch("https://api.brevo.com/v3/smtp/email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "api-key": brevoApiKey },
-          body: JSON.stringify({
-            sender: { name: "FinancasPro", email: "amaralstradiotoryan@gmail.com" },
-            to: [{ email: profile.email }],
-            subject: `Resumo Semanal | ${weekLabel}`,
-            htmlContent: html,
-          }),
-        });
-        const resData = await res.json();
-        if (!res.ok) console.error(`Brevo error for ${profile.email}:`, JSON.stringify(resData));
+      const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "api-key": brevoApiKey },
+        body: JSON.stringify({
+          sender: { name: "FinancasPro", email: "amaralstradiotoryan@gmail.com" },
+          to: [{ email: profile.email }],
+          subject: `Resumo Semanal | ${weekLabel}`,
+          htmlContent: html,
+        }),
+      });
+      const rawBrevoResponse = await res.text();
+      let brevoResponse: unknown = rawBrevoResponse;
+      try {
+        brevoResponse = rawBrevoResponse ? JSON.parse(rawBrevoResponse) : null;
+      } catch {
+        brevoResponse = rawBrevoResponse;
       }
+
+      if (!res.ok) {
+        deliveryFailures.push({ email: profile.email, status: res.status, error: brevoResponse });
+        console.error(`Brevo error for ${profile.email}:`, JSON.stringify(brevoResponse));
+      } else {
+        sentCount += 1;
+      }
+
+      results.push({
+        email: profile.email,
+        totalIncome,
+        totalExpenses,
+        balance,
+        delivery: res.ok ? "sent_via_brevo" : "failed",
+      });
     }
 
-    return new Response(JSON.stringify({ success: true, processed: results.length, results }), {
+    const responseStatus = deliveryFailures.length > 0 ? 502 : 200;
+    return new Response(JSON.stringify({
+      success: deliveryFailures.length === 0,
+      provider: "brevo",
+      processed: results.length,
+      sent: sentCount,
+      failed: deliveryFailures.length,
+      deliveryFailures,
+      results,
+    }), {
+      status: responseStatus,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

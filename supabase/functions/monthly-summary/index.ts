@@ -72,6 +72,19 @@ function isCreditCardMirrorExpense(notes: unknown): boolean {
   return typeof notes === "string" && notes.includes("[Cartao de credito|");
 }
 
+function isBillPaymentExpense(notes: unknown): boolean {
+  return typeof notes === "string" && (
+    notes.includes("[FATURA_CARTAO]") ||
+    notes.includes("[FATURA_CARTAO_ITEM|")
+  );
+}
+
+function isNormalCashExpense(row: Record<string, unknown>): boolean {
+  return row.status === "concluido" &&
+    !isCreditCardMirrorExpense(row.notes) &&
+    !isBillPaymentExpense(row.notes);
+}
+
 function generateMonthlyInsights(
   totalIncome: number,
   totalExpenses: number,
@@ -467,6 +480,15 @@ Deno.serve(async (req) => {
     const dataServiceRole = Deno.env.get("DATA_SUPABASE_SERVICE_ROLE_KEY");
     const cronSecret      = Deno.env.get("CRON_SECRET");
 
+    if (!brevoApiKey) {
+      return new Response(JSON.stringify({
+        error: "BREVO_API_KEY is not configured. Monthly summaries are sent through Brevo, so this secret is required.",
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const authHeader        = req.headers.get("Authorization");
     const userJwt           = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
     const jwtPayload        = decodeJwtPayload(userJwt);
@@ -521,6 +543,8 @@ Deno.serve(async (req) => {
     const prevRange   = getMonthRange(2); // month before that
     const nextScheduledSend = getNextMonthlySend();
     const results = [];
+    const deliveryFailures: Array<{ email: string; status: number; error: unknown }> = [];
+    let sentCount = 0;
 
     for (const profile of profilesToProcess) {
       if (!profile.email) continue;
@@ -535,20 +559,20 @@ Deno.serve(async (req) => {
           });
 
       const [incRes, expRes, catRes, prevIncRes, prevExpRes, accRes, cardEqRes, prevCardEqRes] = await Promise.all([
-        dc.from("income").select("id,amount,date,description,account_id")
-          .eq("user_id", profile.user_id).gte("date", reportRange.startDate).lte("date", reportRange.endDate),
-        dc.from("expenses").select("id,amount,date,description,category_id,account_id,notes")
-          .eq("user_id", profile.user_id).gte("date", reportRange.startDate).lte("date", reportRange.endDate),
+        dc.from("income").select("id,amount,date,description,account_id,status")
+          .eq("user_id", profile.user_id).gte("date", reportRange.startDate).lte("date", reportRange.endDate).is("deleted_at", null),
+        dc.from("expenses").select("id,amount,date,description,category_id,account_id,notes,status")
+          .eq("user_id", profile.user_id).gte("date", reportRange.startDate).lte("date", reportRange.endDate).is("deleted_at", null),
         dc.from("categories").select("id,name,icon,monthly_budget").eq("user_id", profile.user_id),
-        dc.from("income").select("amount")
-          .eq("user_id", profile.user_id).gte("date", prevRange.startDate).lte("date", prevRange.endDate),
-        dc.from("expenses").select("amount,notes")
-          .eq("user_id", profile.user_id).gte("date", prevRange.startDate).lte("date", prevRange.endDate),
+        dc.from("income").select("amount,status")
+          .eq("user_id", profile.user_id).gte("date", prevRange.startDate).lte("date", prevRange.endDate).is("deleted_at", null),
+        dc.from("expenses").select("amount,notes,status")
+          .eq("user_id", profile.user_id).gte("date", prevRange.startDate).lte("date", prevRange.endDate).is("deleted_at", null),
         dc.from("accounts").select("id,name,icon,initial_balance").eq("user_id", profile.user_id),
         dc.from("credit_card_transactions").select("id,amount,date,bill_month,category_id,description")
-          .eq("user_id", profile.user_id).eq("bill_month", reportRange.monthKey),
+          .eq("user_id", profile.user_id).eq("bill_month", reportRange.monthKey).is("deleted_at", null),
         dc.from("credit_card_transactions").select("amount")
-          .eq("user_id", profile.user_id).eq("bill_month", prevRange.monthKey),
+          .eq("user_id", profile.user_id).eq("bill_month", prevRange.monthKey).is("deleted_at", null),
       ]);
 
       if (incRes.error) throw incRes.error;
@@ -568,17 +592,17 @@ Deno.serve(async (req) => {
       const accounts   = accRes.data  || [];
       const cardTx     = cardEqRes.data || [];
       const prevCardTx = prevCardEqRes.data || [];
-      const normalExpenses = expenses.filter((e: Record<string, unknown>) => !isCreditCardMirrorExpense(e.notes));
-      const prevNormalExpenses = prevExp.filter((e: Record<string, unknown>) => !isCreditCardMirrorExpense(e.notes));
+      const normalExpenses = expenses.filter((e: Record<string, unknown>) => isNormalCashExpense(e));
+      const prevNormalExpenses = prevExp.filter((e: Record<string, unknown>) => isNormalCashExpense(e));
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const totalIncome    = income.reduce((s: number, i: Record<string, unknown>)   => s + Number(i.amount), 0);
+      const totalIncome    = income.filter((i: Record<string, unknown>) => i.status === "concluido").reduce((s: number, i: Record<string, unknown>)   => s + Number(i.amount), 0);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const totalExpenses  = normalExpenses.reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0)
                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                            + cardTx.reduce((s: number, e: Record<string, unknown>)   => s + Number(e.amount), 0);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const prevTotalInc   = prevIncome.reduce((s: number, i: Record<string, unknown>) => s + Number(i.amount), 0);
+      const prevTotalInc   = prevIncome.filter((i: Record<string, unknown>) => i.status === "concluido").reduce((s: number, i: Record<string, unknown>) => s + Number(i.amount), 0);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const prevTotalExp   = prevNormalExpenses.reduce((s: number, e: Record<string, unknown>)    => s + Number(e.amount), 0)
                            + prevCardTx.reduce((s: number, e: Record<string, unknown>)    => s + Number(e.amount), 0);
@@ -621,7 +645,7 @@ Deno.serve(async (req) => {
       const accItems: AccItem[] = accounts.map((a: any) => {
         const id = String(a.id);
         const accIncome = income
-          .filter((i: Record<string, unknown>) => String(i.account_id) === id)
+          .filter((i: Record<string, unknown>) => String(i.account_id) === id && i.status === "concluido")
           .reduce((s: number, i: Record<string, unknown>) => s + Number(i.amount), 0);
         const accExpenses = normalExpenses
           .filter((e: Record<string, unknown>) => String(e.account_id) === id)
@@ -657,25 +681,53 @@ Deno.serve(async (req) => {
         nextScheduledSend,
       });
 
-      results.push({ email: profile.email, totalIncome, totalExpenses, balance, savingsRate: savingsRate.toFixed(1) });
-
-      if (brevoApiKey) {
-        const res = await fetch("https://api.brevo.com/v3/smtp/email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "api-key": brevoApiKey },
-          body: JSON.stringify({
-            sender: { name: "FinancasPro", email: "amaralstradiotoryan@gmail.com" },
-            to: [{ email: profile.email }],
-            subject: `Relatorio Mensal | ${reportRange.label}`,
-            htmlContent: html,
-          }),
-        });
-        const resData = await res.json();
-        if (!res.ok) console.error(`Brevo error for ${profile.email}:`, JSON.stringify(resData));
+      const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "api-key": brevoApiKey },
+        body: JSON.stringify({
+          sender: { name: "FinancasPro", email: "amaralstradiotoryan@gmail.com" },
+          to: [{ email: profile.email }],
+          subject: `Relatorio Mensal | ${reportRange.label}`,
+          htmlContent: html,
+        }),
+      });
+      const rawBrevoResponse = await res.text();
+      let brevoResponse: unknown = rawBrevoResponse;
+      try {
+        brevoResponse = rawBrevoResponse ? JSON.parse(rawBrevoResponse) : null;
+      } catch {
+        brevoResponse = rawBrevoResponse;
       }
+
+      if (!res.ok) {
+        deliveryFailures.push({ email: profile.email, status: res.status, error: brevoResponse });
+        console.error(`Brevo error for ${profile.email}:`, JSON.stringify(brevoResponse));
+      } else {
+        sentCount += 1;
+      }
+
+      results.push({
+        email: profile.email,
+        totalIncome,
+        totalExpenses,
+        balance,
+        savingsRate: savingsRate.toFixed(1),
+        delivery: res.ok ? "sent_via_brevo" : "failed",
+      });
     }
 
-    return new Response(JSON.stringify({ success: true, month: reportRange.label, processed: results.length, results }), {
+    const responseStatus = deliveryFailures.length > 0 ? 502 : 200;
+    return new Response(JSON.stringify({
+      success: deliveryFailures.length === 0,
+      provider: "brevo",
+      month: reportRange.label,
+      processed: results.length,
+      sent: sentCount,
+      failed: deliveryFailures.length,
+      deliveryFailures,
+      results,
+    }), {
+      status: responseStatus,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
