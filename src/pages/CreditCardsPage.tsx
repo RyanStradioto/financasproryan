@@ -718,7 +718,7 @@ export default function CreditCardsPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div className="relative overflow-hidden rounded-[2rem] border border-border/60 dark:border-white/10 bg-card dark:bg-[#070a12] p-4 shadow-2xl shadow-black/30 sm:p-6 xl:p-7">
+      <div className="relative overflow-hidden rounded-3xl border border-border/60 dark:border-white/10 bg-card dark:bg-[#070a12] p-3 shadow-xl shadow-black/30 sm:rounded-[2rem] sm:p-6 xl:p-7">
         <div className="pointer-events-none absolute -right-28 -top-28 h-72 w-72 rounded-full bg-violet-600/25 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(124,58,237,0.18),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.05),transparent_42%)]" />
@@ -733,7 +733,7 @@ export default function CreditCardsPage() {
                 <p className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-violet-600 dark:text-violet-200/80">
                   <Sparkles className="h-3.5 w-3.5" /> Central de cartões
                 </p>
-                <h1 className="truncate text-3xl font-black tracking-tight text-foreground sm:text-4xl">Cartões de Crédito</h1>
+                <h1 className="truncate text-xl font-black tracking-tight text-foreground sm:text-3xl lg:text-4xl">Cartões de Crédito</h1>
                 <p className="mt-1.5 text-sm font-medium text-muted-foreground dark:text-slate-400">
                   {currentCard
                     ? <><span className="font-extrabold text-violet-600 dark:text-violet-200">{currentCard.name}</span> · fecha dia {currentCard.closing_day} · vence dia {currentCard.due_day}</>
@@ -776,7 +776,7 @@ export default function CreditCardsPage() {
                       type="button"
                       onClick={() => setSelectedCard(card.id)}
                       className={cn(
-                        'group relative h-[92px] w-[230px] overflow-hidden rounded-2xl border p-4 text-left transition-all',
+                        'group relative h-[88px] w-[200px] sm:h-[92px] sm:w-[230px] overflow-hidden rounded-2xl border p-3 sm:p-4 text-left transition-all',
                         isSelected
                           ? 'border-violet-300/60 bg-muted/70 dark:bg-white/[0.08] shadow-xl shadow-violet-950/30'
                           : 'border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.035] hover:border-violet-300/35 hover:bg-white/[0.055]',
@@ -820,7 +820,7 @@ export default function CreditCardsPage() {
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-200"><Receipt className="h-5 w-5" /></span>
                   <p className="text-sm font-bold text-foreground/80 dark:text-slate-300">Fatura atual</p>
                 </div>
-                <p className="currency text-2xl font-black text-foreground tabular-nums">{fmt(billTotal)}</p>
+                <p className="currency text-lg sm:text-2xl font-black text-foreground tabular-nums truncate">{fmt(billTotal)}</p>
                 <p className="mt-1 text-sm font-extrabold text-amber-600 dark:text-amber-300">{fmt(unpaidTotal)} em aberto</p>
               </div>
 
@@ -829,7 +829,7 @@ export default function CreditCardsPage() {
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-300"><Wallet className="h-5 w-5" /></span>
                   <p className="text-sm font-bold text-foreground/80 dark:text-slate-300">Limite disponível</p>
                 </div>
-                <p className="currency text-2xl font-black text-emerald-600 dark:text-emerald-300 tabular-nums">{fmt(availableLimit)}</p>
+                <p className="currency text-lg sm:text-2xl font-black text-emerald-600 dark:text-emerald-300 tabular-nums truncate">{fmt(availableLimit)}</p>
                 <p className="mt-1 text-sm font-semibold text-muted-foreground dark:text-slate-400">{Math.max(0, 100 - committedLimitPercent).toFixed(0)}% livre</p>
               </div>
 
@@ -838,7 +838,7 @@ export default function CreditCardsPage() {
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-200"><CalendarDays className="h-5 w-5" /></span>
                   <p className="text-sm font-bold text-foreground/80 dark:text-slate-300">Próximo vencimento</p>
                 </div>
-                <p className="text-2xl font-black text-foreground tabular-nums">
+                <p className="text-lg sm:text-2xl font-black text-foreground tabular-nums">
                   {billDueDate ? billDueDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '') : '--'}
                 </p>
                 <p className={cn('mt-1 text-sm font-semibold', daysUntilDue < 0 ? 'text-red-600 dark:text-red-300' : daysUntilDue <= 7 ? 'text-amber-600 dark:text-amber-300' : 'text-muted-foreground dark:text-slate-400')}>
@@ -851,7 +851,7 @@ export default function CreditCardsPage() {
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-500/15 text-foreground/80 dark:text-slate-200"><Layers3 className="h-5 w-5" /></span>
                   <p className="text-sm font-bold text-foreground/80 dark:text-slate-300">Parcelas futuras</p>
                 </div>
-                <p className="text-2xl font-black text-foreground tabular-nums">{selectedFutureInstallmentCount}</p>
+                <p className="text-lg sm:text-2xl font-black text-foreground tabular-nums">{selectedFutureInstallmentCount}</p>
                 <p className="mt-1 text-sm font-semibold text-muted-foreground dark:text-slate-400">parcelas futuras</p>
               </div>
             </div>

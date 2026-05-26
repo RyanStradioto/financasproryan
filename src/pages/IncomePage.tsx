@@ -241,7 +241,7 @@ export default function IncomePage() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* â"€â"€â"€ Hero Header â"€â"€â"€ */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-income/[0.06] p-4 shadow-sm sm:rounded-3xl sm:p-7">
+      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-income/[0.06] p-3 shadow-sm sm:rounded-3xl sm:p-7">
         <div className="absolute -top-24 -right-24 w-72 h-72 bg-income/15 blur-3xl rounded-full pointer-events-none" />
         <div className="absolute -bottom-32 -left-20 w-64 h-64 bg-income/[0.06] blur-3xl rounded-full pointer-events-none" />
 
@@ -249,11 +249,11 @@ export default function IncomePage() {
           {/* Title row */}
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3.5 min-w-0">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-income/25 to-income/5 flex items-center justify-center shadow-inner border border-income/15 shrink-0">
-                <TrendingUp className="w-6 h-6 sm:w-7 sm:h-7 text-income" />
+              <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-income/25 to-income/5 flex items-center justify-center shadow-inner border border-income/15 shrink-0">
+                <TrendingUp className="w-5 h-5 sm:w-7 sm:h-7 text-income" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-none">Receitas</h1>
+                <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight leading-none">Receitas</h1>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 flex items-center gap-2 flex-wrap">
                   <span className="inline-flex items-center gap-1.5">
                     <span className="inline-block w-1.5 h-1.5 rounded-full bg-income animate-pulse" />
@@ -304,7 +304,7 @@ export default function IncomePage() {
           <div className="flex flex-col md:flex-row items-stretch md:items-end justify-between gap-5 pt-1">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80 mb-1.5">Total no mês</p>
-              <p className="text-3xl min-[390px]:text-4xl sm:text-5xl font-black text-income currency leading-none tracking-tight truncate max-w-full">{fmt(totalAll)}</p>
+              <p className="text-[1.75rem] min-[400px]:text-3xl sm:text-4xl lg:text-5xl font-black text-income currency leading-none tracking-tight truncate max-w-full">{fmt(totalAll)}</p>
             </div>
 
             {/* Stats chips: Recebido | Pendente | Trabalho equivalente */}
@@ -379,7 +379,7 @@ export default function IncomePage() {
                 )}
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-72 p-0 shadow-xl" align="end">
+            <PopoverContent className="w-[calc(100vw-1.5rem)] max-w-[288px] p-0 shadow-xl" align="end">
               <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
                 <span className="text-sm font-bold">Filtros</span>
                 {activeFilterCount > 0 && (

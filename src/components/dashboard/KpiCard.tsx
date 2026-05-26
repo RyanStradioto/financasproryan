@@ -51,8 +51,8 @@ export default function KpiCard({
 
         <div className="flex items-end justify-between mt-1 gap-2">
           <div className="min-w-0 flex-1">
-            <p className="text-sm sm:text-base lg:text-lg font-extrabold currency tracking-tight leading-none whitespace-nowrap tabular-nums truncate">{displayValue}</p>
-            {sub && <p className="text-[10px] text-muted-foreground mt-1 leading-tight line-clamp-2 hidden sm:block">{sub}</p>}
+            <p className="text-[15px] sm:text-base lg:text-lg font-extrabold currency tracking-tight leading-none tabular-nums truncate">{displayValue}</p>
+            {sub && <p className="text-[10px] text-muted-foreground mt-1 leading-tight line-clamp-1 sm:line-clamp-2">{sub}</p>}
           </div>
           {sparklineData && sparklineData.length > 1 && (
             <div className="shrink-0 -mr-1 opacity-60 group-hover:opacity-100 transition-opacity hidden sm:block">

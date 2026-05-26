@@ -120,19 +120,19 @@ export default function DailyFlowChart({ income, expenses, month, maskCurrency }
         </div>
 
         {hasData && (
-          <div className="flex flex-wrap gap-2">
-            <div className="rounded-xl border border-emerald-300/15 bg-emerald-400/[0.07] px-2.5 py-1.5 flex-1 min-w-[80px]">
-              <p className="text-[9px] font-black uppercase tracking-widest text-emerald-200/60">Receitas</p>
-              <p className="text-xs font-black text-emerald-200 tabular-nums">{maskCurrency(formatCurrency(totalIncome))}</p>
+          <div className="grid grid-cols-2 gap-2 min-[480px]:grid-cols-3">
+            <div className="rounded-xl border border-emerald-300/15 bg-emerald-400/[0.07] px-2.5 py-1.5 min-w-0">
+              <p className="text-[9px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-200/60">Receitas</p>
+              <p className="text-xs font-black text-emerald-600 dark:text-emerald-200 tabular-nums truncate">{maskCurrency(formatCurrency(totalIncome))}</p>
             </div>
-            <div className="rounded-xl border border-rose-300/15 bg-rose-400/[0.07] px-2.5 py-1.5 flex-1 min-w-[80px]">
-              <p className="text-[9px] font-black uppercase tracking-widest text-rose-200/60">Despesas</p>
-              <p className="text-xs font-black text-rose-200 tabular-nums">{maskCurrency(formatCurrency(totalExpenses))}</p>
+            <div className="rounded-xl border border-rose-300/15 bg-rose-400/[0.07] px-2.5 py-1.5 min-w-0">
+              <p className="text-[9px] font-black uppercase tracking-wider text-rose-600 dark:text-rose-200/60">Despesas</p>
+              <p className="text-xs font-black text-rose-600 dark:text-rose-200 tabular-nums truncate">{maskCurrency(formatCurrency(totalExpenses))}</p>
             </div>
             {peakDay && peakDay.expenses > 0 && (
-              <div className="rounded-xl border border-amber-300/15 bg-amber-400/[0.07] px-2.5 py-1.5 flex-1 min-w-[110px]">
-                <p className="text-[9px] font-black uppercase tracking-widest text-amber-200/60">Dia mais pesado</p>
-                <p className="text-xs font-black text-amber-200">Dia {peakDay.day} · {maskCurrency(formatCurrency(peakDay.expenses))}</p>
+              <div className="rounded-xl border border-amber-300/15 bg-amber-400/[0.07] px-2.5 py-1.5 col-span-2 min-[480px]:col-span-1 min-w-0">
+                <p className="text-[9px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-200/60">Dia mais pesado</p>
+                <p className="text-xs font-black text-amber-600 dark:text-amber-200 truncate">Dia {peakDay.day} · {maskCurrency(formatCurrency(peakDay.expenses))}</p>
               </div>
             )}
           </div>
@@ -160,7 +160,7 @@ export default function DailyFlowChart({ income, expenses, month, maskCurrency }
             </defs>
             <div className="h-[200px] sm:h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={data} margin={{ top: 10, right: 8, left: 0, bottom: 0 }} barGap={2} barCategoryGap="18%">
+                <ComposedChart data={data} margin={{ top: 10, right: 6, left: -10, bottom: 0 }} barGap={2} barCategoryGap="18%">
                   <CartesianGrid
                     stroke="rgba(148,163,184,0.07)"
                     strokeDasharray="3 8"
@@ -196,7 +196,7 @@ export default function DailyFlowChart({ income, expenses, month, maskCurrency }
                     tickLine={false}
                     tick={{ fill: 'rgba(100,116,139,0.7)', fontSize: 9, fontWeight: 700 }}
                     tickFormatter={v => v === 0 ? '' : `${Math.round(v / 1000) > 0 ? Math.round(v / 1000) + 'k' : v}`}
-                    width={24}
+                    width={32}
                   />
                   <RechartsTooltip
                     cursor={{ fill: 'rgba(139,92,246,0.06)', radius: 6 }}

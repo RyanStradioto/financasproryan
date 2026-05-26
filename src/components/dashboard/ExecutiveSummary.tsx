@@ -26,19 +26,19 @@ export default function ExecutiveSummary({ lines, tone }: Props) {
   const iconColor = tone === 'positive' ? 'text-income' : tone === 'negative' ? 'text-expense' : 'text-primary';
 
   return (
-    <div className={cn('rounded-2xl border p-4 flex gap-3.5 shadow-sm', accent)}>
+    <div className={cn('rounded-2xl border p-3 sm:p-4 flex gap-2.5 sm:gap-3.5 shadow-sm', accent)}>
       <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5',
         tone === 'positive' ? 'bg-income/15' : tone === 'negative' ? 'bg-expense/15' : 'bg-primary/15',
       )}>
         <Icon className={cn('w-4 h-4', iconColor)} />
       </div>
       <div className="flex-1 space-y-1.5 min-w-0">
-        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-          Resumo do mes
+        <p className="text-[10px] font-black uppercase tracking-wider sm:tracking-widest text-muted-foreground">
+          Resumo do mês
         </p>
         {lines.map((line, i) => (
           <p key={i} className={cn(
-            'text-sm leading-relaxed',
+            'text-xs sm:text-sm leading-relaxed break-words',
             i === 0 ? 'font-semibold text-foreground' : 'text-muted-foreground',
           )}>
             {line}

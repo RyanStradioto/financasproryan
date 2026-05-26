@@ -5,12 +5,29 @@
  * Highlights overrun risk with a banner.
  */
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Activity, AlertTriangle, TrendingUp } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, Tooltip as RechartsTooltip, Area, ComposedChart } from 'recharts';
+import { Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, Tooltip as RechartsTooltip, Area, ComposedChart } from 'recharts';
 import { formatCurrency } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { BurnRatePoint } from '@/lib/dashboardAnalytics';
+
+/**
+ * Hook hyper-light para saber se está em viewport mobile.
+ * Não usa context — apenas window.matchMedia.
+ */
+function useIsMobile(breakpoint = 640) {
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < breakpoint);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    setIsMobile(mq.matches);
+    return () => mq.removeEventListener('change', handler);
+  }, [breakpoint]);
+  return isMobile;
+}
 
 interface Props {
   points: BurnRatePoint[];
@@ -25,6 +42,7 @@ interface Props {
 export default function BurnRateChart({
   points, projectedTotal, willOverrun, monthBudget, todaySpent, dayOfMonth, maskCurrency,
 }: Props) {
+  const isMobile = useIsMobile(640);
   const chartData = useMemo(() => {
     // Find the last "real" point (today) so projection line connects from there
     const lastRealIdx = points.findIndex(p => p.isProjection) - 1;
@@ -64,31 +82,33 @@ export default function BurnRateChart({
   const overrunPct = monthBudget > 0 ? ((projectedTotal - monthBudget) / monthBudget) * 100 : 0;
 
   return (
-    <div className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm p-4 sm:p-6 shadow-sm">
-      <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/15">
+    <div className="rounded-3xl border border-border/60 bg-card/70 backdrop-blur-sm p-3 sm:p-6 shadow-sm overflow-hidden">
+      <div className="flex flex-col gap-3 mb-4 min-[480px]:flex-row min-[480px]:items-start min-[480px]:justify-between">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/25 to-primary/5 flex items-center justify-center border border-primary/15 shrink-0">
             <Activity className="w-4 h-4 text-primary" />
           </div>
-          <div>
-            <h3 className="text-sm font-bold leading-tight">Burn Rate</h3>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Gasto cumulativo vs ritmo ideal</p>
+          <div className="min-w-0">
+            <h3 className="text-sm font-black tracking-tight leading-tight">Burn Rate</h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5 truncate">Gasto cumulativo vs ritmo ideal</p>
           </div>
         </div>
-        <div className={cn('inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold border',
+        <div className={cn('inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold border max-w-full',
           willOverrun ? 'bg-expense/10 text-expense border-expense/20' : 'bg-income/10 text-income border-income/20',
         )}>
-          {willOverrun ? <AlertTriangle className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
-          Previsao fim do mes: {maskCurrency(formatCurrency(projectedTotal))}
-          {monthBudget > 0 && (
-            <span className="opacity-80">({overrunPct >= 0 ? '+' : ''}{overrunPct.toFixed(0)}%)</span>
-          )}
+          {willOverrun ? <AlertTriangle className="w-3 h-3 shrink-0" /> : <TrendingUp className="w-3 h-3 shrink-0" />}
+          <span className="truncate">
+            Previsão: {maskCurrency(formatCurrency(projectedTotal))}
+            {monthBudget > 0 && (
+              <span className="opacity-80 ml-1">({overrunPct >= 0 ? '+' : ''}{overrunPct.toFixed(0)}%)</span>
+            )}
+          </span>
         </div>
       </div>
 
       <div className="w-full h-[200px] sm:h-[260px] lg:h-[280px]">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={chartData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+          <ComposedChart data={chartData} margin={{ top: 10, right: isMobile ? 4 : 12, left: -8, bottom: 0 }}>
             <defs>
               <linearGradient id="burnReal" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
@@ -102,13 +122,14 @@ export default function BurnRateChart({
               axisLine={false}
               tickLine={false}
               interval="preserveStartEnd"
+              minTickGap={isMobile ? 16 : 8}
             />
             <YAxis
               tickFormatter={v => `${Math.round(Number(v) / 1000)}k`}
               tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 9 }}
               axisLine={false}
               tickLine={false}
-              width={32}
+              width={isMobile ? 28 : 38}
             />
             <RechartsTooltip
               content={({ active, payload, label }) => {
@@ -119,7 +140,7 @@ export default function BurnRateChart({
                     {payload.map((p, i) => p.value !== null && (
                       <p key={i} className="text-[10px] flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
-                        <span className="text-muted-foreground">{p.dataKey === 'real' ? 'Real' : p.dataKey === 'projected' ? 'Projecao' : 'Ideal'}:</span>
+                        <span className="text-muted-foreground">{p.dataKey === 'real' ? 'Real' : p.dataKey === 'projected' ? 'Projeção' : 'Ideal'}:</span>
                         <span className="font-semibold tabular-nums">{maskCurrency(formatCurrency(Number(p.value)))}</span>
                       </p>
                     ))}
@@ -132,7 +153,7 @@ export default function BurnRateChart({
               stroke="hsl(0, 72%, 51%)"
               strokeDasharray="4 4"
               strokeOpacity={0.6}
-              label={{ value: 'Orcamento', position: 'right', fill: 'hsl(0, 72%, 51%)', fontSize: 9 }}
+              label={isMobile ? undefined : { value: 'Orçamento', position: 'right', fill: 'hsl(0, 72%, 51%)', fontSize: 9 }}
             />
             <Area
               type="monotone"
@@ -164,10 +185,13 @@ export default function BurnRateChart({
         </ResponsiveContainer>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-border/40 text-[10px] text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-3 pt-3 border-t border-border/40 text-[10px] text-muted-foreground">
         <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-primary rounded" /> Real (dia {dayOfMonth})</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-primary rounded" style={{ borderTop: '2px dashed' }} /> Projecao</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 border-t-2 border-dashed border-primary" /> Projeção</span>
         <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-muted-foreground/50 rounded" /> Ritmo ideal</span>
+        {monthBudget > 0 && (
+          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 border-t-2 border-dashed border-expense" /> Orçamento</span>
+        )}
       </div>
     </div>
   );

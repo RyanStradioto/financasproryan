@@ -421,6 +421,9 @@ export default function Dashboard() {
 
   const prevTotalAll = prevTotalExpensesPaid + prevTotalCC;
   const currentTotalAll = totalExpensesPaid + totalCCThisMonth;
+  // "Sobra do mês" — receitas escopadas menos despesas escopadas. Definido
+  // cedo para que o cálculo do Allowance use o valor já escopado por conta.
+  const monthResult = totalIncome - currentTotalAll;
 
   // Percent delta helper (current vs previous, returns null when prev = 0)
   const pctDelta = (cur: number, prev: number): number | null => {
@@ -579,16 +582,39 @@ export default function Dashboard() {
     return exp + cc;
   }, [scopedNonCCExpenses, scopedCCTransactions]);
 
-  const allowance = useMemo(() => safeRun(() => computeAllowance({
-    monthBudget: monthPace.totalBudget,
-    monthSpent: currentTotalAll,
-    dayOfMonth: monthPace.dayOfMonth,
-    lastDayOfMonth: monthPace.lastDayOfMonth,
-    todaySpent,
-  }), {
+  // Allowance "permitido por dia até o fim do mês".
+  //
+  // Como o orçamento por categoria (monthPace.totalBudget) é GLOBAL e não tem
+  // como ser fatiado por conta, usar ele direto causava valores absurdos ao
+  // trocar de conta foco (ex.: ALELO com saldo R$ 1,99 mostrando R$ 584/dia).
+  //
+  // Usamos a "sobra do mês" (receitas escopadas − despesas escopadas) como
+  // o teto a distribuir nos dias restantes. Isso funciona tanto no modo
+  // consolidado quanto por conta sem precisar de orçamento configurado.
+  // Quando o usuário tem orçamento global definido E está na visão geral,
+  // mantemos o teto pelo menor entre "sobra restante" e "orçamento restante"
+  // — assim o limite continua respeitando metas configuradas.
+  const allowance = useMemo(() => safeRun(() => {
+    const remainingFromIncome = Math.max(0, monthResult);
+    const remainingFromBudget = monthPace.totalBudget > 0
+      ? Math.max(0, monthPace.totalBudget - currentTotalAll)
+      : Number.POSITIVE_INFINITY;
+    // Use o teto que for menor — não permite gastar acima do orçamento.
+    const useBudgetCap = isGlobalView && monthPace.totalBudget > 0;
+    const budgetForAllowance = useBudgetCap
+      ? Math.min(remainingFromIncome, remainingFromBudget) + currentTotalAll
+      : monthResult + currentTotalAll; // = totalIncome (escopado)
+    return computeAllowance({
+      monthBudget: budgetForAllowance,
+      monthSpent: currentTotalAll,
+      dayOfMonth: monthPace.dayOfMonth,
+      lastDayOfMonth: monthPace.lastDayOfMonth,
+      todaySpent,
+    });
+  }, {
     remainingDays: 30, remainingBudget: 0, perDayAllowance: 0,
     todayAllowanceRemaining: 0, todaySpent: 0, monthBudget: 0, monthSpent: 0,
-  }, 'allowance'), [monthPace, currentTotalAll, todaySpent]);
+  }, 'allowance'), [monthPace, currentTotalAll, todaySpent, monthResult, isGlobalView]);
 
   const burnRate = useMemo(() => safeRun(() => {
     const allMonthExpenses = [
@@ -844,7 +870,7 @@ export default function Dashboard() {
 
   const monthTitle = currentMonthDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   const monthTitleCapitalized = monthTitle.charAt(0).toUpperCase() + monthTitle.slice(1);
-  const monthResult = totalIncome - currentTotalAll;
+  // monthResult já foi definido no topo (linha ~422) — sobra do mês escopada
   const daysLeft = Math.max(0, monthPace.lastDayOfMonth - monthPace.dayOfMonth);
   const healthCopy = healthScore >= 80 ? 'Muito boa' : healthScore >= 65 ? 'Boa' : healthScore >= 45 ? 'Atenção' : 'Crítica';
   const totalBudget = monthPace.totalBudget || currentTotalAll || 1;
@@ -936,8 +962,8 @@ export default function Dashboard() {
       <ErrorBoundary fallback={null} label="StickyBar">
         <StickySummaryBar
           balance={balance}
-          perDayAllowance={allowance.todayAllowanceRemaining}
-          monthBudgetSet={monthPace.totalBudget > 0}
+          perDayAllowance={allowance.todayAllowanceRemaining ?? allowance.perDayAllowance}
+          monthBudgetSet={monthPace.totalBudget > 0 || allowance.perDayAllowance > 0}
           maskCurrency={maskCurrency}
         />
       </ErrorBoundary>
@@ -1095,28 +1121,63 @@ export default function Dashboard() {
 
         <PremiumCard className="relative overflow-hidden p-4 sm:p-5">
           <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-amber-400/12 blur-3xl" />
+          <div className="absolute -bottom-20 -left-12 h-40 w-40 rounded-full bg-orange-400/[0.08] blur-3xl" />
           <div className="relative space-y-4">
             <SectionHeader title="Allowance diária" subtitle="Quanto ainda dá gastar por dia." icon={Target} iconColor="text-amber-600 dark:text-amber-300" />
 
-            <div>
-              <p className="currency text-2xl sm:text-3xl font-black text-amber-700 dark:text-amber-200 tabular-nums">{maskCurrency(formatCurrency(allowance.todayAllowanceRemaining))}</p>
-              <p className="mt-0.5 text-xs font-semibold text-muted-foreground dark:text-slate-400">disponivel hoje</p>
+            {/* Hero value — "disponivel hoje" (perDayAllowance - já gasto hoje) */}
+            <div className="flex items-end justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <p className="currency text-3xl sm:text-4xl lg:text-5xl font-black text-amber-700 dark:text-amber-200 tabular-nums leading-none break-words">
+                  {maskCurrency(formatCurrency(allowance.todayAllowanceRemaining ?? allowance.perDayAllowance))}
+                </p>
+                <p className="mt-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground dark:text-slate-400">
+                  disponível hoje · faltam {daysLeft} dia{daysLeft !== 1 ? 's' : ''}
+                </p>
+              </div>
+              <div className="shrink-0 rounded-2xl border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-right">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-200/90">Restante mês</p>
+                <p className="currency text-sm sm:text-base font-black text-amber-700 dark:text-amber-200 tabular-nums whitespace-nowrap">
+                  {maskCurrency(formatCurrency(allowance.remainingBudget))}
+                </p>
+              </div>
             </div>
 
+            {/* Progress: spent vs available cap (income or budget) */}
             <div className="rounded-xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.035] p-3">
-              <div className="mb-2 flex flex-wrap justify-between gap-1 text-[10px] sm:text-xs font-bold text-muted-foreground">
-                <span>{maskCurrency(formatCurrency(allowance.remainingBudget))} restantes</span>
-                <span>{daysLeft} dias até o fim</span>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-1 text-[10px] sm:text-xs font-bold">
+                <span className="text-muted-foreground">Usado este mês</span>
+                <span className="text-foreground/80 tabular-nums">
+                  {Math.min(100, allowance.monthBudget > 0 ? (currentTotalAll / allowance.monthBudget) * 100 : 0).toFixed(0)}%
+                </span>
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-border/50 dark:bg-white/10">
-                <div className="h-full rounded-full bg-gradient-to-r from-amber-300 to-orange-400" style={{ width: `${Math.min(100, (currentTotalAll / totalBudget) * 100)}%` }} />
+              <div className="h-2 overflow-hidden rounded-full bg-border/50 dark:bg-white/10">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-amber-300 via-orange-400 to-rose-400 transition-all duration-500"
+                  style={{ width: `${Math.min(100, allowance.monthBudget > 0 ? (currentTotalAll / allowance.monthBudget) * 100 : 0)}%` }}
+                />
+              </div>
+              <div className="mt-1.5 flex flex-wrap justify-between gap-1 text-[10px] text-muted-foreground tabular-nums">
+                <span>{maskCurrency(formatCurrency(currentTotalAll))}</span>
+                <span>{maskCurrency(formatCurrency(allowance.monthBudget))}</span>
               </div>
             </div>
 
-            <div className="flex items-start gap-2.5 rounded-xl border border-amber-300/20 bg-amber-400/[0.06] px-3 py-2.5">
-              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-700 dark:text-amber-200" />
-              <p className="text-xs font-semibold text-foreground/80 dark:text-slate-300">
-                Hoje: {maskCurrency(formatCurrency(todaySpent))} · {todaySpent > allowance.perDayAllowance ? 'acima do ideal' : 'dentro do ideal'}
+            <div className={cn(
+              'flex items-start gap-2.5 rounded-xl border px-3 py-2.5',
+              todaySpent > allowance.perDayAllowance && allowance.perDayAllowance > 0
+                ? 'border-red-300/30 bg-red-400/[0.08]'
+                : 'border-emerald-300/25 bg-emerald-400/[0.06]',
+            )}>
+              {todaySpent > allowance.perDayAllowance && allowance.perDayAllowance > 0 ? (
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-600 dark:text-red-300" />
+              ) : (
+                <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-300" />
+              )}
+              <p className="text-xs font-semibold text-foreground/80 dark:text-slate-300 min-w-0 break-words">
+                Hoje: <span className="tabular-nums font-black">{maskCurrency(formatCurrency(todaySpent))}</span>
+                {' · '}
+                {todaySpent > allowance.perDayAllowance && allowance.perDayAllowance > 0 ? 'acima do ideal' : 'dentro do ideal'}
               </p>
             </div>
           </div>
