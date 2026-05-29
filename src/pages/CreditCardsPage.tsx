@@ -15,6 +15,7 @@ import {
   useDeleteCCTransaction,
   useUpdateCCTransaction,
   useAllFutureCCTransactions,
+  useCardOutstanding,
   getCardDefaultAccount,
   setCardDefaultAccount,
   type CreditCardTransaction,
@@ -22,7 +23,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useCategories, useAccounts, useAddExpense } from '@/hooks/useFinanceData';
+import { useCategories, useAccounts } from '@/hooks/useFinanceData';
 import { getMonthYear, formatCurrency, formatDate, calcBillMonth } from '@/lib/format';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { cn } from '@/lib/utils';
@@ -71,8 +72,6 @@ export default function CreditCardsPage() {
   const [showNewTx, setShowNewTx] = useState(false);
   const [showPayBill, setShowPayBill] = useState(false);
   const [payBillAccountId, setPayBillAccountId] = useState('');
-  const [payBillAmount, setPayBillAmount] = useState('');
-  const [payBillMarkAll, setPayBillMarkAll] = useState(true);
   const [txFilter, setTxFilter] = useState<TxFilter>('all');
   const [txSearch, setTxSearch] = useState('');
 
@@ -93,13 +92,13 @@ export default function CreditCardsPage() {
   const { data: accounts = [] } = useAccounts();
   const { data: transactions = [] } = useCreditCardTransactions(selectedCard ?? undefined, billMonth);
   const { data: futureTxns = [] } = useAllFutureCCTransactions();
+  const { data: outstandingTxns = [] } = useCardOutstanding(selectedCard ?? undefined);
   const addCard = useAddCreditCard();
   const deleteCard = useDeleteCreditCard();
   const addTx = useAddCreditCardTransaction();
   const togglePaid = useToggleCCTransactionPaid();
   const deleteTx = useDeleteCCTransaction();
   const updateTx = useUpdateCCTransaction();
-  const addExpense = useAddExpense();
 
   useEffect(() => {
     if (!selectedCard && cards.length > 0) setSelectedCard(cards[0].id);
@@ -150,30 +149,51 @@ export default function CreditCardsPage() {
     [futureTxns, selectedCard],
   );
 
-  const selectedFutureOpenTotal = useMemo(
-    () => selectedFutureTxns.filter(t => !t.paid).reduce((s, t) => s + Number(t.amount), 0),
-    [selectedFutureTxns],
+  // Outstanding = ALL unpaid transactions on this card (any bill month). This is
+  // the true committed debt that reduces the available limit — not just the
+  // current/future months. Falls back to the future-only set while loading.
+  const committedTotal = useMemo(
+    () => outstandingTxns.reduce((s, t) => s + Number(t.amount), 0),
+    [outstandingTxns],
   );
 
-  const selectedFutureInstallmentCount = useMemo(
-    () => selectedFutureTxns.filter(t => t.is_installment).length,
-    [selectedFutureTxns],
+  // Count of unpaid future installments (and their value) — what's coming up.
+  const openInstallments = useMemo(
+    () => outstandingTxns.filter(t => t.is_installment),
+    [outstandingTxns],
+  );
+  const openInstallmentCount = openInstallments.length;
+  const openInstallmentTotal = useMemo(
+    () => openInstallments.reduce((s, t) => s + Number(t.amount), 0),
+    [openInstallments],
   );
 
   const availableLimit = currentCard
-    ? Math.max(0, Number(currentCard.credit_limit) - selectedFutureOpenTotal)
+    ? Math.max(0, Number(currentCard.credit_limit) - committedTotal)
     : 0;
 
   const committedLimitPercent = currentCard
-    ? Math.min(100, (selectedFutureOpenTotal / Math.max(Number(currentCard.credit_limit), 1)) * 100)
+    ? Math.min(100, (committedTotal / Math.max(Number(currentCard.credit_limit), 1)) * 100)
     : 0;
+
+  // "Próximo vencimento" = due date of the next bill that still has an open
+  // balance (earliest unpaid bill_month). If everything is paid, fall back to
+  // the selected month. This avoids showing a stale/far-future due date.
+  const nextOpenBillMonth = useMemo(() => {
+    const openMonths = outstandingTxns
+      .map(t => t.bill_month)
+      .filter(Boolean)
+      .sort();
+    return openMonths[0] ?? billMonth;
+  }, [outstandingTxns, billMonth]);
 
   const billDueDate = useMemo(() => {
     if (!currentCard) return null;
-    const [year, month] = billMonth.split('-').map(Number);
+    const [year, month] = nextOpenBillMonth.split('-').map(Number);
+    if (!year || !month) return null;
     const dueMonthOffset = Number(currentCard.due_day) <= Number(currentCard.closing_day) ? 1 : 0;
     return new Date(year, month - 1 + dueMonthOffset, Number(currentCard.due_day));
-  }, [billMonth, currentCard]);
+  }, [nextOpenBillMonth, currentCard]);
 
   const daysUntilDue = useMemo(() => {
     if (!billDueDate) return 0;
@@ -501,49 +521,29 @@ export default function CreditCardsPage() {
   // Open Pay Bill dialog with smart defaults
   const openPayBill = () => {
     if (!currentCard) return;
-    setPayBillAmount(unpaidTotal.toFixed(2));
     setPayBillAccountId(getDefaultPayAccount(currentCard.id) || (accounts.find(a => !a.archived)?.id ?? ''));
-    setPayBillMarkAll(true);
     setShowPayBill(true);
   };
 
+  // Pay the whole open bill. SINGLE accounting model: marking each item as paid
+  // flips its mirror expense to "concluido" (and assigns the chosen account if
+  // it had none), which debits the bank balance EXACTLY ONCE. We never create a
+  // separate [FATURA_CARTAO] expense — doing both was what double-counted the
+  // bill against the balance.
   const handlePayBill = async () => {
     if (!currentCard) return;
-    const hasDefault = !!getCardDefaultAccount(currentCard.id);
-
-    if (hasDefault) {
-      // Card has default account → mirrors already debit balance.
-      // Pay Bill is just a reconciliation: mark all unpaid items as paid.
-      try {
-        const unpaid = transactions.filter(t => !t.paid);
-        await Promise.all(unpaid.map(t => togglePaid.mutateAsync({ id: t.id, paid: true })));
-        toast.success(`${unpaid.length} item(ns) marcado(s) como pago(s).`);
-        setShowPayBill(false);
-      } catch (e) { toast.error((e as Error).message); }
-      return;
-    }
-
-    // Legacy flow (no default account configured): create a single expense
-    const amount = parseFloat(payBillAmount);
-    if (!amount || amount <= 0) { toast.error('Informe um valor válido'); return; }
-    if (!payBillAccountId) { toast.error('Selecione a conta de pagamento'); return; }
+    const accountId = payBillAccountId
+      || getCardDefaultAccount(currentCard.id)
+      || (accounts.find(a => !a.archived)?.id ?? '');
+    if (!accountId) { toast.error('Selecione a conta de pagamento'); return; }
     try {
-      await addExpense.mutateAsync({
-        date: new Date().toISOString().split('T')[0],
-        description: `💳 Fatura ${currentCard.name} — ${monthLabel(billMonth)}`,
-        amount,
-        account_id: payBillAccountId,
-        status: 'concluido',
-        notes: `[FATURA_CARTAO] ${currentCard.name} ${billMonth}`,
-      });
-      let markedCount = 0;
-      if (payBillMarkAll) {
-        const unpaid = transactions.filter(t => !t.paid);
-        await Promise.all(unpaid.map(t => togglePaid.mutateAsync({ id: t.id, paid: true })));
-        markedCount = unpaid.length;
-      }
-      setDefaultPayAccount(currentCard.id, payBillAccountId);
-      toast.success(`Fatura paga! ${fmt(amount)} debitado${markedCount > 0 ? ` · ${markedCount} item(ns) marcado(s)` : ''}.`);
+      const unpaid = transactions.filter(t => !t.paid);
+      await Promise.all(unpaid.map(t => togglePaid.mutateAsync({ id: t.id, paid: true, accountId })));
+      // Remember the account so future payments + new purchases stay consistent.
+      setDefaultPayAccount(currentCard.id, accountId);
+      setCardDefaultAccount(currentCard.id, accountId);
+      const acctName = accounts.find(a => a.id === accountId)?.name ?? 'conta';
+      toast.success(`Fatura paga! ${unpaid.length} item(ns) debitado(s) de ${acctName}.`);
       setShowPayBill(false);
     } catch (e) { toast.error((e as Error).message); }
   };
@@ -556,34 +556,31 @@ export default function CreditCardsPage() {
   // If no default, open dialog asking which account.
   const handleItemCheckboxClick = (t: { id: string; paid: boolean; description: string; amount: number }) => {
     if (!currentCard) return;
-    if (getCardDefaultAccount(currentCard.id)) {
-      // Card has default account — instant toggle, mirror handles balance
-      togglePaid.mutate({ id: t.id, paid: !t.paid });
-      return;
-    }
+    // Un-marking is always instant.
     if (t.paid) {
       togglePaid.mutate({ id: t.id, paid: false });
       return;
     }
-    // No default account: ask user which account to use (legacy flow)
+    const def = getCardDefaultAccount(currentCard.id);
+    if (def) {
+      // Has a default payment account — pay instantly via the mirror.
+      togglePaid.mutate({ id: t.id, paid: true, accountId: def });
+      return;
+    }
+    // No default account yet: ask which account to debit (and remember it).
     setPayItem({ id: t.id, description: t.description, amount: Number(t.amount) });
     setPayItemAccountId(getDefaultPayAccount(currentCard.id) || (accounts.find(a => !a.archived)?.id ?? ''));
   };
 
+  // Confirm paying a single item. Same single-model rule: flip the mirror to
+  // paid with the chosen account. No separate [FATURA_CARTAO_ITEM] expense.
   const handleConfirmItemPayment = async () => {
     if (!payItem || !currentCard) return;
     if (!payItemAccountId) { toast.error('Selecione a conta'); return; }
     try {
-      await addExpense.mutateAsync({
-        date: new Date().toISOString().split('T')[0],
-        description: `💳 ${payItem.description} (${currentCard.name})`,
-        amount: payItem.amount,
-        account_id: payItemAccountId,
-        status: 'concluido',
-        notes: `[FATURA_CARTAO_ITEM|tx:${payItem.id}|card:${currentCard.id}] ${payItem.description}`,
-      });
-      await togglePaid.mutateAsync({ id: payItem.id, paid: true });
+      await togglePaid.mutateAsync({ id: payItem.id, paid: true, accountId: payItemAccountId });
       setDefaultPayAccount(currentCard.id, payItemAccountId);
+      setCardDefaultAccount(currentCard.id, payItemAccountId);
       toast.success(`Pago: ${fmt(payItem.amount)} debitado da conta`);
       setPayItem(null);
     } catch (e) { toast.error((e as Error).message); }
@@ -851,8 +848,10 @@ export default function CreditCardsPage() {
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-500/15 text-foreground/80 dark:text-slate-200"><Layers3 className="h-5 w-5" /></span>
                   <p className="text-sm font-bold text-foreground/80 dark:text-slate-300">Parcelas futuras</p>
                 </div>
-                <p className="text-lg sm:text-2xl font-black text-foreground tabular-nums">{selectedFutureInstallmentCount}</p>
-                <p className="mt-1 text-sm font-semibold text-muted-foreground dark:text-slate-400">parcelas futuras</p>
+                <p className="text-lg sm:text-2xl font-black text-foreground tabular-nums">{openInstallmentCount}</p>
+                <p className="mt-1 text-sm font-semibold text-muted-foreground dark:text-slate-400">
+                  {openInstallmentCount === 0 ? 'nenhuma a vencer' : `a vencer · ${fmt(openInstallmentTotal)}`}
+                </p>
               </div>
             </div>
           )}
@@ -1039,7 +1038,7 @@ export default function CreditCardsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-xs font-bold text-violet-100/60">Comprometido</p>
-                    <p className="currency mt-1 font-black tabular-nums">{fmt(selectedFutureOpenTotal)}</p>
+                    <p className="currency mt-1 font-black tabular-nums">{fmt(committedTotal)}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-xs font-bold text-violet-100/60">Disponível</p>
@@ -1328,36 +1327,6 @@ export default function CreditCardsPage() {
               <p className="text-xs text-muted-foreground mt-1.5 capitalize">{monthLabel(billMonth)} · {transactions.filter(t => !t.paid).length} item(ns)</p>
             </div>
             <div className="space-y-1.5">
-              <Label>Valor pago (R$)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={payBillAmount}
-                onChange={e => setPayBillAmount(e.target.value)}
-                placeholder="0,00"
-                style={{ fontSize: '16px' }}
-              />
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setPayBillAmount(unpaidTotal.toFixed(2))}
-                  className="text-[11px] px-2 py-1 rounded-md bg-muted/60 hover:bg-muted font-medium"
-                >
-                  Valor total ({fmt(unpaidTotal)})
-                </button>
-                {unpaidTotal >= 50 && (
-                  <button
-                    type="button"
-                    onClick={() => setPayBillAmount((unpaidTotal / 2).toFixed(2))}
-                    className="text-[11px] px-2 py-1 rounded-md bg-muted/60 hover:bg-muted font-medium"
-                  >
-                    Metade
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="space-y-1.5">
               <Label>Debitar da conta *</Label>
               <Select value={payBillAccountId} onValueChange={setPayBillAccountId}>
                 <SelectTrigger><SelectValue placeholder="Selecionar conta..." /></SelectTrigger>
@@ -1367,19 +1336,10 @@ export default function CreditCardsPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-[11px] text-muted-foreground">O valor será debitado do saldo desta conta. Próximas faturas usarão esta conta por padrão.</p>
+              <p className="text-[11px] text-muted-foreground">
+                Os {transactions.filter(t => !t.paid).length} item(ns) em aberto serão marcados como pagos e {fmt(unpaidTotal)} debitado(s) do saldo desta conta — uma única vez. Próximas faturas usarão esta conta por padrão.
+              </p>
             </div>
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={payBillMarkAll}
-                onChange={e => setPayBillMarkAll(e.target.checked)}
-                className="w-4 h-4 rounded border-border accent-primary"
-              />
-              <span className="text-xs text-muted-foreground">
-                Marcar todos os itens em aberto como pagos
-              </span>
-            </label>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowPayBill(false)}>Cancelar</Button>
@@ -1387,7 +1347,7 @@ export default function CreditCardsPage() {
               className="text-white gap-1.5"
               style={{ backgroundColor: '#10b981' }}
               onClick={handlePayBill}
-              disabled={addExpense.isPending || togglePaid.isPending || !payBillAccountId || !payBillAmount}
+              disabled={togglePaid.isPending || !payBillAccountId || unpaidTotal <= 0}
             >
               <Check className="w-4 h-4" /> Confirmar Pagamento
             </Button>
@@ -1418,7 +1378,7 @@ export default function CreditCardsPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-[11px] text-muted-foreground">Será criada uma despesa de {fmt(payItem.amount)} debitada desta conta.</p>
+                <p className="text-[11px] text-muted-foreground">{fmt(payItem.amount)} será debitado do saldo desta conta — uma única vez.</p>
               </div>
             </div>
           )}
@@ -1428,7 +1388,7 @@ export default function CreditCardsPage() {
               className="text-white gap-1.5"
               style={{ backgroundColor: '#10b981' }}
               onClick={handleConfirmItemPayment}
-              disabled={addExpense.isPending || togglePaid.isPending || !payItemAccountId}
+              disabled={togglePaid.isPending || !payItemAccountId}
             >
               <Check className="w-4 h-4" /> Confirmar e debitar
             </Button>

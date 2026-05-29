@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 .vercel
 .env*.local
+
+# Backups de dados (PII — nunca versionar)
+backups/

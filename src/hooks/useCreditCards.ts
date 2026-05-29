@@ -218,7 +218,7 @@ export function useAddCreditCardTransaction() {
 export function useToggleCCTransactionPaid() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, paid }: { id: string; paid: boolean }) => {
+    mutationFn: async ({ id, paid, accountId }: { id: string; paid: boolean; accountId?: string | null }) => {
       // 1) Toggle on credit_card_transactions
       const { error } = await supabase
         .from('credit_card_transactions')
@@ -226,26 +226,37 @@ export function useToggleCCTransactionPaid() {
         .eq('id', id);
       if (error) throw error;
 
-      // 2) Find the mirror expense (notes contain "tx:<id>")
-      // If it exists AND has account_id, sync its status so the bank balance
-      // reflects this CC obligation in real time.
+      // 2) Sync the mirror expense (notes contain "tx:<id>").
+      //
+      // The mirror IS how a CC purchase hits the bank balance — and it must do
+      // so EXACTLY ONCE. We deliberately never create a separate [FATURA_CARTAO]
+      // expense on payment (that legacy flow double-counted the bill against the
+      // mirror). So here, when marking as paid we ALSO ensure the mirror has an
+      // account_id, otherwise the balance wouldn't reflect the payment at all.
       const { data: mirrors } = await supabase
         .from('expenses')
         .select('id, account_id, status, notes')
         .like('notes', `%tx:${id}%`);
 
       const linkedMirror = (mirrors || []).find(m => m.notes?.includes(`tx:${id}`));
-      if (linkedMirror && linkedMirror.account_id) {
-        // Has a payment account configured — flip the status accordingly
-        const newStatus = paid ? 'concluido' : 'pendente';
-        await supabase
-          .from('expenses')
-          .update({ status: newStatus })
-          .eq('id', linkedMirror.id);
+      if (!linkedMirror) return;
+
+      const update: { status: string; account_id?: string } = {
+        status: paid ? 'concluido' : 'pendente',
+      };
+      // Assign the chosen account when paying an account-less mirror so it
+      // actually debits the bank balance. When un-paying, leave the account.
+      if (paid && !linkedMirror.account_id && accountId) {
+        update.account_id = accountId;
       }
+      await supabase
+        .from('expenses')
+        .update(update)
+        .eq('id', linkedMirror.id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cc-transactions'] });
+      qc.invalidateQueries({ queryKey: ['cc-all-future'] });
       qc.invalidateQueries({ queryKey: ['expenses'] });
       qc.invalidateQueries({ queryKey: ['accumulated-balance'] });
     },
@@ -428,5 +439,32 @@ export function useCCTransactionsForMonth(billMonth: string) {
 export function useCurrentBillTotal(cardId: string, billMonth: string) {
   const { data: txns = [] } = useCreditCardTransactions(cardId, billMonth);
   return txns.reduce((s, t) => s + Number(t.amount), 0);
+}
+
+/**
+ * ALL unpaid transactions for a card across every bill month (past, current,
+ * future). This is the real "outstanding debt" used to compute the available
+ * limit — NOT just the current/future months. Returns the rows so callers can
+ * both sum the total and inspect installments.
+ */
+export function useCardOutstanding(cardId?: string) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['cc-outstanding', user?.id, cardId],
+    queryFn: async () => {
+      const data = await queryWithSoftDeleteFallback<CreditCardTransaction>((supportsSoftDelete) => {
+        let q = supabase
+          .from('credit_card_transactions')
+          .select('*')
+          .eq('paid', false)
+          .order('bill_month', { ascending: true });
+        if (supportsSoftDelete) q = q.is('deleted_at', null);
+        if (cardId) q = q.eq('credit_card_id', cardId);
+        return q;
+      });
+      return data as CreditCardTransaction[];
+    },
+    enabled: !!user && !!cardId,
+  });
 }
 
