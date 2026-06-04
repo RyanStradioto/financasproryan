@@ -1090,9 +1090,9 @@ export default function Dashboard() {
                     <p className="text-[10px] font-bold text-muted-foreground">Despesas</p>
                     <p className="mt-0.5 text-sm font-black text-red-600 dark:text-red-600 dark:text-red-300">{deltaCopy(expenseDelta, true)}</p>
                   </div>
-                  <button onClick={() => window.location.href = '/cartoes'} className="rounded-xl border border-sky-300/20 bg-sky-400/10 px-3 py-2.5 text-left transition-colors hover:bg-sky-400/15">
-                    <p className="text-[10px] font-bold text-sky-600/80 dark:text-sky-700 dark:text-sky-200/70">Cartões</p>
-                    <p className="mt-0.5 text-sm font-black text-sky-600 dark:text-sky-700 dark:text-sky-200">{maskCurrency(formatCurrency(unpaidCCTotal))}</p>
+                  <button onClick={() => window.location.href = '/cartoes'} className="rounded-xl border border-primary/20 bg-primary/10 px-3 py-2.5 text-left transition-colors hover:bg-primary/15">
+                    <p className="text-[10px] font-bold text-primary/80">Cartões</p>
+                    <p className="mt-0.5 text-sm font-black text-primary">{maskCurrency(formatCurrency(unpaidCCTotal))}</p>
                   </button>
                 </div>
               </div>

@@ -502,6 +502,144 @@
     --sidebar-ring: 262 78% 68%;
   }
 
+  /* ── Pervinca (azul/lavanda — águas-vivas) ── */
+  html[data-palette="periwinkle"] {
+    --background: 222 40% 97%;
+    --card: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --primary: 212 72% 44%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 224 55% 93%;
+    --accent-foreground: 212 72% 34%;
+    --muted: 222 25% 94%;
+    --muted-foreground: 220 12% 44%;
+    --border: 222 22% 89%;
+    --input: 222 22% 89%;
+    --ring: 212 72% 44%;
+    --info: 222 67% 58%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 30% 20%;
+    --sidebar-primary: 212 72% 44%;
+    --sidebar-accent: 224 55% 93%;
+    --sidebar-accent-foreground: 212 72% 34%;
+    --sidebar-border: 222 22% 89%;
+    --sidebar-ring: 212 72% 44%;
+  }
+  html[data-palette="periwinkle"].dark {
+    --background: 224 50% 8%;
+    --card: 224 42% 13%;
+    --popover: 224 42% 14%;
+    --primary: 222 78% 72%;
+    --primary-foreground: 224 50% 10%;
+    --accent: 224 50% 22%;
+    --accent-foreground: 222 82% 86%;
+    --muted: 224 32% 17%;
+    --muted-foreground: 222 18% 66%;
+    --border: 224 32% 20%;
+    --input: 224 32% 20%;
+    --ring: 222 78% 72%;
+    --info: 222 78% 74%;
+    --sidebar-background: 224 44% 10%;
+    --sidebar-foreground: 222 20% 88%;
+    --sidebar-primary: 222 78% 72%;
+    --sidebar-accent: 224 50% 22%;
+    --sidebar-accent-foreground: 222 82% 86%;
+    --sidebar-border: 224 32% 20%;
+    --sidebar-ring: 222 78% 72%;
+  }
+
+  /* ── Caramelo (terracota / caramelo quente) ── */
+  html[data-palette="caramel"] {
+    --background: 28 45% 97%;
+    --card: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --primary: 18 74% 50%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 350 55% 94%;
+    --accent-foreground: 18 74% 38%;
+    --muted: 28 30% 94%;
+    --muted-foreground: 20 14% 44%;
+    --border: 28 26% 89%;
+    --input: 28 26% 89%;
+    --ring: 18 74% 50%;
+    --info: 24 80% 54%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 20 30% 22%;
+    --sidebar-primary: 18 74% 50%;
+    --sidebar-accent: 350 55% 94%;
+    --sidebar-accent-foreground: 18 74% 38%;
+    --sidebar-border: 28 26% 89%;
+    --sidebar-ring: 18 74% 50%;
+  }
+  html[data-palette="caramel"].dark {
+    --background: 350 38% 8%;
+    --card: 350 30% 13%;
+    --popover: 350 30% 14%;
+    --primary: 24 90% 64%;
+    --primary-foreground: 26 55% 10%;
+    --accent: 350 45% 22%;
+    --accent-foreground: 28 92% 80%;
+    --muted: 350 22% 17%;
+    --muted-foreground: 20 16% 62%;
+    --border: 350 24% 20%;
+    --input: 350 24% 20%;
+    --ring: 24 90% 64%;
+    --info: 350 60% 66%;
+    --sidebar-background: 350 32% 10%;
+    --sidebar-foreground: 28 18% 88%;
+    --sidebar-primary: 24 90% 64%;
+    --sidebar-accent: 350 45% 22%;
+    --sidebar-accent-foreground: 28 92% 80%;
+    --sidebar-border: 350 24% 20%;
+    --sidebar-ring: 24 90% 64%;
+  }
+
+  /* ── Lagoa (teal + rosa pastel) ── */
+  html[data-palette="lagoon"] {
+    --background: 180 30% 97%;
+    --card: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --primary: 176 46% 38%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 348 55% 94%;
+    --accent-foreground: 176 46% 30%;
+    --muted: 180 22% 94%;
+    --muted-foreground: 185 12% 42%;
+    --border: 180 20% 89%;
+    --input: 180 20% 89%;
+    --ring: 176 46% 38%;
+    --info: 348 62% 62%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 185 28% 20%;
+    --sidebar-primary: 176 46% 38%;
+    --sidebar-accent: 348 55% 94%;
+    --sidebar-accent-foreground: 176 46% 30%;
+    --sidebar-border: 180 20% 89%;
+    --sidebar-ring: 176 46% 38%;
+  }
+  html[data-palette="lagoon"].dark {
+    --background: 190 32% 8%;
+    --card: 188 26% 13%;
+    --popover: 188 26% 14%;
+    --primary: 176 48% 56%;
+    --primary-foreground: 190 45% 9%;
+    --accent: 348 42% 22%;
+    --accent-foreground: 176 52% 76%;
+    --muted: 188 20% 17%;
+    --muted-foreground: 185 16% 62%;
+    --border: 188 22% 20%;
+    --input: 188 22% 20%;
+    --ring: 176 48% 56%;
+    --info: 348 66% 70%;
+    --sidebar-background: 189 28% 10%;
+    --sidebar-foreground: 185 18% 88%;
+    --sidebar-primary: 176 48% 56%;
+    --sidebar-accent: 348 42% 22%;
+    --sidebar-accent-foreground: 176 52% 76%;
+    --sidebar-border: 188 22% 20%;
+    --sidebar-ring: 176 48% 56%;
+  }
+
   * {
     @apply border-border;
     min-width: 0;

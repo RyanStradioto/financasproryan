@@ -22,7 +22,8 @@ export default function KpiCard({
   const { maskCurrency, maskText } = useSensitiveData();
   const displayValue = value.startsWith('R$') ? maskCurrency(value) : maskText(value);
   const deltaIsGood = delta == null ? null : (deltaInverted ? delta < 0 : delta > 0);
-  const sparkColor = trend === 'up' ? 'hsl(160, 84%, 39%)' : trend === 'down' ? 'hsl(0, 72%, 51%)' : 'hsl(217, 91%, 60%)';
+  // Neutral trend follows the active palette; up/down stay semantic.
+  const sparkColor = trend === 'up' ? 'hsl(var(--income))' : trend === 'down' ? 'hsl(var(--expense))' : 'hsl(var(--primary))';
 
   return (
     <div className={cn('relative min-h-[96px] sm:min-h-[116px] rounded-3xl border border-border/60 bg-gradient-to-br from-card/95 via-card/75 to-background/55 p-3 sm:p-4 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-border hover:shadow-xl hover:shadow-black/5 group overflow-hidden animate-slide-up', color)}>

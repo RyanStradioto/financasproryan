@@ -10,7 +10,7 @@
 
 export type PaletteId =
   | 'default' | 'purple' | 'crimson' | 'forest' | 'noir' | 'mono'
-  | 'sunset' | 'neon' | 'indigo';
+  | 'sunset' | 'neon' | 'indigo' | 'periwinkle' | 'caramel' | 'lagoon';
 
 export interface PaletteMeta {
   id: PaletteId;
@@ -74,6 +74,24 @@ export const PALETTES: PaletteMeta[] = [
     name: 'Índigo',
     description: 'Azul-violeta elétrico',
     swatches: ['#060416', '#130C49', '#1F137D', '#5C21C3', '#874AD7'],
+  },
+  {
+    id: 'periwinkle',
+    name: 'Pervinca',
+    description: 'Azul e lavanda das águas-vivas',
+    swatches: ['#0E155E', '#206ABC', '#7997E6', '#B37AD4', '#CAA9F3'],
+  },
+  {
+    id: 'caramel',
+    name: 'Caramelo',
+    description: 'Terracota e caramelo quente',
+    swatches: ['#45151B', '#C74E51', '#F99256', '#EA9DAE', '#FBDE9C'],
+  },
+  {
+    id: 'lagoon',
+    name: 'Lagoa',
+    description: 'Teal e rosa pastel de praia',
+    swatches: ['#6BB1AD', '#A7BCBD', '#EDECDB', '#E5A9A9', '#E6748E'],
   },
 ];
 
