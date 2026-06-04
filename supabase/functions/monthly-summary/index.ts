@@ -671,7 +671,7 @@ Deno.serve(async (req) => {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
       const { data: prof } = await dc.from("profiles")
-        .select("first_name,email_per_account_enabled,email_account_ids")
+        .select("*") // "*" para nao quebrar se a migration de agendamento ainda nao foi aplicada
         .eq("user_id", user.id).maybeSingle();
       profilesToProcess = [{
         user_id: user.id, email: user.email, first_name: prof?.first_name,
@@ -684,7 +684,7 @@ Deno.serve(async (req) => {
       const adminClient = createClient(adminUrl, adminKey);
       const { data: profiles, error } = await adminClient
         .from("profiles")
-        .select("user_id,first_name,monthly_summary_enabled,email_monthly_day,email_hour,email_per_account_enabled,email_account_ids")
+        .select("*") // "*" para nao quebrar se a migration de agendamento ainda nao foi aplicada
         .eq("monthly_summary_enabled", true);
       if (error) throw error;
       if (!profiles || profiles.length === 0) {
