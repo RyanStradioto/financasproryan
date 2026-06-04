@@ -10,16 +10,23 @@ item opcional de IA no final.
 |------|--------|
 | Tabela **feedback** (+ RLS + índices + trigger) | ✅ criada e visível na API REST |
 | Colunas de agendamento em `profiles` (`email_weekly_days`, `email_monthly_day`, `email_hour`, `email_per_account_enabled`, `email_account_ids`) | ✅ criadas |
-| Secret `RESEND_API_KEY` | ✅ configurado |
-| Edge function `weekly-summary` (Resend + por conta + agendamento) | ✅ deployada |
-| Edge function `monthly-summary` (Resend + por conta + agendamento) | ✅ deployada |
+| Secret `BREVO_API_KEY` (provedor de e-mail real) | ✅ configurado |
+| Edge function `weekly-summary` (Brevo + por conta + agendamento) | ✅ deployada |
+| Edge function `monthly-summary` (Brevo + por conta + agendamento) | ✅ deployada |
 | Edge function `financial-insights` (sem Lovable) | ✅ deployada |
 | Edge function `suggest-category` (sem Lovable) | ✅ deployada |
 | Cron semanal + mensal → **de hora em hora** (a função filtra dia/horário) | ✅ ajustado |
 | Schema cache do PostgREST recarregado | ✅ feito |
+| Painel de admin liberado para `amaralstradiotoryan@gmail.com` (app + RLS) | ✅ feito |
+| E-mail de novidades enviado para **todos os 7 usuários** (via Brevo) | ✅ enviado |
 
 O erro **"Could not find the table 'public.feedback'"** está resolvido —
 `GET /rest/v1/feedback` agora responde `200`.
+
+> **E-mail via Brevo:** o remetente verificado é `amaralstradiotoryan@gmail.com` e o
+> envio alcança **todos** os usuários. O plano gratuito do Brevo permite ~300 e-mails/dia
+> — suficiente para os resumos. Para trocar o remetente, defina os secrets
+> `BREVO_SENDER_NAME` / `BREVO_SENDER_EMAIL` (precisa ser um sender verificado no Brevo).
 
 ## ✅ Como testar
 
