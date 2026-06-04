@@ -977,7 +977,7 @@ export default function Dashboard() {
           {/* Greeting + actions row */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-700 dark:text-emerald-200/80">
+              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-primary">
                 {greeting.text}{profile?.first_name ? `, ${profile.first_name}` : ''} 👋
               </p>
               <h1 className="mt-1 text-xl font-black tracking-tight text-foreground sm:text-2xl lg:text-3xl">
@@ -1057,7 +1057,7 @@ export default function Dashboard() {
       </section>
 
       <section className="grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-5">
-        <KpiCard label="Saldo total" value={maskCurrency(formatCurrency(balance))} icon={Wallet} color="from-emerald-400/14" trend="neutral" sparklineData={balanceSparkline} delta={null} sub={isGlobalView ? `${activeAccounts.length} contas ativas` : focusLabel} />
+        <KpiCard label="Saldo total" value={maskCurrency(formatCurrency(balance))} icon={Wallet} color="from-primary/14" trend="neutral" sparklineData={balanceSparkline} delta={null} sub={isGlobalView ? `${activeAccounts.length} contas ativas` : focusLabel} />
         <KpiCard label="Sobra no mês" value={maskCurrency(formatCurrency(monthResult))} icon={PiggyBank} color={monthResult >= 0 ? 'from-emerald-400/14' : 'from-red-400/14'} trend={monthResult >= 0 ? 'up' : 'down'} sparklineData={balanceSparkline} delta={null} sub={`${Math.max(0, savings).toFixed(0)}% de poupança`} />
         <KpiCard label="Receitas" value={maskCurrency(formatCurrency(totalIncome))} icon={TrendingUp} color="from-emerald-400/14" trend="up" sparklineData={incomeSparkline} delta={incomeDelta} deltaInverted={false} sub={deltaCopy(incomeDelta)} />
         <KpiCard label="Despesas" value={maskCurrency(formatCurrency(currentTotalAll))} icon={TrendingDown} color="from-red-400/14" trend="down" sparklineData={expenseSparkline} delta={expenseDelta} deltaInverted={true} sub={deltaCopy(expenseDelta, true)} />
@@ -1070,7 +1070,7 @@ export default function Dashboard() {
         <PremiumCard className="relative overflow-hidden p-4 sm:p-5">
           <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-emerald-400/10 blur-3xl" />
           <div className="relative space-y-4">
-            <SectionHeader title="Resumo inteligente" subtitle="Diagnóstico rápido do mês." icon={BrainCircuit} iconColor="text-emerald-600 dark:text-emerald-300" />
+            <SectionHeader title="Resumo inteligente" subtitle="Diagnóstico rápido do mês." icon={BrainCircuit} iconColor="text-primary" />
 
             <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
               <div className="space-y-2">
@@ -1224,7 +1224,7 @@ export default function Dashboard() {
           <div className="pointer-events-none absolute -left-24 -top-28 h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
           <div className="pointer-events-none absolute -right-20 top-10 h-64 w-64 rounded-full bg-sky-400/10 blur-3xl" />
           <div className="relative mb-3 space-y-2">
-            <SectionHeader title="Evolução financeira" subtitle="Receitas, despesas e saldo nos últimos meses." icon={BarChart3} iconColor="text-sky-600 dark:text-sky-300" />
+            <SectionHeader title="Evolução financeira" subtitle="Receitas, despesas e saldo nos últimos meses." icon={BarChart3} iconColor="text-primary" />
             <div className="flex flex-wrap gap-1.5">
               <span className="rounded-lg border border-emerald-300/15 bg-emerald-400/[0.07] px-2 py-1 flex items-center gap-1.5">
                 <span className="text-[9px] font-black uppercase text-emerald-700 dark:text-emerald-200/60">Rec</span>
@@ -1327,7 +1327,7 @@ export default function Dashboard() {
             <div className="relative grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px]">
               <div className="min-w-0">
                 <div className="mb-3">
-                  <SectionHeader title="Ritmo semanal" subtitle={`${weeklyFlowData.length} semanas · distribuição de entradas e saídas`} icon={BarChart3} iconColor="text-cyan-600 dark:text-cyan-300" />
+                  <SectionHeader title="Ritmo semanal" subtitle={`${weeklyFlowData.length} semanas · distribuição de entradas e saídas`} icon={BarChart3} iconColor="text-primary" />
                 </div>
 
                 <div className="h-[170px] sm:h-[210px] rounded-2xl border border-border/40 dark:border-white/[0.06] bg-muted/40 dark:bg-[#050810]/80 p-3 shadow-inner shadow-black/10 dark:shadow-black/30">
@@ -1400,7 +1400,7 @@ export default function Dashboard() {
         <div className="space-y-4">
           <PremiumCard className="p-4 sm:p-5">
             <div className="mb-3">
-              <SectionHeader title="Transações recentes" icon={Clock} iconColor="text-sky-600 dark:text-sky-300" action={{ label: 'Ver todas', href: '/relatorio' }} />
+              <SectionHeader title="Transações recentes" icon={Clock} iconColor="text-primary" action={{ label: 'Ver todas', href: '/relatorio' }} />
             </div>
             <div className="space-y-2">
               {recentActivity.map((tx) => (
@@ -1420,7 +1420,7 @@ export default function Dashboard() {
 
           <PremiumCard className="p-4 sm:p-5">
             <div className="mb-3">
-              <SectionHeader title="Categorias principais" icon={Target} iconColor="text-emerald-600 dark:text-emerald-300" action={{ label: 'Ver todas', href: '/categorias' }} />
+              <SectionHeader title="Categorias principais" icon={Target} iconColor="text-primary" action={{ label: 'Ver todas', href: '/categorias' }} />
             </div>
             <div className="space-y-3">
               {catBreakdown.slice(0, 5).map((cat) => {
@@ -1432,7 +1432,7 @@ export default function Dashboard() {
                       <span className="shrink-0 text-slate-500">{pct.toFixed(0)}% · {maskCurrency(formatCurrency(cat.value))}</span>
                     </div>
                     <div className="h-1.5 overflow-hidden rounded-full bg-border/50 dark:bg-white/10">
-                      <div className="h-full rounded-full bg-gradient-to-r from-emerald-300 to-sky-400" style={{ width: `${Math.min(100, pct)}%` }} />
+                      <div className="h-full rounded-full bg-gradient-to-r from-primary/70 to-primary" style={{ width: `${Math.min(100, pct)}%` }} />
                     </div>
                   </div>
                 );
@@ -1479,7 +1479,7 @@ export default function Dashboard() {
           <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-emerald-400/10 blur-3xl" />
           <div className="relative">
             <div className="mb-3">
-              <SectionHeader title="Top 5 receitas" subtitle="Maiores do mês" icon={TrendingUp} iconColor="text-emerald-600 dark:text-emerald-300" action={{ label: 'Ver todas', href: '/receitas' }} />
+              <SectionHeader title="Top 5 receitas" subtitle="Maiores do mês" icon={TrendingUp} iconColor="text-primary" action={{ label: 'Ver todas', href: '/receitas' }} />
             </div>
             <div className="space-y-2">
               {topIncomes.length === 0 ? (
@@ -1510,7 +1510,7 @@ export default function Dashboard() {
           <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-blue-400/10 blur-3xl" />
           <div className="relative">
             <div className="mb-3">
-              <SectionHeader title="Mês atual vs anterior" subtitle="3 métricas comparadas" icon={BarChart3} iconColor="text-sky-600 dark:text-sky-300" />
+              <SectionHeader title="Mês atual vs anterior" subtitle="3 métricas comparadas" icon={BarChart3} iconColor="text-primary" />
             </div>
             <div className="rounded-2xl border border-border/40 dark:border-white/[0.06] bg-muted/40 dark:bg-[#050810]/80 p-3 shadow-inner shadow-black/10 dark:shadow-black/30 h-[185px] sm:h-[235px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -1566,7 +1566,7 @@ export default function Dashboard() {
       <section className="grid gap-4 lg:grid-cols-2">
         <PremiumCard className="p-4 sm:p-5">
           <div className="mb-4">
-            <SectionHeader title="Metas por categoria" subtitle="Orçamento vs. real" icon={Trophy} iconColor="text-emerald-600 dark:text-emerald-300" action={{ label: 'Ajustar', href: '/categorias' }} />
+            <SectionHeader title="Metas por categoria" subtitle="Orçamento vs. real" icon={Trophy} iconColor="text-primary" action={{ label: 'Ajustar', href: '/categorias' }} />
           </div>
           {budgetsWithData.length > 0 ? (
             <BudgetRings budgets={budgetsWithData.slice(0, 5)} size={160} />
@@ -1594,7 +1594,7 @@ export default function Dashboard() {
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <PremiumCard className="p-4 sm:p-5">
           <div className="mb-3">
-            <SectionHeader title="Visão do mês" subtitle={`Dia ${monthPace.dayOfMonth} de ${monthPace.lastDayOfMonth}`} icon={Activity} iconColor="text-emerald-600 dark:text-emerald-300" />
+            <SectionHeader title="Visão do mês" subtitle={`Dia ${monthPace.dayOfMonth} de ${monthPace.lastDayOfMonth}`} icon={Activity} iconColor="text-primary" />
           </div>
           <div className="space-y-3">
             <div>
