@@ -70,7 +70,7 @@ export default function SettingsPage() {
   const { openTutorial } = useTutorial();
   const { data: profile, isLoading } = useProfile();
   const upsert = useUpsertProfile();
-  const { maskCurrency } = useSensitiveData();
+  const { maskCurrency, isVisible } = useSensitiveData();
   const fmt = (v: number) => maskCurrency(formatCurrency(v));
   const { theme, toggleTheme } = useTheme();
   const { palette, setPalette } = usePalette();
@@ -554,10 +554,10 @@ export default function SettingsPage() {
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Salário Mensal (R$)</label>
             <input
-              type="number"
+              type={isVisible ? 'number' : 'password'}
               value={salary}
               onChange={e => setSalary(e.target.value)}
-              placeholder="5000"
+              placeholder={isVisible ? '5000' : '••••••'}
               data-tutorial-target="salary-input"
               className="flex h-11 md:h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
