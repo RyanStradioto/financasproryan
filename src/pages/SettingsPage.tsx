@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useProfile, useUpsertProfile } from '@/hooks/useProfile';
+import { useAccounts } from '@/hooks/useFinanceData';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { User, Briefcase, Clock, CalendarDays, Mail, Save, Trash2, AlertTriangle, Send, Sparkles, Lock, Eye, EyeOff, Palette, Sun, Moon, Check } from 'lucide-react';
+import { User, Briefcase, Clock, CalendarDays, CalendarClock, Landmark, Mail, Save, Trash2, AlertTriangle, Send, Sparkles, Lock, Eye, EyeOff, Palette, Sun, Moon, Check } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,48 +15,27 @@ import { usePalette } from '@/hooks/usePalette';
 import { PALETTES } from '@/lib/palettes';
 import { cn } from '@/lib/utils';
 
-const formatScheduleDate = (date: Date) => {
-  const weekday = new Intl.DateTimeFormat('pt-BR', {
-    weekday: 'long',
-    timeZone: 'America/Sao_Paulo',
-  }).format(date);
-  const day = new Intl.DateTimeFormat('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone: 'America/Sao_Paulo',
-  }).format(date);
-  const time = new Intl.DateTimeFormat('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    timeZone: 'America/Sao_Paulo',
-  }).format(date);
+const WEEKDAYS: { v: number; short: string; full: string }[] = [
+  { v: 0, short: 'D', full: 'domingo' },
+  { v: 1, short: 'S', full: 'segunda' },
+  { v: 2, short: 'T', full: 'terça' },
+  { v: 3, short: 'Q', full: 'quarta' },
+  { v: 4, short: 'Q', full: 'quinta' },
+  { v: 5, short: 'S', full: 'sexta' },
+  { v: 6, short: 'S', full: 'sábado' },
+];
 
-  return `${weekday}, ${day} às ${time}`;
+const HOURS = Array.from({ length: 24 }, (_, h) => h);
+const MONTH_DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
+
+/** Junta uma lista em portugues: ['seg','qui'] -> 'segunda e quinta'. */
+const joinPt = (items: string[]): string => {
+  if (items.length === 0) return '';
+  if (items.length === 1) return items[0];
+  return `${items.slice(0, -1).join(', ')} e ${items[items.length - 1]}`;
 };
 
-const getNextWeeklySend = (now = new Date()) => {
-  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12, 0, 0));
-  let daysUntilMonday = (1 - next.getUTCDay() + 7) % 7;
-
-  if (daysUntilMonday === 0 && now >= next) {
-    daysUntilMonday = 7;
-  }
-
-  next.setUTCDate(next.getUTCDate() + daysUntilMonday);
-  return formatScheduleDate(next);
-};
-
-const getNextMonthlySend = (now = new Date()) => {
-  let next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 12, 0, 0));
-
-  if (now >= next) {
-    next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 12, 0, 0));
-  }
-
-  return formatScheduleDate(next);
-};
+const hourLabel = (h: number) => `${String(h).padStart(2, '0')}:00`;
 
 const getErrorMessage = (value: unknown): string | null => {
   if (!value || typeof value !== 'object') return null;
@@ -84,6 +64,16 @@ export default function SettingsPage() {
   const [sendingTest, setSendingTest] = useState(false);
   const [sendingMonthly, setSendingMonthly] = useState(false);
 
+  // Agendamento de e-mails
+  const [weeklyDays, setWeeklyDays] = useState<number[]>([1]);
+  const [monthlyDay, setMonthlyDay] = useState(1);
+  const [emailHour, setEmailHour] = useState(9);
+  const [perAccountEnabled, setPerAccountEnabled] = useState(true);
+  // null = todas as contas (incl. futuras); array = selecao explicita
+  const [accountIds, setAccountIds] = useState<string[] | null>(null);
+  const { data: accounts = [] } = useAccounts();
+  const activeAccounts = accounts.filter((a) => !a.archived);
+
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -109,6 +99,11 @@ export default function SettingsPage() {
       setDaysPerWeek(String(profile.work_days_per_week || ''));
       setWeeklyEmail(profile.weekly_summary_enabled);
       setMonthlyEmail(profile.monthly_summary_enabled);
+      setWeeklyDays(Array.isArray(profile.email_weekly_days) && profile.email_weekly_days.length ? profile.email_weekly_days : [1]);
+      setMonthlyDay(typeof profile.email_monthly_day === 'number' ? profile.email_monthly_day : 1);
+      setEmailHour(typeof profile.email_hour === 'number' ? profile.email_hour : 9);
+      setPerAccountEnabled(profile.email_per_account_enabled !== false);
+      setAccountIds(Array.isArray(profile.email_account_ids) ? profile.email_account_ids : null);
     }
   }, [profile]);
 
@@ -121,11 +116,40 @@ export default function SettingsPage() {
         work_days_per_week: Number(daysPerWeek) || 5,
         weekly_summary_enabled: weeklyEmail,
         monthly_summary_enabled: monthlyEmail,
+        email_weekly_days: weeklyDays.length ? [...weeklyDays].sort((a, b) => a - b) : [1],
+        email_monthly_day: monthlyDay,
+        email_hour: emailHour,
+        email_per_account_enabled: perAccountEnabled,
+        email_account_ids: accountIds,
       });
       toast.success('Perfil salvo com sucesso!');
     } catch {
       toast.error('Erro ao salvar perfil');
     }
+  };
+
+  // ── Helpers de agendamento (UI) ──
+  const toggleWeekday = (v: number) => {
+    setWeeklyDays((prev) => {
+      if (prev.includes(v)) {
+        const next = prev.filter((d) => d !== v);
+        return next.length ? next : prev; // mantem ao menos 1 dia
+      }
+      return [...prev, v];
+    });
+  };
+
+  const allAccountIds = activeAccounts.map((a) => a.id);
+  const isAllAccounts = accountIds === null;
+  const accountSelected = (id: string) => isAllAccounts || (accountIds?.includes(id) ?? false);
+  const toggleAccount = (id: string) => {
+    setAccountIds((prev) => {
+      const base = prev === null ? allAccountIds : prev;
+      const next = base.includes(id) ? base.filter((x) => x !== id) : [...base, id];
+      if (next.length === 0) return prev; // mantem ao menos 1 conta
+      if (next.length === allAccountIds.length) return null; // todas -> null (inclui futuras)
+      return next;
+    });
   };
 
   const handleSavePassword = async () => {
@@ -325,8 +349,12 @@ export default function SettingsPage() {
   const dpw = Number(daysPerWeek) || 5;
   const hourlyRate = monthlySalary > 0 ? monthlySalary / (dpw * 4.33 * hpd) : 0;
   const dailyRate = hourlyRate * hpd;
-  const nextWeeklySend = getNextWeeklySend();
-  const nextMonthlySend = getNextMonthlySend();
+  const weeklyDaysLabel = weeklyDays.length >= 7
+    ? 'todos os dias'
+    : joinPt(WEEKDAYS.filter((d) => weeklyDays.includes(d.v)).map((d) => d.full));
+  const accountsScheduleLabel = isAllAccounts
+    ? `Todas as contas (${activeAccounts.length})`
+    : `${accountIds?.length ?? 0} de ${activeAccounts.length} contas`;
 
   return (
     <div className="w-full space-y-6 animate-fade-in">
@@ -622,7 +650,7 @@ export default function SettingsPage() {
             </div>
             <div>
               <p className="text-sm font-medium">Resumo Semanal por Email</p>
-              <p className="text-xs text-muted-foreground">Receba toda segunda-feira um resumo das suas finanças</p>
+              <p className="text-xs text-muted-foreground">Um resumo das suas finanças nos dias que você escolher</p>
             </div>
           </label>
           <label className="flex items-center gap-3 cursor-pointer">
@@ -634,21 +662,130 @@ export default function SettingsPage() {
             </div>
             <div>
               <p className="text-sm font-medium">Relatório Mensal por Email</p>
-              <p className="text-xs text-muted-foreground">Receba no dia 1 um consolidado completo do mês anterior</p>
+              <p className="text-xs text-muted-foreground">Consolidado completo do mês anterior no dia que você escolher</p>
             </div>
           </label>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-border bg-muted/30 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Próximo semanal</p>
-              <p className="mt-1 text-sm font-medium text-foreground">{nextWeeklySend}</p>
-              <p className="mt-1 text-xs text-muted-foreground">Envio automático toda segunda-feira às 09:00.</p>
+
+          {/* ─── Agendamento ─── */}
+          <div className="rounded-2xl border border-border/70 bg-muted/20 p-4 space-y-4">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <CalendarClock className="w-4 h-4 text-primary" />
+              Quando receber
             </div>
-            <div className="rounded-xl border border-border bg-muted/30 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Próximo mensal</p>
-              <p className="mt-1 text-sm font-medium text-foreground">{nextMonthlySend}</p>
-              <p className="mt-1 text-xs text-muted-foreground">Envio automático no dia 1 de cada mês às 09:00.</p>
+
+            {/* Horário */}
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">Horário de envio</p>
+                <p className="text-xs text-muted-foreground">Mesmo horário para o semanal e o mensal (horário de Brasília)</p>
+              </div>
+              <select
+                value={emailHour}
+                onChange={(e) => setEmailHour(Number(e.target.value))}
+                className="h-10 rounded-lg border border-border bg-background px-3 text-base md:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                {HOURS.map((h) => <option key={h} value={h}>{hourLabel(h)}</option>)}
+              </select>
+            </div>
+
+            {/* Dias do semanal */}
+            <div className={cn('space-y-2 transition-opacity', !weeklyEmail && 'opacity-40 pointer-events-none')}>
+              <p className="text-sm font-medium">Dias do resumo semanal</p>
+              <div className="flex flex-wrap gap-1.5">
+                {WEEKDAYS.map((d) => {
+                  const on = weeklyDays.includes(d.v);
+                  return (
+                    <button
+                      key={d.v}
+                      type="button"
+                      onClick={() => toggleWeekday(d.v)}
+                      aria-pressed={on}
+                      title={d.full}
+                      className={cn(
+                        'h-9 w-9 rounded-full text-xs font-bold transition-all',
+                        on ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/30 scale-105' : 'bg-muted text-muted-foreground hover:bg-muted-foreground/20',
+                      )}
+                    >
+                      {d.short}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">Envio {weeklyDaysLabel === 'todos os dias' ? 'todos os dias' : `toda ${weeklyDaysLabel}`} às {hourLabel(emailHour)}.</p>
+            </div>
+
+            {/* Dia do mensal */}
+            <div className={cn('flex items-center justify-between gap-3 transition-opacity', !monthlyEmail && 'opacity-40 pointer-events-none')}>
+              <div>
+                <p className="text-sm font-medium">Dia do relatório mensal</p>
+                <p className="text-xs text-muted-foreground">Dia do mês em que o consolidado é enviado</p>
+              </div>
+              <select
+                value={monthlyDay}
+                onChange={(e) => setMonthlyDay(Number(e.target.value))}
+                className="h-10 rounded-lg border border-border bg-background px-3 text-base md:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                {MONTH_DAYS.map((d) => <option key={d} value={d}>Dia {d}</option>)}
+              </select>
             </div>
           </div>
+
+          {/* ─── Análise por conta ─── */}
+          <div className="rounded-2xl border border-border/70 bg-muted/20 p-4 space-y-4">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <div
+                onClick={() => setPerAccountEnabled(!perAccountEnabled)}
+                className={`w-10 h-6 shrink-0 rounded-full transition-colors relative cursor-pointer ${perAccountEnabled ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+              >
+                <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${perAccountEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+              </div>
+              <div>
+                <p className="flex items-center gap-1.5 text-sm font-medium"><Landmark className="w-3.5 h-3.5 text-primary" /> E-mail separado por conta</p>
+                <p className="text-xs text-muted-foreground">Além do consolidado, receba uma análise individual de cada conta</p>
+              </div>
+            </label>
+
+            {perAccountEnabled && (
+              <div className="space-y-2 pl-0 sm:pl-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Contas incluídas</p>
+                  {!isAllAccounts && (
+                    <button type="button" onClick={() => setAccountIds(null)} className="text-xs font-semibold text-primary hover:underline">
+                      Selecionar todas
+                    </button>
+                  )}
+                </div>
+                {activeAccounts.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nenhuma conta cadastrada ainda.</p>
+                ) : (
+                  <div className="grid gap-1.5 sm:grid-cols-2">
+                    {activeAccounts.map((a) => {
+                      const on = accountSelected(a.id);
+                      return (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={() => toggleAccount(a.id)}
+                          className={cn(
+                            'flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all',
+                            on ? 'border-primary/40 bg-primary/10' : 'border-border bg-background hover:border-primary/30',
+                          )}
+                        >
+                          <span className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors', on ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/40')}>
+                            {on && <Check className="h-3.5 w-3.5" />}
+                          </span>
+                          <span className="text-base shrink-0">{a.icon || '🏦'}</span>
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium">{a.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">{accountsScheduleLabel}{isAllAccounts ? ' — inclui contas novas automaticamente' : ''}.</p>
+              </div>
+            )}
+          </div>
+
           <div className="grid gap-2 sm:flex sm:flex-wrap">
             <button
               onClick={handleTestEmail}

@@ -32,6 +32,25 @@ function getNextMonthlySend(now = new Date()): string {
   return formatScheduleDate(next);
 }
 
+/** Componentes de data/hora no fuso America/Sao_Paulo (para agendamento por usuario). */
+function spNowParts(now: Date): { weekday: number; hour: number; day: number; month: number; year: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Sao_Paulo",
+    weekday: "short", hour: "2-digit", hour12: false,
+    day: "2-digit", month: "2-digit", year: "numeric",
+  }).formatToParts(now);
+  const wk: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  let weekday = 1, hour = 9, day = 1, month = 1, year = 2025;
+  for (const part of parts) {
+    if (part.type === "weekday") weekday = wk[part.value] ?? weekday;
+    else if (part.type === "hour") hour = Number(part.value) % 24;
+    else if (part.type === "day") day = Number(part.value);
+    else if (part.type === "month") month = Number(part.value);
+    else if (part.type === "year") year = Number(part.value);
+  }
+  return { weekday, hour, day, month, year };
+}
+
 function decodeJwtPayload(token: string | null): Record<string, unknown> | null {
   if (!token) return null;
   const parts = token.split(".");
@@ -639,7 +658,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    interface ProfileEntry { user_id: string; email: string; first_name?: string; }
+    interface ProfileEntry { user_id: string; email: string; first_name?: string; perAccount?: boolean; accountIds?: string[] | null; }
     let profilesToProcess: ProfileEntry[] = [];
 
     if (!isServiceRoleCall && userJwt) {
@@ -651,15 +670,21 @@ Deno.serve(async (req) => {
       if (!user?.email) return new Response(JSON.stringify({ error: "Could not identify user" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-      const { data: prof } = await dc.from("profiles").select("first_name").eq("user_id", user.id).maybeSingle();
-      profilesToProcess = [{ user_id: user.id, email: user.email, first_name: prof?.first_name }];
+      const { data: prof } = await dc.from("profiles")
+        .select("first_name,email_per_account_enabled,email_account_ids")
+        .eq("user_id", user.id).maybeSingle();
+      profilesToProcess = [{
+        user_id: user.id, email: user.email, first_name: prof?.first_name,
+        perAccount: prof?.email_per_account_enabled !== false,
+        accountIds: Array.isArray(prof?.email_account_ids) ? prof!.email_account_ids.map(String) : null,
+      }];
     } else {
       const adminKey = dataServiceRole || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
       const adminUrl = dataServiceRole ? dataUrl : Deno.env.get("SUPABASE_URL")!;
       const adminClient = createClient(adminUrl, adminKey);
       const { data: profiles, error } = await adminClient
         .from("profiles")
-        .select("user_id,first_name,monthly_summary_enabled")
+        .select("user_id,first_name,monthly_summary_enabled,email_monthly_day,email_hour,email_per_account_enabled,email_account_ids")
         .eq("monthly_summary_enabled", true);
       if (error) throw error;
       if (!profiles || profiles.length === 0) {
@@ -667,9 +692,23 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      // Agendamento por usuario: so envia se HOJE (fuso BR) e o dia do mes escolhido e a hora bate.
+      const sp = spNowParts(new Date());
+      const daysInMonth = new Date(sp.year, sp.month, 0).getDate();
       for (const p of profiles) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pAny = p as any;
+        const sendDay = Number.isInteger(pAny.email_monthly_day) ? Number(pAny.email_monthly_day) : 1;
+        const hour = Number.isInteger(pAny.email_hour) ? Number(pAny.email_hour) : 9;
+        const effDay = Math.min(sendDay, daysInMonth); // se escolheu 31 e o mes tem 30, envia no ultimo dia
+        if (sp.day !== effDay) continue;
+        if (sp.hour !== hour) continue;
         const { data: ud } = await adminClient.auth.admin.getUserById(p.user_id);
-        if (ud?.user?.email) profilesToProcess.push({ user_id: p.user_id, email: ud.user.email, first_name: p.first_name });
+        if (ud?.user?.email) profilesToProcess.push({
+          user_id: p.user_id, email: ud.user.email, first_name: p.first_name,
+          perAccount: pAny.email_per_account_enabled !== false,
+          accountIds: Array.isArray(pAny.email_account_ids) ? pAny.email_account_ids.map(String) : null,
+        });
       }
     }
 
@@ -842,8 +881,9 @@ Deno.serve(async (req) => {
           return hasInc || hasExp;
         });
 
-        for (const a of accountsWithActivity) {
+        if (profile.perAccount !== false) for (const a of accountsWithActivity) {
           const id = String(a.id);
+          if (profile.accountIds && profile.accountIds.length > 0 && !profile.accountIds.includes(id)) continue;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const accIncomeRows = income.filter((i: any) => String(i.account_id) === id && i.status === "concluido");
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
