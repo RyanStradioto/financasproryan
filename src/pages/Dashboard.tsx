@@ -969,9 +969,9 @@ export default function Dashboard() {
       </ErrorBoundary>
 
       <section className="relative overflow-hidden rounded-2xl border border-border/60 dark:border-white/10 bg-card dark:bg-[#070b12] p-4 shadow-lg shadow-black/5 dark:shadow-xl dark:shadow-black/30 sm:rounded-3xl sm:p-5">
-        <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-emerald-500/14 blur-3xl" />
+        <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-primary/14 blur-3xl" />
         <div className="pointer-events-none absolute bottom-0 left-1/2 h-56 w-56 -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(16,185,129,0.12),transparent_26%),radial-gradient(circle_at_92%_12%,rgba(59,130,246,0.16),transparent_28%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,hsl(var(--primary)/0.16),transparent_26%),radial-gradient(circle_at_92%_12%,hsl(var(--primary)/0.10),transparent_28%)]" />
 
         <div className="relative z-10 space-y-4">
           {/* Greeting + actions row */}
@@ -1013,11 +1013,11 @@ export default function Dashboard() {
                 className={cn(
                   'group flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all',
                   isGlobalView
-                    ? 'border-emerald-300/45 bg-emerald-400/10 shadow-md shadow-emerald-950/20'
-                    : 'border-border/50 dark:border-white/10 bg-muted/30 dark:bg-muted/50 dark:bg-white/[0.035] hover:border-emerald-300/30',
+                    ? 'border-primary/45 bg-primary/10 shadow-md shadow-primary/20'
+                    : 'border-border/50 dark:border-white/10 bg-muted/30 dark:bg-muted/50 dark:bg-white/[0.035] hover:border-primary/30',
                 )}
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-300/20 bg-emerald-400/12 text-emerald-500 dark:text-emerald-700 dark:text-emerald-200">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/12 text-primary">
                   <Landmark className="h-4 w-4" />
                 </span>
                 <span className="min-w-0">
@@ -1068,7 +1068,7 @@ export default function Dashboard() {
 
       <section className="grid gap-4 lg:grid-cols-2">
         <PremiumCard className="relative overflow-hidden p-4 sm:p-5">
-          <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-emerald-400/10 blur-3xl" />
+          <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-primary/10 blur-3xl" />
           <div className="relative space-y-4">
             <SectionHeader title="Resumo inteligente" subtitle="Diagnóstico rápido do mês." icon={BrainCircuit} iconColor="text-primary" />
 
@@ -1221,7 +1221,7 @@ export default function Dashboard() {
       <section className="grid items-start gap-4 lg:grid-cols-2">
         <div className="space-y-4">
           <PremiumCard className="relative self-start overflow-hidden p-4 sm:p-5">
-          <div className="pointer-events-none absolute -left-24 -top-28 h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
+          <div className="pointer-events-none absolute -left-24 -top-28 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
           <div className="pointer-events-none absolute -right-20 top-10 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
           <div className="relative mb-3 space-y-2">
             <SectionHeader title="Evolução financeira" subtitle="Receitas, despesas e saldo nos últimos meses." icon={BarChart3} iconColor="text-primary" />
@@ -1241,7 +1241,7 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="relative overflow-hidden rounded-2xl border border-border/40 dark:border-white/[0.08] bg-muted/40 dark:bg-[#050810]/90 p-3 shadow-inner shadow-black/10 dark:shadow-black/40">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(16,185,129,0.09),transparent_50%),radial-gradient(ellipse_at_bottom_right,rgba(56,189,248,0.07),transparent_50%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,hsl(var(--primary)/0.12),transparent_50%),radial-gradient(ellipse_at_bottom_right,hsl(var(--primary)/0.07),transparent_50%)]" />
             <div className="relative h-[260px] sm:h-[290px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={sixMonthData} margin={{ top: 20, right: 20, left: 0, bottom: 4 }}>
@@ -1476,7 +1476,7 @@ export default function Dashboard() {
         </PremiumCard>
 
         <PremiumCard className="relative overflow-hidden p-4 sm:p-5">
-          <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-emerald-400/10 blur-3xl" />
+          <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-primary/10 blur-3xl" />
           <div className="relative">
             <div className="mb-3">
               <SectionHeader title="Top 5 receitas" subtitle="Maiores do mês" icon={TrendingUp} iconColor="text-primary" action={{ label: 'Ver todas', href: '/receitas' }} />

@@ -809,8 +809,8 @@ export default function CreditCardsPage() {
     <div className="space-y-5 animate-fade-in">
       <div className="relative overflow-hidden rounded-3xl border border-border/60 dark:border-white/10 bg-card dark:bg-[#070a12] p-3 shadow-xl shadow-black/30 sm:rounded-[2rem] sm:p-6 xl:p-7">
         <div className="pointer-events-none absolute -right-28 -top-28 h-72 w-72 rounded-full bg-primary/25 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(124,58,237,0.18),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.05),transparent_42%)]" />
+        <div className="pointer-events-none absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,hsl(var(--primary)/0.18),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.05),transparent_42%)]" />
 
         <div className="relative z-10 flex flex-col gap-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
