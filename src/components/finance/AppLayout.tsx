@@ -10,7 +10,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <SensitiveDataProvider>
       <TutorialProvider>
-        <div className="min-h-screen bg-background lg:pl-[260px]">
+        <div className="app-bg min-h-screen lg:pl-[260px]">
           <AppSidebar />
           <div className="flex flex-col min-w-0 overflow-x-hidden">
             <MobileHeader />
