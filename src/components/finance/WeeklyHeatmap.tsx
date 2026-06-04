@@ -41,9 +41,9 @@ export default function WeeklyHeatmap({ month, data }: WeeklyHeatmapProps) {
 
   const getIntensityColor = (intensity: number) => {
     if (intensity === 0) return 'bg-muted/20 border border-border/30';
-    if (intensity < 0.25) return 'bg-orange-500/30 border border-orange-500/20';
-    if (intensity < 0.5) return 'bg-orange-500/60 border border-orange-500/40';
-    if (intensity < 0.75) return 'bg-expense/80 border border-expense/50 shadow-[0_0_8px_hsl(var(--expense)/0.2)]';
+    if (intensity < 0.25) return 'bg-expense/25 border border-expense/20';
+    if (intensity < 0.5) return 'bg-expense/50 border border-expense/35';
+    if (intensity < 0.75) return 'bg-expense/75 border border-expense/50 shadow-[0_0_8px_hsl(var(--expense)/0.2)]';
     return 'bg-expense border border-expense shadow-[0_0_12px_hsl(var(--expense)/0.4)]';
   };
 
@@ -92,9 +92,9 @@ export default function WeeklyHeatmap({ month, data }: WeeklyHeatmapProps) {
         <span>Menos</span>
         <div className="flex gap-1">
           <div className="w-3 h-3 rounded-[3px] bg-muted/20 border border-border/30" />
-          <div className="w-3 h-3 rounded-[3px] bg-orange-500/30 border border-orange-500/20" />
-          <div className="w-3 h-3 rounded-[3px] bg-orange-500/60 border border-orange-500/40" />
-          <div className="w-3 h-3 rounded-[3px] bg-expense/80 border border-expense/50" />
+          <div className="w-3 h-3 rounded-[3px] bg-expense/25 border border-expense/20" />
+          <div className="w-3 h-3 rounded-[3px] bg-expense/50 border border-expense/35" />
+          <div className="w-3 h-3 rounded-[3px] bg-expense/75 border border-expense/50" />
           <div className="w-3 h-3 rounded-[3px] bg-expense border border-expense shadow-[0_0_8px_hsl(var(--expense)/0.4)]" />
         </div>
         <span>Mais</span>

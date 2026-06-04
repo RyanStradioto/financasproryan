@@ -565,8 +565,8 @@ export default function Dashboard() {
   // ── Allocation: Contas vs Investimentos ─────────────────────────────────
   const allocationData = useMemo(() => {
     const items = [];
-    if (balance > 0) items.push({ name: 'Contas', value: balance, fill: 'hsl(160, 84%, 39%)' });
-    if (focusedInvestmentTotal > 0) items.push({ name: 'Investimentos', value: focusedInvestmentTotal, fill: 'hsl(217, 91%, 60%)' });
+    if (balance > 0) items.push({ name: 'Contas', value: balance, fill: 'hsl(var(--primary))' });
+    if (focusedInvestmentTotal > 0) items.push({ name: 'Investimentos', value: focusedInvestmentTotal, fill: 'hsl(var(--info))' });
     return items;
   }, [balance, focusedInvestmentTotal]);
 
@@ -970,7 +970,7 @@ export default function Dashboard() {
 
       <section className="relative overflow-hidden rounded-2xl border border-border/60 dark:border-white/10 bg-card dark:bg-[#070b12] p-4 shadow-lg shadow-black/5 dark:shadow-xl dark:shadow-black/30 sm:rounded-3xl sm:p-5">
         <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-emerald-500/14 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-0 left-1/2 h-56 w-56 -translate-x-1/2 rounded-full bg-sky-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 left-1/2 h-56 w-56 -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(16,185,129,0.12),transparent_26%),radial-gradient(circle_at_92%_12%,rgba(59,130,246,0.16),transparent_28%)]" />
 
         <div className="relative z-10 space-y-4">
@@ -1123,21 +1123,21 @@ export default function Dashboard() {
           <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-amber-400/12 blur-3xl" />
           <div className="absolute -bottom-20 -left-12 h-40 w-40 rounded-full bg-orange-400/[0.08] blur-3xl" />
           <div className="relative space-y-4">
-            <SectionHeader title="Allowance diária" subtitle="Quanto ainda dá gastar por dia." icon={Target} iconColor="text-amber-600 dark:text-amber-300" />
+            <SectionHeader title="Allowance diária" subtitle="Quanto ainda dá gastar por dia." icon={Target} iconColor="text-primary" />
 
             {/* Hero value — "disponivel hoje" (perDayAllowance - já gasto hoje) */}
             <div className="flex items-end justify-between gap-3 flex-wrap">
               <div className="min-w-0">
-                <p className="currency text-3xl sm:text-4xl lg:text-5xl font-black text-amber-700 dark:text-amber-200 tabular-nums leading-none break-words">
+                <p className="currency text-3xl sm:text-4xl lg:text-5xl font-black text-primary tabular-nums leading-none break-words">
                   {maskCurrency(formatCurrency(allowance.todayAllowanceRemaining ?? allowance.perDayAllowance))}
                 </p>
                 <p className="mt-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground dark:text-slate-400">
                   disponível hoje · faltam {daysLeft} dia{daysLeft !== 1 ? 's' : ''}
                 </p>
               </div>
-              <div className="shrink-0 rounded-2xl border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-right">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-200/90">Restante mês</p>
-                <p className="currency text-sm sm:text-base font-black text-amber-700 dark:text-amber-200 tabular-nums whitespace-nowrap">
+              <div className="shrink-0 rounded-2xl border border-primary/30 bg-primary/10 px-3 py-2 text-right">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-primary/90">Restante mês</p>
+                <p className="currency text-sm sm:text-base font-black text-primary tabular-nums whitespace-nowrap">
                   {maskCurrency(formatCurrency(allowance.remainingBudget))}
                 </p>
               </div>
@@ -1153,7 +1153,7 @@ export default function Dashboard() {
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-border/50 dark:bg-white/10">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-amber-300 via-orange-400 to-rose-400 transition-all duration-500"
+                  className="h-full rounded-full bg-gradient-to-r from-primary via-primary to-expense transition-all duration-500"
                   style={{ width: `${Math.min(100, allowance.monthBudget > 0 ? (currentTotalAll / allowance.monthBudget) * 100 : 0)}%` }}
                 />
               </div>
@@ -1222,7 +1222,7 @@ export default function Dashboard() {
         <div className="space-y-4">
           <PremiumCard className="relative self-start overflow-hidden p-4 sm:p-5">
           <div className="pointer-events-none absolute -left-24 -top-28 h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
-          <div className="pointer-events-none absolute -right-20 top-10 h-64 w-64 rounded-full bg-sky-400/10 blur-3xl" />
+          <div className="pointer-events-none absolute -right-20 top-10 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
           <div className="relative mb-3 space-y-2">
             <SectionHeader title="Evolução financeira" subtitle="Receitas, despesas e saldo nos últimos meses." icon={BarChart3} iconColor="text-primary" />
             <div className="flex flex-wrap gap-1.5">
@@ -1234,9 +1234,9 @@ export default function Dashboard() {
                 <span className="text-[9px] font-black uppercase text-rose-700 dark:text-rose-200/60">Desp</span>
                 <span className="currency text-[10px] font-black text-rose-700 dark:text-rose-200">{maskCurrency(formatCurrency(evolutionSummary.currentExpenses))}</span>
               </span>
-              <span className="rounded-lg border border-sky-300/15 bg-sky-400/[0.07] px-2 py-1 flex items-center gap-1.5">
-                <span className="text-[9px] font-black uppercase text-sky-700 dark:text-sky-200/60">Saldo</span>
-                <span className={cn('currency text-[10px] font-black', evolutionSummary.currentBalance >= 0 ? 'text-sky-700 dark:text-sky-200' : 'text-rose-700 dark:text-rose-200')}>{maskCurrency(formatCurrency(evolutionSummary.currentBalance))}</span>
+              <span className="rounded-lg border border-primary/15 bg-primary/[0.07] px-2 py-1 flex items-center gap-1.5">
+                <span className="text-[9px] font-black uppercase text-primary/70">Saldo</span>
+                <span className={cn('currency text-[10px] font-black', evolutionSummary.currentBalance >= 0 ? 'text-primary' : 'text-rose-600 dark:text-rose-300')}>{maskCurrency(formatCurrency(evolutionSummary.currentBalance))}</span>
               </span>
             </div>
           </div>
@@ -1257,9 +1257,9 @@ export default function Dashboard() {
                     <stop offset="100%" stopColor="#fb7185" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="dashboardBalanceArea" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="#818cf8" stopOpacity={0.20} />
-                    <stop offset="70%" stopColor="#818cf8" stopOpacity={0.02} />
-                    <stop offset="100%" stopColor="#818cf8" stopOpacity={0} />
+                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.20} />
+                    <stop offset="70%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
+                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="dashboardIncomeStroke" x1="0" x2="1" y1="0" y2="0">
                     <stop offset="0%" stopColor="#6ee7b7" />
@@ -1272,9 +1272,9 @@ export default function Dashboard() {
                     <stop offset="100%" stopColor="#f43f5e" />
                   </linearGradient>
                   <linearGradient id="dashboardBalanceStroke" x1="0" x2="1" y1="0" y2="0">
-                    <stop offset="0%" stopColor="#a5b4fc" />
-                    <stop offset="50%" stopColor="#818cf8" />
-                    <stop offset="100%" stopColor="#6366f1" />
+                    <stop offset="0%" stopColor="hsl(var(--primary))" />
+                    <stop offset="50%" stopColor="hsl(var(--primary))" />
+                    <stop offset="100%" stopColor="hsl(var(--primary))" />
                   </linearGradient>
                   <filter id="dashboardGlowIncome" x="-50%" y="-50%" width="200%" height="200%">
                     <feGaussianBlur stdDeviation="3" result="blur" />
@@ -1301,7 +1301,7 @@ export default function Dashboard() {
                     return active && rows.length ? <ChartTooltipCard title={String(label)} rows={rows} /> : null;
                   }}
                 />
-                <Area name="Saldo" type="monotone" dataKey="sobra" stroke="url(#dashboardBalanceStroke)" strokeWidth={3} strokeLinecap="round" fill="url(#dashboardBalanceArea)" dot={{ r: 5, fill: '#818cf8', stroke: '#050810', strokeWidth: 2.5 }} activeDot={{ r: 8, fill: '#818cf8', stroke: '#e0e7ff', strokeWidth: 2 }} />
+                <Area name="Saldo" type="monotone" dataKey="sobra" stroke="url(#dashboardBalanceStroke)" strokeWidth={3} strokeLinecap="round" fill="url(#dashboardBalanceArea)" dot={{ r: 5, fill: 'hsl(var(--primary))', stroke: '#050810', strokeWidth: 2.5 }} activeDot={{ r: 8, fill: 'hsl(var(--primary))', stroke: '#e0e7ff', strokeWidth: 2 }} />
                 <Line name="Receitas" type="monotone" dataKey="income" stroke="url(#dashboardIncomeStroke)" strokeWidth={3.5} strokeLinecap="round" dot={{ r: 5.5, fill: '#34d399', stroke: '#050810', strokeWidth: 2.5 }} activeDot={{ r: 9, fill: '#34d399', stroke: '#d1fae5', strokeWidth: 2 }} filter="url(#dashboardGlowIncome)" />
                 <Line name="Despesas" type="monotone" dataKey="expenses" stroke="url(#dashboardExpenseStroke)" strokeWidth={3.5} strokeLinecap="round" dot={{ r: 5.5, fill: '#fb7185', stroke: '#050810', strokeWidth: 2.5 }} activeDot={{ r: 9, fill: '#fb7185', stroke: '#ffe4e6', strokeWidth: 2 }} filter="url(#dashboardGlowExpense)" />
               </ComposedChart>
@@ -1312,7 +1312,7 @@ export default function Dashboard() {
             <div className="flex flex-wrap gap-3">
               <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Receitas</span>
               <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-400" /> Despesas</span>
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-sky-400" /> Saldo</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary" /> Saldo</span>
             </div>
             {evolutionSummary.balanceDelta !== null && (
               <span className={cn('rounded-full border px-2.5 py-0.5 text-[11px]', evolutionSummary.balanceDelta >= 0 ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-700 dark:text-emerald-200' : 'border-rose-300/20 bg-rose-400/10 text-rose-700 dark:text-rose-200')}>
@@ -1368,7 +1368,7 @@ export default function Dashboard() {
                       />
                       <Bar name="Receitas" dataKey="income" fill="url(#weeklyIncomeBar)" radius={[10, 10, 3, 3]} maxBarSize={32} />
                       <Bar name="Despesas" dataKey="expenses" fill="url(#weeklyExpenseBar)" radius={[10, 10, 3, 3]} maxBarSize={32} />
-                      <Line name="Saldo" type="monotone" dataKey="balance" stroke="#818cf8" strokeWidth={2.5} strokeLinecap="round" dot={{ r: 4, fill: '#818cf8', stroke: '#050810', strokeWidth: 2.5 }} activeDot={{ r: 7, fill: '#818cf8', stroke: '#e0e7ff', strokeWidth: 2 }} />
+                      <Line name="Saldo" type="monotone" dataKey="balance" stroke="hsl(var(--primary))" strokeWidth={2.5} strokeLinecap="round" dot={{ r: 4, fill: 'hsl(var(--primary))', stroke: '#050810', strokeWidth: 2.5 }} activeDot={{ r: 7, fill: 'hsl(var(--primary))', stroke: '#e0e7ff', strokeWidth: 2 }} />
                     </ComposedChart>
                   </ResponsiveContainer>
                 </div>
@@ -1507,7 +1507,7 @@ export default function Dashboard() {
         </PremiumCard>
 
         <PremiumCard className="relative overflow-hidden p-4 sm:p-5 md:col-span-2 xl:col-span-1">
-          <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-blue-400/10 blur-3xl" />
+          <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-primary/10 blur-3xl" />
           <div className="relative">
             <div className="mb-3">
               <SectionHeader title="Mês atual vs anterior" subtitle="3 métricas comparadas" icon={BarChart3} iconColor="text-primary" />

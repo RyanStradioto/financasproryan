@@ -699,7 +699,7 @@ export default function CreditCardsPage() {
           'grid grid-cols-[auto_1fr] gap-3 rounded-2xl border px-3 py-3 transition-all sm:grid-cols-[auto_minmax(0,1.3fr)_120px_150px_90px_auto] sm:items-center',
           isPaid
             ? 'border-emerald-400/15 bg-emerald-400/[0.055] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]'
-            : 'border-border/40 dark:border-white/[0.08] bg-muted/40 dark:bg-white/[0.025] hover:border-violet-400/25 hover:bg-muted/50 dark:bg-white/[0.045]',
+            : 'border-border/40 dark:border-white/[0.08] bg-muted/40 dark:bg-white/[0.025] hover:border-primary/25 hover:bg-muted/50 dark:bg-white/[0.045]',
         )}
       >
         <button
@@ -709,7 +709,7 @@ export default function CreditCardsPage() {
             'mt-0.5 flex h-6 w-6 items-center justify-center rounded-full border transition-all sm:mt-0',
             isPaid
               ? 'border-emerald-300/60 bg-emerald-400 text-slate-950 shadow-sm shadow-emerald-500/20'
-              : 'border-slate-500/60 bg-slate-950/60 hover:border-violet-300 hover:bg-violet-500/15',
+              : 'border-slate-500/60 bg-slate-950/60 hover:border-primary hover:bg-primary/15',
           )}
         >
           {isPaid && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
@@ -740,7 +740,7 @@ export default function CreditCardsPage() {
             value={t.category_id ?? ''}
             onChange={(e) => updateTx.mutate({ id: t.id, category_id: e.target.value || null })}
             onClick={(e) => e.stopPropagation()}
-            className="max-w-full cursor-pointer rounded-full border border-border/60 dark:border-white/10 bg-muted/30 dark:bg-slate-950/70 px-2.5 py-1 text-[11px] font-semibold text-foreground/80 dark:text-slate-300 outline-none transition-colors hover:border-violet-400/35"
+            className="max-w-full cursor-pointer rounded-full border border-border/60 dark:border-white/10 bg-muted/30 dark:bg-slate-950/70 px-2.5 py-1 text-[11px] font-semibold text-foreground/80 dark:text-slate-300 outline-none transition-colors hover:border-primary/35"
             style={{ fontFamily: 'inherit' }}
           >
             <option value="">Sem categoria</option>
@@ -752,7 +752,7 @@ export default function CreditCardsPage() {
 
         <div className="col-start-2 flex flex-wrap gap-1.5 sm:col-auto">
           {t.is_installment && (
-            <span className="rounded-full border border-violet-300/25 bg-violet-500/15 px-2 py-0.5 text-[11px] font-extrabold text-violet-600 dark:text-violet-200">
+            <span className="rounded-full border border-primary/25 bg-primary/15 px-2 py-0.5 text-[11px] font-extrabold text-primary dark:text-primary">
               {t.installment_number}/{t.total_installments}x
             </span>
           )}
@@ -771,7 +771,7 @@ export default function CreditCardsPage() {
             <button
               onClick={() => openEditTx(t)}
               title="Editar compra"
-              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-violet-500/10 hover:text-violet-600"
+              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
             >
               <Pencil className="h-4 w-4" />
             </button>
@@ -789,7 +789,7 @@ export default function CreditCardsPage() {
           <button
             onClick={() => openEditTx(t)}
             title="Editar compra"
-            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-violet-500/10 hover:text-violet-600"
+            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
           >
             <Pencil className="h-4 w-4" />
           </button>
@@ -808,24 +808,24 @@ export default function CreditCardsPage() {
   return (
     <div className="space-y-5 animate-fade-in">
       <div className="relative overflow-hidden rounded-3xl border border-border/60 dark:border-white/10 bg-card dark:bg-[#070a12] p-3 shadow-xl shadow-black/30 sm:rounded-[2rem] sm:p-6 xl:p-7">
-        <div className="pointer-events-none absolute -right-28 -top-28 h-72 w-72 rounded-full bg-violet-600/25 blur-3xl" />
+        <div className="pointer-events-none absolute -right-28 -top-28 h-72 w-72 rounded-full bg-primary/25 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(124,58,237,0.18),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.05),transparent_42%)]" />
 
         <div className="relative z-10 flex flex-col gap-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex min-w-0 items-start gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-violet-300/20 bg-violet-500/15 shadow-inner shadow-violet-500/10">
-                <CreditCard className="h-7 w-7 text-violet-600 dark:text-violet-300" />
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/15 shadow-inner shadow-primary/10">
+                <CreditCard className="h-7 w-7 text-primary dark:text-primary" />
               </div>
               <div className="min-w-0">
-                <p className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-violet-600 dark:text-violet-200/80">
+                <p className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-primary dark:text-primary/80">
                   <Sparkles className="h-3.5 w-3.5" /> Central de cartões
                 </p>
                 <h1 className="truncate text-xl font-black tracking-tight text-foreground sm:text-3xl lg:text-4xl">Cartões de Crédito</h1>
                 <p className="mt-1.5 text-sm font-medium text-muted-foreground dark:text-slate-400">
                   {currentCard
-                    ? <><span className="font-extrabold text-violet-600 dark:text-violet-200">{currentCard.name}</span> · fecha dia {currentCard.closing_day} · vence dia {currentCard.due_day}</>
+                    ? <><span className="font-extrabold text-primary dark:text-primary">{currentCard.name}</span> · fecha dia {currentCard.closing_day} · vence dia {currentCard.due_day}</>
                     : 'Cadastre um cartão para acompanhar faturas, limite e parcelas.'}
                 </p>
               </div>
@@ -842,7 +842,7 @@ export default function CreditCardsPage() {
               <Button
                 onClick={() => setShowNewTx(true)}
                 disabled={!selectedCard}
-                className="h-11 rounded-xl bg-violet-600 px-4 text-white shadow-lg shadow-violet-600/25 hover:bg-violet-500 disabled:opacity-50"
+                className="h-11 rounded-xl bg-primary px-4 text-white shadow-lg shadow-primary/25 hover:bg-primary disabled:opacity-50"
               >
                 <Plus className="mr-2 h-4 w-4" /> Nova compra
               </Button>
@@ -912,7 +912,7 @@ export default function CreditCardsPage() {
                 <button
                   type="button"
                   onClick={() => setShowNewCard(true)}
-                  className="flex h-[88px] w-[120px] sm:h-[92px] shrink-0 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-border/60 dark:border-white/15 text-muted-foreground transition-all hover:border-violet-400/50 hover:text-violet-500"
+                  className="flex h-[88px] w-[120px] sm:h-[92px] shrink-0 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-border/60 dark:border-white/15 text-muted-foreground transition-all hover:border-primary/50 hover:text-primary"
                 >
                   <Plus className="h-5 w-5" />
                   <span className="text-xs font-bold">Novo cartão</span>
@@ -925,7 +925,7 @@ export default function CreditCardsPage() {
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-2xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
                 <div className="mb-3 flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-200"><Receipt className="h-5 w-5" /></span>
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary dark:text-primary"><Receipt className="h-5 w-5" /></span>
                   <p className="text-sm font-bold text-foreground/80 dark:text-slate-300">Fatura atual</p>
                 </div>
                 <p className="currency text-lg sm:text-2xl font-black text-foreground tabular-nums truncate">{fmt(billTotal)}</p>
@@ -943,7 +943,7 @@ export default function CreditCardsPage() {
 
               <div className="rounded-2xl border border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
                 <div className="mb-3 flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-200"><CalendarDays className="h-5 w-5" /></span>
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary dark:text-primary"><CalendarDays className="h-5 w-5" /></span>
                   <p className="text-sm font-bold text-foreground/80 dark:text-slate-300">Próximo vencimento</p>
                 </div>
                 <p className="text-lg sm:text-2xl font-black text-foreground tabular-nums">
@@ -970,13 +970,13 @@ export default function CreditCardsPage() {
       </div>
 
       {cards.length === 0 ? (
-        <div className="rounded-[2rem] border border-dashed border-violet-400/30 bg-violet-500/[0.035] px-6 py-16 text-center">
-          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl border border-violet-300/20 bg-violet-500/10">
-            <CreditCard className="h-10 w-10 text-violet-600 dark:text-violet-200/70" />
+        <div className="rounded-[2rem] border border-dashed border-primary/30 bg-primary/[0.035] px-6 py-16 text-center">
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl border border-primary/20 bg-primary/10">
+            <CreditCard className="h-10 w-10 text-primary dark:text-primary/70" />
           </div>
           <p className="text-lg font-black text-foreground">Nenhum cartão cadastrado</p>
           <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground dark:text-slate-400">Adicione seu primeiro cartão para controlar faturas, parcelas e limite em um só lugar.</p>
-          <Button onClick={() => setShowNewCard(true)} className="mt-5 rounded-xl bg-violet-600 text-white hover:bg-violet-500">
+          <Button onClick={() => setShowNewCard(true)} className="mt-5 rounded-xl bg-primary text-white hover:bg-primary">
             <Plus className="mr-2 h-4 w-4" /> Adicionar cartão
           </Button>
         </div>
@@ -1007,15 +1007,15 @@ export default function CreditCardsPage() {
                       className={cn(
                         'relative overflow-hidden rounded-2xl border p-4 text-left transition-all',
                         isSelected
-                          ? 'border-violet-300/60 bg-violet-500/15 shadow-lg shadow-violet-950/30'
-                          : 'border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.03] hover:border-violet-300/30 hover:bg-muted/50 dark:bg-white/[0.05]',
+                          ? 'border-primary/60 bg-primary/15 shadow-lg shadow-primary/30'
+                          : 'border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.03] hover:border-primary/30 hover:bg-muted/50 dark:bg-white/[0.05]',
                       )}
                     >
-                      <div className="absolute -bottom-8 -right-8 h-20 w-20 rounded-full bg-violet-500/10 blur-2xl" />
+                      <div className="absolute -bottom-8 -right-8 h-20 w-20 rounded-full bg-primary/10 blur-2xl" />
                       <div className="relative space-y-3">
                         <div className="flex items-start justify-between gap-2">
                           <p className="text-base font-black text-foreground">{shortMonthLabel(item.month)}</p>
-                          {isCurrent && <span className="rounded-full bg-violet-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">Atual</span>}
+                          {isCurrent && <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">Atual</span>}
                         </div>
                         <div>
                           <p className="currency text-lg font-black text-foreground tabular-nums">{fmt(item.total)}</p>
@@ -1073,7 +1073,7 @@ export default function CreditCardsPage() {
                       className={cn(
                         'shrink-0 rounded-xl border px-3.5 py-2 text-sm font-bold transition-colors',
                         txFilter === option.id
-                          ? 'border-violet-300/50 bg-violet-500 text-white shadow-lg shadow-violet-950/20'
+                          ? 'border-primary/50 bg-primary text-white shadow-lg shadow-primary/20'
                           : 'border-border/60 dark:border-white/10 bg-muted/40 dark:bg-white/[0.025] text-foreground/80 dark:text-slate-300 hover:bg-white/[0.055]',
                       )}
                     >
@@ -1088,7 +1088,7 @@ export default function CreditCardsPage() {
                     value={txSearch}
                     onChange={(e) => setTxSearch(e.target.value)}
                     placeholder="Buscar compra, categoria ou valor..."
-                    className="h-11 rounded-xl border-border/60 dark:border-white/10 bg-muted/30 dark:bg-slate-950/70 pl-9 text-sm text-foreground placeholder:text-muted-foreground/70 focus-visible:ring-violet-500/60"
+                    className="h-11 rounded-xl border-border/60 dark:border-white/10 bg-muted/30 dark:bg-slate-950/70 pl-9 text-sm text-foreground placeholder:text-muted-foreground/70 focus-visible:ring-primary/60"
                   />
                 </div>
               </div>
@@ -1201,7 +1201,7 @@ export default function CreditCardsPage() {
                   <h3 className="text-lg font-black text-foreground">Resumo por categoria</h3>
                   <p className="text-sm text-muted-foreground">Distribuição da fatura selecionada</p>
                 </div>
-                <PieChart className="h-5 w-5 text-violet-600 dark:text-violet-300" />
+                <PieChart className="h-5 w-5 text-primary dark:text-primary" />
               </div>
 
               {categorySummary.length === 0 ? (
@@ -1222,7 +1222,7 @@ export default function CreditCardsPage() {
                             <p className="currency text-xs font-black text-foreground tabular-nums">{fmt(row.total)}</p>
                           </div>
                           <div className="h-2 overflow-hidden rounded-full bg-muted/60 dark:bg-white/[0.07]">
-                            <div className="h-full rounded-full bg-violet-500" style={{ width: `${barWidth}%` }} />
+                            <div className="h-full rounded-full bg-primary" style={{ width: `${barWidth}%` }} />
                           </div>
                         </div>
                         <span className="w-10 text-right text-xs font-bold text-muted-foreground">{percent.toFixed(0)}%</span>
@@ -1238,7 +1238,7 @@ export default function CreditCardsPage() {
                 <Button
                   onClick={openPayBill}
                   disabled={unpaidTotal <= 0}
-                  className="h-12 rounded-xl bg-violet-600 text-base font-black text-foreground shadow-lg shadow-violet-600/25 hover:bg-violet-500 disabled:opacity-50"
+                  className="h-12 rounded-xl bg-primary text-base font-black text-foreground shadow-lg shadow-primary/25 hover:bg-primary disabled:opacity-50"
                 >
                   <Wallet className="mr-2 h-4 w-4" /> Pagar {fmt(unpaidTotal)}
                 </Button>

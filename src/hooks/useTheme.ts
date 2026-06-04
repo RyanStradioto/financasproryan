@@ -1,12 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+
+type Theme = 'light' | 'dark';
 
 export function useTheme() {
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+  const { user } = useAuth();
+  const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window !== 'undefined') {
-      return (localStorage.getItem('theme') as 'light' | 'dark') || 'dark';
+      return (localStorage.getItem('theme') as Theme) || 'dark';
     }
     return 'dark';
   });
+  const syncedFromServer = useRef(false);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -15,7 +21,22 @@ export function useTheme() {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  // Adopt the server-saved theme on session load (cross-device sync)
+  useEffect(() => {
+    if (!user || syncedFromServer.current) return;
+    const remote = (user.user_metadata as Record<string, unknown> | undefined)?.app_theme;
+    if ((remote === 'light' || remote === 'dark') && remote !== theme) {
+      setThemeState(remote);
+    }
+    syncedFromServer.current = true;
+  }, [user, theme]);
+
+  const setTheme = (next: Theme) => {
+    setThemeState(next);
+    supabase.auth.updateUser({ data: { app_theme: next } }).catch(() => { /* offline ok */ });
+  };
+
+  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
   return { theme, setTheme, toggleTheme };
 }
