@@ -9,13 +9,17 @@
 
 import { type ReactNode } from 'react';
 import {
-  DndContext, closestCenter, PointerSensor, TouchSensor, KeyboardSensor,
+  DndContext, closestCenter, MouseSensor, TouchSensor, KeyboardSensor,
   useSensor, useSensors, type DragEndEvent,
 } from '@dnd-kit/core';
 import {
   SortableContext, verticalListSortingStrategy, useSortable, arrayMove,
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
+import type { Modifier } from '@dnd-kit/core';
+
+// Inline modifier (no extra dependency): trava o arraste no eixo vertical.
+const restrictToVerticalAxis: Modifier = ({ transform }) => ({ ...transform, x: 0 });
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -67,9 +71,10 @@ interface Props<T> {
 
 export default function ReorderableBlocks<T>({ items, getId, renderCard, onReorder }: Props<T>) {
   const sensors = useSensors(
-    // small distance so taps still work for inline buttons inside the card
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
+    // Desktop: mouse starts after a tiny move. Mobile: touch needs a short
+    // hold so a scroll gesture isn't mistaken for a drag (fixes jank/lag).
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
@@ -85,7 +90,12 @@ export default function ReorderableBlocks<T>({ items, getId, renderCard, onReord
   };
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+      modifiers={[restrictToVerticalAxis]}
+    >
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
         <div className="flex flex-col gap-2.5">
           {items.map((item) => (
