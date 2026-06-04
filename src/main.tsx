@@ -35,4 +35,23 @@ window.addEventListener("unhandledrejection", (event) => {
   maybeAutoReload(msg);
 });
 
+// PWA stale-cache killer: quando um novo Service Worker assume o controle
+// (apos um deploy, com skipWaiting+clientsClaim), recarrega a pagina UMA vez
+// para que o usuario veja imediatamente a versao nova. Sem isso o PWA fica
+// preso na versao antiga ate fechar o app — causa principal de "ja arrumei
+// mas continua igual" no celular.
+if ("serviceWorker" in navigator) {
+  // Captura se ja havia um SW controlando ANTES de qualquer mudanca.
+  // Se havia (visita recorrente) e o controller troca = deploy novo -> reload.
+  // Se nao havia (primeira visita), o clientsClaim dispara controllerchange
+  // sem ser deploy -> NAO recarrega.
+  const hadControllerAtStart = !!navigator.serviceWorker.controller;
+  let swReloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (swReloaded || !hadControllerAtStart) return;
+    swReloaded = true;
+    window.location.reload();
+  });
+}
+
 createRoot(document.getElementById("root")!).render(<App />);
