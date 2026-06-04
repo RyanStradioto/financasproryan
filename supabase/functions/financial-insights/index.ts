@@ -291,7 +291,11 @@ serve(async (req) => {
       cc_transactions = [],
       month_label = "este mês",
     } = await req.json();
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+    // Provedor de IA generico (compativel com OpenAI). Padrao: Google Gemini.
+    // Configure o secret AI_API_KEY (ou GEMINI_API_KEY). Opcional: AI_BASE_URL, AI_MODEL.
+    const aiApiKey  = Deno.env.get("AI_API_KEY") || Deno.env.get("GEMINI_API_KEY");
+    const aiBaseUrl = (Deno.env.get("AI_BASE_URL") || "https://generativelanguage.googleapis.com/v1beta/openai").replace(/\/$/, "");
+    const aiModel   = Deno.env.get("AI_MODEL") || "gemini-2.5-flash";
 
     const fallbackInsights = buildDeterministicInsights({
       income,
@@ -305,7 +309,7 @@ serve(async (req) => {
       monthLabel: month_label,
     });
 
-    if (!lovableApiKey) {
+    if (!aiApiKey) {
       return new Response(JSON.stringify({ insights: fallbackInsights, source: "local-fallback" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -398,14 +402,14 @@ EXEMPLOS DE INSIGHTS BONS:
 Retorne APENAS um JSON array válido (sem markdown, sem texto antes ou depois):
 [{"icon":"emoji","title":"título curto e específico","description":"texto detalhado com números e ações concretas","type":"warning|tip|achievement"}]`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch(`${aiBaseUrl}/chat/completions`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${lovableApiKey}`,
+        Authorization: `Bearer ${aiApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: aiModel,
         messages: [
           { role: "system", content: "Você é um consultor financeiro brasileiro que dá conselhos específicos com números reais. Retorne APENAS um JSON array válido, sem markdown, sem texto antes ou depois." },
           { role: "user", content: prompt },

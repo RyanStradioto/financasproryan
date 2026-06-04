@@ -10,10 +10,15 @@ serve(async (req) => {
 
   try {
     const { description, categories } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    if (!description || !categories || categories.length === 0) {
+    // Provedor de IA generico (compativel com OpenAI). Padrao: Google Gemini.
+    // Configure o secret AI_API_KEY (ou GEMINI_API_KEY). Opcional: AI_BASE_URL, AI_MODEL_LITE.
+    const aiApiKey  = Deno.env.get("AI_API_KEY") || Deno.env.get("GEMINI_API_KEY");
+    const aiBaseUrl = (Deno.env.get("AI_BASE_URL") || "https://generativelanguage.googleapis.com/v1beta/openai").replace(/\/$/, "");
+    const aiModel   = Deno.env.get("AI_MODEL_LITE") || Deno.env.get("AI_MODEL") || "gemini-2.5-flash-lite";
+
+    // Sem chave configurada: nao sugere (a categorizacao manual continua funcionando).
+    if (!aiApiKey || !description || !categories || categories.length === 0) {
       return new Response(JSON.stringify({ category_id: null }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -23,14 +28,14 @@ serve(async (req) => {
       `- ID: ${c.id}, Nome: ${c.icon} ${c.name}`
     ).join("\n");
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch(`${aiBaseUrl}/chat/completions`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${aiApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: aiModel,
         messages: [
           {
             role: "system",

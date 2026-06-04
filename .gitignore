@@ -27,3 +27,7 @@ dist-ssr
 
 # Backups de dados (PII — nunca versionar)
 backups/
+
+# Lockfiles do bun — o projeto usa npm (package-lock.json)
+bun.lock
+bun.lockb
