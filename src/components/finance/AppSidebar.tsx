@@ -2,12 +2,13 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, TrendingUp, TrendingDown, Grid3X3, Landmark, CalendarDays,
   Settings, LogOut, Wallet, Moon, Sun, Upload, Brain, BarChart3, CreditCard,
-  FileText, Trash2, Eye, EyeOff, Sparkles, ChevronRight,
+  FileText, Trash2, Eye, EyeOff, Sparkles, ChevronRight, MessageSquarePlus, Inbox,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { useTrashCount } from '@/hooks/useTrash';
 import { cn } from '@/lib/utils';
+import { isAdminEmail } from '@/lib/admin';
 import { useSensitiveData } from './SensitiveData';
 
 type LinkItem = {
@@ -32,6 +33,7 @@ const toolLinks: LinkItem[] = [
   { to: '/relatorio', icon: FileText, label: 'Relatório' },
   { to: '/insights', icon: Brain, label: 'Insights IA' },
   { to: '/importar', icon: Upload, label: 'Importar' },
+  { to: '/feedback', icon: MessageSquarePlus, label: 'Feedback' },
   { to: '/lixeira', icon: Trash2, label: 'Lixeira' },
   { to: '/configuracoes', icon: Settings, label: 'Configurações' },
 ];
@@ -124,6 +126,13 @@ export default function AppSidebar() {
 
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground/60 px-3 pt-5 pb-2">Ferramentas</p>
         {toolLinks.map(renderLink)}
+
+        {isAdminEmail(user?.email) && (
+          <>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground/60 px-3 pt-5 pb-2">Administração</p>
+            {renderLink({ to: '/admin/feedback', icon: Inbox, label: 'Central de Feedback', accent: 'primary' })}
+          </>
+        )}
       </nav>
 
       {/* Footer actions */}

@@ -15,9 +15,13 @@ import {
   TrendingDown,
   TrendingUp,
   Upload,
+  MessageSquarePlus,
+  Inbox,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useAuth } from '@/hooks/useAuth';
+import { isAdminEmail } from '@/lib/admin';
 
 const links = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -34,9 +38,12 @@ const moreLinks = [
   { to: '/insights', icon: Lightbulb, label: 'Insights' },
   { to: '/relatorio', icon: FileText, label: 'Relatório' },
   { to: '/importar', icon: Upload, label: 'Importar' },
+  { to: '/feedback', icon: MessageSquarePlus, label: 'Feedback' },
   { to: '/lixeira', icon: Trash2, label: 'Lixeira' },
   { to: '/configuracoes', icon: Settings, label: 'Configurações' },
 ];
+
+const adminLink = { to: '/admin/feedback', icon: Inbox, label: 'Central Feedback' };
 
 function isActive(pathname: string, linkTo: string) {
   return pathname === linkTo;
@@ -44,7 +51,9 @@ function isActive(pathname: string, linkTo: string) {
 
 export default function MobileNav() {
   const location = useLocation();
-  const moreActive = moreLinks.some((link) => isActive(location.pathname, link.to));
+  const { user } = useAuth();
+  const visibleMoreLinks = isAdminEmail(user?.email) ? [...moreLinks, adminLink] : moreLinks;
+  const moreActive = visibleMoreLinks.some((link) => isActive(location.pathname, link.to));
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border/50 z-50 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_24px_rgba(0,0,0,0.08)]">
@@ -92,7 +101,7 @@ export default function MobileNav() {
               Todas as abas
             </div>
             <div className="grid grid-cols-2 gap-1.5">
-              {moreLinks.map(({ to, icon: Icon, label }) => {
+              {visibleMoreLinks.map(({ to, icon: Icon, label }) => {
                 const active = isActive(location.pathname, to);
                 return (
                   <PopoverClose asChild key={to}>

@@ -24,6 +24,8 @@ const InvestmentsPage = lazy(() => import("./pages/InvestmentsPage"));
 const CreditCardsPage = lazy(() => import("./pages/CreditCardsPage"));
 const ReportPage      = lazy(() => import("./pages/ReportPage"));
 const TrashPage       = lazy(() => import("./pages/TrashPage"));
+const FeedbackPage    = lazy(() => import("./pages/FeedbackPage"));
+const AdminFeedbackPage = lazy(() => import("./pages/AdminFeedbackPage"));
 const NotFound        = lazy(() => import("./pages/NotFound"));
 
 /** Fallback visual exibido enquanto o chunk da rota está sendo carregado. */
@@ -104,6 +106,8 @@ function ProtectedRoutes() {
             <Route path="/investimentos" element={<InvestmentsPage />} />
             <Route path="/cartoes"      element={<CreditCardsPage />} />
             <Route path="/relatorio"    element={<ReportPage />} />
+            <Route path="/feedback"     element={<FeedbackPage />} />
+            <Route path="/admin/feedback" element={<AdminFeedbackPage />} />
             <Route path="/lixeira"      element={<TrashPage />} />
             <Route path="*"             element={<NotFound />} />
           </Routes>
