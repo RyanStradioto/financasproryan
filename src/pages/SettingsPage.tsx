@@ -358,7 +358,7 @@ export default function SettingsPage() {
                 value={firstName}
                 onChange={e => setFirstName(e.target.value)}
                 placeholder="Como quer ser chamado?"
-                className="flex h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="flex h-11 md:h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
               <button
                 onClick={async () => {
@@ -400,7 +400,7 @@ export default function SettingsPage() {
                 value={currentPassword}
                 onChange={e => setCurrentPassword(e.target.value)}
                 placeholder="Digite sua senha atual"
-                className="flex h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="flex h-11 md:h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 pr-10 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
               <button
                 type="button"
@@ -419,7 +419,7 @@ export default function SettingsPage() {
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
                 placeholder="Mínimo 6 caracteres"
-                className="flex h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="flex h-11 md:h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 pr-10 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
               <button
                 type="button"
@@ -438,7 +438,7 @@ export default function SettingsPage() {
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
                 placeholder="Repita a nova senha"
-                className="flex h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="flex h-11 md:h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 pr-10 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
               <button
                 type="button"
@@ -474,7 +474,7 @@ export default function SettingsPage() {
               onChange={e => setSalary(e.target.value)}
               placeholder="5000"
               data-tutorial-target="salary-input"
-              className="flex h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="flex h-11 md:h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -487,7 +487,7 @@ export default function SettingsPage() {
                 value={hoursPerDay}
                 onChange={e => setHoursPerDay(e.target.value)}
                 placeholder="8"
-                className="flex h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="flex h-11 md:h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
             <div>
@@ -499,7 +499,7 @@ export default function SettingsPage() {
                 value={daysPerWeek}
                 onChange={e => setDaysPerWeek(e.target.value)}
                 placeholder="5"
-                className="flex h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="flex h-11 md:h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
           </div>
@@ -706,7 +706,7 @@ export default function SettingsPage() {
                   value={confirmDeleteText}
                   onChange={e => setConfirmDeleteText(e.target.value)}
                   placeholder="EXCLUIR"
-                  className="flex h-10 w-full rounded-lg border border-destructive/30 bg-muted/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-destructive/30"
+                  className="flex h-11 md:h-10 w-full rounded-lg border border-destructive/30 bg-muted/50 px-3 py-2 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-destructive/30"
                 />
                 <button
                   onClick={handleDeleteSelectedMonths}

@@ -29,7 +29,7 @@ function DatePicker({ date, onChange }: { date: string; onChange: (d: string) =>
       autoFocus
       onBlur={e => { if (e.target.value) onChange(e.target.value); setEditing(false); }}
       onChange={e => { if (e.target.value) { onChange(e.target.value); setEditing(false); } }}
-      className="h-7 w-[130px] rounded-lg border border-primary/40 bg-muted/50 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+      className="h-7 w-[130px] rounded-lg border border-primary/40 bg-muted/50 px-2 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
     />
   ) : (
     <button
@@ -406,7 +406,7 @@ export default function ExpensesPage() {
               placeholder="Buscar por descrição..."
               value={filterSearch}
               onChange={e => setFilterSearch(e.target.value)}
-              className="h-10 w-full rounded-xl border border-border/60 bg-card/50 backdrop-blur-sm pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all shadow-sm"
+              className="h-10 w-full rounded-xl border border-border/60 bg-card/50 backdrop-blur-sm pl-9 pr-3 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all shadow-sm"
             />
             {filterSearch && (
               <button onClick={() => setFilterSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
@@ -484,7 +484,7 @@ export default function ExpensesPage() {
                           placeholder="Buscar categoria..."
                           value={catSearch}
                           onChange={e => setCatSearch(e.target.value)}
-                          className="h-7 w-full rounded-lg border border-border/60 bg-muted/30 pl-7 pr-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/40"
+                          className="h-7 w-full rounded-lg border border-border/60 bg-muted/30 pl-7 pr-2 text-base md:text-xs focus:outline-none focus:ring-2 focus:ring-primary/40"
                         />
                       </div>
                     )}
@@ -538,7 +538,7 @@ export default function ExpensesPage() {
                       placeholder="Mínimo"
                       value={filterAmountMin}
                       onChange={e => setFilterAmountMin(e.target.value)}
-                      className="h-8 w-full rounded-lg border border-border/60 bg-muted/30 px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      className="h-8 w-full rounded-lg border border-border/60 bg-muted/30 px-2.5 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                     <span className="text-muted-foreground text-sm shrink-0">—</span>
                     <input
@@ -547,7 +547,7 @@ export default function ExpensesPage() {
                       placeholder="Máximo"
                       value={filterAmountMax}
                       onChange={e => setFilterAmountMax(e.target.value)}
-                      className="h-8 w-full rounded-lg border border-border/60 bg-muted/30 px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      className="h-8 w-full rounded-lg border border-border/60 bg-muted/30 px-2.5 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                   </div>
                 </div>
@@ -559,7 +559,7 @@ export default function ExpensesPage() {
                     <select
                       value={sortBy}
                       onChange={e => setSortBy(e.target.value as typeof sortBy)}
-                      className="flex-1 h-8 rounded-lg border border-border/60 bg-muted/30 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      className="flex-1 h-8 rounded-lg border border-border/60 bg-muted/30 px-2 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                     >
                       <option value="date">Data</option>
                       <option value="amount">Valor</option>

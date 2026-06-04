@@ -424,7 +424,7 @@ export default function AccountsPage() {
                 value={diagSearch}
                 onChange={e => setDiagSearch(e.target.value)}
                 placeholder="Buscar lançamento (ex: tenis, adidas...)"
-                className="w-full pl-9 pr-3 h-9 rounded-xl border border-border/60 bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
+                className="w-full pl-9 pr-3 h-9 rounded-xl border border-border/60 bg-background text-base md:text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
               />
             </div>
 
