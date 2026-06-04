@@ -590,19 +590,33 @@ function buildAccountHtml(p: {
 </body></html>`;
 }
 
+// ── Envio via Resend ──
+const RESEND_FROM = Deno.env.get("RESEND_FROM") || "FinancasPro <onboarding@resend.dev>";
+async function sendEmailResend(apiKey: string, to: string, subject: string, html: string) {
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({ from: RESEND_FROM, to: [to], subject, html }),
+  });
+  const raw = await res.text();
+  let body: unknown = raw;
+  try { body = raw ? JSON.parse(raw) : null; } catch { body = raw; }
+  return { ok: res.ok, status: res.status, body };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const brevoApiKey     = Deno.env.get("BREVO_API_KEY");
+    const resendApiKey    = Deno.env.get("RESEND_API_KEY");
     const dataUrl         = Deno.env.get("DATA_SUPABASE_URL")         || Deno.env.get("SUPABASE_URL")!;
     const dataAnonKey     = Deno.env.get("DATA_SUPABASE_ANON_KEY")     || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const dataServiceRole = Deno.env.get("DATA_SUPABASE_SERVICE_ROLE_KEY");
     const cronSecret      = Deno.env.get("CRON_SECRET");
 
-    if (!brevoApiKey) {
+    if (!resendApiKey) {
       return new Response(JSON.stringify({
-        error: "BREVO_API_KEY is not configured. Monthly summaries are sent through Brevo, so this secret is required.",
+        error: "RESEND_API_KEY nao configurada. Os relatorios mensais sao enviados via Resend; defina esse secret.",
       }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -801,27 +815,10 @@ Deno.serve(async (req) => {
         nextScheduledSend,
       });
 
-      const res = await fetch("https://api.brevo.com/v3/smtp/email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "api-key": brevoApiKey },
-        body: JSON.stringify({
-          sender: { name: "FinancasPro", email: "amaralstradiotoryan@gmail.com" },
-          to: [{ email: profile.email }],
-          subject: `Relatorio Mensal | ${reportRange.label}`,
-          htmlContent: html,
-        }),
-      });
-      const rawBrevoResponse = await res.text();
-      let brevoResponse: unknown = rawBrevoResponse;
-      try {
-        brevoResponse = rawBrevoResponse ? JSON.parse(rawBrevoResponse) : null;
-      } catch {
-        brevoResponse = rawBrevoResponse;
-      }
-
+      const res = await sendEmailResend(resendApiKey, profile.email, `Relatorio Mensal | ${reportRange.label}`, html);
       if (!res.ok) {
-        deliveryFailures.push({ email: profile.email, status: res.status, error: brevoResponse });
-        console.error(`Brevo error for ${profile.email}:`, JSON.stringify(brevoResponse));
+        deliveryFailures.push({ email: profile.email, status: res.status, error: res.body });
+        console.error(`Resend error for ${profile.email}:`, JSON.stringify(res.body));
       } else {
         sentCount += 1;
       }
@@ -832,7 +829,7 @@ Deno.serve(async (req) => {
         totalExpenses,
         balance,
         savingsRate: savingsRate.toFixed(1),
-        delivery: res.ok ? "sent_via_brevo" : "failed",
+        delivery: res.ok ? "sent_via_resend" : "failed",
       });
 
       // ── E-mail individual por conta (análise separada de cada conta) ──
@@ -884,21 +881,11 @@ Deno.serve(async (req) => {
             nextScheduledSend,
           });
 
-          const accSend = await fetch("https://api.brevo.com/v3/smtp/email", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "api-key": brevoApiKey },
-            body: JSON.stringify({
-              sender: { name: "FinancasPro", email: "amaralstradiotoryan@gmail.com" },
-              to: [{ email: profile.email }],
-              subject: `${a.name} — Relatorio Mensal | ${reportRange.label}`,
-              htmlContent: accHtml,
-            }),
-          });
+          const accSend = await sendEmailResend(resendApiKey, profile.email, `${a.name} — Relatorio Mensal | ${reportRange.label}`, accHtml);
           if (accSend.ok) {
             sentCount += 1;
           } else {
-            const t = await accSend.text();
-            deliveryFailures.push({ email: profile.email, status: accSend.status, error: t });
+            deliveryFailures.push({ email: profile.email, status: accSend.status, error: accSend.body });
           }
         }
       } catch (accErr) {
@@ -909,7 +896,7 @@ Deno.serve(async (req) => {
     const responseStatus = deliveryFailures.length > 0 ? 502 : 200;
     return new Response(JSON.stringify({
       success: deliveryFailures.length === 0,
-      provider: "brevo",
+      provider: "resend",
       month: reportRange.label,
       processed: results.length,
       sent: sentCount,

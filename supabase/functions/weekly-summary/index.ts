@@ -463,19 +463,76 @@ function buildWeeklyHtml(p: {
 </html>`;
 }
 
+// -- Envio via Resend --
+const RESEND_FROM = Deno.env.get("RESEND_FROM") || "FinancasPro <onboarding@resend.dev>";
+async function sendEmailResend(apiKey: string, to: string, subject: string, html: string) {
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({ from: RESEND_FROM, to: [to], subject, html }),
+  });
+  const raw = await res.text();
+  let body: unknown = raw;
+  try { body = raw ? JSON.parse(raw) : null; } catch { body = raw; }
+  return { ok: res.ok, status: res.status, body };
+}
+
+// -- Relatorio semanal focado por conta --
+function buildAccountWeeklyHtml(p: {
+  firstName: string; weekLabel: string; accountName: string; accountIcon: string;
+  income: number; expenses: number; net: number; avgDaily: number;
+  categories: CatItem[]; topExpenses: TxItem[]; nextScheduledSend: string;
+}): string {
+  const netPos = p.net >= 0;
+  const accent = "#14b8a6";
+  const catRows = p.categories.slice(0, 6).map((c) => {
+    const pct = p.expenses > 0 ? Math.round((c.value / p.expenses) * 100) : 0;
+    return `<tr><td style="padding:7px 0;font-size:13px;width:1%;white-space:nowrap;">${c.icon}&nbsp;</td>
+      <td style="padding:7px 8px 7px 2px;font-size:13px;color:#111827;font-weight:600;">${c.name}</td>
+      <td style="padding:7px 0;width:38%;"><div style="height:6px;background:#eef2f7;border-radius:999px;overflow:hidden;"><div style="height:6px;width:${Math.min(pct,100)}%;background:${accent};border-radius:999px;"></div></div></td>
+      <td style="padding:7px 0 7px 12px;text-align:right;white-space:nowrap;"><div style="font-size:13px;color:#111827;font-weight:700;">${fmt(c.value)}</div><div style="font-size:11px;color:#9ca3af;">${pct}%</div></td></tr>`;
+  }).join("");
+  const txRows = p.topExpenses.slice(0, 5).map((t, i) => `<tr style="background:${i%2===0?"#f9fafb":"#ffffff"};">
+      <td style="padding:8px 12px;font-size:13px;color:#111827;">${t.description || "Sem descricao"}</td>
+      <td style="padding:8px 12px;font-size:12px;color:#6b7280;">${t.category}</td>
+      <td style="padding:8px 12px;font-size:13px;font-weight:700;color:#dc2626;text-align:right;white-space:nowrap;">${fmt(t.amount)}</td></tr>`).join("");
+  const greeting = p.firstName ? `Ola, ${p.firstName}!` : "Ola!";
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<style>@media screen and (max-width:620px){table[width="600"]{width:100%!important;max-width:100%!important;}td[width="32%"]{display:block!important;width:100%!important;padding:0 0 10px 0!important;}}</style></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f5f9;padding:28px 0;"><tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
+  <tr><td style="background:linear-gradient(135deg,#0b1220 0%,#0f2a3f 55%,#0e4f54 100%);border-radius:16px 16px 0 0;padding:26px 28px 22px;">
+    <span style="display:inline-block;background:${accent};color:#04201d;font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;padding:3px 10px;border-radius:20px;">Conta &bull; Resumo Semanal</span>
+    <div style="font-size:24px;font-weight:800;color:#fff;margin-top:12px;">${p.accountIcon}&nbsp;${p.accountName}</div>
+    <div style="font-size:13px;color:#99f6e4;margin-top:4px;">${greeting} Semana de <b style="color:#ccfbf1;">${p.weekLabel}</b>.</div>
+  </td></tr>
+  <tr><td style="height:3px;background:linear-gradient(90deg,${accent},#22d3ee,#0ea5e9);"></td></tr>
+  <tr><td style="background:#fff;padding:22px 28px 12px;"><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+    <td width="32%" style="padding-right:8px;"><div style="border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0;padding:13px 15px;"><div style="font-size:10px;color:#15803d;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Entrou</div><div style="font-size:20px;color:#166534;font-weight:800;margin-top:5px;">${fmt(p.income)}</div></div></td>
+    <td width="32%" style="padding:0 4px;"><div style="border-radius:12px;background:#fef2f2;border:1px solid #fecaca;padding:13px 15px;"><div style="font-size:10px;color:#b91c1c;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Saiu</div><div style="font-size:20px;color:#991b1b;font-weight:800;margin-top:5px;">${fmt(p.expenses)}</div></div></td>
+    <td width="32%" style="padding-left:8px;"><div style="border-radius:12px;background:${netPos?"#ecfeff":"#fef2f2"};border:1px solid ${netPos?"#a5f3fc":"#fecaca"};padding:13px 15px;"><div style="font-size:10px;color:${netPos?"#0e7490":"#b91c1c"};font-weight:700;text-transform:uppercase;letter-spacing:1px;">Saldo da semana</div><div style="font-size:20px;color:${netPos?"#0f172a":"#991b1b"};font-weight:800;margin-top:5px;">${netPos?"+":""}${fmt(p.net)}</div></div></td>
+  </tr></table></td></tr>
+  <tr><td style="background:#fff;padding:4px 28px 16px;"><div style="border-radius:10px;background:#f8fafc;border:1px solid #eef2f7;padding:12px 16px;font-size:12px;color:#475569;">Media de gasto/dia nesta conta: <b style="color:#0f172a;">${fmt(p.avgDaily)}</b></div></td></tr>
+  ${p.topExpenses.length>0?`<tr><td style="background:#fff;padding:0 28px 18px;"><div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:8px;">Maiores gastos da semana</div><table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:10px;overflow:hidden;border:1px solid #f1f5f9;">${txRows}</table></td></tr>`:""}
+  ${p.categories.length>0?`<tr><td style="background:#fff;padding:0 28px 22px;"><div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:6px;">Por categoria</div><table width="100%" cellpadding="0" cellspacing="0" border="0">${catRows}</table></td></tr>`:""}
+  <tr><td style="background:#fff;border-radius:0 0 16px 16px;padding:18px 28px 26px;border-top:1px solid #f1f5f9;"><div style="font-size:11px;color:#94a3b8;">Resumo semanal da conta <b>${p.accountName}</b>. Proximo envio: ${p.nextScheduledSend}.</div><div style="font-size:11px;color:#cbd5e1;margin-top:4px;">FinancasPro &bull; gestao financeira inteligente</div></td></tr>
+</table></td></tr></table></body></html>`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const brevoApiKey      = Deno.env.get("BREVO_API_KEY");
+    const resendApiKey     = Deno.env.get("RESEND_API_KEY");
     const dataUrl          = Deno.env.get("DATA_SUPABASE_URL")          || Deno.env.get("SUPABASE_URL")!;
     const dataAnonKey      = Deno.env.get("DATA_SUPABASE_ANON_KEY")      || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const dataServiceRole  = Deno.env.get("DATA_SUPABASE_SERVICE_ROLE_KEY");
     const cronSecret       = Deno.env.get("CRON_SECRET");
 
-    if (!brevoApiKey) {
+    if (!resendApiKey) {
       return new Response(JSON.stringify({
-        error: "BREVO_API_KEY is not configured. Weekly summaries are sent through Brevo, so this secret is required.",
+        error: "RESEND_API_KEY nao configurada. Os resumos semanais sao enviados via Resend; defina esse secret.",
       }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -701,27 +758,10 @@ Deno.serve(async (req) => {
         nextScheduledSend,
       });
 
-      const res = await fetch("https://api.brevo.com/v3/smtp/email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "api-key": brevoApiKey },
-        body: JSON.stringify({
-          sender: { name: "FinancasPro", email: "amaralstradiotoryan@gmail.com" },
-          to: [{ email: profile.email }],
-          subject: `Resumo Semanal | ${weekLabel}`,
-          htmlContent: html,
-        }),
-      });
-      const rawBrevoResponse = await res.text();
-      let brevoResponse: unknown = rawBrevoResponse;
-      try {
-        brevoResponse = rawBrevoResponse ? JSON.parse(rawBrevoResponse) : null;
-      } catch {
-        brevoResponse = rawBrevoResponse;
-      }
-
+      const res = await sendEmailResend(resendApiKey, profile.email, `Resumo Semanal | ${weekLabel}`, html);
       if (!res.ok) {
-        deliveryFailures.push({ email: profile.email, status: res.status, error: brevoResponse });
-        console.error(`Brevo error for ${profile.email}:`, JSON.stringify(brevoResponse));
+        deliveryFailures.push({ email: profile.email, status: res.status, error: res.body });
+        console.error(`Resend error for ${profile.email}:`, JSON.stringify(res.body));
       } else {
         sentCount += 1;
       }
@@ -731,14 +771,43 @@ Deno.serve(async (req) => {
         totalIncome,
         totalExpenses,
         balance,
-        delivery: res.ok ? "sent_via_brevo" : "failed",
+        delivery: res.ok ? "sent_via_resend" : "failed",
       });
+
+      // -- E-mail semanal individual por conta --
+      try {
+        for (const a of accounts) {
+          const id = String(a.id);
+          const accIncRows = income.filter((i: Record<string, unknown>) => String(i.account_id) === id && i.status === "concluido");
+          const accExpRows = reportExpenses.filter((e: Record<string, unknown>) => String(e.account_id) === id);
+          const accInc = accIncRows.reduce((s: number, i: Record<string, unknown>) => s + Number(i.amount), 0);
+          const accExp = accExpRows.reduce((s: number, e: Record<string, unknown>) => s + Number(e.amount), 0);
+          if (accInc === 0 && accExp === 0) continue;
+          const accCatMap = new Map<string, CatItem>();
+          for (const cat of categories) accCatMap.set(String(cat.id), { name: String(cat.name), icon: String(cat.icon || "tag"), budget: Number(cat.monthly_budget) || 0, value: 0 });
+          for (const e of accExpRows) { const cc = accCatMap.get(String(e.category_id)); if (cc) cc.value += Number(e.amount); }
+          const accCats = Array.from(accCatMap.values()).filter((cc) => cc.value > 0).sort((x, y) => y.value - x.value);
+          const accTop: TxItem[] = [...accExpRows].sort((x: Record<string, unknown>, y: Record<string, unknown>) => Number(y.amount) - Number(x.amount)).slice(0, 5)
+            .map((e: Record<string, unknown>) => ({ description: String(e.description || ""), amount: Number(e.amount), category: String(catNameMap.get(String(e.category_id)) || "Sem categoria"), date: String(e.date) }));
+          const accHtml = buildAccountWeeklyHtml({
+            firstName: profile.first_name || "", weekLabel,
+            accountName: String(a.name), accountIcon: String(a.icon || "\ud83c\udfe6"),
+            income: accInc, expenses: accExp, net: accInc - accExp, avgDaily: accExp / 7,
+            categories: accCats, topExpenses: accTop, nextScheduledSend,
+          });
+          const accSend = await sendEmailResend(resendApiKey, profile.email, `${a.name} - Resumo Semanal | ${weekLabel}`, accHtml);
+          if (accSend.ok) sentCount += 1;
+          else deliveryFailures.push({ email: profile.email, status: accSend.status, error: accSend.body });
+        }
+      } catch (accErr) {
+        console.error("per-account weekly email error:", accErr);
+      }
     }
 
     const responseStatus = deliveryFailures.length > 0 ? 502 : 200;
     return new Response(JSON.stringify({
       success: deliveryFailures.length === 0,
-      provider: "brevo",
+      provider: "resend",
       processed: results.length,
       sent: sentCount,
       failed: deliveryFailures.length,
