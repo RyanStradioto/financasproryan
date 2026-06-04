@@ -8,7 +8,9 @@
  * `id: 'default'` removes the data-palette attribute (uses the base theme).
  */
 
-export type PaletteId = 'default' | 'purple' | 'crimson' | 'forest' | 'noir' | 'mono';
+export type PaletteId =
+  | 'default' | 'purple' | 'crimson' | 'forest' | 'noir' | 'mono'
+  | 'sunset' | 'neon' | 'indigo';
 
 export interface PaletteMeta {
   id: PaletteId;
@@ -54,6 +56,24 @@ export const PALETTES: PaletteMeta[] = [
     name: 'Grafite',
     description: 'Preto e branco minimalista',
     swatches: ['#1a1c1e', '#4b4f54', '#8a9099', '#c7ccd1', '#f4f6f8'],
+  },
+  {
+    id: 'sunset',
+    name: 'Sunset',
+    description: 'Laranja e âmbar quentes',
+    swatches: ['#7a2e08', '#EA6113', '#F88F22', '#FBB931', '#FFE3B3'],
+  },
+  {
+    id: 'neon',
+    name: 'Neon',
+    description: 'Verde-limão vibrante no preto',
+    swatches: ['#0F0F0F', '#202020', '#337418', '#5DD62C', '#F8F8F8'],
+  },
+  {
+    id: 'indigo',
+    name: 'Índigo',
+    description: 'Azul-violeta elétrico',
+    swatches: ['#060416', '#130C49', '#1F137D', '#5C21C3', '#874AD7'],
   },
 ];
 

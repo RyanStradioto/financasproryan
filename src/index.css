@@ -364,6 +364,144 @@
     --sidebar-ring: 220 10% 70%;
   }
 
+  /* ── Sunset (laranja / âmbar) ── */
+  html[data-palette="sunset"] {
+    --background: 35 50% 97%;
+    --card: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --primary: 24 90% 48%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 35 90% 92%;
+    --accent-foreground: 24 80% 34%;
+    --muted: 35 40% 94%;
+    --muted-foreground: 28 12% 42%;
+    --border: 35 35% 88%;
+    --input: 35 35% 88%;
+    --ring: 24 90% 48%;
+    --info: 30 90% 52%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 28 30% 20%;
+    --sidebar-primary: 24 90% 48%;
+    --sidebar-accent: 35 90% 92%;
+    --sidebar-accent-foreground: 24 80% 34%;
+    --sidebar-border: 35 35% 88%;
+    --sidebar-ring: 24 90% 48%;
+  }
+  html[data-palette="sunset"].dark {
+    --background: 26 30% 6%;
+    --card: 26 24% 9%;
+    --popover: 26 24% 10%;
+    --primary: 30 95% 56%;
+    --primary-foreground: 26 45% 8%;
+    --accent: 28 40% 16%;
+    --accent-foreground: 35 92% 76%;
+    --muted: 26 18% 14%;
+    --muted-foreground: 30 14% 60%;
+    --border: 26 16% 16%;
+    --input: 26 16% 16%;
+    --ring: 30 95% 56%;
+    --info: 35 90% 62%;
+    --sidebar-background: 26 26% 8%;
+    --sidebar-foreground: 30 20% 88%;
+    --sidebar-primary: 30 95% 56%;
+    --sidebar-accent: 28 40% 16%;
+    --sidebar-accent-foreground: 35 92% 76%;
+    --sidebar-border: 26 16% 16%;
+    --sidebar-ring: 30 95% 56%;
+  }
+
+  /* ── Neon (verde-limão vibrante) ── */
+  html[data-palette="neon"] {
+    --background: 120 20% 96%;
+    --card: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --primary: 103 62% 38%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 103 50% 90%;
+    --accent-foreground: 103 62% 24%;
+    --muted: 120 16% 93%;
+    --muted-foreground: 120 8% 42%;
+    --border: 120 14% 88%;
+    --input: 120 14% 88%;
+    --ring: 103 62% 38%;
+    --info: 103 50% 44%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 120 20% 18%;
+    --sidebar-primary: 103 62% 38%;
+    --sidebar-accent: 103 50% 90%;
+    --sidebar-accent-foreground: 103 62% 24%;
+    --sidebar-border: 120 14% 88%;
+    --sidebar-ring: 103 62% 38%;
+  }
+  html[data-palette="neon"].dark {
+    --background: 120 8% 6%;
+    --card: 120 8% 9%;
+    --popover: 120 8% 10%;
+    --primary: 103 70% 52%;
+    --primary-foreground: 120 35% 8%;
+    --accent: 103 40% 15%;
+    --accent-foreground: 103 70% 70%;
+    --muted: 120 6% 14%;
+    --muted-foreground: 120 6% 58%;
+    --border: 120 6% 16%;
+    --input: 120 6% 16%;
+    --ring: 103 70% 52%;
+    --info: 103 65% 58%;
+    --sidebar-background: 120 8% 8%;
+    --sidebar-foreground: 120 10% 88%;
+    --sidebar-primary: 103 70% 52%;
+    --sidebar-accent: 103 40% 15%;
+    --sidebar-accent-foreground: 103 70% 70%;
+    --sidebar-border: 120 6% 16%;
+    --sidebar-ring: 103 70% 52%;
+  }
+
+  /* ── Índigo (azul-violeta elétrico) ── */
+  html[data-palette="indigo"] {
+    --background: 255 35% 97%;
+    --card: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --primary: 262 72% 52%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 258 55% 94%;
+    --accent-foreground: 262 72% 38%;
+    --muted: 255 25% 94%;
+    --muted-foreground: 258 12% 44%;
+    --border: 255 22% 89%;
+    --input: 255 22% 89%;
+    --ring: 262 72% 52%;
+    --info: 258 70% 60%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 258 30% 20%;
+    --sidebar-primary: 262 72% 52%;
+    --sidebar-accent: 258 55% 94%;
+    --sidebar-accent-foreground: 262 72% 38%;
+    --sidebar-border: 255 22% 89%;
+    --sidebar-ring: 262 72% 52%;
+  }
+  html[data-palette="indigo"].dark {
+    --background: 250 45% 5%;
+    --card: 252 38% 9%;
+    --popover: 252 38% 10%;
+    --primary: 262 78% 68%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 258 50% 18%;
+    --accent-foreground: 262 75% 82%;
+    --muted: 252 24% 14%;
+    --muted-foreground: 258 14% 64%;
+    --border: 252 24% 16%;
+    --input: 252 24% 16%;
+    --ring: 262 78% 68%;
+    --info: 258 75% 72%;
+    --sidebar-background: 251 40% 7%;
+    --sidebar-foreground: 258 20% 88%;
+    --sidebar-primary: 262 78% 68%;
+    --sidebar-accent: 258 50% 18%;
+    --sidebar-accent-foreground: 262 75% 82%;
+    --sidebar-border: 252 24% 16%;
+    --sidebar-ring: 262 78% 68%;
+  }
+
   * {
     @apply border-border;
     min-width: 0;
