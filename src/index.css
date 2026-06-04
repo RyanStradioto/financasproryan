@@ -126,6 +126,244 @@
     --glow-expense: 0 0 30px hsl(0 72% 55% / 0.15);
   }
 
+  /* ══════════════════════════════════════════════════════
+     COLOR PALETTES — selecionáveis pelo usuário (data-palette no <html>)
+     Cada paleta tematiza primary/accents/sidebar/superfícies em claro e
+     escuro. As cores semânticas (income=verde, expense=vermelho, warning,
+     destructive) permanecem fixas para não confundir a leitura financeira.
+     ══════════════════════════════════════════════════════ */
+
+  /* ── Roxo ── */
+  html[data-palette="purple"] {
+    --background: 280 30% 97%;
+    --card: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --primary: 283 44% 40%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 283 50% 94%;
+    --accent-foreground: 283 44% 30%;
+    --muted: 280 22% 94%;
+    --muted-foreground: 283 10% 42%;
+    --border: 280 18% 89%;
+    --input: 280 18% 89%;
+    --ring: 283 44% 40%;
+    --info: 283 52% 52%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 283 30% 18%;
+    --sidebar-primary: 283 44% 40%;
+    --sidebar-accent: 283 50% 94%;
+    --sidebar-accent-foreground: 283 44% 30%;
+    --sidebar-border: 280 18% 89%;
+    --sidebar-ring: 283 44% 40%;
+  }
+  html[data-palette="purple"].dark {
+    --background: 283 28% 6%;
+    --card: 283 22% 9%;
+    --popover: 283 22% 10%;
+    --primary: 283 52% 66%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 283 35% 16%;
+    --accent-foreground: 283 60% 80%;
+    --muted: 283 16% 14%;
+    --muted-foreground: 283 12% 58%;
+    --border: 283 14% 16%;
+    --input: 283 14% 16%;
+    --ring: 283 52% 66%;
+    --info: 283 55% 66%;
+    --sidebar-background: 283 24% 8%;
+    --sidebar-foreground: 283 20% 88%;
+    --sidebar-primary: 283 52% 66%;
+    --sidebar-accent: 283 35% 16%;
+    --sidebar-accent-foreground: 283 60% 80%;
+    --sidebar-border: 283 14% 16%;
+    --sidebar-ring: 283 52% 66%;
+  }
+
+  /* ── Vinho / Rosa ── */
+  html[data-palette="crimson"] {
+    --background: 335 35% 97%;
+    --card: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --primary: 334 72% 42%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 334 60% 95%;
+    --accent-foreground: 334 72% 34%;
+    --muted: 335 25% 95%;
+    --muted-foreground: 334 10% 44%;
+    --border: 335 22% 90%;
+    --input: 335 22% 90%;
+    --ring: 334 72% 42%;
+    --info: 334 60% 55%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 334 30% 20%;
+    --sidebar-primary: 334 72% 42%;
+    --sidebar-accent: 334 60% 95%;
+    --sidebar-accent-foreground: 334 72% 34%;
+    --sidebar-border: 335 22% 90%;
+    --sidebar-ring: 334 72% 42%;
+  }
+  html[data-palette="crimson"].dark {
+    --background: 335 28% 7%;
+    --card: 335 24% 10%;
+    --popover: 335 24% 11%;
+    --primary: 335 76% 60%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 335 38% 18%;
+    --accent-foreground: 335 70% 80%;
+    --muted: 335 18% 15%;
+    --muted-foreground: 335 12% 60%;
+    --border: 335 16% 17%;
+    --input: 335 16% 17%;
+    --ring: 335 76% 60%;
+    --info: 335 65% 64%;
+    --sidebar-background: 335 26% 9%;
+    --sidebar-foreground: 335 20% 88%;
+    --sidebar-primary: 335 76% 60%;
+    --sidebar-accent: 335 38% 18%;
+    --sidebar-accent-foreground: 335 70% 80%;
+    --sidebar-border: 335 16% 17%;
+    --sidebar-ring: 335 76% 60%;
+  }
+
+  /* ── Floresta / Teal ── */
+  html[data-palette="forest"] {
+    --background: 168 30% 96%;
+    --card: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --primary: 172 58% 30%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 168 45% 92%;
+    --accent-foreground: 172 58% 24%;
+    --muted: 168 22% 93%;
+    --muted-foreground: 172 10% 40%;
+    --border: 168 20% 88%;
+    --input: 168 20% 88%;
+    --ring: 172 58% 30%;
+    --info: 190 60% 42%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 172 30% 18%;
+    --sidebar-primary: 172 58% 30%;
+    --sidebar-accent: 168 45% 92%;
+    --sidebar-accent-foreground: 172 58% 24%;
+    --sidebar-border: 168 20% 88%;
+    --sidebar-ring: 172 58% 30%;
+  }
+  html[data-palette="forest"].dark {
+    --background: 174 30% 5%;
+    --card: 174 24% 8%;
+    --popover: 174 24% 9%;
+    --primary: 168 55% 48%;
+    --primary-foreground: 174 40% 8%;
+    --accent: 172 35% 14%;
+    --accent-foreground: 168 60% 70%;
+    --muted: 174 16% 12%;
+    --muted-foreground: 174 12% 56%;
+    --border: 174 14% 15%;
+    --input: 174 14% 15%;
+    --ring: 168 55% 48%;
+    --info: 190 60% 55%;
+    --sidebar-background: 174 26% 7%;
+    --sidebar-foreground: 174 20% 88%;
+    --sidebar-primary: 168 55% 48%;
+    --sidebar-accent: 172 35% 14%;
+    --sidebar-accent-foreground: 168 60% 70%;
+    --sidebar-border: 174 14% 15%;
+    --sidebar-ring: 168 55% 48%;
+  }
+
+  /* ── Noir (vermelho sobre quase-preto) ── */
+  html[data-palette="noir"] {
+    --background: 345 24% 97%;
+    --card: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --primary: 344 84% 43%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 344 60% 95%;
+    --accent-foreground: 344 84% 36%;
+    --muted: 345 18% 95%;
+    --muted-foreground: 345 8% 42%;
+    --border: 345 16% 90%;
+    --input: 345 16% 90%;
+    --ring: 344 84% 43%;
+    --info: 344 50% 52%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 345 20% 18%;
+    --sidebar-primary: 344 84% 43%;
+    --sidebar-accent: 344 60% 95%;
+    --sidebar-accent-foreground: 344 84% 36%;
+    --sidebar-border: 345 16% 90%;
+    --sidebar-ring: 344 84% 43%;
+  }
+  html[data-palette="noir"].dark {
+    --background: 220 32% 4%;
+    --card: 222 26% 7%;
+    --popover: 222 26% 8%;
+    --primary: 344 88% 54%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 344 45% 16%;
+    --accent-foreground: 344 80% 76%;
+    --muted: 222 16% 12%;
+    --muted-foreground: 345 10% 58%;
+    --border: 222 16% 14%;
+    --input: 222 16% 14%;
+    --ring: 344 88% 54%;
+    --info: 344 70% 62%;
+    --sidebar-background: 222 28% 6%;
+    --sidebar-foreground: 345 16% 88%;
+    --sidebar-primary: 344 88% 54%;
+    --sidebar-accent: 344 45% 16%;
+    --sidebar-accent-foreground: 344 80% 76%;
+    --sidebar-border: 222 16% 14%;
+    --sidebar-ring: 344 88% 54%;
+  }
+
+  /* ── Mono (grafite, preto & branco) ── */
+  html[data-palette="mono"] {
+    --background: 220 14% 96%;
+    --card: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --primary: 220 9% 22%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 220 12% 91%;
+    --accent-foreground: 220 9% 22%;
+    --muted: 220 12% 93%;
+    --muted-foreground: 220 6% 45%;
+    --border: 220 12% 88%;
+    --input: 220 12% 88%;
+    --ring: 220 9% 30%;
+    --info: 220 9% 40%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 12% 20%;
+    --sidebar-primary: 220 9% 22%;
+    --sidebar-accent: 220 12% 91%;
+    --sidebar-accent-foreground: 220 9% 22%;
+    --sidebar-border: 220 12% 88%;
+    --sidebar-ring: 220 9% 30%;
+  }
+  html[data-palette="mono"].dark {
+    --background: 220 10% 7%;
+    --card: 220 10% 10%;
+    --popover: 220 10% 11%;
+    --primary: 220 10% 84%;
+    --primary-foreground: 220 15% 12%;
+    --accent: 220 8% 18%;
+    --accent-foreground: 220 10% 88%;
+    --muted: 220 8% 15%;
+    --muted-foreground: 220 8% 58%;
+    --border: 220 8% 17%;
+    --input: 220 8% 17%;
+    --ring: 220 10% 70%;
+    --info: 220 10% 65%;
+    --sidebar-background: 220 10% 9%;
+    --sidebar-foreground: 220 10% 86%;
+    --sidebar-primary: 220 10% 84%;
+    --sidebar-primary-foreground: 220 15% 12%;
+    --sidebar-accent: 220 8% 18%;
+    --sidebar-accent-foreground: 220 10% 88%;
+    --sidebar-border: 220 8% 17%;
+    --sidebar-ring: 220 10% 70%;
+  }
+
   * {
     @apply border-border;
     min-width: 0;

@@ -2,13 +2,17 @@ import { useState, useEffect } from 'react';
 import { useProfile, useUpsertProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { User, Briefcase, Clock, CalendarDays, Mail, Save, Trash2, AlertTriangle, Send, Sparkles, Lock, Eye, EyeOff } from 'lucide-react';
+import { User, Briefcase, Clock, CalendarDays, Mail, Save, Trash2, AlertTriangle, Send, Sparkles, Lock, Eye, EyeOff, Palette, Sun, Moon, Check } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTutorial } from '@/components/finance/AppTutorial';
+import { useTheme } from '@/hooks/useTheme';
+import { usePalette } from '@/hooks/usePalette';
+import { PALETTES } from '@/lib/palettes';
+import { cn } from '@/lib/utils';
 
 const formatScheduleDate = (date: Date) => {
   const weekday = new Intl.DateTimeFormat('pt-BR', {
@@ -68,6 +72,8 @@ export default function SettingsPage() {
   const upsert = useUpsertProfile();
   const { maskCurrency } = useSensitiveData();
   const fmt = (v: number) => maskCurrency(formatCurrency(v));
+  const { theme, toggleTheme } = useTheme();
+  const { palette, setPalette } = usePalette();
 
   const [firstName, setFirstName] = useState('');
   const [salary, setSalary] = useState('');
@@ -339,6 +345,85 @@ export default function SettingsPage() {
       </div>
 
       <div className="lg:columns-2 lg:gap-6 space-y-6 lg:space-y-0 [&>*]:break-inside-avoid [&>*]:lg:mb-6">
+
+      {/* ─── Aparência: tema + paleta de cores ─── */}
+      <div className="stat-card space-y-5">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <Palette className="w-4 h-4 text-primary" />
+          Aparência
+        </div>
+
+        {/* Modo claro / escuro */}
+        <div>
+          <label className="text-xs text-muted-foreground mb-2 block">Modo</label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => { if (theme !== 'light') toggleTheme(); }}
+              className={cn(
+                'flex items-center justify-center gap-2 rounded-xl border-2 px-3 py-3 text-sm font-semibold transition-all',
+                theme === 'light' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40',
+              )}
+            >
+              <Sun className="w-4 h-4" /> Claro
+            </button>
+            <button
+              type="button"
+              onClick={() => { if (theme !== 'dark') toggleTheme(); }}
+              className={cn(
+                'flex items-center justify-center gap-2 rounded-xl border-2 px-3 py-3 text-sm font-semibold transition-all',
+                theme === 'dark' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40',
+              )}
+            >
+              <Moon className="w-4 h-4" /> Escuro
+            </button>
+          </div>
+        </div>
+
+        {/* Paleta de cores */}
+        <div>
+          <label className="text-xs text-muted-foreground mb-2 block">Paleta de cores</label>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {PALETTES.map((p) => {
+              const active = palette === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setPalette(p.id)}
+                  className={cn(
+                    'group relative flex items-center gap-3 rounded-xl border-2 p-2.5 text-left transition-all',
+                    active ? 'border-primary bg-primary/[0.06]' : 'border-border bg-muted/20 hover:border-primary/40',
+                  )}
+                >
+                  {/* Swatch stack */}
+                  <div className="flex shrink-0 -space-x-1.5">
+                    {p.swatches.map((c, i) => (
+                      <span
+                        key={i}
+                        className="h-6 w-6 rounded-full border-2 border-card shadow-sm"
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold leading-tight">{p.name}</p>
+                    <p className="text-[11px] text-muted-foreground leading-tight mt-0.5 truncate">{p.description}</p>
+                  </div>
+                  {active && (
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <Check className="h-3 w-3" />
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-2.5 leading-relaxed">
+            A paleta muda as cores do app inteiro e funciona em modo claro e escuro. Verde (receitas) e vermelho (despesas) permanecem para facilitar a leitura.
+          </p>
+        </div>
+      </div>
 
       <div className="stat-card space-y-6">
         <div className="flex items-center gap-2 text-sm font-semibold">

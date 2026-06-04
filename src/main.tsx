@@ -1,6 +1,19 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { getStoredPalette, applyPalette } from "./lib/palettes";
+
+// Aplica tema (claro/escuro) + paleta de cores ANTES do render para evitar
+// flash de cor errada na inicializacao.
+try {
+  const root = document.documentElement;
+  const savedTheme = localStorage.getItem("theme") || "dark";
+  root.classList.remove("light", "dark");
+  root.classList.add(savedTheme === "light" ? "light" : "dark");
+  applyPalette(getStoredPalette());
+} catch {
+  /* localStorage indisponivel — segue com o tema padrao do CSS */
+}
 
 // Auto-reload em erros de chunk antigo apos deploy (stale tab).
 // Sem isso o usuario fica preso numa tela de erro ate apertar F5 manual.
