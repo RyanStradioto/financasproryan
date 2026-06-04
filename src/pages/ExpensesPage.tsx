@@ -10,10 +10,12 @@ import { useWorkTimeCalc } from '@/hooks/useProfile';
 import MonthSelector from '@/components/finance/MonthSelector';
 import TransactionDialog from '@/components/finance/TransactionDialog';
 import EditTransactionDialog from '@/components/finance/EditTransactionDialog';
-import { Trash2, Pencil, Paperclip, Clock, ChevronDown, Filter, Search, X, TrendingDown, Receipt, SlidersHorizontal, Check, ArrowUp, ArrowDown, CreditCard, Landmark } from 'lucide-react';
+import { Trash2, Pencil, Paperclip, Clock, ChevronDown, Filter, Search, X, TrendingDown, Receipt, SlidersHorizontal, Check, ArrowUp, ArrowDown, CreditCard, Landmark, List, LayoutGrid, GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useManualOrder } from '@/hooks/useManualOrder';
+import ReorderableBlocks from '@/components/finance/ReorderableBlocks';
 
 type ExpenseRow = Expense & { _type: 'expense' };
 type CCRow = CreditCardTransaction & { _type: 'cc' };
@@ -159,6 +161,15 @@ export default function ExpensesPage() {
   const [sortBy, setSortBy] = useState<'date' | 'amount' | 'description' | 'status' | 'category'>('date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [filterOpen, setFilterOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'block'>(() => {
+    try { return (localStorage.getItem('financaspro_view_expenses') as 'list' | 'block') || 'list'; } catch { return 'list'; }
+  });
+  const setView = (m: 'list' | 'block') => {
+    setViewMode(m);
+    try { localStorage.setItem('financaspro_view_expenses', m); } catch { /* ignore */ }
+  };
+  const manualOrder = useManualOrder('expenses');
+  const rowKey = (r: Row) => `${r._type}-${r.id}`;
   const [catSearch, setCatSearch] = useState('');
   const [showCCOnly, setShowCCOnly] = useState(false);
 
@@ -236,6 +247,9 @@ export default function ExpensesPage() {
     return sortDir === 'asc' ? -cmp : cmp;
   }), [allRows, filterSearch, filterCategories, filterAmountMin, filterAmountMax, filterStatuses, filterAccounts, showCCOnly, sortBy, sortDir, categories]);
 
+  // Apply the user's manual drag order on top of the active sort.
+  const displayed = useMemo(() => manualOrder.applyOrder(filtered, rowKey), [filtered, manualOrder]);
+
   const totalExpenses = useMemo(() => scopedExpenses.reduce((s, e) => s + Number(e.amount), 0), [scopedExpenses]);
   const totalCC = useMemo(() => scopedCCTransactions.reduce((s, t) => s + Number(t.amount), 0), [scopedCCTransactions]);
   const total = filtered.reduce((s, r) => s + Number(r.amount), 0);
@@ -300,6 +314,124 @@ export default function ExpensesPage() {
 
   const filteredCats = categories.filter(c =>
     !catSearch || c.name.toLowerCase().includes(catSearch.toLowerCase())
+  );
+
+  // Self-contained card used by mobile list AND the "Blocos" (drag) view.
+  const renderCard = (item: Row) => {
+    const cat = categories.find(c => c.id === item.category_id);
+    const isCC = item._type === 'cc';
+    const cardColor = isCC ? getCardColor((item as CCRow).credit_card_id) : undefined;
+    return (
+      <div className={`relative overflow-hidden rounded-2xl border border-border/60 bg-card/70 p-4 flex flex-col gap-3 transition-colors hover:bg-muted/10 ${isCC ? 'bg-[#6366f1]/[0.03]' : ''}`}>
+        <div
+          className="absolute top-0 left-0 w-1 h-full"
+          style={isCC
+            ? { backgroundColor: cardColor }
+            : { backgroundColor: (item as ExpenseRow).status === 'concluido' ? 'rgb(16 185 129 / 0.8)' : (item as ExpenseRow).status === 'pendente' ? 'rgb(245 158 11 / 0.8)' : 'rgb(59 130 246 / 0.8)' }
+          }
+        />
+        <div className="flex items-start justify-between gap-3 pl-2">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <div
+              className={`w-11 h-11 rounded-full flex items-center justify-center text-xl shrink-0 shadow-sm border ${isCC ? 'border-[#6366f1]/20' : 'border-border/60 bg-muted/40'}`}
+              style={isCC ? { backgroundColor: `${cardColor}20` } : undefined}
+            >
+              {isCC ? <CreditCard className="w-5 h-5" style={{ color: cardColor }} /> : (cat?.icon || '🛒')}
+            </div>
+            <div className="min-w-0 flex flex-col justify-center">
+              <div className="flex items-center gap-1.5 mb-1">
+                <p className="font-bold text-[15px] leading-tight truncate text-foreground/95">{item.description || 'Despesa'}</p>
+                {isCC && (item as CCRow).is_installment && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#6366f1]/10 text-[#6366f1] border border-[#6366f1]/20 font-bold shrink-0">
+                    {(item as CCRow).installment_number}/{(item as CCRow).total_installments}x
+                  </span>
+                )}
+                {!isCC && (item as ExpenseRow).attachment_url && (
+                  <a href={(item as ExpenseRow).attachment_url!} target="_blank" rel="noopener noreferrer" className="text-primary shrink-0 hover:scale-110 transition-transform">
+                    <Paperclip className="w-3.5 h-3.5" />
+                  </a>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                {isCC
+                  ? <span className="text-muted-foreground">{formatDate(item.date)}</span>
+                  : <DatePicker date={item.date} onChange={d => handleDateChange(item.id, d)} />
+                }
+                {isCC
+                  ? <span className="text-muted-foreground">{getCategoryName(item.category_id)}</span>
+                  : <OptionPicker value={item.category_id} options={categories} placeholder="Categoria" onChange={v => handleCategoryChange(item.id, v)} hideIcon />
+                }
+              </div>
+            </div>
+          </div>
+          <div className="shrink-0 flex flex-col items-end gap-1.5">
+            <p className="mobile-card-value font-extrabold text-expense text-base min-[390px]:text-lg tabular-nums tracking-tight">{fmt(Number(item.amount))}</p>
+            {isCC ? (
+              <span
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border"
+                style={{ color: cardColor, borderColor: `${cardColor}40`, backgroundColor: `${cardColor}15` }}
+              >
+                <CreditCard className="w-3 h-3" />
+                {getCardName((item as CCRow).credit_card_id)}
+              </span>
+            ) : (
+              <StatusPicker status={(item as ExpenseRow).status} onChange={s => handleStatusChange(item.id, s)} />
+            )}
+          </div>
+        </div>
+        {!isCC && (
+          <div className="flex items-center justify-between pt-2.5 pl-2 mt-1 border-t border-border/30">
+            <div className="flex items-center gap-2 flex-wrap">
+              {hourlyRate > 0 && (
+                <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium bg-muted/20 px-2 py-1 rounded-full border border-border/40">
+                  <Clock className="w-3 h-3 text-accent-foreground/60" />{formatWorkTime(calcWorkTime(Number(item.amount)))}
+                </span>
+              )}
+              {(item as ExpenseRow).account_id && (
+                <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium bg-muted/20 px-2 py-1 rounded-full border border-border/40">
+                  {getAccountName((item as ExpenseRow).account_id, true)}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setEditing({ ...(item as ExpenseRow), type: 'expense' })} className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors bg-muted/20">
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={() => handleDelete(item.id)} className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors bg-muted/20">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const blocksView = (
+    <div>
+      {displayed.length === 0 ? (
+        <div className="stat-card flex flex-col items-center py-14 gap-3">
+          <Receipt className="w-10 h-10 text-muted-foreground/40" />
+          <p className="text-sm font-medium text-muted-foreground">Nenhuma despesa para mostrar</p>
+          {totalItems > 0 && <button onClick={clearFilters} className="text-xs text-primary font-bold">Limpar filtros</button>}
+        </div>
+      ) : (
+        <>
+          <div className="mb-2.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+            <GripVertical className="w-3.5 h-3.5" />
+            Arraste pela alça à esquerda para rankear do seu jeito.
+            {manualOrder.active && (
+              <button onClick={manualOrder.clearOrder} className="ml-1 font-semibold text-primary hover:underline">Limpar ordem</button>
+            )}
+          </div>
+          <ReorderableBlocks items={displayed} getId={rowKey} renderCard={renderCard} onReorder={manualOrder.setOrder} />
+          <div className="mt-3 flex items-center justify-between rounded-2xl border border-expense/15 bg-expense/5 px-4 py-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total filtrado</span>
+            <span className="font-extrabold text-expense currency">{fmt(total)}</span>
+          </div>
+        </>
+      )}
+    </div>
   );
 
   return (
@@ -649,6 +781,26 @@ export default function ExpensesPage() {
         )}
       </div>
 
+      {/* View toggle: Lista (tabela) ou Blocos (arrastáveis para rankear) */}
+      <div className="flex items-center justify-end">
+        <div className="inline-flex rounded-xl border border-border/60 bg-muted/30 p-1">
+          <button
+            onClick={() => setView('list')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${viewMode === 'list' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            <List className="w-3.5 h-3.5" /> Lista
+          </button>
+          <button
+            onClick={() => setView('block')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${viewMode === 'block' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" /> Blocos
+          </button>
+        </div>
+      </div>
+
+      {viewMode === 'block' ? blocksView : (
+      <>
       {/* Mobile card list */}
       <div className="sm:hidden stat-card p-0 overflow-hidden divide-y divide-border/40">
         {totalItems === 0 && !isLoading && (
@@ -669,7 +821,7 @@ export default function ExpensesPage() {
             <button onClick={clearFilters} className="text-xs text-primary font-bold">Limpar filtros</button>
           </div>
         )}
-        {filtered.map((item) => {
+        {displayed.map((item) => {
           const cat = categories.find(c => c.id === item.category_id);
           const isCC = item._type === 'cc';
           const cardColor = isCC ? getCardColor((item as CCRow).credit_card_id) : undefined;
@@ -783,7 +935,7 @@ export default function ExpensesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/40">
-              {filtered.map((item) => {
+              {displayed.map((item) => {
                 const isCC = item._type === 'cc';
                 const wt = calcWorkTime(Number(item.amount));
                 const cardColor = isCC ? getCardColor((item as CCRow).credit_card_id) : undefined;
@@ -940,6 +1092,8 @@ export default function ExpensesPage() {
           </table>
         </div>
       </div>
+      </>
+      )}
 
       {editing && (
         <EditTransactionDialog

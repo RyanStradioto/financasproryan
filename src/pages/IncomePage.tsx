@@ -7,12 +7,14 @@ import { useWorkTimeCalc } from '@/hooks/useProfile';
 import MonthSelector from '@/components/finance/MonthSelector';
 import TransactionDialog from '@/components/finance/TransactionDialog';
 import EditTransactionDialog from '@/components/finance/EditTransactionDialog';
-import { Trash2, Pencil, Paperclip, Clock, TrendingUp, ChevronDown, Search, X, Filter, PiggyBank, SlidersHorizontal, Check, ArrowUp, ArrowDown, ArrowUpRight, ArrowDownRight, Landmark, Receipt } from 'lucide-react';
+import { Trash2, Pencil, Paperclip, Clock, TrendingUp, ChevronDown, Search, X, Filter, PiggyBank, SlidersHorizontal, Check, ArrowUp, ArrowDown, ArrowUpRight, ArrowDownRight, Landmark, Receipt, List, LayoutGrid, GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { accountBrandFromRow } from '@/lib/accountBrand';
+import { useManualOrder } from '@/hooks/useManualOrder';
+import ReorderableBlocks from '@/components/finance/ReorderableBlocks';
 
 type PickerOption = { id: string; name: string; icon?: string | null };
 
@@ -154,6 +156,14 @@ export default function IncomePage() {
   const [sortBy, setSortBy] = useState<'date' | 'amount' | 'description' | 'status'>('date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [filterOpen, setFilterOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'block'>(() => {
+    try { return (localStorage.getItem('financaspro_view_income') as 'list' | 'block') || 'list'; } catch { return 'list'; }
+  });
+  const setView = (m: 'list' | 'block') => {
+    setViewMode(m);
+    try { localStorage.setItem('financaspro_view_income', m); } catch { /* ignore */ }
+  };
+  const manualOrder = useManualOrder('income');
 
   const toggleStatus  = (v: string) => setFilterStatuses(p => p.includes(v) ? p.filter(x => x !== v) : [...p, v]);
   const toggleAccount = (v: string) => setFilterAccounts(p => p.includes(v) ? p.filter(x => x !== v) : [...p, v]);
@@ -189,6 +199,8 @@ export default function IncomePage() {
     if (sortBy === 'status')      cmp = (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99);
     return sortDir === 'asc' ? -cmp : cmp;
   });
+
+  const displayed = useMemo(() => manualOrder.applyOrder(filtered, (i) => i.id), [filtered, manualOrder]);
 
   const total = filtered.reduce((s, i) => s + Number(i.amount), 0);
 
@@ -237,6 +249,86 @@ export default function IncomePage() {
       }
     } catch { toast.error('Erro ao remover'); }
   };
+
+  // Self-contained card for mobile list + the "Blocos" (drag) view.
+  const renderCard = (item: Income) => (
+    <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/70 p-4 flex flex-col gap-3 transition-colors hover:bg-muted/10">
+      <div className={`absolute top-0 left-0 w-1 h-full ${item.status === 'concluido' ? 'bg-success/80' : item.status === 'pendente' ? 'bg-warning/80' : 'bg-info/80'}`} />
+      <div className="flex items-start justify-between gap-3 pl-2">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="w-11 h-11 rounded-full bg-income/10 flex items-center justify-center text-income text-xl shrink-0 shadow-sm border border-income/30">
+            <TrendingUp className="w-5 h-5" />
+          </div>
+          <div className="min-w-0 flex flex-col justify-center">
+            <div className="flex items-center gap-1.5 mb-1">
+              <p className="font-bold text-[15px] leading-tight truncate text-foreground/95">{item.description || 'Receita'}</p>
+              {item.attachment_url && (
+                <a href={item.attachment_url} target="_blank" rel="noopener noreferrer" className="text-primary shrink-0 hover:scale-110 transition-transform">
+                  <Paperclip className="w-3.5 h-3.5" />
+                </a>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <DatePicker date={item.date} onChange={d => handleDateChange(item.id, d)} />
+            </div>
+          </div>
+        </div>
+        <div className="shrink-0 flex flex-col items-end gap-1.5">
+          <p className="mobile-card-value font-extrabold text-income text-base min-[390px]:text-lg tabular-nums tracking-tight">+{fmt(Number(item.amount))}</p>
+          <StatusPicker status={item.status} onChange={s => handleStatusChange(item.id, s)} />
+        </div>
+      </div>
+      <div className="flex items-center justify-between pt-2.5 pl-2 mt-1 border-t border-border/30">
+        <div className="flex items-center gap-2 flex-wrap">
+          {hourlyRate > 0 && (
+            <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium bg-muted/20 px-2 py-1 rounded-full border border-border/40">
+              <Clock className="w-3 h-3 text-accent-foreground/60" />{formatWorkTime(calcWorkTime(Number(item.amount)))}
+            </span>
+          )}
+          {item.account_id && (
+            <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium bg-muted/20 px-2 py-1 rounded-full border border-border/40">
+              {getAccountName(item.account_id, true)}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setEditing({ ...item, type: 'income' })} className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors bg-muted/20">
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+          <button onClick={() => handleDelete(item.id)} className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors bg-muted/20">
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const blocksView = (
+    <div>
+      {displayed.length === 0 ? (
+        <div className="stat-card flex flex-col items-center py-14 gap-3">
+          <PiggyBank className="w-10 h-10 text-muted-foreground/40" />
+          <p className="text-sm font-medium text-muted-foreground">Nenhuma receita para mostrar</p>
+          {scopedIncome.length > 0 && <button onClick={clearFilters} className="text-xs text-primary font-bold">Limpar filtros</button>}
+        </div>
+      ) : (
+        <>
+          <div className="mb-2.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+            <GripVertical className="w-3.5 h-3.5" />
+            Arraste pela alça à esquerda para rankear do seu jeito.
+            {manualOrder.active && (
+              <button onClick={manualOrder.clearOrder} className="ml-1 font-semibold text-primary hover:underline">Limpar ordem</button>
+            )}
+          </div>
+          <ReorderableBlocks items={displayed} getId={(i) => i.id} renderCard={renderCard} onReorder={manualOrder.setOrder} />
+          <div className="mt-3 flex items-center justify-between rounded-2xl border border-income/15 bg-income/8 px-4 py-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total</span>
+            <span className="font-extrabold text-income currency">{fmt(total)}</span>
+          </div>
+        </>
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -533,6 +625,26 @@ export default function IncomePage() {
         )}
       </div>
 
+      {/* View toggle: Lista (tabela) ou Blocos (arrastáveis para rankear) */}
+      <div className="flex items-center justify-end">
+        <div className="inline-flex rounded-xl border border-border/60 bg-muted/30 p-1">
+          <button
+            onClick={() => setView('list')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${viewMode === 'list' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            <List className="w-3.5 h-3.5" /> Lista
+          </button>
+          <button
+            onClick={() => setView('block')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${viewMode === 'block' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" /> Blocos
+          </button>
+        </div>
+      </div>
+
+      {viewMode === 'block' ? blocksView : (
+      <>
       {/* Mobile card list */}
       <div className="sm:hidden stat-card p-0 overflow-hidden divide-y divide-border/40">
         {scopedIncome.length === 0 && !isLoading && (
@@ -553,7 +665,7 @@ export default function IncomePage() {
             <button onClick={clearFilters} className="text-xs text-primary font-bold">Limpar filtros</button>
           </div>
         )}
-        {filtered.map((item) => (
+        {displayed.map((item) => (
           <div key={item.id} className="p-4 flex flex-col gap-3 relative hover:bg-muted/10 transition-colors">
             <div className={`absolute top-0 left-0 w-1 h-full ${item.status === 'concluido' ? 'bg-success/80' : item.status === 'pendente' ? 'bg-warning/80' : 'bg-info/80'}`} />
             <div className="flex items-start justify-between gap-3 pl-2">
@@ -627,7 +739,7 @@ export default function IncomePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/40">
-              {filtered.map((item) => {
+              {displayed.map((item) => {
                 const wt = calcWorkTime(Number(item.amount));
                 const statusColor =
                   item.status === 'concluido' ? 'rgb(16 185 129)' :
@@ -722,6 +834,8 @@ export default function IncomePage() {
           </table>
         </div>
       </div>
+      </>
+      )}
 
       {editing && (
         <EditTransactionDialog
