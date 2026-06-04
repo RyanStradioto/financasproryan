@@ -470,6 +470,126 @@ function buildMonthlyHtml(p: {
 </html>`;
 }
 
+// ── Per-account focused report (one email per bank account) ──
+function buildAccountHtml(p: {
+  firstName: string;
+  label: string;
+  accountName: string;
+  accountIcon: string;
+  income: number;
+  expenses: number;
+  net: number;
+  balance: number;
+  incomeCount: number;
+  expenseCount: number;
+  avgDaily: number;
+  categories: CatItem[];
+  topExpenses: TxItem[];
+  nextScheduledSend: string;
+}): string {
+  const netPos = p.net >= 0;
+  const headerBg = "linear-gradient(135deg,#0b1220 0%,#0f2a3f 55%,#0e4f54 100%)";
+  const accent = "#14b8a6";
+  const savings = p.income > 0 ? (p.net / p.income) * 100 : 0;
+
+  const catRows = p.categories.slice(0, 6).map((c) => {
+    const pct = p.expenses > 0 ? Math.round((c.value / p.expenses) * 100) : 0;
+    return `
+      <tr>
+        <td style="padding:7px 0;font-size:13px;width:1%;white-space:nowrap;">${c.icon}&nbsp;</td>
+        <td style="padding:7px 8px 7px 2px;font-size:13px;color:#111827;font-weight:600;">${c.name}</td>
+        <td style="padding:7px 0;width:38%;">
+          <div style="height:6px;background:#eef2f7;border-radius:999px;overflow:hidden;">
+            <div style="height:6px;width:${Math.min(pct,100)}%;background:${accent};border-radius:999px;"></div>
+          </div>
+        </td>
+        <td style="padding:7px 0 7px 12px;text-align:right;white-space:nowrap;">
+          <div style="font-size:13px;color:#111827;font-weight:700;">${fmt(c.value)}</div>
+          <div style="font-size:11px;color:#9ca3af;">${pct}%</div>
+        </td>
+      </tr>`;
+  }).join("");
+
+  const txRows = p.topExpenses.slice(0, 5).map((t, i) => `
+    <tr style="background:${i % 2 === 0 ? "#f9fafb" : "#ffffff"};">
+      <td style="padding:8px 12px;font-size:13px;color:#111827;">${t.description || "Sem descricao"}</td>
+      <td style="padding:8px 12px;font-size:12px;color:#6b7280;">${t.category}</td>
+      <td style="padding:8px 12px;font-size:12px;color:#6b7280;white-space:nowrap;">${new Intl.DateTimeFormat("pt-BR",{day:"2-digit",month:"2-digit"}).format(new Date(t.date+"T12:00:00"))}</td>
+      <td style="padding:8px 12px;font-size:13px;font-weight:700;color:#dc2626;text-align:right;white-space:nowrap;">${fmt(t.amount)}</td>
+    </tr>`).join("");
+
+  const greeting = p.firstName ? `Ola, ${p.firstName}!` : "Ola!";
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>${p.accountName} | FinancasPro</title>
+<style>@media screen and (max-width:620px){table[width="600"]{width:100%!important;max-width:100%!important;}td[width="32%"]{display:block!important;width:100%!important;padding:0 0 10px 0!important;}}</style>
+</head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f5f9;padding:28px 0;"><tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
+  <tr><td style="background:${headerBg};border-radius:16px 16px 0 0;padding:26px 28px 22px;">
+    <span style="display:inline-block;background:${accent};color:#04201d;font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;padding:3px 10px;border-radius:20px;">Conta &bull; Relatorio Mensal</span>
+    <div style="font-size:24px;font-weight:800;color:#fff;margin-top:12px;letter-spacing:-0.5px;">${p.accountIcon}&nbsp;${p.accountName}</div>
+    <div style="font-size:13px;color:#99f6e4;margin-top:4px;">${greeting} Fechamento de <b style="color:#ccfbf1;">${p.label}</b> nesta conta.</div>
+  </td></tr>
+  <tr><td style="height:3px;background:linear-gradient(90deg,${accent},#22d3ee,#0ea5e9);"></td></tr>
+
+  <!-- 3 cards -->
+  <tr><td style="background:#fff;padding:22px 28px 12px;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td width="32%" style="padding-right:8px;">
+        <div style="border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0;padding:13px 15px;">
+          <div style="font-size:10px;color:#15803d;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Entrou</div>
+          <div style="font-size:20px;color:#166534;font-weight:800;margin-top:5px;">${fmt(p.income)}</div>
+          <div style="font-size:11px;color:#6b7280;margin-top:3px;">${p.incomeCount} lancamento${p.incomeCount!==1?"s":""}</div>
+        </div>
+      </td>
+      <td width="32%" style="padding:0 4px;">
+        <div style="border-radius:12px;background:#fef2f2;border:1px solid #fecaca;padding:13px 15px;">
+          <div style="font-size:10px;color:#b91c1c;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Saiu</div>
+          <div style="font-size:20px;color:#991b1b;font-weight:800;margin-top:5px;">${fmt(p.expenses)}</div>
+          <div style="font-size:11px;color:#6b7280;margin-top:3px;">${p.expenseCount} lancamento${p.expenseCount!==1?"s":""}</div>
+        </div>
+      </td>
+      <td width="32%" style="padding-left:8px;">
+        <div style="border-radius:12px;background:${netPos?"#ecfeff":"#fef2f2"};border:1px solid ${netPos?"#a5f3fc":"#fecaca"};padding:13px 15px;">
+          <div style="font-size:10px;color:${netPos?"#0e7490":"#b91c1c"};font-weight:700;text-transform:uppercase;letter-spacing:1px;">Saldo da conta</div>
+          <div style="font-size:20px;color:${p.balance>=0?"#0f172a":"#991b1b"};font-weight:800;margin-top:5px;">${fmt(p.balance)}</div>
+          <div style="font-size:11px;color:#6b7280;margin-top:3px;">Fluxo: ${netPos?"+":""}${fmt(p.net)}</div>
+        </div>
+      </td>
+    </tr></table>
+  </td></tr>
+
+  <!-- meta line -->
+  <tr><td style="background:#fff;padding:4px 28px 18px;">
+    <div style="border-radius:10px;background:#f8fafc;border:1px solid #eef2f7;padding:12px 16px;font-size:12px;color:#475569;">
+      Taxa de poupanca nesta conta: <b style="color:${savings>=0?"#0e7490":"#dc2626"};">${savings.toFixed(0)}%</b> &nbsp;&bull;&nbsp; Media de gasto/dia: <b style="color:#0f172a;">${fmt(p.avgDaily)}</b>
+    </div>
+  </td></tr>
+
+  ${p.topExpenses.length > 0 ? `
+  <tr><td style="background:#fff;padding:0 28px 18px;">
+    <div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:8px;">Maiores gastos desta conta</div>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:10px;overflow:hidden;border:1px solid #f1f5f9;">${txRows}</table>
+  </td></tr>` : ""}
+
+  ${p.categories.length > 0 ? `
+  <tr><td style="background:#fff;padding:0 28px 22px;">
+    <div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:6px;">Por categoria</div>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">${catRows}</table>
+  </td></tr>` : ""}
+
+  <tr><td style="background:#fff;border-radius:0 0 16px 16px;padding:18px 28px 26px;border-top:1px solid #f1f5f9;">
+    <div style="font-size:11px;color:#94a3b8;">Relatorio individual da conta <b>${p.accountName}</b>. Proximo envio: ${p.nextScheduledSend}.</div>
+    <div style="font-size:11px;color:#cbd5e1;margin-top:4px;">FinancasPro &bull; gestao financeira inteligente</div>
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -714,6 +834,76 @@ Deno.serve(async (req) => {
         savingsRate: savingsRate.toFixed(1),
         delivery: res.ok ? "sent_via_brevo" : "failed",
       });
+
+      // ── E-mail individual por conta (análise separada de cada conta) ──
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const accountsWithActivity = accounts.filter((a: any) => {
+          const id = String(a.id);
+          const hasInc = income.some((i: Record<string, unknown>) => String(i.account_id) === id && i.status === "concluido");
+          const hasExp = normalExpenses.some((e: Record<string, unknown>) => String(e.account_id) === id);
+          return hasInc || hasExp;
+        });
+
+        for (const a of accountsWithActivity) {
+          const id = String(a.id);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const accIncomeRows = income.filter((i: any) => String(i.account_id) === id && i.status === "concluido");
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const accExpRows = normalExpenses.filter((e: any) => String(e.account_id) === id);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const accIncome = accIncomeRows.reduce((s: number, i: any) => s + Number(i.amount), 0);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const accExpenses = accExpRows.reduce((s: number, e: any) => s + Number(e.amount), 0);
+          const initBal = Number(a.initial_balance) || 0;
+
+          const accCatMap = new Map<string, CatItem>();
+          for (const cat of categories) accCatMap.set(String(cat.id), { name: String(cat.name), icon: String(cat.icon || "tag"), budget: Number(cat.monthly_budget) || 0, value: 0 });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          for (const e of accExpRows) { const c = accCatMap.get(String(e.category_id)); if (c) c.value += Number(e.amount); }
+          const accCats = Array.from(accCatMap.values()).filter((c) => c.value > 0).sort((x, y) => y.value - x.value);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const accTop: TxItem[] = [...accExpRows].sort((x: any, y: any) => Number(y.amount) - Number(x.amount)).slice(0, 5)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .map((e: any) => ({ description: String(e.description || ""), amount: Number(e.amount), category: String(catNameMap.get(String(e.category_id)) || "Sem categoria"), date: String(e.date) }));
+
+          const accHtml = buildAccountHtml({
+            firstName: profile.first_name || "",
+            label: reportRange.label,
+            accountName: String(a.name),
+            accountIcon: String(a.icon || "🏦"),
+            income: accIncome,
+            expenses: accExpenses,
+            net: accIncome - accExpenses,
+            balance: initBal + accIncome - accExpenses,
+            incomeCount: accIncomeRows.length,
+            expenseCount: accExpRows.length,
+            avgDaily: reportRange.daysInMonth > 0 ? accExpenses / reportRange.daysInMonth : 0,
+            categories: accCats,
+            topExpenses: accTop,
+            nextScheduledSend,
+          });
+
+          const accSend = await fetch("https://api.brevo.com/v3/smtp/email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "api-key": brevoApiKey },
+            body: JSON.stringify({
+              sender: { name: "FinancasPro", email: "amaralstradiotoryan@gmail.com" },
+              to: [{ email: profile.email }],
+              subject: `${a.name} — Relatorio Mensal | ${reportRange.label}`,
+              htmlContent: accHtml,
+            }),
+          });
+          if (accSend.ok) {
+            sentCount += 1;
+          } else {
+            const t = await accSend.text();
+            deliveryFailures.push({ email: profile.email, status: accSend.status, error: t });
+          }
+        }
+      } catch (accErr) {
+        console.error("per-account email error:", accErr);
+      }
     }
 
     const responseStatus = deliveryFailures.length > 0 ? 502 : 200;
