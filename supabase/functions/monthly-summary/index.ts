@@ -609,13 +609,19 @@ function buildAccountHtml(p: {
 </body></html>`;
 }
 
-// ── Envio via Resend ──
-const RESEND_FROM = Deno.env.get("RESEND_FROM") || "FinancasPro <onboarding@resend.dev>";
-async function sendEmailResend(apiKey: string, to: string, subject: string, html: string) {
-  const res = await fetch("https://api.resend.com/emails", {
+// -- Envio via Brevo --
+const BREVO_SENDER_NAME  = Deno.env.get("BREVO_SENDER_NAME")  || "FinancasPro";
+const BREVO_SENDER_EMAIL = Deno.env.get("BREVO_SENDER_EMAIL") || "amaralstradiotoryan@gmail.com";
+async function sendEmailBrevo(apiKey: string, to: string, subject: string, html: string) {
+  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ from: RESEND_FROM, to: [to], subject, html }),
+    headers: { "Content-Type": "application/json", "api-key": apiKey },
+    body: JSON.stringify({
+      sender: { name: BREVO_SENDER_NAME, email: BREVO_SENDER_EMAIL },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    }),
   });
   const raw = await res.text();
   let body: unknown = raw;
@@ -627,15 +633,15 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const resendApiKey    = Deno.env.get("RESEND_API_KEY");
+    const brevoApiKey    = Deno.env.get("BREVO_API_KEY");
     const dataUrl         = Deno.env.get("DATA_SUPABASE_URL")         || Deno.env.get("SUPABASE_URL")!;
     const dataAnonKey     = Deno.env.get("DATA_SUPABASE_ANON_KEY")     || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const dataServiceRole = Deno.env.get("DATA_SUPABASE_SERVICE_ROLE_KEY");
     const cronSecret      = Deno.env.get("CRON_SECRET");
 
-    if (!resendApiKey) {
+    if (!brevoApiKey) {
       return new Response(JSON.stringify({
-        error: "RESEND_API_KEY nao configurada. Os relatorios mensais sao enviados via Resend; defina esse secret.",
+        error: "BREVO_API_KEY nao configurada. Os relatorios mensais sao enviados via Brevo; defina esse secret.",
       }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -854,10 +860,10 @@ Deno.serve(async (req) => {
         nextScheduledSend,
       });
 
-      const res = await sendEmailResend(resendApiKey, profile.email, `Relatorio Mensal | ${reportRange.label}`, html);
+      const res = await sendEmailBrevo(brevoApiKey, profile.email, `Relatorio Mensal | ${reportRange.label}`, html);
       if (!res.ok) {
         deliveryFailures.push({ email: profile.email, status: res.status, error: res.body });
-        console.error(`Resend error for ${profile.email}:`, JSON.stringify(res.body));
+        console.error(`Brevo error for ${profile.email}:`, JSON.stringify(res.body));
       } else {
         sentCount += 1;
       }
@@ -868,7 +874,7 @@ Deno.serve(async (req) => {
         totalExpenses,
         balance,
         savingsRate: savingsRate.toFixed(1),
-        delivery: res.ok ? "sent_via_resend" : "failed",
+        delivery: res.ok ? "sent_via_brevo" : "failed",
       });
 
       // ── E-mail individual por conta (análise separada de cada conta) ──
@@ -921,7 +927,7 @@ Deno.serve(async (req) => {
             nextScheduledSend,
           });
 
-          const accSend = await sendEmailResend(resendApiKey, profile.email, `${a.name} — Relatorio Mensal | ${reportRange.label}`, accHtml);
+          const accSend = await sendEmailBrevo(brevoApiKey, profile.email, `${a.name} — Relatorio Mensal | ${reportRange.label}`, accHtml);
           if (accSend.ok) {
             sentCount += 1;
           } else {
@@ -936,7 +942,7 @@ Deno.serve(async (req) => {
     const responseStatus = deliveryFailures.length > 0 ? 502 : 200;
     return new Response(JSON.stringify({
       success: deliveryFailures.length === 0,
-      provider: "resend",
+      provider: "brevo",
       month: reportRange.label,
       processed: results.length,
       sent: sentCount,
