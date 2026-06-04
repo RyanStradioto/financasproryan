@@ -9,6 +9,7 @@ import {
   useCreditCards,
   useAddCreditCard,
   useDeleteCreditCard,
+  useUpdateCreditCard,
   useCreditCardTransactions,
   useAddCreditCardTransaction,
   useToggleCCTransactionPaid,
@@ -19,6 +20,7 @@ import {
   getCardDefaultAccount,
   setCardDefaultAccount,
   type CreditCardTransaction,
+  type CreditCard as CreditCardRow,
 } from '@/hooks/useCreditCards';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,7 +30,41 @@ import { getMonthYear, formatCurrency, formatDate, calcBillMonth } from '@/lib/f
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { cn } from '@/lib/utils';
 import { CARD_COLORS } from '@/lib/colors';
+import { resolveAccountBrand, getAccountBrandPresets } from '@/lib/accountBrand';
 import { toast } from 'sonner';
+
+// ── Brand helpers ──────────────────────────────────────────────────────────
+/** Resolve the visual brand (color/logo) for a card from its name. */
+function cardBrand(card: { name: string; color: string }) {
+  return resolveAccountBrand(card.name, card.color);
+}
+
+function hexToRgb(hex: string) {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+  const n = parseInt(full, 16);
+  if (Number.isNaN(n)) return { r: 109, g: 33, b: 119 };
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+function darkenColor(hex: string, amount: number) {
+  const { r, g, b } = hexToRgb(hex);
+  const d = (v: number) => Math.max(0, Math.round(v * (1 - amount)));
+  return `rgb(${d(r)}, ${d(g)}, ${d(b)})`;
+}
+
+/** A pleasant diagonal gradient built from a single brand color. */
+function cardGradient(hex: string) {
+  return `linear-gradient(135deg, ${hex} 0%, ${darkenColor(hex, 0.5)} 100%)`;
+}
+
+const CC_BRAND_PRESETS = getAccountBrandPresets().filter((p) =>
+  ['nubank', 'itau', 'bradesco', 'santander', 'caixa', 'inter', 'caju', 'alelo'].includes(p.name),
+);
+const CC_BRAND_LABELS: Record<string, string> = {
+  nubank: 'Nubank', itau: 'Itaú', bradesco: 'Bradesco', santander: 'Santander',
+  caixa: 'Caixa', inter: 'Inter', caju: 'Caju', alelo: 'Alelo',
+};
 
 function prevMonth(m: string) {
   const [y, mo] = m.split('-').map(Number);
@@ -86,6 +122,13 @@ export default function CreditCardsPage() {
     category_id: '',
   });
 
+  // Edit card + delete confirmation state
+  const [editingCard, setEditingCard] = useState<CreditCardRow | null>(null);
+  const [editCardForm, setEditCardForm] = useState({
+    name: '', color: CARD_COLORS[0], credit_limit: '', closing_day: '10', due_day: '17', payment_account_id: '',
+  });
+  const [confirmDeleteCard, setConfirmDeleteCard] = useState<CreditCardRow | null>(null);
+
   const { user } = useAuth();
   const { data: cards = [] } = useCreditCards();
   const { data: categories = [] } = useCategories();
@@ -94,6 +137,7 @@ export default function CreditCardsPage() {
   const { data: futureTxns = [] } = useAllFutureCCTransactions();
   const { data: outstandingTxns = [] } = useCardOutstanding(selectedCard ?? undefined);
   const addCard = useAddCreditCard();
+  const updateCard = useUpdateCreditCard();
   const deleteCard = useDeleteCreditCard();
   const addTx = useAddCreditCardTransaction();
   const togglePaid = useToggleCCTransactionPaid();
@@ -303,6 +347,54 @@ export default function CreditCardsPage() {
     } catch (e) { toast.error((e as Error).message); }
   };
 
+  const openEditCard = (card: CreditCardRow) => {
+    setEditingCard(card);
+    setEditCardForm({
+      name: card.name,
+      color: card.color,
+      credit_limit: String(Number(card.credit_limit) || ''),
+      closing_day: String(card.closing_day),
+      due_day: String(card.due_day),
+      payment_account_id: getCardDefaultAccount(card.id) || '',
+    });
+  };
+
+  const handleSaveEditCard = async () => {
+    if (!editingCard) return;
+    if (!editCardForm.name.trim()) return toast.error('Informe o nome do cartão');
+    try {
+      await updateCard.mutateAsync({
+        id: editingCard.id,
+        data: {
+          name: editCardForm.name.trim(),
+          color: editCardForm.color,
+          credit_limit: parseFloat(editCardForm.credit_limit) || 0,
+          closing_day: parseInt(editCardForm.closing_day) || 1,
+          due_day: parseInt(editCardForm.due_day) || 10,
+        },
+      });
+      // Persist / clear the default payment account binding
+      setCardDefaultAccount(editingCard.id, editCardForm.payment_account_id || null);
+      setDefaultAcctBump(b => b + 1);
+      toast.success('Cartão atualizado!');
+      setEditingCard(null);
+    } catch (e) { toast.error((e as Error).message); }
+  };
+
+  const handleDeleteCard = async () => {
+    if (!confirmDeleteCard) return;
+    try {
+      await deleteCard.mutateAsync(confirmDeleteCard.id);
+      setCardDefaultAccount(confirmDeleteCard.id, null);
+      if (selectedCard === confirmDeleteCard.id) {
+        setSelectedCard(cards.find(c => c.id !== confirmDeleteCard.id)?.id ?? null);
+      }
+      toast.success(`Cartão "${confirmDeleteCard.name}" removido.`);
+      setConfirmDeleteCard(null);
+      setEditingCard(null);
+    } catch (e) { toast.error((e as Error).message); }
+  };
+
   // Resolve pending default-account mapping after card creation
   useEffect(() => {
     try {
@@ -488,8 +580,8 @@ export default function CreditCardsPage() {
   const handleSaveEditTx = async () => {
     if (!editingTx) return;
     const amount = parseFloat(editTx.amount.replace(',', '.'));
-    if (!editTx.description.trim()) return toast.error('Informe a descriÃ§Ã£o');
-    if (!amount || amount <= 0) return toast.error('Informe um valor vÃ¡lido');
+    if (!editTx.description.trim()) return toast.error('Informe a descrição');
+    if (!amount || amount <= 0) return toast.error('Informe um valor válido');
     if (!editTx.date) return toast.error('Informe a data');
 
     try {
@@ -762,6 +854,7 @@ export default function CreditCardsPage() {
               <div className="flex min-w-max gap-3 pr-2">
                 {cards.map((card) => {
                   const isSelected = selectedCard === card.id;
+                  const brand = cardBrand(card);
                   const cardCommitment = futureTxns
                     .filter(t => t.credit_card_id === card.id && !t.paid)
                     .reduce((s, t) => s + Number(t.amount), 0);
@@ -775,27 +868,35 @@ export default function CreditCardsPage() {
                       className={cn(
                         'group relative h-[88px] w-[200px] sm:h-[92px] sm:w-[230px] overflow-hidden rounded-2xl border p-3 sm:p-4 text-left transition-all',
                         isSelected
-                          ? 'border-violet-300/60 bg-muted/70 dark:bg-white/[0.08] shadow-xl shadow-violet-950/30'
-                          : 'border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.035] hover:border-violet-300/35 hover:bg-white/[0.055]',
+                          ? 'border-2 shadow-xl'
+                          : 'border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.035] hover:bg-muted/70 dark:hover:bg-white/[0.06]',
                       )}
+                      style={isSelected ? { borderColor: brand.color, backgroundColor: `${brand.color}14` } : undefined}
                     >
-                      <div className="absolute -right-8 -top-12 h-28 w-28 rounded-full opacity-30 blur-xl" style={{ backgroundColor: card.color }} />
+                      <div className="absolute -right-8 -top-12 h-28 w-28 rounded-full opacity-30 blur-xl" style={{ backgroundColor: brand.color }} />
                       <div className="relative flex h-full flex-col justify-between">
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex min-w-0 items-center gap-2.5">
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border/60 dark:border-white/10 bg-black/25 text-white shadow-inner" style={{ color: card.color }}>
-                              <CreditCard className="h-[18px] w-[18px]" />
+                            <span
+                              className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/60 dark:border-white/10 shadow-inner"
+                              style={{ backgroundColor: brand.logoUrl ? '#fff' : brand.color }}
+                            >
+                              {brand.logoUrl ? (
+                                <img src={brand.logoUrl} alt={card.name} className="h-5 w-5 object-contain" />
+                              ) : (
+                                <CreditCard className="h-[18px] w-[18px] text-white" />
+                              )}
                             </span>
                             <div className="min-w-0">
                               <p className="truncate text-sm font-black text-foreground">{card.name}</p>
                               <p className="text-[11px] font-semibold text-muted-foreground">{cardUsage.toFixed(0)}% comprometido</p>
                             </div>
                           </div>
-                          {isSelected && <Check className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-200" />}
+                          {isSelected && <Check className="h-4 w-4 shrink-0" style={{ color: brand.color }} />}
                         </div>
                         <div className="space-y-1.5">
-                          <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
-                            <div className="h-full rounded-full bg-violet-400" style={{ width: `${cardUsage}%` }} />
+                          <div className="h-1.5 overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+                            <div className="h-full rounded-full" style={{ width: `${cardUsage}%`, backgroundColor: brand.color }} />
                           </div>
                           <div className="flex justify-between text-[11px] font-bold text-muted-foreground dark:text-slate-400">
                             <span>{fmt(cardCommitment)}</span>
@@ -806,6 +907,16 @@ export default function CreditCardsPage() {
                     </button>
                   );
                 })}
+
+                {/* Add card chip */}
+                <button
+                  type="button"
+                  onClick={() => setShowNewCard(true)}
+                  className="flex h-[88px] w-[120px] sm:h-[92px] shrink-0 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-border/60 dark:border-white/15 text-muted-foreground transition-all hover:border-violet-400/50 hover:text-violet-500"
+                >
+                  <Plus className="h-5 w-5" />
+                  <span className="text-xs font-bold">Novo cartão</span>
+                </button>
               </div>
             </div>
           )}
@@ -1019,15 +1130,25 @@ export default function CreditCardsPage() {
           </div>
 
           <aside className="space-y-5 xl:sticky xl:top-4 xl:self-start">
-            <div className="overflow-hidden rounded-[1.75rem] border border-violet-300/25 bg-gradient-to-br from-violet-500 via-violet-700 to-[#211234] p-5 text-white shadow-2xl shadow-violet-950/30">
-              <div className="pointer-events-none absolute" />
+            <div
+              className="relative overflow-hidden rounded-[1.75rem] border border-white/15 p-5 text-white shadow-2xl shadow-black/30"
+              style={{ background: cardGradient(cardBrand(currentCard).color) }}
+            >
+              <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
               <div className="relative space-y-7">
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xl font-black">{currentCard.name}</p>
-                    <p className="mt-1 text-xs font-semibold text-violet-100/70">Crédito • final virtual</p>
+                  <div className="min-w-0">
+                    <p className="truncate text-xl font-black">{currentCard.name}</p>
+                    <p className="mt-1 text-xs font-semibold text-white/70">Crédito • fatura</p>
                   </div>
-                  <span className="text-3xl font-black text-foreground/20">nu</span>
+                  {/* Brand logo in a white chip, or card icon */}
+                  {cardBrand(currentCard).logoUrl ? (
+                    <span className="flex h-9 items-center justify-center rounded-lg bg-white px-2 shadow-md shrink-0">
+                      <img src={cardBrand(currentCard).logoUrl} alt={currentCard.name} className="h-5 max-w-[60px] object-contain" />
+                    </span>
+                  ) : (
+                    <CreditCard className="h-7 w-7 text-white/50 shrink-0" />
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -1037,11 +1158,11 @@ export default function CreditCardsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-xs font-bold text-violet-100/60">Comprometido</p>
+                    <p className="text-xs font-bold text-white/60">Comprometido</p>
                     <p className="currency mt-1 font-black tabular-nums">{fmt(committedTotal)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs font-bold text-violet-100/60">Disponível</p>
+                    <p className="text-xs font-bold text-white/60">Disponível</p>
                     <p className="currency mt-1 font-black tabular-nums">{fmt(availableLimit)}</p>
                   </div>
                 </div>
@@ -1050,10 +1171,26 @@ export default function CreditCardsPage() {
                   <div className="h-1.5 overflow-hidden rounded-full bg-black/25">
                     <div className="h-full rounded-full bg-white/[0.85]" style={{ width: `${committedLimitPercent}%` }} />
                   </div>
-                  <div className="flex items-center justify-between text-xs font-bold text-violet-100/70">
+                  <div className="flex items-center justify-between text-xs font-bold text-white/70">
                     <span>Limite {fmt(Number(currentCard.credit_limit))}</span>
                     <span>{committedLimitPercent.toFixed(0)}% do limite</span>
                   </div>
+                </div>
+
+                {/* Card management actions */}
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => openEditCard(currentCard)}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-white/15 py-2 text-xs font-bold text-white backdrop-blur-sm transition-colors hover:bg-white/25"
+                  >
+                    <Pencil className="h-3.5 w-3.5" /> Editar
+                  </button>
+                  <button
+                    onClick={() => setConfirmDeleteCard(currentCard)}
+                    className="flex items-center justify-center gap-1.5 rounded-xl bg-black/20 px-3 py-2 text-xs font-bold text-white/90 backdrop-blur-sm transition-colors hover:bg-red-500/40"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Excluir
+                  </button>
                 </div>
               </div>
             </div>
@@ -1176,9 +1313,38 @@ export default function CreditCardsPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>Novo Cartão de Crédito</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label>Nome do cartão</Label><Input placeholder="Ex: Nubank" value={newCard.name} onChange={(e) => setNewCard((p) => ({ ...p, name: e.target.value }))} /></div>
+            {/* Brand presets — pick bank to auto-fill name + color + logo */}
+            <div className="space-y-2">
+              <Label>Bandeira / Banco</Label>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {CC_BRAND_PRESETS.map((preset) => {
+                  const active = resolveAccountBrand(newCard.name).name === preset.name;
+                  return (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      onClick={() => setNewCard(p => ({ ...p, name: CC_BRAND_LABELS[preset.name] || preset.name, color: preset.color }))}
+                      className={cn(
+                        'flex items-center gap-1.5 rounded-xl border px-2 py-2 text-left transition-all',
+                        active ? 'border-primary bg-primary/10' : 'border-border/60 hover:border-primary/40 hover:bg-primary/5',
+                      )}
+                    >
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border/60 bg-white p-0.5">
+                        {preset.logoUrl ? (
+                          <img src={preset.logoUrl} alt={preset.name} className="h-full w-full object-contain" />
+                        ) : (
+                          <span className="text-xs">{preset.icon}</span>
+                        )}
+                      </span>
+                      <span className="truncate text-[11px] font-semibold">{CC_BRAND_LABELS[preset.name] || preset.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div><Label>Nome do cartão</Label><Input placeholder="Ex: Nubank, Bradesco..." value={newCard.name} onChange={(e) => setNewCard((p) => ({ ...p, name: e.target.value }))} /></div>
             <div>
-              <Label>Cor</Label>
+              <Label>Cor (cartões sem bandeira conhecida)</Label>
               <div className="flex gap-2 mt-2 flex-wrap">
                 {CARD_COLORS.map(c => (
                   <button key={c} onClick={() => setNewCard(p => ({ ...p, color: c }))}
@@ -1186,9 +1352,14 @@ export default function CreditCardsPage() {
                     style={{ backgroundColor: c }} />
                 ))}
               </div>
-              {/* Preview */}
-              <div className="mt-3 rounded-xl p-3 text-white text-xs font-medium" style={{ background: `linear-gradient(135deg, ${newCard.color}, ${newCard.color}88)` }}>
-                {newCard.name || 'Prévia do cartão'} · Dia {newCard.closing_day}/{newCard.due_day}
+              {/* Preview — uses brand color/logo when name matches a known brand */}
+              <div className="mt-3 flex items-center justify-between rounded-xl p-3 text-white text-xs font-medium" style={{ background: cardGradient(resolveAccountBrand(newCard.name, newCard.color).color) }}>
+                <span>{newCard.name || 'Prévia do cartão'} · Dia {newCard.closing_day}/{newCard.due_day}</span>
+                {resolveAccountBrand(newCard.name).logoUrl && (
+                  <span className="flex h-6 items-center rounded bg-white px-1.5">
+                    <img src={resolveAccountBrand(newCard.name).logoUrl} alt="" className="h-3.5 max-w-[44px] object-contain" />
+                  </span>
+                )}
               </div>
             </div>
             <div><Label>Limite (R$)</Label><Input type="number" placeholder="5000" value={newCard.credit_limit} onChange={(e) => setNewCard((p) => ({ ...p, credit_limit: e.target.value }))} /></div>
@@ -1278,7 +1449,7 @@ export default function CreditCardsPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>Editar compra</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label>DescriÃ§Ã£o</Label><Input value={editTx.description} onChange={(e) => setEditTx((p) => ({ ...p, description: e.target.value }))} /></div>
+            <div><Label>Descrição</Label><Input value={editTx.description} onChange={(e) => setEditTx((p) => ({ ...p, description: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Valor (R$)</Label>
@@ -1309,7 +1480,7 @@ export default function CreditCardsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingTx(null)}>Cancelar</Button>
             <Button onClick={handleSaveEditTx} disabled={updateTx.isPending} style={{ backgroundColor: currentCard?.color }} className="text-white">
-              Salvar alteraÃ§Ãµes
+              Salvar alterações
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1391,6 +1562,89 @@ export default function CreditCardsPage() {
               disabled={togglePaid.isPending || !payItemAccountId}
             >
               <Check className="w-4 h-4" /> Confirmar e debitar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Edit Card Dialog ───────────────────────────────────────── */}
+      <Dialog open={!!editingCard} onOpenChange={(o) => !o && setEditingCard(null)}>
+        <DialogContent className="max-h-[92dvh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Editar cartão</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>Nome do cartão</Label><Input value={editCardForm.name} onChange={(e) => setEditCardForm(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Nubank, Bradesco..." /></div>
+            <div>
+              <Label>Cor (cartões sem bandeira conhecida)</Label>
+              <div className="flex gap-2 mt-2 flex-wrap">
+                {CARD_COLORS.map(c => (
+                  <button key={c} type="button" onClick={() => setEditCardForm(p => ({ ...p, color: c }))}
+                    className={`w-8 h-8 rounded-full transition-all border-2 ${editCardForm.color === c ? 'ring-2 ring-offset-2 ring-primary scale-110 border-white' : 'border-transparent'}`}
+                    style={{ backgroundColor: c }} />
+                ))}
+              </div>
+              <div className="mt-3 flex items-center justify-between rounded-xl p-3 text-white text-xs font-medium" style={{ background: cardGradient(resolveAccountBrand(editCardForm.name, editCardForm.color).color) }}>
+                <span>{editCardForm.name || 'Prévia'} · Dia {editCardForm.closing_day}/{editCardForm.due_day}</span>
+                {resolveAccountBrand(editCardForm.name).logoUrl && (
+                  <span className="flex h-6 items-center rounded bg-white px-1.5">
+                    <img src={resolveAccountBrand(editCardForm.name).logoUrl} alt="" className="h-3.5 max-w-[44px] object-contain" />
+                  </span>
+                )}
+              </div>
+            </div>
+            <div><Label>Limite (R$)</Label><Input type="number" value={editCardForm.credit_limit} onChange={(e) => setEditCardForm(p => ({ ...p, credit_limit: e.target.value }))} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Dia de fechamento</Label><Input type="number" min={1} max={31} value={editCardForm.closing_day} onChange={(e) => setEditCardForm(p => ({ ...p, closing_day: e.target.value }))} /></div>
+              <div><Label>Dia de vencimento</Label><Input type="number" min={1} max={31} value={editCardForm.due_day} onChange={(e) => setEditCardForm(p => ({ ...p, due_day: e.target.value }))} /></div>
+            </div>
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
+              <Label className="flex items-center gap-1.5 text-primary"><Wallet className="w-3.5 h-3.5" /> Conta de pagamento padrão</Label>
+              <Select value={editCardForm.payment_account_id || '__none__'} onValueChange={(v) => setEditCardForm(p => ({ ...p, payment_account_id: v === '__none__' ? '' : v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione a conta..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Sem conta padrão</SelectItem>
+                  {accounts.filter(a => !a.archived).map(a => (
+                    <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">Compras neste cartão debitam automaticamente desta conta.</p>
+            </div>
+          </div>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+            <Button
+              variant="ghost"
+              onClick={() => { if (editingCard) setConfirmDeleteCard(editingCard); }}
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive gap-1.5"
+            >
+              <Trash2 className="w-4 h-4" /> Excluir cartão
+            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setEditingCard(null)}>Cancelar</Button>
+              <Button onClick={handleSaveEditCard} disabled={updateCard.isPending}>Salvar</Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Confirm Delete Card Dialog ─────────────────────────────── */}
+      <Dialog open={!!confirmDeleteCard} onOpenChange={(o) => !o && setConfirmDeleteCard(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Excluir cartão?</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3">
+              <Trash2 className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">{confirmDeleteCard?.name}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                  O cartão será arquivado e deixará de aparecer na lista. As compras e o histórico de faturas são preservados (não somem do saldo). Você pode recriar o cartão depois se precisar.
+                </p>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDeleteCard(null)}>Cancelar</Button>
+            <Button onClick={handleDeleteCard} disabled={deleteCard.isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-1.5">
+              <Trash2 className="w-4 h-4" /> Excluir
             </Button>
           </DialogFooter>
         </DialogContent>

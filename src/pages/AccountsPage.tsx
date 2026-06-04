@@ -4,11 +4,11 @@ import { useInvestmentTransactions } from '@/hooks/useInvestments';
 import { useAccumulatedBalance } from '@/hooks/useAccumulatedBalance';
 import { formatCurrency, getMonthYear } from '@/lib/format';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Landmark, TrendingUp, TrendingDown, Wallet, Info, Pencil, ChevronDown, ChevronUp, AlertTriangle, Search } from 'lucide-react';
+import { Plus, Landmark, TrendingUp, TrendingDown, Wallet, Info, Pencil, Trash2, ChevronDown, ChevronUp, AlertTriangle, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { accountBrandFromRow, getAccountBrandPresets, resolveAccountBrand } from '@/lib/accountBrand';
 
@@ -38,6 +38,9 @@ export default function AccountsPage() {
   const [editId, setEditId] = useState('');
   const [editName, setEditName] = useState('');
   const [editInitialBalance, setEditInitialBalance] = useState('');
+
+  // Delete confirmation state
+  const [confirmDeleteAcc, setConfirmDeleteAcc] = useState<typeof accounts[0] | null>(null);
   const BRAND_PRESETS = getAccountBrandPresets().filter((preset) =>
     ['nubank', 'alelo', 'vr', 'caju', 'itau', 'bradesco', 'santander'].includes(preset.name),
   );
@@ -96,6 +99,17 @@ export default function AccountsPage() {
     } catch (err) {
       const error = err as Error;
       toast.error(error.message);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!confirmDeleteAcc) return;
+    try {
+      await updateAccount.mutateAsync({ id: confirmDeleteAcc.id, archived: true });
+      toast.success(`Conta "${confirmDeleteAcc.name}" arquivada.`);
+      setConfirmDeleteAcc(null);
+    } catch (err) {
+      toast.error((err as Error).message);
     }
   };
 
@@ -226,6 +240,28 @@ export default function AccountsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Confirm Delete Account Dialog */}
+      <Dialog open={!!confirmDeleteAcc} onOpenChange={(o) => !o && setConfirmDeleteAcc(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Excluir conta?</DialogTitle></DialogHeader>
+          <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3">
+            <Trash2 className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">{confirmDeleteAcc?.name}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                A conta será arquivada e sai da lista. As receitas e despesas já lançadas são preservadas no histórico. Você pode recriar a conta depois se precisar.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDeleteAcc(null)}>Cancelar</Button>
+            <Button onClick={handleDeleteAccount} disabled={updateAccount.isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-1.5">
+              <Trash2 className="w-4 h-4" /> Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* ── Card de Saldo Global ── */}
       <div className="rounded-xl bg-primary/5 border border-primary/20 p-5">
         <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -286,20 +322,29 @@ export default function AccountsPage() {
 
               return (
                 <div key={acc.id} className="stat-card relative group" style={{ borderColor: `${brand.color}35`, background: `linear-gradient(135deg, ${brand.color}12, transparent 35%)` }}>
-                  <button
-                    onClick={() => openEdit(acc)}
-                    className="absolute top-3 right-3 p-2 rounded-lg bg-muted/50 text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-muted hover:text-foreground transition-all"
-                    title="Editar conta"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                  <div className="flex items-center gap-2 mb-4">
+                  <div className="absolute top-3 right-3 flex gap-1.5">
+                    <button
+                      onClick={() => openEdit(acc)}
+                      className="p-2 rounded-lg bg-muted/50 text-muted-foreground transition-all hover:bg-muted hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100"
+                      title="Editar conta"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeleteAcc(acc)}
+                      className="p-2 rounded-lg bg-muted/50 text-muted-foreground transition-all hover:bg-destructive/10 hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100"
+                      title="Excluir conta"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 mb-4 pr-16">
                     {brand.logoUrl ? (
                       <img src={brand.logoUrl} alt={acc.name} className="w-5 h-5 rounded-sm object-contain" />
                     ) : (
                       <span className="text-xl">{brand.icon}</span>
                     )}
-                    <h3 className="font-semibold">{acc.name}</h3>
+                    <h3 className="font-semibold truncate">{acc.name}</h3>
                   </div>
                   <div className="space-y-3">
                     <div className="flex justify-between text-sm">
