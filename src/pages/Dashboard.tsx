@@ -38,7 +38,6 @@ import TopCategoriesDelta from '@/components/dashboard/TopCategoriesDelta';
 import RecurringExpenses from '@/components/dashboard/RecurringExpenses';
 import AnomalyAlerts from '@/components/dashboard/AnomalyAlerts';
 import PixCounters from '@/components/dashboard/PixCounters';
-import StickySummaryBar from '@/components/dashboard/StickySummaryBar';
 import SixMonthStack from '@/components/dashboard/SixMonthStack';
 import SectionHeader from '@/components/dashboard/SectionHeader';
 import DailyFlowChart from '@/components/dashboard/DailyFlowChart';
@@ -959,14 +958,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-3 sm:space-y-4 pb-16 sm:pb-10 animate-fade-in w-full max-w-full overflow-x-hidden">
-      <ErrorBoundary fallback={null} label="StickyBar">
-        <StickySummaryBar
-          balance={balance}
-          perDayAllowance={allowance.todayAllowanceRemaining ?? allowance.perDayAllowance}
-          monthBudgetSet={monthPace.totalBudget > 0 || allowance.perDayAllowance > 0}
-          maskCurrency={maskCurrency}
-        />
-      </ErrorBoundary>
 
       <section className="relative overflow-hidden rounded-2xl border border-border/60 dark:border-white/10 bg-card dark:bg-[#070b12] p-4 shadow-lg shadow-black/5 dark:shadow-xl dark:shadow-black/30 sm:rounded-3xl sm:p-5">
         <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-primary/14 blur-3xl" />

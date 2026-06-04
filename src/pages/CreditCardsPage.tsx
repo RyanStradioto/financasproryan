@@ -866,7 +866,7 @@ export default function CreditCardsPage() {
                       type="button"
                       onClick={() => setSelectedCard(card.id)}
                       className={cn(
-                        'group relative h-[88px] w-[200px] sm:h-[92px] sm:w-[230px] overflow-hidden rounded-2xl border p-3 sm:p-4 text-left transition-all',
+                        'group relative h-[100px] w-[210px] sm:h-[104px] sm:w-[230px] overflow-hidden rounded-2xl border p-3 sm:p-4 text-left transition-all',
                         isSelected
                           ? 'border-2 shadow-xl'
                           : 'border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.035] hover:bg-muted/70 dark:hover:bg-white/[0.06]',
@@ -889,7 +889,7 @@ export default function CreditCardsPage() {
                             </span>
                             <div className="min-w-0">
                               <p className="truncate text-sm font-black text-foreground">{card.name}</p>
-                              <p className="text-[11px] font-semibold text-muted-foreground">{cardUsage.toFixed(0)}% comprometido</p>
+                              <p className="truncate whitespace-nowrap text-[11px] font-semibold text-muted-foreground">{cardUsage.toFixed(0)}% comprometido</p>
                             </div>
                           </div>
                           {isSelected && <Check className="h-4 w-4 shrink-0" style={{ color: brand.color }} />}
@@ -912,7 +912,7 @@ export default function CreditCardsPage() {
                 <button
                   type="button"
                   onClick={() => setShowNewCard(true)}
-                  className="flex h-[88px] w-[120px] sm:h-[92px] shrink-0 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-border/60 dark:border-white/15 text-muted-foreground transition-all hover:border-primary/50 hover:text-primary"
+                  className="flex h-[100px] w-[120px] sm:h-[104px] shrink-0 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-border/60 dark:border-white/15 text-muted-foreground transition-all hover:border-primary/50 hover:text-primary"
                 >
                   <Plus className="h-5 w-5" />
                   <span className="text-xs font-bold">Novo cartão</span>
