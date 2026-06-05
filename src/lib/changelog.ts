@@ -26,7 +26,7 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    id: 1,
+    id: 2,
     version: 'Junho 2026',
     date: '2026-06-04',
     items: [
