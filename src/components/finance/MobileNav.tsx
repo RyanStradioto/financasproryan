@@ -21,6 +21,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/hooks/useAuth';
+import { useFeedbackUnreadCount } from '@/hooks/useFeedback';
 import { isAdminEmail } from '@/lib/admin';
 
 const links = [
@@ -52,6 +53,7 @@ function isActive(pathname: string, linkTo: string) {
 export default function MobileNav() {
   const location = useLocation();
   const { user } = useAuth();
+  const feedbackUnread = useFeedbackUnreadCount();
   const visibleMoreLinks = isAdminEmail(user?.email) ? [...moreLinks, adminLink] : moreLinks;
   const moreActive = visibleMoreLinks.some((link) => isActive(location.pathname, link.to));
 
@@ -89,8 +91,11 @@ export default function MobileNav() {
               )}
             >
               {moreActive && <div className="absolute -top-0.5 w-8 h-0.5 rounded-full bg-primary" />}
-              <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center transition-all', moreActive ? 'bg-primary/10 scale-105' : '')}>
+              <div className={cn('relative w-8 h-8 rounded-xl flex items-center justify-center transition-all', moreActive ? 'bg-primary/10 scale-105' : '')}>
                 <MoreHorizontal className="w-[18px] h-[18px]" />
+                {feedbackUnread > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-primary ring-2 ring-card" />
+                )}
               </div>
               <span>Mais</span>
             </button>
@@ -114,6 +119,11 @@ export default function MobileNav() {
                     >
                       <Icon className="h-4 w-4 shrink-0" />
                       <span className="truncate">{label}</span>
+                      {to === '/feedback' && feedbackUnread > 0 && (
+                        <span className="ml-auto shrink-0 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground min-w-[18px] text-center">
+                          {feedbackUnread}
+                        </span>
+                      )}
                     </NavLink>
                   </PopoverClose>
                 );

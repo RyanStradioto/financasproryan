@@ -7,6 +7,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { useTrashCount } from '@/hooks/useTrash';
+import { useFeedbackUnreadCount } from '@/hooks/useFeedback';
 import { cn } from '@/lib/utils';
 import { isAdminEmail } from '@/lib/admin';
 import { useSensitiveData } from './SensitiveData';
@@ -48,6 +49,7 @@ export default function AppSidebar() {
   const { isVisible, toggleVisibility } = useSensitiveData();
   const location = useLocation();
   const trashCount = useTrashCount();
+  const feedbackUnread = useFeedbackUnreadCount();
 
   const renderLink = ({ to, icon: Icon, label, accent }: LinkItem) => {
     const active = isLinkActive(location.pathname, to);
@@ -89,7 +91,12 @@ export default function AppSidebar() {
             {trashCount}
           </span>
         )}
-        {active && !(to === '/lixeira' && trashCount > 0) && (
+        {to === '/feedback' && feedbackUnread > 0 && (
+          <span className="text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-bold min-w-[18px] text-center shadow-sm shadow-primary/30">
+            {feedbackUnread}
+          </span>
+        )}
+        {active && !(to === '/lixeira' && trashCount > 0) && !(to === '/feedback' && feedbackUnread > 0) && (
           <ChevronRight className="w-3.5 h-3.5 opacity-50" />
         )}
       </NavLink>

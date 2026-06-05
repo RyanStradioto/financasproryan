@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { useSubmitFeedback, useMyFeedback, type FeedbackType, type FeedbackStatus, type FeedbackPriority } from '@/hooks/useFeedback';
+import { useEffect, useRef, useState } from 'react';
+import { useSubmitFeedback, useMyFeedback, useFeedbackUnread, type FeedbackType, type FeedbackStatus, type FeedbackPriority } from '@/hooks/useFeedback';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bug, Lightbulb, Send, CheckCircle2, Sparkles, MessageSquarePlus, Clock, MapPin, Plus } from 'lucide-react';
+import { Bug, Lightbulb, Send, Sparkles, MessageSquarePlus, Clock, MapPin, Plus, CalendarClock, Wrench, Rocket, XCircle, Reply, BellRing, type LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/format';
@@ -16,17 +16,49 @@ const APP_PAGES = [
   'Planejamento', 'Importar', 'Configurações', 'Lixeira', 'Geral / app inteiro',
 ];
 
-const STATUS_META: Record<FeedbackStatus, { label: string; cls: string }> = {
-  pending:     { label: 'Em análise',        cls: 'bg-muted text-muted-foreground border-border' },
-  planned:     { label: 'Planejado',         cls: 'bg-info/10 text-info border-info/30' },
-  in_progress: { label: 'Em desenvolvimento', cls: 'bg-warning/10 text-warning border-warning/30' },
-  done:        { label: 'Implementado',      cls: 'bg-income/10 text-income border-income/30' },
-  discarded:   { label: 'Descartado',        cls: 'bg-expense/10 text-expense border-expense/30' },
+const STATUS_DISPLAY: Record<FeedbackStatus, { label: string; msg: string; cls: string; Icon: LucideIcon }> = {
+  pending: {
+    label: 'Em análise', Icon: Clock,
+    msg: 'Recebemos sua solicitação e vamos avaliar em breve.',
+    cls: 'bg-muted text-muted-foreground border-border',
+  },
+  planned: {
+    label: 'Planejado', Icon: CalendarClock,
+    msg: 'Boa ideia! Isso entrou no nosso planejamento.',
+    cls: 'bg-info/10 text-info border-info/30',
+  },
+  in_progress: {
+    label: 'Em desenvolvimento', Icon: Wrench,
+    msg: 'Estamos trabalhando nisso agora. 🚧',
+    cls: 'bg-warning/10 text-warning border-warning/30',
+  },
+  done: {
+    label: 'Implementado', Icon: Rocket,
+    msg: 'Pronto! Isso já está disponível no app. 🎉',
+    cls: 'bg-income/10 text-income border-income/30',
+  },
+  discarded: {
+    label: 'Descartado', Icon: XCircle,
+    msg: 'Por ora não vamos seguir com essa — confira o motivo abaixo.',
+    cls: 'bg-expense/10 text-expense border-expense/30',
+  },
 };
 
 export default function FeedbackPage() {
   const submit = useSubmitFeedback();
   const { data: mine = [] } = useMyFeedback();
+  const { unreadIds, markAllSeen } = useFeedbackUnread();
+
+  // Congela quais itens estão "atualizados" ao abrir a página (pra manter o
+  // destaque durante a visita) e marca tudo como visto (limpa o badge do menu).
+  const [justUpdated, setJustUpdated] = useState<Set<string>>(new Set());
+  const markedRef = useRef(false);
+  useEffect(() => {
+    if (mine.length === 0 || markedRef.current) return;
+    markedRef.current = true;
+    setJustUpdated(new Set(unreadIds));
+    markAllSeen();
+  }, [mine, unreadIds, markAllSeen]);
 
   const [type, setType] = useState<FeedbackType>('feature');
   const [title, setTitle] = useState('');
@@ -188,6 +220,11 @@ export default function FeedbackPage() {
         <div className="stat-card">
           <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold">
             <Clock className="h-4 w-4 text-primary" /> Minhas solicitações
+            {justUpdated.size > 0 && (
+              <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                <BellRing className="h-3 w-3" /> {justUpdated.size} nova{justUpdated.size > 1 ? 's' : ''}
+              </span>
+            )}
             <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">{mine.length}</span>
           </h3>
           {mine.length === 0 ? (
@@ -197,30 +234,61 @@ export default function FeedbackPage() {
               <p className="text-xs">Suas solicitações e o status delas aparecem aqui.</p>
             </div>
           ) : (
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               {mine.map((f) => {
-                const st = STATUS_META[f.status];
+                const st = STATUS_DISPLAY[f.status];
+                const isNew = justUpdated.has(f.id);
+                const StatusIcon = st.Icon;
                 return (
-                  <div key={f.id} className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                  <div
+                    key={f.id}
+                    className={cn(
+                      'rounded-2xl border p-3.5 transition-colors',
+                      isNew ? 'border-primary/40 bg-primary/[0.04] shadow-sm' : 'border-border/60 bg-muted/20',
+                    )}
+                  >
+                    {/* Cabeçalho: tipo + título + badge de status */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex min-w-0 items-center gap-2">
-                        {f.type === 'bug' ? <Bug className="h-3.5 w-3.5 shrink-0 text-expense" /> : <Lightbulb className="h-3.5 w-3.5 shrink-0 text-primary" />}
-                        <p className="truncate text-sm font-semibold">{f.title}</p>
+                        {f.type === 'bug'
+                          ? <Bug className="h-4 w-4 shrink-0 text-expense" />
+                          : <Lightbulb className="h-4 w-4 shrink-0 text-primary" />}
+                        <p className="truncate text-sm font-bold">{f.title}</p>
+                        {isNew && (
+                          <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary-foreground">
+                            <BellRing className="h-2.5 w-2.5" /> novo
+                          </span>
+                        )}
                       </div>
-                      <span className={cn('shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold', st.cls)}>{st.label}</span>
+                      <span className={cn('flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold', st.cls)}>
+                        <StatusIcon className="h-3 w-3" /> {st.label}
+                      </span>
                     </div>
-                    {f.description && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{f.description}</p>}
-                    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
-                      {f.target_page && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{f.target_page}</span>}
-                      {f.needs_new_page && <span className="flex items-center gap-1"><Plus className="h-3 w-3" />Nova aba{f.new_page_name ? `: ${f.new_page_name}` : ''}</span>}
-                      <span>{formatDate(f.created_at.slice(0, 10))}</span>
+
+                    {f.description && <p className="mt-1.5 line-clamp-2 text-xs text-muted-foreground">{f.description}</p>}
+
+                    {/* Mensagem amigável do status atual */}
+                    <div className={cn('mt-2.5 flex items-start gap-2 rounded-xl border px-3 py-2 text-[11px] font-medium', st.cls)}>
+                      <StatusIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      <span>{st.msg}</span>
                     </div>
-                    {f.admin_note && (
-                      <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-primary/5 border border-primary/15 px-2.5 py-1.5 text-[11px] text-foreground">
-                        <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
-                        <span><b className="text-primary">Resposta:</b> {f.admin_note}</span>
+
+                    {/* Resposta escrita pelo Ryan */}
+                    {f.admin_note && f.admin_note.trim() && (
+                      <div className="mt-2 rounded-xl border border-primary/20 bg-primary/[0.06] px-3 py-2.5">
+                        <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                          <Reply className="h-3 w-3" /> Resposta do Ryan
+                        </p>
+                        <p className="mt-1 whitespace-pre-wrap text-xs text-foreground">{f.admin_note}</p>
                       </div>
                     )}
+
+                    {/* Metadados */}
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+                      {f.target_page && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{f.target_page}</span>}
+                      {f.needs_new_page && <span className="flex items-center gap-1 text-primary"><Plus className="h-3 w-3" />Nova aba{f.new_page_name ? `: ${f.new_page_name}` : ''}</span>}
+                      <span>Enviado em {formatDate(f.created_at.slice(0, 10))}</span>
+                    </div>
                   </div>
                 );
               })}

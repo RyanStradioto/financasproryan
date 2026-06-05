@@ -3,6 +3,8 @@ import AppSidebar from './AppSidebar';
 import MobileNav from './MobileNav';
 import MobileHeader from './MobileHeader';
 import UpdateNotification from './UpdateNotification';
+import WhatsNewDialog from './WhatsNewDialog';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { TutorialProvider } from './AppTutorial';
 import { SensitiveDataProvider } from './SensitiveData';
 
@@ -20,6 +22,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </div>
           <MobileNav />
           <UpdateNotification />
+          <ErrorBoundary label="WhatsNew" fallback={null}>
+            <WhatsNewDialog />
+          </ErrorBoundary>
         </div>
       </TutorialProvider>
     </SensitiveDataProvider>
