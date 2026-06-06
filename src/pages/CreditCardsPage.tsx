@@ -170,6 +170,8 @@ export default function CreditCardsPage() {
     installments: '1',
     notes: '',
   });
+  // Estorno/Reembolso mode: records a NEGATIVE transaction that credits (abate) the open fatura.
+  const [refundMode, setRefundMode] = useState(false);
 
   const currentCard = cards.find((c) => c.id === selectedCard);
   const activeCategories = categories.filter((c) => !c.archived);
@@ -547,20 +549,40 @@ export default function CreditCardsPage() {
   const handleAddTx = async () => {
     if (!selectedCard || !newTx.description || !newTx.amount) return toast.error('Preencha descrição e valor');
     try {
-      await addTx.mutateAsync({
-        credit_card_id: selectedCard,
-        description: newTx.description,
-        amount: numericAmount,
-        amount_mode: 'total',
-        date: newTx.date,
-        bill_month: newTxBillMonth,
-        category_id: newTx.category_id || null,
-        installments: parseInt(newTx.installments) || 1,
-        notes: newTx.notes || undefined,
-      });
-      const n = parseInt(newTx.installments);
-      toast.success(n > 1 ? `${n}x lançado! Primeira fatura: ${newTxBillLabel}` : `Lançado na fatura de ${newTxBillLabel}!`);
+      if (refundMode) {
+        // Estorno/Reembolso: a NEGATIVE transaction on the chosen (usually open) fatura.
+        // It abate o valor da fatura; quando a fatura for paga, o saldo é debitado de menos
+        // (o espelho negativo devolve o valor à conta), batendo com o crédito real do banco.
+        const desc = /estorno|reembolso|estorn/i.test(newTx.description) ? newTx.description : `Estorno: ${newTx.description}`;
+        await addTx.mutateAsync({
+          credit_card_id: selectedCard,
+          description: desc,
+          amount: -Math.abs(numericAmount),
+          amount_mode: 'total',
+          date: newTx.date,
+          bill_month: newTxBillMonth,
+          category_id: newTx.category_id || null,
+          installments: 1,
+          notes: `[ESTORNO]${newTx.notes ? ` ${newTx.notes}` : ''}`,
+        });
+        toast.success(`Estorno de ${fmt(Math.abs(numericAmount))} creditado na fatura de ${newTxBillLabel}!`);
+      } else {
+        await addTx.mutateAsync({
+          credit_card_id: selectedCard,
+          description: newTx.description,
+          amount: numericAmount,
+          amount_mode: 'total',
+          date: newTx.date,
+          bill_month: newTxBillMonth,
+          category_id: newTx.category_id || null,
+          installments: parseInt(newTx.installments) || 1,
+          notes: newTx.notes || undefined,
+        });
+        const n = parseInt(newTx.installments);
+        toast.success(n > 1 ? `${n}x lançado! Primeira fatura: ${newTxBillLabel}` : `Lançado na fatura de ${newTxBillLabel}!`);
+      }
       setShowNewTx(false);
+      setRefundMode(false);
       setNewTx({ description: '', amount: '', date: new Date().toISOString().split('T')[0], category_id: '', installments: '1', notes: '' });
     } catch (e) { toast.error((e as Error).message); }
   };
@@ -764,8 +786,8 @@ export default function CreditCardsPage() {
         </div>
 
         <div className="col-start-2 flex items-center justify-between gap-3 sm:col-auto sm:justify-end">
-          <span className={cn('currency text-sm font-black tabular-nums', isPaid ? 'text-emerald-600 dark:text-emerald-600 dark:text-emerald-200' : 'text-foreground')}>
-            {fmt(Number(t.amount))}
+          <span className={cn('currency text-sm font-black tabular-nums', Number(t.amount) < 0 ? 'text-income' : isPaid ? 'text-emerald-600 dark:text-emerald-600 dark:text-emerald-200' : 'text-foreground')}>
+            {Number(t.amount) < 0 ? `− ${fmt(Math.abs(Number(t.amount)))}` : fmt(Number(t.amount))}
           </span>
           <div className="flex items-center gap-1 sm:hidden">
             <button
@@ -1392,32 +1414,47 @@ export default function CreditCardsPage() {
       </Dialog>
 
       {/* ── Add Transaction Dialog ─────────────────────────────────── */}
-      <Dialog open={showNewTx} onOpenChange={setShowNewTx}>
+      <Dialog open={showNewTx} onOpenChange={(o) => { setShowNewTx(o); if (!o) setRefundMode(false); }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Nova Compra - {currentCard?.name}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{refundMode ? 'Estorno / Reembolso' : 'Nova Compra'} - {currentCard?.name}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label>Descrição</Label><Input placeholder="Ex: iFood, Academia..." value={newTx.description} onChange={(e) => setNewTx((p) => ({ ...p, description: e.target.value }))} /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Valor total (R$)</Label><Input type="number" placeholder="0,00" value={newTx.amount} onChange={(e) => setNewTx((p) => ({ ...p, amount: e.target.value }))} /></div>
-              <div>
-                <Label>Parcelas</Label>
-                <Input type="number" min={1} max={48} value={newTx.installments} onChange={(e) => setNewTx((p) => ({ ...p, installments: e.target.value }))} />
-              </div>
+            {/* Compra vs Estorno toggle */}
+            <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-muted/50 p-1">
+              <button type="button" onClick={() => setRefundMode(false)} className={cn('rounded-lg py-2 text-sm font-semibold transition-all', !refundMode ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>Compra</button>
+              <button type="button" onClick={() => setRefundMode(true)} className={cn('rounded-lg py-2 text-sm font-semibold transition-all', refundMode ? 'bg-card text-income shadow-sm' : 'text-muted-foreground hover:text-foreground')}>↩ Estorno</button>
             </div>
-            <div><Label>Data da compra</Label><Input type="date" value={newTx.date} onChange={e => setNewTx(p => ({ ...p, date: e.target.value }))} /></div>
+            {refundMode && (
+              <div className="flex items-start gap-2 rounded-xl border border-income/20 bg-income/5 p-3 text-xs leading-relaxed text-muted-foreground">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-income" />
+                <span>Use quando um valor for <strong>creditado na fatura</strong> (ex.: reembolso de uma compra devolvida). Ele <strong>abate</strong> o total da fatura escolhida — ao pagar essa fatura, o saldo é debitado de menos, batendo com o crédito real. Não entra como receita na conta.</span>
+              </div>
+            )}
+            <div><Label>Descrição</Label><Input placeholder={refundMode ? 'Ex: Reembolso presente Mercado Livre' : 'Ex: iFood, Academia...'} value={newTx.description} onChange={(e) => setNewTx((p) => ({ ...p, description: e.target.value }))} /></div>
+            <div className={refundMode ? '' : 'grid grid-cols-2 gap-3'}>
+              <div><Label>{refundMode ? 'Valor do estorno (R$)' : 'Valor total (R$)'}</Label><Input type="number" placeholder="0,00" value={newTx.amount} onChange={(e) => setNewTx((p) => ({ ...p, amount: e.target.value }))} /></div>
+              {!refundMode && (
+                <div>
+                  <Label>Parcelas</Label>
+                  <Input type="number" min={1} max={48} value={newTx.installments} onChange={(e) => setNewTx((p) => ({ ...p, installments: e.target.value }))} />
+                </div>
+              )}
+            </div>
+            <div><Label>{refundMode ? 'Data do crédito' : 'Data da compra'}</Label><Input type="date" value={newTx.date} onChange={e => setNewTx(p => ({ ...p, date: e.target.value }))} /></div>
 
             {/* Auto-calculated bill month chip */}
             <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium border" style={{ backgroundColor: `${currentCard?.color}10`, borderColor: `${currentCard?.color}30`, color: currentCard?.color }}>
               <CreditCard className="w-3.5 h-3.5 shrink-0" />
               <span>
-                {parseInt(newTx.installments) > 1
-                  ? `${newTx.installments}x · Primeira fatura: `
-                  : 'Entrará na fatura de '}
+                {refundMode
+                  ? 'Crédito na fatura de '
+                  : parseInt(newTx.installments) > 1
+                    ? `${newTx.installments}x · Primeira fatura: `
+                    : 'Entrará na fatura de '}
                 <strong className="capitalize">{newTxBillLabel}</strong>
               </span>
             </div>
 
-            {parseInt(newTx.installments) > 1 && newTx.amount && (
+            {!refundMode && parseInt(newTx.installments) > 1 && newTx.amount && (
               <div className="rounded-xl bg-muted/50 border border-border px-3 py-2 text-xs text-muted-foreground flex items-center gap-2">
                 <CalendarDays className="w-3.5 h-3.5 shrink-0" />
                 {newTx.installments}x de {fmt(parseFloat(newTx.amount) / parseInt(newTx.installments))} por mês
@@ -1437,8 +1474,8 @@ export default function CreditCardsPage() {
             <div><Label>Notas</Label><Input placeholder="Opcional..." value={newTx.notes} onChange={(e) => setNewTx((p) => ({ ...p, notes: e.target.value }))} /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNewTx(false)}>Cancelar</Button>
-            <Button onClick={handleAddTx} disabled={addTx.isPending} style={{ backgroundColor: currentCard?.color }} className="text-white">Registrar</Button>
+            <Button variant="outline" onClick={() => { setShowNewTx(false); setRefundMode(false); }}>Cancelar</Button>
+            <Button onClick={handleAddTx} disabled={addTx.isPending} style={refundMode ? undefined : { backgroundColor: currentCard?.color }} className={refundMode ? 'bg-income text-white hover:bg-income/90' : 'text-white'}>{refundMode ? 'Lançar estorno' : 'Registrar'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
