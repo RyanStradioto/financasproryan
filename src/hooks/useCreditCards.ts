@@ -208,6 +208,7 @@ export function useAddCreditCardTransaction() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cc-transactions'] });
+      qc.invalidateQueries({ queryKey: ['cc-transactions-month'] });
       qc.invalidateQueries({ queryKey: ['cc-all-future'] });
       qc.invalidateQueries({ queryKey: ['expenses'] });
       qc.invalidateQueries({ queryKey: ['accumulated-balance'] });
@@ -256,6 +257,7 @@ export function useToggleCCTransactionPaid() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cc-transactions'] });
+      qc.invalidateQueries({ queryKey: ['cc-transactions-month'] });
       qc.invalidateQueries({ queryKey: ['cc-all-future'] });
       qc.invalidateQueries({ queryKey: ['expenses'] });
       qc.invalidateQueries({ queryKey: ['accumulated-balance'] });
@@ -293,6 +295,7 @@ export function useDeleteCCTransaction() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cc-transactions'] });
+      qc.invalidateQueries({ queryKey: ['cc-transactions-month'] });
       qc.invalidateQueries({ queryKey: ['cc-all-future'] });
       qc.invalidateQueries({ queryKey: ['expenses'] });
       qc.invalidateQueries({ queryKey: ['trash'] });
@@ -355,6 +358,7 @@ export function useUpdateCCTransaction() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cc-transactions'] });
+      qc.invalidateQueries({ queryKey: ['cc-transactions-month'] });
       qc.invalidateQueries({ queryKey: ['cc-all-future'] });
       qc.invalidateQueries({ queryKey: ['expenses'] });
       qc.invalidateQueries({ queryKey: ['accumulated-balance'] });

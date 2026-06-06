@@ -27,6 +27,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { buildDescriptionAmountKey, buildExpenseMatchKey, detectCreditCardExpense, parseStructuredCardMarker } from '@/lib/paymentMethod';
 import { accountBrandFromRow, resolveAccountBrand } from '@/lib/accountBrand';
+import { notInvestmentTransfer } from '@/lib/investmentMarker';
 import {
   computeAllowance, computeBurnRate, detectAnomalies, detectRecurring,
   computeCategoryDeltas, aggregatePixCounterparties, buildExecutiveSummary,
@@ -97,19 +98,37 @@ export default function Dashboard() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   }, [month]);
 
-  const { data: income = [] } = useIncome(month);
-  const { data: expenses = [] } = useExpenses(month);
-  const { data: allIncome = [] } = useIncome();
-  const { data: allExpenses = [] } = useExpenses();
-  const { data: prevIncome = [] } = useIncome(prevMonth);
-  const { data: prevExpenses = [] } = useExpenses(prevMonth);
+  const { data: incomeRaw = [] } = useIncome(month);
+  const { data: expensesRaw = [] } = useExpenses(month);
+  const { data: allIncomeRaw = [] } = useIncome();
+  const { data: allExpensesRaw = [] } = useExpenses();
+  const { data: prevIncomeRaw = [] } = useIncome(prevMonth);
+  const { data: prevExpensesRaw = [] } = useExpenses(prevMonth);
+
+  // Aportes/resgates são espelhados como linhas de despesa/receita marcadas com
+  // [INVESTIMENTO]. Elas movem patrimônio entre conta e investimento — NÃO são
+  // gasto/receita, então saem de TODAS as agregações do dashboard. (O saldo via
+  // useAccumulatedBalance as mantém, pois o dinheiro realmente saiu/entrou na conta.)
+  const income = useMemo(() => incomeRaw.filter(notInvestmentTransfer), [incomeRaw]);
+  const expenses = useMemo(() => expensesRaw.filter(notInvestmentTransfer), [expensesRaw]);
+  const allIncome = useMemo(() => allIncomeRaw.filter(notInvestmentTransfer), [allIncomeRaw]);
+  const allExpenses = useMemo(() => allExpensesRaw.filter(notInvestmentTransfer), [allExpensesRaw]);
+  const prevIncome = useMemo(() => prevIncomeRaw.filter(notInvestmentTransfer), [prevIncomeRaw]);
+  const prevExpenses = useMemo(() => prevExpensesRaw.filter(notInvestmentTransfer), [prevExpensesRaw]);
   const { data: prevCCTransactions = [] } = useCCTransactionsForMonth(prevMonth);
   const { data: categories = [] } = useCategories();
   const { data: accounts = [] } = useAccounts();
   const { data: categoryAccountBudgets = [] } = useCategoryAccountBudgets();
   const { data: creditCards = [] } = useCreditCards();
   const { data: creditTransactions = [] } = useCreditCardTransactions();
-  const { investmentTotal } = useNetWorth();
+  const {
+    investmentTotal,
+    totalInvested: investedTotal,
+    totalReturn: investReturn,
+    returnPct: investReturnPct,
+    count: investCount,
+    investments: investmentList,
+  } = useNetWorth();
   const { data: accumulatedData } = useAccumulatedBalance(month);
   const accumulatedBalance = accumulatedData?.total || 0;
   const accumulatedByAccount = accumulatedData?.byAccount || {};
@@ -1207,6 +1226,87 @@ export default function Dashboard() {
             );
           })}
         </div>
+      </section>
+
+      {/* ─── Patrimônio investido ─────────────────────────────────────────── */}
+      <section className="space-y-2.5">
+        <SectionHeader
+          title="Patrimônio investido"
+          subtitle="Seus investimentos crescendo — aportes não contam como gasto."
+          icon={PiggyBank}
+          iconColor="text-primary"
+          action={{ label: 'Gerenciar', href: '/investimentos' }}
+        />
+        {investCount === 0 ? (
+          <PremiumCard className="p-5">
+            <button
+              onClick={() => { window.location.href = '/investimentos'; }}
+              className="flex w-full items-center gap-4 text-left"
+            >
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <PiggyBank className="h-6 w-6" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-black text-foreground">Cadastre suas caixinhas e investimentos</span>
+                <span className="mt-0.5 block text-xs font-medium text-muted-foreground">Lance o total que você tem hoje em cada caixinha. Depois é só aportar e ver crescer.</span>
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </button>
+          </PremiumCard>
+        ) : (
+          <PremiumCard className="relative overflow-hidden p-4 sm:p-5">
+            <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
+            <div className="relative grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] sm:items-center">
+              {/* Headline numbers */}
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total investido (valor atual)</p>
+                  <p className="mt-1 text-2xl sm:text-3xl font-black text-foreground currency leading-none">{maskCurrency(formatCurrency(investmentTotal))}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{investCount} ativo{investCount !== 1 ? 's' : ''}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-2.5 py-1 text-xs font-semibold">
+                    <span className="text-muted-foreground">Aportado:</span>
+                    <span className="text-foreground">{maskCurrency(formatCurrency(investedTotal))}</span>
+                  </span>
+                  <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold', investReturn >= 0 ? 'border-income/30 bg-income/10 text-income' : 'border-expense/30 bg-expense/10 text-expense')}>
+                    {investReturn >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    {investReturn >= 0 ? '+' : ''}{maskCurrency(formatCurrency(investReturn))}
+                    {isVisible && investedTotal > 0 && <span className="opacity-80">({investReturnPct >= 0 ? '+' : ''}{investReturnPct.toFixed(1)}%)</span>}
+                  </span>
+                </div>
+              </div>
+              {/* Top investments allocation */}
+              <div className="space-y-2">
+                {[...investmentList]
+                  .sort((a, b) => Number(b.current_value) - Number(a.current_value))
+                  .slice(0, 4)
+                  .map((inv) => {
+                    const val = Number(inv.current_value);
+                    const pct = investmentTotal > 0 ? (val / investmentTotal) * 100 : 0;
+                    const color = inv.color || 'hsl(var(--primary))';
+                    return (
+                      <div key={inv.id} className="space-y-1">
+                        <div className="flex items-center justify-between gap-2 text-xs">
+                          <span className="flex min-w-0 items-center gap-1.5">
+                            <span className="text-sm">{inv.icon}</span>
+                            <span className="truncate font-medium text-foreground">{inv.name}</span>
+                          </span>
+                          <span className="shrink-0 font-semibold tabular-nums">{maskCurrency(formatCurrency(val))}</span>
+                        </div>
+                        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                          <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                {investmentList.length > 4 && (
+                  <p className="pt-0.5 text-[11px] text-muted-foreground">+{investmentList.length - 4} outros ativos</p>
+                )}
+              </div>
+            </div>
+          </PremiumCard>
+        )}
       </section>
 
       <section className="grid items-start gap-4 lg:grid-cols-2">

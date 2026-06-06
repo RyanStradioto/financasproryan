@@ -3,6 +3,7 @@ import { useIncome, useExpenses, useCategories, useAccounts } from '@/hooks/useF
 import { useCreditCardTransactions, useCreditCards } from '@/hooks/useCreditCards';
 import { formatCurrency, getMonthLabel } from '@/lib/format';
 import { resolveAccountBrand } from '@/lib/accountBrand';
+import { isInvestmentTransfer } from '@/lib/investmentMarker';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -127,6 +128,7 @@ export default function ReportPage() {
   const incomeInRange = allIncome.filter(i => {
     const m = i.date?.substring(0, 7);
     if (!m || m < startMonth || m > endMonth) return false;
+    if (isInvestmentTransfer(i.notes)) return false; // resgates são transferências patrimoniais, não receita real
     return accountId === '__all__' || i.account_id === accountId;
   });
 
@@ -142,7 +144,7 @@ export default function ReportPage() {
     const m = e.date?.substring(0, 7);
     if (!m || m < startMonth || m > endMonth) return false;
     if (accountId !== '__all__' && e.account_id !== accountId) return false;
-    return !isCCMirror(e.notes) && !isBillPayment(e.notes);
+    return !isCCMirror(e.notes) && !isBillPayment(e.notes) && !isInvestmentTransfer(e.notes);
   });
 
   const ccTransactionsInRange = allCCTransactions.filter(t => {
@@ -175,10 +177,10 @@ export default function ReportPage() {
     if (!prevPeriod) return { income: 0, expenses: 0, balance: 0 };
     const inRange = (m?: string) => !!m && m >= prevPeriod.startMonth && m <= prevPeriod.endMonth;
     const prevIncome = allIncome
-      .filter(i => i.status === 'concluido' && inRange(i.date?.substring(0, 7)) && (accountId === '__all__' || i.account_id === accountId))
+      .filter(i => i.status === 'concluido' && inRange(i.date?.substring(0, 7)) && (accountId === '__all__' || i.account_id === accountId) && !isInvestmentTransfer(i.notes))
       .reduce((s, i) => s + Number(i.amount), 0);
     const prevExpNonCC = allExpenses
-      .filter(e => e.status === 'concluido' && inRange(e.date?.substring(0, 7)) && (accountId === '__all__' || e.account_id === accountId) && !isCCMirror(e.notes) && !isBillPayment(e.notes))
+      .filter(e => e.status === 'concluido' && inRange(e.date?.substring(0, 7)) && (accountId === '__all__' || e.account_id === accountId) && !isCCMirror(e.notes) && !isBillPayment(e.notes) && !isInvestmentTransfer(e.notes))
       .reduce((s, e) => s + Number(e.amount), 0);
     const prevCC = allCCTransactions
       .filter(t => inRange(t.bill_month) && (!matchingCardIds || matchingCardIds.includes(t.credit_card_id)))

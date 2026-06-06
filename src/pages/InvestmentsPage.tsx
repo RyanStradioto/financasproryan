@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
   Plus, TrendingUp, BarChart3, Pencil, ChevronDown, ChevronUp,
   Image as ImageIcon, Trash2, ArrowUpRight, ArrowDownRight,
-  Wallet, Target, Sparkles,
+  Wallet, Target, Sparkles, Percent, Receipt,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -16,7 +15,9 @@ import {
   useUpdateInvestment,
   useDeleteInvestment,
   useInvestmentTransactions,
+  useAddInvestmentTransaction,
 } from '@/hooks/useInvestments';
+import { useAccounts } from '@/hooks/useFinanceData';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -68,21 +69,56 @@ const project = (current: number, annualRate: number, months: number): number =>
 const liquidityBadge = (liq: string | null) =>
   LIQUIDITY_OPTIONS.find(o => o.value === liq)?.badge ?? 'D+0';
 
+const todayStr = () => new Date().toISOString().slice(0, 10);
+
+// ─── Movement types (aporte / resgate / rendimento / taxa / IR) ───────────────
+type MoveType = 'aporte' | 'resgate' | 'rendimento' | 'taxa' | 'ir';
+
+const MOVE_TYPES: {
+  value: MoveType;
+  label: string;
+  verb: string;
+  help: string;
+  needsAccount: boolean;
+  accountLabel: string;
+  tone: 'expense' | 'income' | 'warning';
+}[] = [
+  { value: 'aporte',     label: 'Aporte',     verb: 'Aportar',   help: 'O dinheiro sai da conta e entra no investimento. Baixa do saldo, mas NÃO é um gasto.', needsAccount: true,  accountLabel: 'Conta de origem',  tone: 'expense' },
+  { value: 'resgate',    label: 'Resgate',    verb: 'Resgatar',  help: 'O dinheiro volta do investimento para a conta. Entra no saldo, mas NÃO é uma receita.', needsAccount: true,  accountLabel: 'Conta de destino', tone: 'income' },
+  { value: 'rendimento', label: 'Rendimento', verb: 'Lançar',    help: 'O investimento valorizou. Aumenta o patrimônio sem mexer na conta.', needsAccount: false, accountLabel: '', tone: 'income' },
+  { value: 'taxa',       label: 'Taxa',       verb: 'Lançar',    help: 'Taxa/custo descontado do investimento (não mexe na conta).', needsAccount: false, accountLabel: '', tone: 'warning' },
+  { value: 'ir',         label: 'IR',         verb: 'Lançar',    help: 'Imposto de renda descontado do investimento (não mexe na conta).', needsAccount: false, accountLabel: '', tone: 'warning' },
+];
+
+const MOVE_ICONS: Record<MoveType, typeof ArrowUpRight> = {
+  aporte: ArrowUpRight,
+  resgate: ArrowDownRight,
+  rendimento: TrendingUp,
+  taxa: Percent,
+  ir: Receipt,
+};
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function InvestmentsPage() {
   const { maskCurrency, maskText, isVisible } = useSensitiveData();
   const { data: investments = [] } = useInvestments();
   const { data: allTransactions = [] } = useInvestmentTransactions();
+  const { data: accounts = [] } = useAccounts();
   const addInvestment   = useAddInvestment();
   const updateInvestment = useUpdateInvestment();
   const deleteInvestment = useDeleteInvestment();
+  const addTransaction  = useAddInvestmentTransaction();
 
   // ── dialog states ──────────────────────────────────────────────────────────
   const [showNewInvestment, setShowNewInvestment] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
   const [selectedInvestment, setSelectedInvestment] = useState<string | null>(null);
   const [expandedProjections, setExpandedProjections] = useState<string | null>(null);
+
+  // ── movement dialog (aporte/resgate/rendimento/taxa/ir) ─────────────────────
+  const [movement, setMovement] = useState<{ investmentId: string; type: MoveType } | null>(null);
+  const [moveForm, setMoveForm] = useState({ amount: '', accountId: '', date: todayStr(), description: '' });
 
   // ── new investment form ────────────────────────────────────────────────────
   const [newInv, setNewInv] = useState({
@@ -179,6 +215,37 @@ export default function InvestmentsPage() {
     }
   };
 
+  // ── movement (aporte/resgate/rendimento/taxa/ir) ─────────────────────────────
+  const openMovement = (investmentId: string, type: MoveType) => {
+    if (!investmentId) return toast.error('Cadastre um ativo primeiro');
+    const firstAccount = accounts.find(a => !a.archived);
+    setMoveForm({ amount: '', accountId: firstAccount?.id ?? '', date: todayStr(), description: '' });
+    setMovement({ investmentId, type });
+  };
+
+  const handleMovement = async () => {
+    if (!movement) return;
+    const cfg = MOVE_TYPES.find(t => t.value === movement.type)!;
+    const amount = parseFloat(moveForm.amount.replace(',', '.'));
+    if (!amount || amount <= 0) return toast.error('Informe um valor válido');
+    if (cfg.needsAccount && !moveForm.accountId) return toast.error(`Selecione a ${cfg.accountLabel.toLowerCase()}`);
+    const inv = investments.find(i => i.id === movement.investmentId);
+    try {
+      await addTransaction.mutateAsync({
+        investment_id: movement.investmentId,
+        type: movement.type,
+        amount,
+        date: moveForm.date || todayStr(),
+        account_id: cfg.needsAccount ? (moveForm.accountId || null) : null,
+        description: moveForm.description.trim() || cfg.label,
+      });
+      toast.success(`${cfg.label} de ${formatCurrency(amount)}${inv ? ` em ${inv.name}` : ''} registrado!`);
+      setMovement(null);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
   // ── render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -250,24 +317,26 @@ export default function InvestmentsPage() {
           <div className="min-w-0">
             <p className="text-sm font-semibold">Como registrar movimentações?</p>
             <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-              Aportes são <strong>despesas</strong> vinculadas ao ativo. Resgates são <strong>receitas</strong> vinculadas ao ativo.
-              O saldo da conta e o valor do investimento são atualizados automaticamente.
+              Use <strong>Aportar</strong> e <strong>Resgatar</strong> direto no ativo. O aporte baixa do saldo da conta
+              (mas <strong>não conta como gasto</strong>) e o resgate volta pra conta. O valor do investimento é atualizado automaticamente.
             </p>
           </div>
         </div>
         <div className="flex gap-2 shrink-0 sm:flex-col lg:flex-row">
-          <Link
-            to="/despesas"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-expense/10 text-expense text-xs font-semibold hover:bg-expense/20 transition-colors whitespace-nowrap"
+          <button
+            onClick={() => openMovement(investments[0]?.id ?? '', 'aporte')}
+            disabled={investments.length === 0}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-expense/10 text-expense text-xs font-semibold hover:bg-expense/20 transition-colors whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <ArrowUpRight className="w-3.5 h-3.5" /> Registrar Aporte
-          </Link>
-          <Link
-            to="/receitas"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-income/10 text-income text-xs font-semibold hover:bg-income/20 transition-colors whitespace-nowrap"
+          </button>
+          <button
+            onClick={() => openMovement(investments[0]?.id ?? '', 'resgate')}
+            disabled={investments.length === 0}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-income/10 text-income text-xs font-semibold hover:bg-income/20 transition-colors whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <ArrowDownRight className="w-3.5 h-3.5" /> Registrar Resgate
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -521,22 +590,29 @@ export default function InvestmentsPage() {
                   </div>
                 )}
 
-                {/* Quick action links */}
+                {/* Quick action buttons */}
                 <div className="flex gap-2 mt-3 pt-3 border-t border-border/40">
-                  <Link
-                    to="/despesas"
+                  <button
+                    onClick={e => { e.stopPropagation(); openMovement(inv.id, 'aporte'); }}
                     className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-expense/8 text-expense text-[11px] font-semibold hover:bg-expense/15 transition-colors"
-                    title="Registrar aporte (despesa vinculada)"
+                    title="Aportar (sai da conta, vira patrimônio)"
                   >
-                    <ArrowUpRight className="w-3 h-3" /> Aporte
-                  </Link>
-                  <Link
-                    to="/receitas"
+                    <ArrowUpRight className="w-3 h-3" /> Aportar
+                  </button>
+                  <button
+                    onClick={e => { e.stopPropagation(); openMovement(inv.id, 'resgate'); }}
                     className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-income/8 text-income text-[11px] font-semibold hover:bg-income/15 transition-colors"
-                    title="Registrar resgate (receita vinculada)"
+                    title="Resgatar (volta para a conta)"
                   >
-                    <ArrowDownRight className="w-3 h-3" /> Resgate
-                  </Link>
+                    <ArrowDownRight className="w-3 h-3" /> Resgatar
+                  </button>
+                  <button
+                    onClick={e => { e.stopPropagation(); openMovement(inv.id, 'rendimento'); }}
+                    className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-info/8 text-info text-[11px] font-semibold hover:bg-info/15 transition-colors"
+                    title="Lançar rendimento / taxa / IR"
+                  >
+                    <TrendingUp className="w-3 h-3" /> Rend.
+                  </button>
                 </div>
               </div>
             );
@@ -736,12 +812,13 @@ export default function InvestmentsPage() {
                 />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Valor atual (R$)</Label>
+                <Label className="text-xs text-muted-foreground">Valor que tenho hoje (R$)</Label>
                 <Input
                   type="number" placeholder="0,00"
                   value={newInv.current_value}
                   onChange={e => setNewInv(p => ({ ...p, current_value: e.target.value }))}
                 />
+                <p className="text-[11px] text-muted-foreground mt-1">Saldo atual da caixinha/ativo. Depois é só usar Aportar/Resgatar.</p>
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Rentabilidade (% a.a.)</Label>
@@ -766,6 +843,116 @@ export default function InvestmentsPage() {
             <Button variant="outline" onClick={() => setShowNewInvestment(false)}>Cancelar</Button>
             <Button onClick={handleNewInvestment} disabled={addInvestment.isPending}>Criar</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Movement Dialog (aporte/resgate/rendimento/taxa/ir) ──────────────── */}
+      <Dialog open={!!movement} onOpenChange={o => !o && setMovement(null)}>
+        <DialogContent className="max-h-[92dvh] overflow-y-auto">
+          {movement && (() => {
+            const cfg = MOVE_TYPES.find(t => t.value === movement.type)!;
+            const Icon = MOVE_ICONS[movement.type];
+            const inv = investments.find(i => i.id === movement.investmentId);
+            const toneClass = cfg.tone === 'expense' ? 'text-expense' : cfg.tone === 'income' ? 'text-income' : 'text-warning';
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Icon className={cn('w-5 h-5', toneClass)} />
+                    {cfg.verb}{inv ? ` · ${inv.name}` : ''}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  {/* Tipo de movimentação */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Tipo de movimentação</Label>
+                    <div className="grid grid-cols-5 gap-1.5 mt-1.5">
+                      {MOVE_TYPES.map(t => {
+                        const TIcon = MOVE_ICONS[t.value];
+                        const active = movement.type === t.value;
+                        return (
+                          <button
+                            key={t.value}
+                            type="button"
+                            onClick={() => setMovement(m => (m ? { ...m, type: t.value } : m))}
+                            className={cn(
+                              'flex flex-col items-center gap-1 rounded-lg border py-2 text-[10px] font-semibold transition-all',
+                              active ? 'border-primary bg-primary/10 text-primary' : 'border-border/60 text-muted-foreground hover:bg-muted',
+                            )}
+                          >
+                            <TIcon className="w-3.5 h-3.5" />
+                            {t.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">{cfg.help}</p>
+                  </div>
+
+                  {/* Ativo */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Investimento</Label>
+                    <Select value={movement.investmentId} onValueChange={v => setMovement(m => (m ? { ...m, investmentId: v } : m))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {investments.map(i => <SelectItem key={i.id} value={i.id}>{i.icon} {i.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Valor */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Valor (R$)</Label>
+                    <Input
+                      type="number" inputMode="decimal" step="0.01" min={0} placeholder="0,00"
+                      value={moveForm.amount}
+                      onChange={e => setMoveForm(p => ({ ...p, amount: e.target.value }))}
+                      autoFocus
+                    />
+                  </div>
+
+                  {/* Conta (apenas aporte/resgate) */}
+                  {cfg.needsAccount && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">{cfg.accountLabel}</Label>
+                      <Select value={moveForm.accountId} onValueChange={v => setMoveForm(p => ({ ...p, accountId: v }))}>
+                        <SelectTrigger><SelectValue placeholder="Selecione a conta" /></SelectTrigger>
+                        <SelectContent>
+                          {accounts.filter(a => !a.archived).map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Data */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Data</Label>
+                    <Input
+                      type="date"
+                      value={moveForm.date}
+                      onChange={e => setMoveForm(p => ({ ...p, date: e.target.value }))}
+                    />
+                  </div>
+
+                  {/* Descrição */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Descrição (opcional)</Label>
+                    <Input
+                      placeholder={cfg.label}
+                      value={moveForm.description}
+                      onChange={e => setMoveForm(p => ({ ...p, description: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setMovement(null)}>Cancelar</Button>
+                  <Button onClick={handleMovement} disabled={addTransaction.isPending}>
+                    {addTransaction.isPending ? 'Salvando...' : cfg.verb}
+                  </Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 

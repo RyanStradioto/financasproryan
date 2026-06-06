@@ -104,11 +104,24 @@ export function useInvestmentTransactions(investmentId?: string) {
 }
 
 export function useNetWorth() {
-  const { user } = useAuth();
   const { data: investments = [] } = useInvestments();
-  // Sum all investment current values
-  const investmentTotal = investments.reduce((s, i) => s + Number(i.current_value), 0);
-  return { investmentTotal };
+  // Work in integer cents to avoid floating-point drift when summing money.
+  const toCents = (v: number) => Math.round((Number(v) || 0) * 100);
+  const currentCents  = investments.reduce((s, i) => s + toCents(i.current_value), 0);
+  const investedCents = investments.reduce((s, i) => s + toCents(i.total_invested), 0);
+  const returnCents   = currentCents - investedCents;
+  const investmentTotal = currentCents / 100;
+  const totalInvested   = investedCents / 100;
+  const totalReturn     = returnCents / 100;
+  const returnPct = investedCents > 0 ? (returnCents / investedCents) * 100 : 0;
+  return {
+    investmentTotal,
+    totalInvested,
+    totalReturn,
+    returnPct,
+    count: investments.length,
+    investments,
+  };
 }
 
 export function useAddInvestment() {
@@ -180,14 +193,9 @@ export function useAddInvestmentTransaction() {
       notes?: string;
       skipLedgerSync?: boolean;
     }) => {
-      // 1. Insert transaction record
       const { skipLedgerSync, ...txPayload } = data;
-      const { error: txError } = await supabase
-        .from('investment_transactions')
-        .insert({ ...txPayload, user_id: user!.id, description: data.description ?? '' });
-      if (txError) throw txError;
 
-      // 2. Update investment current_value and total_invested
+      // 1. Load the investment (need its name + current balances)
       const { data: inv, error: invError } = await supabase
         .from('investments')
         .select('current_value, total_invested, name')
@@ -195,33 +203,16 @@ export function useAddInvestmentTransaction() {
         .single();
       if (invError) throw invError;
 
-      let newCurrent = Number(inv.current_value);
-      let newInvested = Number(inv.total_invested);
-
-      if (data.type === 'aporte') {
-        newCurrent += data.amount;
-        newInvested += data.amount;
-      } else if (data.type === 'resgate') {
-        newCurrent -= data.amount;
-        newInvested -= data.amount;
-      } else if (data.type === 'rendimento') {
-        newCurrent += data.amount;
-      } else if (data.type === 'taxa' || data.type === 'ir') {
-        newCurrent -= data.amount;
-      }
-
-      const { error: updateError } = await supabase
-        .from('investments')
-        .update({ current_value: newCurrent, total_invested: newInvested })
-        .eq('id', data.investment_id);
-      if (updateError) throw updateError;
-
-      // 3. INTEGRATION: Deduct/add from account balance via expense/income records
-      // This makes investments "talk" to the rest of the financial system
+      // 2. Mirror to the bank ledger FIRST (the most failure-prone external write).
+      // We THROW on error: a failed sync must NOT silently leave the investment
+      // out of step with the bank balance. Doing it before the value update means
+      // a ledger failure leaves the investment untouched (clean retry).
+      // Aporte  -> expense  (money leaves the account; tagged [INVESTIMENTO], so it
+      //            lowers the balance but never counts as a "gasto").
+      // Resgate -> income   (money returns to the account; tagged [INVESTIMENTO]).
+      // rendimento/taxa/ir  -> no ledger row (the asset value changes, the bank does not).
       if (!skipLedgerSync && data.account_id && (data.type === 'aporte' || data.type === 'resgate')) {
         if (data.type === 'aporte') {
-          // Aporte = money leaves the account -> create an expense marked as investment transfer
-          // We use a special note so it's identifiable as patrimonial transfer
           const { error: expError } = await supabase
             .from('expenses')
             .insert({
@@ -234,9 +225,8 @@ export function useAddInvestmentTransaction() {
               notes: `[INVESTIMENTO] Transferência patrimonial para ${inv.name}. Não é um gasto real.`,
               is_recurring: false,
             });
-          if (expError) console.warn('Falha ao registrar saída de conta:', expError);
-        } else if (data.type === 'resgate') {
-          // Resgate = money returns to the account -> create an income record
+          if (expError) throw expError;
+        } else {
           const { error: incError } = await supabase
             .from('income')
             .insert({
@@ -248,9 +238,39 @@ export function useAddInvestmentTransaction() {
               status: 'concluido',
               notes: `[INVESTIMENTO] Resgate patrimonial de ${inv.name}.`,
             });
-          if (incError) console.warn('Falha ao registrar entrada na conta:', incError);
+          if (incError) throw incError;
         }
       }
+
+      // 3. Record the investment transaction (history / ledger of movements)
+      const { error: txError } = await supabase
+        .from('investment_transactions')
+        .insert({ ...txPayload, user_id: user!.id, description: data.description ?? '' });
+      if (txError) throw txError;
+
+      // 4. Update the denormalized investment balances (in integer cents)
+      const toCents = (v: number) => Math.round((Number(v) || 0) * 100);
+      let currentCents = toCents(inv.current_value);
+      let investedCents = toCents(inv.total_invested);
+      const amountCents = toCents(data.amount);
+
+      if (data.type === 'aporte') {
+        currentCents += amountCents;
+        investedCents += amountCents;
+      } else if (data.type === 'resgate') {
+        currentCents -= amountCents;
+        investedCents -= amountCents;
+      } else if (data.type === 'rendimento') {
+        currentCents += amountCents;
+      } else if (data.type === 'taxa' || data.type === 'ir') {
+        currentCents -= amountCents;
+      }
+
+      const { error: updateError } = await supabase
+        .from('investments')
+        .update({ current_value: currentCents / 100, total_invested: investedCents / 100 })
+        .eq('id', data.investment_id);
+      if (updateError) throw updateError;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['investments'] });
