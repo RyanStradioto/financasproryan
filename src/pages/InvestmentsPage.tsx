@@ -2,7 +2,7 @@ import { useState, useMemo, type ReactNode } from 'react';
 import {
   Plus, TrendingUp, TrendingDown, BarChart3, Pencil, Trash2, ArrowUpRight, ArrowDownRight,
   Sparkles, Target, Percent, Receipt, Settings2, PiggyBank, CalendarClock,
-  Calculator, Tag, Coins, Palette, ShieldCheck, ChevronRight, Image as ImageIcon,
+  Calculator, Tag, Coins, Palette, ShieldCheck, ChevronRight, Image as ImageIcon, AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -111,6 +111,7 @@ export default function InvestmentsPage() {
   const [showRates, setShowRates] = useState(false);
   const [showSim, setShowSim] = useState(false);
   const [movement, setMovement] = useState<{ investmentId: string; type: MoveType } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<PortfolioInvestment | null>(null);
 
   // forms
   const emptyForm = {
@@ -193,10 +194,17 @@ export default function InvestmentsPage() {
     } catch (e) { toast.error((e as Error).message); }
   };
 
-  const handleDelete = (inv: PortfolioInvestment) => {
-    if (!confirm(`Excluir "${inv.name}"?`)) return;
-    deleteInvestment.mutate(inv.id);
-    if (detailId === inv.id) setDetailId(null);
+  const requestDelete = (inv: PortfolioInvestment) => {
+    setDetailId(null);
+    setDeleteTarget(inv);
+  };
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteInvestment.mutateAsync(deleteTarget.id);
+      toast.success(`"${deleteTarget.name}" excluída`);
+      setDeleteTarget(null);
+    } catch (e) { toast.error((e as Error).message); }
   };
 
   const openMovement = (investmentId: string, type: MoveType) => {
@@ -355,7 +363,7 @@ export default function InvestmentsPage() {
                     </div>
                     <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                       <button onClick={e => { e.stopPropagation(); openEdit(inv); }} className="rounded-lg bg-white/25 p-1.5 text-white backdrop-blur-md hover:bg-white/40" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
-                      <button onClick={e => { e.stopPropagation(); handleDelete(inv); }} className="rounded-lg bg-white/25 p-1.5 text-white backdrop-blur-md hover:bg-expense" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>
+                      <button onClick={e => { e.stopPropagation(); requestDelete(inv); }} className="rounded-lg bg-white/25 p-1.5 text-white backdrop-blur-md hover:bg-expense" title="Excluir"><Trash2 className="h-3.5 w-3.5" /></button>
                     </div>
                   </div>
                 </div>
@@ -470,6 +478,7 @@ export default function InvestmentsPage() {
                     <button onClick={() => openMovement(detail.id, 'resgate')} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-income/10 py-2 text-xs font-semibold text-income transition-colors hover:bg-income/20"><ArrowDownRight className="h-3.5 w-3.5" /> Resgatar</button>
                     {!auto && <button onClick={() => openMovement(detail.id, 'rendimento')} className="flex items-center justify-center gap-1.5 rounded-xl bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"><TrendingUp className="h-3.5 w-3.5" /> Rendimento</button>}
                     <button onClick={() => { setDetailId(null); openEdit(detail); }} className="flex items-center justify-center gap-1.5 rounded-xl bg-muted px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted/70"><Pencil className="h-3.5 w-3.5" /> Editar</button>
+                    <button onClick={() => requestDelete(detail)} className="flex items-center justify-center gap-1.5 rounded-xl bg-expense/10 px-3 py-2 text-xs font-semibold text-expense transition-colors hover:bg-expense/20"><Trash2 className="h-3.5 w-3.5" /> Excluir</button>
                   </div>
 
                   {/* Projection */}
@@ -729,6 +738,38 @@ export default function InvestmentsPage() {
             <p className="text-[10px] leading-relaxed text-muted-foreground">Estimativa com a taxa atual constante; impostos pelo prazo total. Rentabilidade estimada não garante resultado futuro.</p>
           </div>
           <DialogFooter><Button onClick={() => setShowSim(false)}>Fechar</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Delete confirmation dialog ────────────────────────────────────── */}
+      <Dialog open={!!deleteTarget} onOpenChange={o => !o && setDeleteTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          {deleteTarget && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2"><Trash2 className="h-5 w-5 text-expense" /> Excluir caixinha?</DialogTitle>
+              </DialogHeader>
+              <div className="overflow-hidden rounded-2xl border border-border/40 shadow-sm">
+                <div className="relative flex items-center gap-3 overflow-hidden p-3.5" style={deleteTarget.photo_url ? undefined : { background: coverGradient(deleteTarget.color || COVER_COLORS[0]) }}>
+                  {deleteTarget.photo_url && <img src={deleteTarget.photo_url} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+                  {deleteTarget.photo_url && <div className="absolute inset-0 bg-black/55" />}
+                  <span className="relative z-10 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/25 text-2xl backdrop-blur-md">{deleteTarget.icon}</span>
+                  <div className="relative z-10 min-w-0">
+                    <p className="truncate text-sm font-bold text-white drop-shadow">{deleteTarget.name}</p>
+                    <p className="text-[11px] text-white/90">{maskCurrency(formatCurrency(deleteTarget.value))} · {rateLabel(deleteTarget)}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 rounded-xl border border-expense/20 bg-expense/5 p-3 text-xs leading-relaxed text-muted-foreground">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-expense" />
+                <span>Isso remove a caixinha e o histórico dela. As despesas/receitas já lançadas na conta <strong>não</strong> são apagadas — seu saldo continua igual. Esta ação não pode ser desfeita.</span>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
+                <Button onClick={confirmDelete} disabled={deleteInvestment.isPending} className="bg-expense text-white hover:bg-expense/90">{deleteInvestment.isPending ? 'Excluindo...' : 'Excluir caixinha'}</Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
