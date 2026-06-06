@@ -134,6 +134,8 @@ export default function CreditCardsPage() {
   const { data: categories = [] } = useCategories();
   const { data: accounts = [] } = useAccounts();
   const { data: transactions = [] } = useCreditCardTransactions(selectedCard ?? undefined, billMonth);
+  // All transactions for the card (every bill month) — used by the estorno purchase picker.
+  const { data: allCardTxns = [] } = useCreditCardTransactions(selectedCard ?? undefined);
   const { data: futureTxns = [] } = useAllFutureCCTransactions();
   const { data: outstandingTxns = [] } = useCardOutstanding(selectedCard ?? undefined);
   const addCard = useAddCreditCard();
@@ -172,6 +174,8 @@ export default function CreditCardsPage() {
   });
   // Estorno/Reembolso mode: records a NEGATIVE transaction that credits (abate) the open fatura.
   const [refundMode, setRefundMode] = useState(false);
+  const [refundTxId, setRefundTxId] = useState('');   // the original purchase being refunded
+  const [refundPartial, setRefundPartial] = useState(false);
 
   const currentCard = cards.find((c) => c.id === selectedCard);
   const activeCategories = categories.filter((c) => !c.archived);
@@ -181,6 +185,14 @@ export default function CreditCardsPage() {
       return acc;
     }, {}),
     [activeCategories],
+  );
+
+  // Purchases that can be refunded: real (positive) charges on this card, newest first.
+  const refundablePurchases = useMemo(
+    () => allCardTxns
+      .filter(t => Number(t.amount) > 0)
+      .sort((a, b) => (a.date < b.date ? 1 : -1)),
+    [allCardTxns],
   );
 
   const billTotal = transactions.reduce((s, t) => s + Number(t.amount), 0);
@@ -547,7 +559,9 @@ export default function CreditCardsPage() {
   };
 
   const handleAddTx = async () => {
-    if (!selectedCard || !newTx.description || !newTx.amount) return toast.error('Preencha descrição e valor');
+    if (!selectedCard) return toast.error('Selecione um cartão');
+    if (refundMode && !refundTxId) return toast.error('Escolha a compra que será reembolsada');
+    if (!newTx.description || !newTx.amount) return toast.error('Preencha descrição e valor');
     try {
       if (refundMode) {
         // Estorno/Reembolso: a NEGATIVE transaction on the chosen (usually open) fatura.
@@ -583,6 +597,8 @@ export default function CreditCardsPage() {
       }
       setShowNewTx(false);
       setRefundMode(false);
+      setRefundTxId('');
+      setRefundPartial(false);
       setNewTx({ description: '', amount: '', date: new Date().toISOString().split('T')[0], category_id: '', installments: '1', notes: '' });
     } catch (e) { toast.error((e as Error).message); }
   };
@@ -1414,31 +1430,68 @@ export default function CreditCardsPage() {
       </Dialog>
 
       {/* ── Add Transaction Dialog ─────────────────────────────────── */}
-      <Dialog open={showNewTx} onOpenChange={(o) => { setShowNewTx(o); if (!o) setRefundMode(false); }}>
+      <Dialog open={showNewTx} onOpenChange={(o) => { setShowNewTx(o); if (!o) { setRefundMode(false); setRefundTxId(''); setRefundPartial(false); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>{refundMode ? 'Estorno / Reembolso' : 'Nova Compra'} - {currentCard?.name}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             {/* Compra vs Estorno toggle */}
             <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-muted/50 p-1">
-              <button type="button" onClick={() => setRefundMode(false)} className={cn('rounded-lg py-2 text-sm font-semibold transition-all', !refundMode ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>Compra</button>
-              <button type="button" onClick={() => setRefundMode(true)} className={cn('rounded-lg py-2 text-sm font-semibold transition-all', refundMode ? 'bg-card text-income shadow-sm' : 'text-muted-foreground hover:text-foreground')}>↩ Estorno</button>
+              <button type="button" onClick={() => { setRefundMode(false); setRefundTxId(''); setRefundPartial(false); }} className={cn('rounded-lg py-2 text-sm font-semibold transition-all', !refundMode ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>Compra</button>
+              <button type="button" onClick={() => { setRefundMode(true); setRefundTxId(''); setRefundPartial(false); setNewTx(p => ({ ...p, description: '', amount: '' })); }} className={cn('rounded-lg py-2 text-sm font-semibold transition-all', refundMode ? 'bg-card text-income shadow-sm' : 'text-muted-foreground hover:text-foreground')}>↩ Estorno</button>
             </div>
-            {refundMode && (
-              <div className="flex items-start gap-2 rounded-xl border border-income/20 bg-income/5 p-3 text-xs leading-relaxed text-muted-foreground">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-income" />
-                <span>Use quando um valor for <strong>creditado na fatura</strong> (ex.: reembolso de uma compra devolvida). Ele <strong>abate</strong> o total da fatura escolhida — ao pagar essa fatura, o saldo é debitado de menos, batendo com o crédito real. Não entra como receita na conta.</span>
-              </div>
-            )}
-            <div><Label>Descrição</Label><Input placeholder={refundMode ? 'Ex: Reembolso presente Mercado Livre' : 'Ex: iFood, Academia...'} value={newTx.description} onChange={(e) => setNewTx((p) => ({ ...p, description: e.target.value }))} /></div>
-            <div className={refundMode ? '' : 'grid grid-cols-2 gap-3'}>
-              <div><Label>{refundMode ? 'Valor do estorno (R$)' : 'Valor total (R$)'}</Label><Input type="number" placeholder="0,00" value={newTx.amount} onChange={(e) => setNewTx((p) => ({ ...p, amount: e.target.value }))} /></div>
-              {!refundMode && (
-                <div>
-                  <Label>Parcelas</Label>
-                  <Input type="number" min={1} max={48} value={newTx.installments} onChange={(e) => setNewTx((p) => ({ ...p, installments: e.target.value }))} />
+            {refundMode ? (
+              <>
+                <div className="flex items-start gap-2 rounded-xl border border-income/20 bg-income/5 p-3 text-xs leading-relaxed text-muted-foreground">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-income" />
+                  <span>Escolha a <strong>compra que foi reembolsada</strong>. O valor é preenchido sozinho e <strong>abate</strong> da fatura escolhida — ao pagar essa fatura, o saldo é debitado de menos, batendo com o crédito real. Não entra como receita na conta.</span>
                 </div>
-              )}
-            </div>
+                <div>
+                  <Label>Compra reembolsada</Label>
+                  <Select value={refundTxId} onValueChange={(v) => {
+                    setRefundTxId(v);
+                    setRefundPartial(false);
+                    const orig = refundablePurchases.find(t => t.id === v);
+                    if (orig) setNewTx(p => ({ ...p, description: orig.description || 'Compra', amount: Number(orig.amount).toFixed(2), category_id: orig.category_id || '' }));
+                  }}>
+                    <SelectTrigger><SelectValue placeholder="Escolha a compra..." /></SelectTrigger>
+                    <SelectContent>
+                      {refundablePurchases.length === 0 ? (
+                        <div className="px-2 py-3 text-center text-xs text-muted-foreground">Nenhuma compra neste cartão</div>
+                      ) : refundablePurchases.map(t => (
+                        <SelectItem key={t.id} value={t.id}>{(t.description || 'Compra')} · {fmt(Number(t.amount))} · {monthLabel(t.bill_month)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {refundTxId && (
+                  <div className="rounded-xl border border-income/20 bg-income/[0.06] p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-muted-foreground">Valor a estornar</span>
+                      <span className="currency text-lg font-black text-income">− {fmt(Math.abs(parseFloat((newTx.amount || '0').replace(',', '.')) || 0))}</span>
+                    </div>
+                    {!refundPartial ? (
+                      <button type="button" onClick={() => setRefundPartial(true)} className="mt-1 text-[11px] font-semibold text-primary hover:underline">Reembolso parcial? ajustar valor</button>
+                    ) : (
+                      <div className="mt-2">
+                        <Label className="text-[11px]">Valor reembolsado (R$)</Label>
+                        <Input type="number" step="0.01" value={newTx.amount} onChange={(e) => setNewTx(p => ({ ...p, amount: e.target.value }))} />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div><Label>Descrição</Label><Input placeholder="Ex: iFood, Academia..." value={newTx.description} onChange={(e) => setNewTx((p) => ({ ...p, description: e.target.value }))} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Valor total (R$)</Label><Input type="number" placeholder="0,00" value={newTx.amount} onChange={(e) => setNewTx((p) => ({ ...p, amount: e.target.value }))} /></div>
+                  <div>
+                    <Label>Parcelas</Label>
+                    <Input type="number" min={1} max={48} value={newTx.installments} onChange={(e) => setNewTx((p) => ({ ...p, installments: e.target.value }))} />
+                  </div>
+                </div>
+              </>
+            )}
             <div><Label>{refundMode ? 'Data do crédito' : 'Data da compra'}</Label><Input type="date" value={newTx.date} onChange={e => setNewTx(p => ({ ...p, date: e.target.value }))} /></div>
 
             {/* Auto-calculated bill month chip */}
@@ -1474,7 +1527,7 @@ export default function CreditCardsPage() {
             <div><Label>Notas</Label><Input placeholder="Opcional..." value={newTx.notes} onChange={(e) => setNewTx((p) => ({ ...p, notes: e.target.value }))} /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowNewTx(false); setRefundMode(false); }}>Cancelar</Button>
+            <Button variant="outline" onClick={() => { setShowNewTx(false); setRefundMode(false); setRefundTxId(''); setRefundPartial(false); }}>Cancelar</Button>
             <Button onClick={handleAddTx} disabled={addTx.isPending} style={refundMode ? undefined : { backgroundColor: currentCard?.color }} className={refundMode ? 'bg-income text-white hover:bg-income/90' : 'text-white'}>{refundMode ? 'Lançar estorno' : 'Registrar'}</Button>
           </DialogFooter>
         </DialogContent>
