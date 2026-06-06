@@ -1,7 +1,7 @@
 import { useState, useMemo, type ReactNode } from 'react';
 import {
   Plus, TrendingUp, TrendingDown, BarChart3, Pencil, Trash2, ArrowUpRight, ArrowDownRight,
-  Sparkles, Target, Percent, Receipt, Settings2, PiggyBank, CalendarClock,
+  Sparkles, Target, Percent, Receipt, Settings2, PiggyBank, CalendarClock, Flame,
   Calculator, Tag, Coins, Palette, ShieldCheck, ChevronRight, Image as ImageIcon, AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -265,26 +265,36 @@ export default function InvestmentsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-            <div className="col-span-2 rounded-2xl border border-border/50 bg-background/50 p-3.5 backdrop-blur-sm lg:col-span-1">
+          {/* Big bruto headline + 3 distinct stat tiles (no duplicated numbers) */}
+          <div className="space-y-2.5">
+            <div className="rounded-2xl border border-border/50 bg-background/50 p-4 backdrop-blur-sm">
               <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><Coins className="h-3 w-3" /> Total bruto</p>
-              <p className="mt-1 currency text-3xl font-black leading-none text-foreground">{maskCurrency(formatCurrency(portfolio.totalValue))}</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">aportado {maskCurrency(formatCurrency(portfolio.totalInvested))}</p>
+              <p className="mt-1 currency text-3xl font-black leading-none text-foreground sm:text-4xl">{maskCurrency(formatCurrency(portfolio.totalValue))}</p>
+              <p className="mt-1.5 text-[11px] text-muted-foreground">
+                aportado {maskCurrency(formatCurrency(portfolio.totalInvested))}
+                {portfolio.totalInvested > 0 && (
+                  <span className={cn('ml-1.5 font-semibold', portfolio.totalYield >= 0 ? 'text-income' : 'text-expense')}>
+                    · rendeu {portfolio.totalYield >= 0 ? '+' : ''}{maskCurrency(formatCurrency(portfolio.totalYield))}{isVisible ? ` (${portfolio.totalYieldPct >= 0 ? '+' : ''}${portfolio.totalYieldPct.toFixed(2)}%)` : ''} no total
+                  </span>
+                )}
+              </p>
             </div>
-            <div className="rounded-2xl border border-border/50 bg-background/50 p-3.5 backdrop-blur-sm">
-              <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><ShieldCheck className="h-3 w-3" /> Total líquido</p>
-              <p className="mt-1 currency text-xl font-bold leading-none">{maskCurrency(formatCurrency(portfolio.totalNet))}</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">resgatando hoje</p>
-            </div>
-            <div className="rounded-2xl border border-income/20 bg-income/[0.06] p-3.5 backdrop-blur-sm">
-              <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><CalendarClock className="h-3 w-3" /> Rendeu (12m)</p>
-              <p className="mt-1 currency text-xl font-bold leading-none text-income">+{maskCurrency(formatCurrency(portfolio.totalYield12m))}</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">≈ {maskCurrency(formatCurrency(portfolio.perDayYield))}/dia</p>
-            </div>
-            <div className="rounded-2xl border border-income/20 bg-income/[0.06] p-3.5 backdrop-blur-sm">
-              <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><TrendingUp className="h-3 w-3" /> Rendimento total</p>
-              <p className={cn('mt-1 currency text-xl font-bold leading-none', portfolio.totalYield >= 0 ? 'text-income' : 'text-expense')}>{portfolio.totalYield >= 0 ? '+' : ''}{maskCurrency(formatCurrency(portfolio.totalYield))}</p>
-              <p className={cn('mt-1 text-[11px] font-semibold', portfolio.totalYield >= 0 ? 'text-income' : 'text-expense')}>{isVisible && portfolio.totalInvested > 0 ? `${portfolio.totalYieldPct >= 0 ? '+' : ''}${portfolio.totalYieldPct.toFixed(2)}%` : maskText('00%')}</p>
+            <div className="grid grid-cols-3 gap-2.5">
+              <div className="rounded-2xl border border-border/50 bg-background/50 p-3 backdrop-blur-sm">
+                <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-[11px]"><ShieldCheck className="h-3 w-3" /> Líquido</p>
+                <p className="mt-1 currency text-base font-bold leading-none sm:text-xl">{maskCurrency(formatCurrency(portfolio.totalNet))}</p>
+                <p className="mt-1 text-[10px] text-muted-foreground">resgatando hoje</p>
+              </div>
+              <div className="rounded-2xl border border-income/20 bg-income/[0.06] p-3 backdrop-blur-sm">
+                <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-[11px]"><CalendarClock className="h-3 w-3" /> Rendeu 12m</p>
+                <p className="mt-1 currency text-base font-bold leading-none text-income sm:text-xl">+{maskCurrency(formatCurrency(portfolio.totalYield12m))}</p>
+                <p className="mt-1 text-[10px] text-muted-foreground">últimos 12 meses</p>
+              </div>
+              <div className="rounded-2xl border border-income/20 bg-income/[0.06] p-3 backdrop-blur-sm">
+                <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-[11px]"><Flame className="h-3 w-3" /> Rende/dia</p>
+                <p className="mt-1 currency text-base font-bold leading-none text-income sm:text-xl">≈ {maskCurrency(formatCurrency(portfolio.perDayYield))}</p>
+                <p className="mt-1 text-[10px] text-muted-foreground">no ritmo atual</p>
+              </div>
             </div>
           </div>
 
@@ -390,7 +400,7 @@ export default function InvestmentsPage() {
                   {inv.isAuto && (
                     <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
                       <div className="rounded-lg bg-muted/40 px-2 py-1.5"><p className="text-muted-foreground">Líquido hoje</p><p className="currency font-bold">{maskCurrency(formatCurrency(inv.netValue))}</p></div>
-                      <div className="rounded-lg bg-muted/40 px-2 py-1.5"><p className="text-muted-foreground">Rendeu 12m</p><p className="currency font-bold text-income">+{maskCurrency(formatCurrency(inv.yield12m))}</p></div>
+                      <div className="rounded-lg bg-muted/40 px-2 py-1.5"><p className="text-muted-foreground">Rende/dia</p><p className="currency font-bold text-income">≈ {maskCurrency(formatCurrency(inv.perDayYield))}</p></div>
                     </div>
                   )}
 
@@ -457,7 +467,9 @@ export default function InvestmentsPage() {
                     <div className="rounded-xl border border-border/50 bg-muted/20 p-2.5"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">Líquido</p><p className="currency text-sm font-bold">{maskCurrency(formatCurrency(detail.netValue))}</p></div>
                     <div className="rounded-xl border border-border/50 bg-muted/20 p-2.5"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">Aportado</p><p className="currency text-sm font-bold">{maskCurrency(formatCurrency(detail.invested))}</p></div>
                     <div className="rounded-xl border border-income/20 bg-income/[0.06] p-2.5"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">Rendeu 12m</p><p className="currency text-sm font-bold text-income">+{maskCurrency(formatCurrency(detail.yield12m))}</p></div>
-                    <div className="rounded-xl border border-income/20 bg-income/[0.06] p-2.5"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">Rendimento</p><p className="currency text-sm font-bold text-income">{detail.yieldAbs >= 0 ? '+' : ''}{maskCurrency(formatCurrency(detail.yieldAbs))}</p></div>
+                    {detail.isAuto
+                      ? <div className="rounded-xl border border-income/20 bg-income/[0.06] p-2.5"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">Rende/dia</p><p className="currency text-sm font-bold text-income">≈ {maskCurrency(formatCurrency(detail.perDayYield))}</p></div>
+                      : <div className="rounded-xl border border-income/20 bg-income/[0.06] p-2.5"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">Rendimento</p><p className="currency text-sm font-bold text-income">{detail.yieldAbs >= 0 ? '+' : ''}{maskCurrency(formatCurrency(detail.yieldAbs))}</p></div>}
                   </div>
 
                   {/* Goal */}

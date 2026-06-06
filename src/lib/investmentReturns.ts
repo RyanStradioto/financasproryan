@@ -201,10 +201,15 @@ export function computeInvestment(
   const dailyFactor = Math.pow(1 + annualRate, 1 / base);
   const perDayYield = value * (dailyFactor - 1);
 
-  // Net value if redeemed today: IR/IOF on the gain by holding period (exempt for LCI/LCA/poupança).
+  // Net value if redeemed today. We DON'T know the original deposit date (value_date
+  // resets on every aporte), so we assume consolidated patrimony — long-term IR (15%)
+  // and no IOF — which is the realistic case for money the user is already holding.
+  // (Forward projections below still apply the precise per-horizon IR + IOF.)
   const ageDays = calendarDaysBetween(from, asOf);
   const exempt = isIRExempt(inv.type, idx);
-  const netValue = invested + netYield(invested, yieldAbs, ageDays, exempt);
+  const LONG_TERM_IR = 0.15;
+  const netGain = yieldAbs > 0 ? (exempt ? yieldAbs : yieldAbs * (1 - LONG_TERM_IR)) : yieldAbs;
+  const netValue = invested + netGain;
 
   // Trailing-12-month gross yield estimate (since inception if younger than a year).
   const yearDays = base === 252 ? businessDaysApprox(365) : 365;
