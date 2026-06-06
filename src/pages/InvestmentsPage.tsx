@@ -410,6 +410,10 @@ export default function InvestmentsPage() {
             const prog = goalProgress(inv.value, inv.goal_amount);
             const annualPct = inv.annualRate * 100;
             const proj = inv.isAuto && inv.value > 0 ? projectInvestment(inv.value, inv.annualRate, inv.type, inv.index_type) : [];
+            const projSeries = showProj && proj.length > 0
+              ? simulate({ initial: inv.value, monthly: 0, months: 60, annualRate: inv.annualRate, type: inv.type, indexType: inv.index_type }, rates).series
+                  .filter((_, i) => i % 3 === 0 || i === 60)
+              : [];
             const eta = inv.goal_amount && inv.value < inv.goal_amount ? monthsToGoal(inv.value, Number(inv.goal_amount), inv.annualRate) : null;
             return (
               <div key={inv.id} className={cn('group flex flex-col overflow-hidden rounded-3xl border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg', isSel ? 'border-primary ring-1 ring-primary' : 'border-border/60')}>
@@ -474,15 +478,47 @@ export default function InvestmentsPage() {
                     )}
                   </div>
 
-                  {/* Projection toggle */}
+                  {/* Projection — always-visible "vai render" estimate for today's balance */}
                   {proj.length > 0 && (
-                    <div className="mt-2.5">
-                      <button onClick={() => setExpanded(showProj ? null : inv.id)} className="flex w-full items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground">
-                        <TrendingUp className="h-3 w-3" /> Projeção {annualPct > 0 ? `(${annualPct.toFixed(1)}% a.a.)` : ''}
-                        {showProj ? <ChevronUp className="ml-auto h-3 w-3" /> : <ChevronDown className="ml-auto h-3 w-3" />}
+                    <div className="mt-3 rounded-xl border border-primary/15 bg-primary/[0.04] p-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground"><TrendingUp className="h-3 w-3 text-primary" /> Vai render</span>
+                        <span className="text-[10px] font-semibold text-muted-foreground">{annualPct.toFixed(1)}% a.a.</span>
+                      </div>
+                      {/* 1a / 2a / 5a highlights (always visible) */}
+                      <div className="mt-2 grid grid-cols-3 gap-1.5">
+                        {[3, 4, 5].map(i => proj[i] && (
+                          <div key={proj[i].label} className="rounded-lg bg-card/60 px-2 py-1.5 text-center">
+                            <p className="text-[10px] text-muted-foreground">{PROJ_LABELS[i]}</p>
+                            <p className="currency text-xs font-bold leading-tight">{maskCurrency(formatCurrency(proj[i].gross))}</p>
+                            <p className="text-[10px] font-semibold text-income">+{maskCurrency(formatCurrency(proj[i].gain))}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <button onClick={() => setExpanded(showProj ? null : inv.id)} className="mt-2 flex w-full items-center justify-center gap-1 text-[11px] font-semibold text-primary transition-colors hover:text-primary/80">
+                        {showProj ? 'Ocultar detalhes' : 'Ver gráfico e todos os prazos'}
+                        {showProj ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                       </button>
                       {showProj && (
-                        <div className="mt-2 space-y-1.5">
+                        <div className="mt-2 space-y-2">
+                          {projSeries.length > 1 && (
+                            <div style={{ width: '100%', height: 110 }}>
+                              <ResponsiveContainer>
+                                <AreaChart data={projSeries} margin={{ top: 4, right: 2, left: 2, bottom: 0 }}>
+                                  <defs>
+                                    <linearGradient id={`pg-${inv.id}`} x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="0%" stopColor={color} stopOpacity={0.35} />
+                                      <stop offset="100%" stopColor={color} stopOpacity={0} />
+                                    </linearGradient>
+                                  </defs>
+                                  <XAxis dataKey="month" tickFormatter={m => `${Math.round(m / 12)}a`} tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" interval="preserveStartEnd" />
+                                  <YAxis hide domain={[inv.value, 'dataMax']} />
+                                  <RTooltip formatter={(v: number) => [formatCurrency(v), 'Saldo']} labelFormatter={m => `Mês ${m}`} contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 10, fontSize: 11 }} />
+                                  <Area type="monotone" dataKey="gross" stroke={color} fill={`url(#pg-${inv.id})`} strokeWidth={2} />
+                                </AreaChart>
+                              </ResponsiveContainer>
+                            </div>
+                          )}
                           {proj.map((p, i) => (
                             <div key={p.label} className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-1.5 text-xs">
                               <span className="w-16 shrink-0 font-medium text-muted-foreground">{PROJ_LABELS[i]}</span>
@@ -492,7 +528,7 @@ export default function InvestmentsPage() {
                               </div>
                             </div>
                           ))}
-                          <p className="px-1 text-[10px] leading-relaxed text-muted-foreground">Estimativa com a taxa atual; "líq." já desconta IR/IOF conforme o prazo. Não considera mudanças de CDI.</p>
+                          <p className="px-1 text-[10px] leading-relaxed text-muted-foreground">Estimativa com a taxa atual sobre o saldo de hoje; "líq." já desconta IR/IOF conforme o prazo. Não considera novos aportes nem mudança do CDI.</p>
                         </div>
                       )}
                     </div>
