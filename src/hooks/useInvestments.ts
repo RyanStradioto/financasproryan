@@ -149,15 +149,19 @@ export function usePortfolio() {
     const toCents = (v: number) => Math.round((Number(v) || 0) * 100);
     const valueCents = enriched.reduce((s, i) => s + toCents(i.value), 0);
     const investedCents = enriched.reduce((s, i) => s + toCents(i.invested), 0);
+    const netCents = enriched.reduce((s, i) => s + toCents(i.netValue), 0);
+    const yield12mCents = enriched.reduce((s, i) => s + toCents(i.yield12m), 0);
     const yieldCents = valueCents - investedCents;
     return {
       investments: enriched,
       isLoading,
       rates,
-      totalValue: valueCents / 100,
+      totalValue: valueCents / 100,          // bruto
+      totalNet: netCents / 100,              // líquido (resgatando hoje)
       totalInvested: investedCents / 100,
       totalYield: yieldCents / 100,
       totalYieldPct: investedCents > 0 ? (yieldCents / investedCents) * 100 : 0,
+      totalYield12m: yield12mCents / 100,    // rendeu nos últimos 12 meses
       perDayYield: enriched.reduce((s, i) => s + i.perDayYield, 0),
       count: enriched.length,
     };

@@ -2,7 +2,8 @@ import { useState, useMemo } from 'react';
 import {
   Plus, TrendingUp, TrendingDown, BarChart3, Pencil, ChevronDown, ChevronUp,
   Image as ImageIcon, Trash2, ArrowUpRight, ArrowDownRight, Sparkles, Target,
-  Percent, Receipt, Settings2, Flame, PiggyBank, CalendarClock,
+  Percent, Receipt, Settings2, Flame, PiggyBank, CalendarClock, Calculator,
+  Tag, Coins, Palette, ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -18,12 +19,13 @@ import {
 import { useAccounts } from '@/hooks/useFinanceData';
 import {
   INDEX_TYPES, isAutoCalc, goalProgress, projectInvestment, monthsToGoal,
+  effectiveAnnualRate, simulate,
   type InvestmentRates, type IndexType,
 } from '@/lib/investmentReturns';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip as RTooltip } from 'recharts';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -104,6 +106,7 @@ export default function InvestmentsPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showRates, setShowRates] = useState(false);
+  const [showSim, setShowSim] = useState(false);
   const [movement, setMovement] = useState<{ investmentId: string; type: MoveType } | null>(null);
 
   // ── forms ──
@@ -116,8 +119,27 @@ export default function InvestmentsPage() {
   const [rebalance, setRebalance] = useState('');
   const [moveForm, setMoveForm] = useState({ amount: '', accountId: '', date: todayStr(), description: '' });
   const [rateForm, setRateForm] = useState({ selic: '', cdi: '', ipca: '' });
+  const [sim, setSim] = useState({ initial: '1000', monthly: '300', years: '5', index_type: 'cdi' as IndexType, cdi_percent: '100', annual_rate: '' });
 
   // ── derived ──
+  const simResult = useMemo(() => {
+    const annualRate = effectiveAnnualRate(
+      { index_type: sim.index_type, cdi_percent: parseFloat(sim.cdi_percent.replace(',', '.')) || 100, annual_rate: parseFloat(sim.annual_rate.replace(',', '.')) || 0 },
+      rates,
+    );
+    return simulate({
+      initial: parseFloat(sim.initial.replace(',', '.')) || 0,
+      monthly: parseFloat(sim.monthly.replace(',', '.')) || 0,
+      months: Math.round((parseFloat(sim.years.replace(',', '.')) || 0) * 12),
+      annualRate,
+      indexType: sim.index_type,
+    }, rates);
+  }, [sim, rates]);
+  const simAnnualPct = simResult.invested > 0 ? (effectiveAnnualRate({ index_type: sim.index_type, cdi_percent: parseFloat(sim.cdi_percent.replace(',', '.')) || 100, annual_rate: parseFloat(sim.annual_rate.replace(',', '.')) || 0 }, rates) * 100) : 0;
+  const simChartData = useMemo(() => {
+    const step = Math.max(1, Math.floor(simResult.series.length / 60));
+    return simResult.series.filter((_, i) => i % step === 0 || i === simResult.series.length - 1);
+  }, [simResult]);
   const pieData = useMemo(() => investments
     .filter(i => i.value > 0)
     .map(i => ({
@@ -277,35 +299,41 @@ export default function InvestmentsPage() {
                 </p>
               </div>
             </div>
-            <Button onClick={openNew} className="shrink-0 gap-2 bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90">
-              <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Nova caixinha</span><span className="sm:hidden">Nova</span>
-            </Button>
+            <div className="flex shrink-0 gap-2">
+              <Button variant="outline" onClick={() => setShowSim(true)} className="gap-2">
+                <Calculator className="h-4 w-4" /> <span className="hidden sm:inline">Simular</span>
+              </Button>
+              <Button onClick={openNew} className="gap-2 bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90">
+                <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Nova caixinha</span><span className="sm:hidden">Nova</span>
+              </Button>
+            </div>
           </div>
 
-          {/* Headline numbers */}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div className="col-span-2 sm:col-span-1">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Patrimônio investido</p>
-              <p className="mt-1 currency text-3xl font-black leading-none text-foreground sm:text-4xl">{maskCurrency(formatCurrency(portfolio.totalValue))}</p>
+          {/* Headline numbers — total bruto / líquido / rendeu 12m / rendimento total */}
+          <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+            <div className="col-span-2 rounded-2xl border border-border/50 bg-background/50 p-3.5 backdrop-blur-sm lg:col-span-1">
+              <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><Coins className="h-3 w-3" /> Total bruto</p>
+              <p className="mt-1 currency text-3xl font-black leading-none text-foreground">{maskCurrency(formatCurrency(portfolio.totalValue))}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">aportado {maskCurrency(formatCurrency(portfolio.totalInvested))} · {portfolio.count} {portfolio.count === 1 ? 'caixinha' : 'caixinhas'}</p>
             </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Aportado</p>
-              <p className="mt-1 currency text-lg font-bold leading-none">{maskCurrency(formatCurrency(portfolio.totalInvested))}</p>
+            <div className="rounded-2xl border border-border/50 bg-background/50 p-3.5 backdrop-blur-sm">
+              <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><ShieldCheck className="h-3 w-3" /> Total líquido</p>
+              <p className="mt-1 currency text-xl font-bold leading-none">{maskCurrency(formatCurrency(portfolio.totalNet))}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">se resgatar hoje (após IR/IOF)</p>
             </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Rendimento</p>
-              <p className={cn('mt-1 currency text-lg font-bold leading-none', portfolio.totalYield >= 0 ? 'text-income' : 'text-expense')}>
+            <div className="rounded-2xl border border-income/20 bg-income/[0.06] p-3.5 backdrop-blur-sm">
+              <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><CalendarClock className="h-3 w-3" /> Rendeu (12 meses)</p>
+              <p className="mt-1 currency text-xl font-bold leading-none text-income">+{maskCurrency(formatCurrency(portfolio.totalYield12m))}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">≈ {maskCurrency(formatCurrency(portfolio.perDayYield))}/dia</p>
+            </div>
+            <div className="rounded-2xl border border-income/20 bg-income/[0.06] p-3.5 backdrop-blur-sm">
+              <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><TrendingUp className="h-3 w-3" /> Rendimento total</p>
+              <p className={cn('mt-1 currency text-xl font-bold leading-none', portfolio.totalYield >= 0 ? 'text-income' : 'text-expense')}>
                 {portfolio.totalYield >= 0 ? '+' : ''}{maskCurrency(formatCurrency(portfolio.totalYield))}
               </p>
-              {isVisible && portfolio.totalInvested > 0 && (
-                <p className={cn('mt-0.5 text-[11px] font-semibold', portfolio.totalYield >= 0 ? 'text-income' : 'text-expense')}>
-                  {portfolio.totalYieldPct >= 0 ? '+' : ''}{portfolio.totalYieldPct.toFixed(2)}%
-                </p>
-              )}
-            </div>
-            <div className="hidden sm:block">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Rende por dia</p>
-              <p className="mt-1 currency text-lg font-bold leading-none text-income">≈ {maskCurrency(formatCurrency(portfolio.perDayYield))}</p>
+              <p className={cn('mt-1 text-[11px] font-semibold', portfolio.totalYield >= 0 ? 'text-income' : 'text-expense')}>
+                {isVisible && portfolio.totalInvested > 0 ? `${portfolio.totalYieldPct >= 0 ? '+' : ''}${portfolio.totalYieldPct.toFixed(2)}% desde o início` : maskText('00%')}
+              </p>
             </div>
           </div>
 
@@ -418,6 +446,13 @@ export default function InvestmentsPage() {
                     )}
                   </div>
 
+                  {inv.isAuto && (
+                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                      <span><ShieldCheck className="mr-0.5 inline h-3 w-3" />Líquido {maskCurrency(formatCurrency(inv.netValue))}</span>
+                      <span><CalendarClock className="mr-0.5 inline h-3 w-3" />12m +{maskCurrency(formatCurrency(inv.yield12m))}</span>
+                    </div>
+                  )}
+
                   {/* Goal progress */}
                   {prog !== null && (
                     <div className="mt-3">
@@ -499,114 +534,116 @@ export default function InvestmentsPage() {
 
       {/* ─── New / Edit dialog ────────────────────────────────────────────── */}
       <Dialog open={showNew || !!editing} onOpenChange={o => { if (!o) { setShowNew(false); setEditing(null); } }}>
-        <DialogContent className="max-h-[92dvh] overflow-y-auto">
+        <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-lg">
           <DialogHeader><DialogTitle>{editing ? 'Editar caixinha' : 'Nova caixinha'}</DialogTitle></DialogHeader>
 
-          {/* Live preview */}
-          <div className="relative mb-1 overflow-hidden rounded-2xl" style={form.photo_url ? undefined : { background: coverGradient(form.color) }}>
-            {form.photo_url && <img src={form.photo_url} alt="" className="h-20 w-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />}
-            <div className={cn('flex items-center gap-3 p-3', form.photo_url ? 'absolute inset-0 bg-gradient-to-t from-black/50' : '')}>
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-xl backdrop-blur-md">{form.icon}</span>
-              <div className="min-w-0"><p className="truncate text-sm font-bold text-white drop-shadow">{form.name || 'Nome da caixinha'}</p><p className="text-[11px] text-white/80">{rateLabel({ index_type: form.index_type, cdi_percent: Number(form.cdi_percent), annual_rate: Number(form.annual_rate) })}</p></div>
+          {/* Live preview — looks like the real pocket card */}
+          <div className="overflow-hidden rounded-2xl border border-border/40 shadow-sm">
+            <div className="relative h-28" style={form.photo_url ? undefined : { background: coverGradient(form.color) }}>
+              {form.photo_url && <img src={form.photo_url} alt="" className="h-full w-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />}
+              {form.photo_url && <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />}
+              <span className="absolute left-3 top-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20 text-2xl backdrop-blur-md">{form.icon || '📦'}</span>
+              <span className="absolute right-3 top-3 rounded-full bg-black/25 px-2 py-0.5 text-[11px] font-bold text-white backdrop-blur-md">{rateLabel({ index_type: form.index_type, cdi_percent: Number(form.cdi_percent), annual_rate: Number(form.annual_rate) })}</span>
+              <p className="absolute bottom-2 left-3 right-3 truncate text-sm font-bold text-white drop-shadow">{form.name || 'Nome da caixinha'}</p>
+            </div>
+            <div className="flex items-center justify-between bg-card px-4 py-2.5">
+              <span className="truncate text-[11px] uppercase tracking-wide text-muted-foreground">{form.institution || INVESTMENT_TYPES.find(t => t.value === form.type)?.label}</span>
+              <span className="currency text-lg font-extrabold">{formatCurrency(editing ? editing.value : (parseFloat((form.current_value || '0').replace(',', '.')) || 0))}</span>
             </div>
           </div>
 
-          <div className="space-y-3">
-            <div>
-              <Label className="text-xs text-muted-foreground">Nome *</Label>
-              <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Caixinha Turbo, Nossa Casa..." />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-3.5">
+            {/* Identidade */}
+            <section className="space-y-3 rounded-2xl border border-border/60 bg-muted/20 p-3.5">
+              <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground"><Tag className="h-3 w-3" /> Identidade</p>
               <div>
-                <Label className="text-xs text-muted-foreground">Tipo</Label>
-                <Select value={form.type} onValueChange={onTypeChange}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{INVESTMENT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.icon} {t.label}</SelectItem>)}</SelectContent>
-                </Select>
+                <Label className="text-xs text-muted-foreground">Nome *</Label>
+                <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Caixinha Turbo, Nossa Casa..." />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Tipo</Label>
+                  <Select value={form.type} onValueChange={onTypeChange}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{INVESTMENT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.icon} {t.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Instituição</Label>
+                  <Input value={form.institution} onChange={e => setForm(p => ({ ...p, institution: e.target.value }))} placeholder="Nubank, XP..." />
+                </div>
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Instituição</Label>
-                <Input value={form.institution} onChange={e => setForm(p => ({ ...p, institution: e.target.value }))} placeholder="Nubank, XP..." />
+                <Label className="text-xs text-muted-foreground">Emoji</Label>
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  {EMOJIS.map(e => <button key={e} type="button" onClick={() => setForm(p => ({ ...p, icon: e }))} className={cn('flex h-8 w-8 items-center justify-center rounded-lg border text-lg transition-all', form.icon === e ? 'scale-110 border-primary bg-primary/10' : 'border-border/60 hover:bg-muted')}>{e}</button>)}
+                  <Input value={form.icon} onChange={e => setForm(p => ({ ...p, icon: e.target.value }))} maxLength={4} className="h-8 w-12 text-center" placeholder="✏️" />
+                </div>
               </div>
-              <div className="col-span-2">
-                <Label className="text-xs text-muted-foreground">Rendimento</Label>
-                <Select value={form.index_type} onValueChange={v => setForm(p => ({ ...p, index_type: v as IndexType }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{INDEX_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
-                </Select>
-                <p className="mt-1 text-[11px] text-muted-foreground">{INDEX_TYPES.find(t => t.value === form.index_type)?.help}</p>
+              <div>
+                <Label className="flex items-center gap-1 text-xs text-muted-foreground"><Palette className="h-3 w-3" /> Cor da capa</Label>
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  {COVER_COLORS.map(c => <button key={c} type="button" onClick={() => setForm(p => ({ ...p, color: c }))} className={cn('h-7 w-7 rounded-full transition-all', form.color === c ? 'scale-110 ring-2 ring-foreground ring-offset-2 ring-offset-card' : 'hover:scale-105')} style={{ backgroundColor: c }} />)}
+                  <Input type="color" value={form.color} onChange={e => setForm(p => ({ ...p, color: e.target.value }))} className="h-7 w-8 cursor-pointer rounded p-0.5" />
+                </div>
               </div>
+              <div>
+                <Label className="flex items-center gap-1.5 text-xs text-muted-foreground"><ImageIcon className="h-3.5 w-3.5" /> Foto de capa (URL opcional)</Label>
+                <Input value={form.photo_url} onChange={e => setForm(p => ({ ...p, photo_url: e.target.value }))} placeholder="https://..." />
+              </div>
+            </section>
 
+            {/* Rendimento */}
+            <section className="space-y-3 rounded-2xl border border-border/60 bg-muted/20 p-3.5">
+              <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground"><Percent className="h-3 w-3" /> Como rende</p>
+              <div className="flex flex-wrap gap-1.5">
+                {INDEX_TYPES.map(t => <button key={t.value} type="button" onClick={() => setForm(p => ({ ...p, index_type: t.value }))} className={cn('rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-all', form.index_type === t.value ? 'border-primary bg-primary/10 text-primary' : 'border-border/60 text-muted-foreground hover:bg-muted')}>{t.label}</button>)}
+              </div>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">{INDEX_TYPES.find(t => t.value === form.index_type)?.help}</p>
               {form.index_type === 'cdi' && (
-                <div className="col-span-2">
+                <div>
                   <Label className="text-xs text-muted-foreground">% do CDI</Label>
                   <div className="flex items-center gap-2">
                     <Input type="number" step="1" value={form.cdi_percent} onChange={e => setForm(p => ({ ...p, cdi_percent: e.target.value }))} placeholder="100" className="flex-1" />
-                    {['100', '115', '120'].map(v => <button key={v} type="button" onClick={() => setForm(p => ({ ...p, cdi_percent: v }))} className={cn('rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors', form.cdi_percent === v ? 'border-primary bg-primary/10 text-primary' : 'border-border/60 text-muted-foreground hover:bg-muted')}>{v}%</button>)}
+                    {['100', '115', '120'].map(v => <button key={v} type="button" onClick={() => setForm(p => ({ ...p, cdi_percent: v }))} className={cn('rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors', form.cdi_percent === v ? 'border-primary bg-primary/10 text-primary' : 'border-border/60 text-muted-foreground hover:bg-muted')}>{v}%</button>)}
                   </div>
-                  <p className="mt-1 text-[11px] text-muted-foreground">Caixinha normal = 100% · Turbo = 115% · Turbo premium = 120%.</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">Normal = 100% · Turbo = 115% · Turbo premium = 120%.</p>
                 </div>
               )}
-              {form.index_type === 'prefixado' && (
-                <div className="col-span-2"><Label className="text-xs text-muted-foreground">Taxa (% ao ano)</Label><Input type="number" step="0.1" value={form.annual_rate} onChange={e => setForm(p => ({ ...p, annual_rate: e.target.value }))} placeholder="Ex: 12.5" /></div>
-              )}
-              {form.index_type === 'ipca' && (
-                <div className="col-span-2"><Label className="text-xs text-muted-foreground">Spread sobre o IPCA (% ao ano)</Label><Input type="number" step="0.1" value={form.annual_rate} onChange={e => setForm(p => ({ ...p, annual_rate: e.target.value }))} placeholder="Ex: 6.5 (IPCA + 6,5%)" /></div>
-              )}
+              {form.index_type === 'prefixado' && (<div><Label className="text-xs text-muted-foreground">Taxa (% ao ano)</Label><Input type="number" step="0.1" value={form.annual_rate} onChange={e => setForm(p => ({ ...p, annual_rate: e.target.value }))} placeholder="Ex: 12.5" /></div>)}
+              {form.index_type === 'ipca' && (<div><Label className="text-xs text-muted-foreground">IPCA + (% ao ano)</Label><Input type="number" step="0.1" value={form.annual_rate} onChange={e => setForm(p => ({ ...p, annual_rate: e.target.value }))} placeholder="Ex: 6.5" /></div>)}
+            </section>
 
-              {!editing && (
-                <div className={form.index_type === 'manual' ? 'col-span-2' : 'col-span-2'}>
+            {/* Valores */}
+            <section className="space-y-3 rounded-2xl border border-border/60 bg-muted/20 p-3.5">
+              <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground"><Coins className="h-3 w-3" /> Valores</p>
+              {!editing ? (
+                <div>
                   <Label className="text-xs text-muted-foreground">Quanto você tem hoje (R$)</Label>
                   <Input type="number" step="0.01" value={form.current_value} onChange={e => setForm(p => ({ ...p, current_value: e.target.value }))} placeholder="0,00" />
                   <p className="mt-1 text-[11px] text-muted-foreground">{formIsAuto ? 'A partir daqui a caixinha rende sozinha. Depois é só Aportar/Resgatar.' : 'Você atualiza o valor manualmente quando quiser.'}</p>
                 </div>
-              )}
-              {editing && (
-                <div className="col-span-2">
+              ) : (
+                <div>
                   <Label className="text-xs text-muted-foreground">Corrigir saldo atual (opcional)</Label>
                   <Input type="number" step="0.01" value={rebalance} onChange={e => setRebalance(e.target.value)} placeholder={formatCurrency(editing.value)} />
                   <p className="mt-1 text-[11px] text-muted-foreground">Valor atual: <strong>{formatCurrency(editing.value)}</strong>. Preencha só se quiser ajustar para o valor real de hoje — recomeça o rendimento a partir desse valor.</p>
                 </div>
               )}
-
-              <div className="col-span-2">
-                <Label className="text-xs text-muted-foreground flex items-center gap-1"><Target className="h-3 w-3" /> Meta (opcional)</Label>
-                <Input type="number" step="0.01" value={form.goal_amount} onChange={e => setForm(p => ({ ...p, goal_amount: e.target.value }))} placeholder="Ex: 10000" />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="flex items-center gap-1 text-xs text-muted-foreground"><Target className="h-3 w-3" /> Meta (opcional)</Label>
+                  <Input type="number" step="0.01" value={form.goal_amount} onChange={e => setForm(p => ({ ...p, goal_amount: e.target.value }))} placeholder="Ex: 10000" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Liquidez</Label>
+                  <Select value={form.liquidity} onValueChange={v => setForm(p => ({ ...p, liquidity: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{LIQUIDITY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Liquidez</Label>
-                <Select value={form.liquidity} onValueChange={v => setForm(p => ({ ...p, liquidity: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{LIQUIDITY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Ícone</Label>
-                <Input value={form.icon} onChange={e => setForm(p => ({ ...p, icon: e.target.value }))} maxLength={4} placeholder="📦" />
-              </div>
-            </div>
-
-            {/* Emoji quick pick */}
-            <div>
-              <Label className="text-xs text-muted-foreground">Emoji rápido</Label>
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {EMOJIS.map(e => <button key={e} type="button" onClick={() => setForm(p => ({ ...p, icon: e }))} className={cn('flex h-8 w-8 items-center justify-center rounded-lg border text-lg transition-all', form.icon === e ? 'border-primary bg-primary/10 scale-110' : 'border-border/60 hover:bg-muted')}>{e}</button>)}
-              </div>
-            </div>
-
-            {/* Cover color */}
-            <div>
-              <Label className="text-xs text-muted-foreground">Cor da capa</Label>
-              <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                {COVER_COLORS.map(c => <button key={c} type="button" onClick={() => setForm(p => ({ ...p, color: c }))} className={cn('h-7 w-7 rounded-full transition-all', form.color === c ? 'ring-2 ring-offset-2 ring-foreground scale-110' : 'hover:scale-105')} style={{ backgroundColor: c }} />)}
-                <Input type="color" value={form.color} onChange={e => setForm(p => ({ ...p, color: e.target.value }))} className="h-7 w-8 cursor-pointer rounded p-0.5" />
-              </div>
-            </div>
-
-            <div>
-              <Label className="flex items-center gap-1.5 text-xs text-muted-foreground"><ImageIcon className="h-3.5 w-3.5" /> Foto de capa (URL opcional)</Label>
-              <Input value={form.photo_url} onChange={e => setForm(p => ({ ...p, photo_url: e.target.value }))} placeholder="https://..." />
-            </div>
+            </section>
           </div>
 
           <DialogFooter>
@@ -697,6 +734,98 @@ export default function InvestmentsPage() {
             <Button variant="outline" onClick={() => setShowRates(false)}>Cancelar</Button>
             <Button onClick={handleSaveRates}>Salvar taxas</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Simulator dialog ─────────────────────────────────────────────── */}
+      <Dialog open={showSim} onOpenChange={setShowSim}>
+        <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Calculator className="h-5 w-5 text-primary" /> Simulador de investimento</DialogTitle></DialogHeader>
+
+          <div className="space-y-3.5">
+            {/* Inputs */}
+            <section className="space-y-3 rounded-2xl border border-border/60 bg-muted/20 p-3.5">
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label className="text-xs text-muted-foreground">Valor inicial (R$)</Label><Input type="number" step="0.01" value={sim.initial} onChange={e => setSim(p => ({ ...p, initial: e.target.value }))} placeholder="1000" /></div>
+                <div><Label className="text-xs text-muted-foreground">Aporte mensal (R$)</Label><Input type="number" step="0.01" value={sim.monthly} onChange={e => setSim(p => ({ ...p, monthly: e.target.value }))} placeholder="300" /></div>
+                <div><Label className="text-xs text-muted-foreground">Por quantos anos</Label><Input type="number" step="1" value={sim.years} onChange={e => setSim(p => ({ ...p, years: e.target.value }))} placeholder="5" /></div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Rende como</Label>
+                  <Select value={sim.index_type} onValueChange={v => setSim(p => ({ ...p, index_type: v as IndexType }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{INDEX_TYPES.filter(t => t.value !== 'manual').map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {sim.index_type === 'cdi' && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">% do CDI</Label>
+                  <div className="flex items-center gap-2">
+                    <Input type="number" step="1" value={sim.cdi_percent} onChange={e => setSim(p => ({ ...p, cdi_percent: e.target.value }))} className="flex-1" />
+                    {['100', '115', '120'].map(v => <button key={v} type="button" onClick={() => setSim(p => ({ ...p, cdi_percent: v }))} className={cn('rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors', sim.cdi_percent === v ? 'border-primary bg-primary/10 text-primary' : 'border-border/60 text-muted-foreground hover:bg-muted')}>{v}%</button>)}
+                  </div>
+                </div>
+              )}
+              {sim.index_type === 'prefixado' && (<div><Label className="text-xs text-muted-foreground">Taxa (% ao ano)</Label><Input type="number" step="0.1" value={sim.annual_rate} onChange={e => setSim(p => ({ ...p, annual_rate: e.target.value }))} placeholder="12.5" /></div>)}
+              {sim.index_type === 'ipca' && (<div><Label className="text-xs text-muted-foreground">IPCA + (% ao ano)</Label><Input type="number" step="0.1" value={sim.annual_rate} onChange={e => setSim(p => ({ ...p, annual_rate: e.target.value }))} placeholder="6.5" /></div>)}
+              <p className="text-[11px] text-muted-foreground">Taxa estimada: <strong>{simAnnualPct.toFixed(2)}% a.a.</strong> (CDI atual {(rates.cdiAnnual * 100).toFixed(2)}%).</p>
+            </section>
+
+            {/* Results */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="rounded-2xl border border-border/50 bg-background/50 p-3">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Você terá (bruto)</p>
+                <p className="mt-1 currency text-2xl font-black leading-none text-foreground">{formatCurrency(simResult.gross)}</p>
+              </div>
+              <div className="rounded-2xl border border-income/20 bg-income/[0.06] p-3">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Líquido (após IR)</p>
+                <p className="mt-1 currency text-2xl font-black leading-none text-income">{formatCurrency(simResult.net)}</p>
+              </div>
+              <div className="rounded-2xl border border-border/50 bg-background/50 p-3">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Total investido</p>
+                <p className="mt-1 currency text-base font-bold leading-none">{formatCurrency(simResult.invested)}</p>
+              </div>
+              <div className="rounded-2xl border border-border/50 bg-background/50 p-3">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Rendimento líquido</p>
+                <p className="mt-1 currency text-base font-bold leading-none text-income">+{formatCurrency(simResult.netGain)}</p>
+              </div>
+            </div>
+
+            {/* Chart */}
+            <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Evolução</p>
+              <div style={{ width: '100%', height: 180 }}>
+                <ResponsiveContainer>
+                  <AreaChart data={simChartData} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="simGross" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.35} /><stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} /></linearGradient>
+                    </defs>
+                    <XAxis dataKey="month" tickFormatter={m => `${Math.round(m / 12)}a`} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" interval="preserveStartEnd" />
+                    <YAxis hide domain={[0, 'dataMax']} />
+                    <RTooltip
+                      formatter={(v: number, n: string) => [formatCurrency(v), n === 'gross' ? 'Investimento' : n === 'invested' ? 'Aportado' : 'Poupança']}
+                      labelFormatter={m => `Mês ${m}`}
+                      contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 12, fontSize: 12 }}
+                    />
+                    <Area type="monotone" dataKey="invested" stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" fill="none" strokeWidth={1.5} />
+                    <Area type="monotone" dataKey="savings" stroke="hsl(var(--expense))" fill="none" strokeWidth={1.5} />
+                    <Area type="monotone" dataKey="gross" stroke="hsl(var(--primary))" fill="url(#simGross)" strokeWidth={2.5} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-1 flex flex-wrap gap-3 text-[10px] text-muted-foreground">
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: 'hsl(var(--primary))' }} /> Seu investimento</span>
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: 'hsl(var(--expense))' }} /> Poupança</span>
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-muted-foreground" /> Aportado</span>
+              </div>
+              {simResult.gross - simResult.savings > 0.5 && (
+                <p className="mt-2 text-[11px] text-muted-foreground">Rende <strong className="text-income">{formatCurrency(simResult.gross - simResult.savings)}</strong> a mais que a poupança no mesmo período. 🚀</p>
+              )}
+            </div>
+            <p className="text-[10px] leading-relaxed text-muted-foreground">Estimativa com a taxa atual constante; impostos calculados pelo prazo total. Rentabilidade passada/estimada não garante resultado futuro.</p>
+          </div>
+
+          <DialogFooter><Button onClick={() => setShowSim(false)}>Fechar</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 

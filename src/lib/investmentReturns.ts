@@ -141,14 +141,20 @@ export function accrualFactor(annualRate: number, from: Date, to: Date, base: 25
 
 // ─── Core: compute an investment's live value & yield ─────────────────────────
 export type ComputedInvestment = {
-  value: number;        // live current value (accrued for auto types)
+  value: number;        // live GROSS current value (accrued for auto types)
   invested: number;     // principal (total_invested)
-  yieldAbs: number;     // value - invested
+  yieldAbs: number;     // value - invested (gross)
   yieldPct: number;     // yieldAbs / invested * 100
   annualRate: number;   // effective annual rate (decimal); 0 for manual
   isAuto: boolean;
   /** estimated yield earned per day at the current value (R$/day), for "rende ~X/dia" copy */
   perDayYield: number;
+  /** NET value if redeemed today (after IR + IOF on the gain). Equals value for manual/exempt. */
+  netValue: number;
+  /** estimated GROSS yield earned over the trailing 12 months (or since inception if younger). */
+  yield12m: number;
+  /** calendar days since the value baseline (holding period) */
+  ageDays: number;
 };
 
 export type ValueInvestment = RateInvestment & {
@@ -179,6 +185,9 @@ export function computeInvestment(
       annualRate: 0,
       isAuto: false,
       perDayYield: 0,
+      netValue: baseline, // user-maintained; we don't auto-apply variable-asset taxes
+      yield12m: yieldAbs,
+      ageDays: 0,
     };
   }
 
@@ -192,6 +201,16 @@ export function computeInvestment(
   const dailyFactor = Math.pow(1 + annualRate, 1 / base);
   const perDayYield = value * (dailyFactor - 1);
 
+  // Net value if redeemed today: IR/IOF on the gain by holding period (exempt for LCI/LCA/poupança).
+  const ageDays = calendarDaysBetween(from, asOf);
+  const exempt = isIRExempt(inv.type, idx);
+  const netValue = invested + netYield(invested, yieldAbs, ageDays, exempt);
+
+  // Trailing-12-month gross yield estimate (since inception if younger than a year).
+  const yearDays = base === 252 ? businessDaysApprox(365) : 365;
+  const yearFactor = Math.pow(1 + annualRate, yearDays / base);
+  const yield12m = ageDays >= 365 && yearFactor > 0 ? value * (1 - 1 / yearFactor) : yieldAbs;
+
   return {
     value,
     invested,
@@ -200,6 +219,9 @@ export function computeInvestment(
     annualRate,
     isAuto: true,
     perDayYield,
+    netValue,
+    yield12m,
+    ageDays,
   };
 }
 
@@ -277,4 +299,49 @@ export function monthsToGoal(currentValue: number, goalAmount: number, annualRat
     if (v >= goalAmount) return m;
   }
   return null;
+}
+
+// ─── Simulator ────────────────────────────────────────────────────────────────
+export type SimInput = {
+  initial: number;       // valor inicial
+  monthly: number;       // aporte mensal
+  months: number;        // prazo em meses
+  annualRate: number;    // taxa anual efetiva (decimal)
+  type?: string | null;       // produto (para isenção de IR)
+  indexType?: string | null;
+};
+
+export type SimPoint = { month: number; invested: number; gross: number; savings: number };
+
+export type SimResult = {
+  invested: number;     // total aportado (inicial + mensais)
+  gross: number;        // valor final bruto
+  grossGain: number;
+  net: number;          // valor final líquido (IR/IOF sobre o ganho)
+  netGain: number;
+  savings: number;      // mesmo cenário na poupança (comparação)
+  series: SimPoint[];
+};
+
+/** Future value of an initial amount + monthly contributions compounding monthly, with net (IR/IOF). */
+export function simulate(inp: SimInput, rates: InvestmentRates): SimResult {
+  const months = Math.max(0, Math.round(inp.months));
+  const monthlyRate = inp.annualRate > 0 ? Math.pow(1 + inp.annualRate, 1 / 12) - 1 : 0;
+  const poupAnnual = rates.selicAnnual > 0.085 ? Math.pow(1.005, 12) - 1 : 0.70 * rates.selicAnnual;
+  const poupMonthly = Math.pow(1 + poupAnnual, 1 / 12) - 1;
+
+  let gross = inp.initial;
+  let invested = inp.initial;
+  let savings = inp.initial;
+  const series: SimPoint[] = [{ month: 0, invested, gross, savings }];
+  for (let t = 1; t <= months; t++) {
+    gross = gross * (1 + monthlyRate) + inp.monthly;
+    savings = savings * (1 + poupMonthly) + inp.monthly;
+    invested += inp.monthly;
+    series.push({ month: t, invested, gross, savings });
+  }
+  const grossGain = gross - invested;
+  const calDays = Math.round(months * 30.4375);
+  const netGain = netYield(invested, grossGain, calDays, isIRExempt(inp.type, inp.indexType));
+  return { invested, gross, grossGain, net: invested + netGain, netGain, savings, series };
 }
