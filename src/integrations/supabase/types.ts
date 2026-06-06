@@ -467,11 +467,14 @@ export type Database = {
         Row: {
           annual_rate: number | null
           archived: boolean
+          cdi_percent: number
           color: string
           created_at: string
           current_value: number
+          goal_amount: number
           icon: string
           id: string
+          index_type: string
           institution: string
           liquidity: string | null
           name: string
@@ -480,15 +483,19 @@ export type Database = {
           type: string
           updated_at: string
           user_id: string
+          value_date: string | null
         }
         Insert: {
           annual_rate?: number | null
           archived?: boolean
+          cdi_percent?: number
           color?: string
           created_at?: string
           current_value?: number
+          goal_amount?: number
           icon?: string
           id?: string
+          index_type?: string
           institution?: string
           liquidity?: string | null
           name: string
@@ -497,15 +504,19 @@ export type Database = {
           type?: string
           updated_at?: string
           user_id: string
+          value_date?: string | null
         }
         Update: {
           annual_rate?: number | null
           archived?: boolean
+          cdi_percent?: number
           color?: string
           created_at?: string
           current_value?: number
+          goal_amount?: number
           icon?: string
           id?: string
+          index_type?: string
           institution?: string
           liquidity?: string | null
           name?: string
@@ -514,6 +525,7 @@ export type Database = {
           type?: string
           updated_at?: string
           user_id?: string
+          value_date?: string | null
         }
         Relationships: []
       }

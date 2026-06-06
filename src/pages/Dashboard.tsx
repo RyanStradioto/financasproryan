@@ -126,6 +126,7 @@ export default function Dashboard() {
     totalInvested: investedTotal,
     totalReturn: investReturn,
     returnPct: investReturnPct,
+    perDayYield: investPerDay,
     count: investCount,
     investments: investmentList,
   } = useNetWorth();
@@ -1274,15 +1275,21 @@ export default function Dashboard() {
                     {investReturn >= 0 ? '+' : ''}{maskCurrency(formatCurrency(investReturn))}
                     {isVisible && investedTotal > 0 && <span className="opacity-80">({investReturnPct >= 0 ? '+' : ''}{investReturnPct.toFixed(1)}%)</span>}
                   </span>
+                  {investPerDay > 0 && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-2.5 py-1 text-xs font-semibold">
+                      <span className="text-muted-foreground">Rende/dia:</span>
+                      <span className="text-income">≈ {maskCurrency(formatCurrency(investPerDay))}</span>
+                    </span>
+                  )}
                 </div>
               </div>
               {/* Top investments allocation */}
               <div className="space-y-2">
                 {[...investmentList]
-                  .sort((a, b) => Number(b.current_value) - Number(a.current_value))
+                  .sort((a, b) => Number(b.value) - Number(a.value))
                   .slice(0, 4)
                   .map((inv) => {
-                    const val = Number(inv.current_value);
+                    const val = Number(inv.value);
                     const pct = investmentTotal > 0 ? (val / investmentTotal) * 100 : 0;
                     const color = inv.color || 'hsl(var(--primary))';
                     return (

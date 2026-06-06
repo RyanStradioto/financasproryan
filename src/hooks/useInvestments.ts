@@ -1,12 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import type { Tables, TablesInsert } from '@/integrations/supabase/types';
+import {
+  type InvestmentRates, type ComputedInvestment,
+  loadRates, saveRates, computeInvestment,
+  effectiveAnnualRate, accrualFactor, parseDate, isAutoCalc,
+} from '@/lib/investmentReturns';
 
 export type Investment = Tables<'investments'>;
 export type InvestmentTransaction = Tables<'investment_transactions'>;
+export type PortfolioInvestment = Investment & ComputedInvestment;
 
-const OPTIONAL_INVESTMENT_COLUMNS = ['annual_rate', 'liquidity', 'photo_url'] as const;
+const OPTIONAL_INVESTMENT_COLUMNS = [
+  'annual_rate', 'liquidity', 'photo_url', 'index_type', 'cdi_percent', 'goal_amount', 'value_date',
+] as const;
 
 function stripUnsupportedColumns<T extends Record<string, unknown>>(payload: T, message?: string): Partial<T> {
   if (!message) return payload;
@@ -103,24 +112,69 @@ export function useInvestmentTransactions(investmentId?: string) {
   });
 }
 
+/** Reactive access to the user's index rates (CDI/Selic/IPCA), persisted in localStorage. */
+export function useInvestmentRates() {
+  const [rates, setRatesState] = useState<InvestmentRates>(() => loadRates());
+  useEffect(() => {
+    const handler = () => setRatesState(loadRates());
+    window.addEventListener('investment-rates-changed', handler);
+    window.addEventListener('storage', handler);
+    return () => {
+      window.removeEventListener('investment-rates-changed', handler);
+      window.removeEventListener('storage', handler);
+    };
+  }, []);
+  const setRates = useCallback((next: InvestmentRates) => {
+    saveRates(next);
+    setRatesState(next);
+  }, []);
+  return { rates, setRates };
+}
+
+/**
+ * Central computed portfolio: each investment enriched with its live (accrued) value,
+ * yield and effective rate, plus portfolio-wide totals. Single source of truth so the
+ * page, the dashboard and useNetWorth all agree.
+ */
+export function usePortfolio() {
+  const { data: investments = [], isLoading } = useInvestments();
+  const { rates } = useInvestmentRates();
+
+  return useMemo(() => {
+    const now = new Date();
+    const enriched: PortfolioInvestment[] = investments.map((inv) => ({
+      ...inv,
+      ...computeInvestment(inv as Investment, rates, now),
+    }));
+    const toCents = (v: number) => Math.round((Number(v) || 0) * 100);
+    const valueCents = enriched.reduce((s, i) => s + toCents(i.value), 0);
+    const investedCents = enriched.reduce((s, i) => s + toCents(i.invested), 0);
+    const yieldCents = valueCents - investedCents;
+    return {
+      investments: enriched,
+      isLoading,
+      rates,
+      totalValue: valueCents / 100,
+      totalInvested: investedCents / 100,
+      totalYield: yieldCents / 100,
+      totalYieldPct: investedCents > 0 ? (yieldCents / investedCents) * 100 : 0,
+      perDayYield: enriched.reduce((s, i) => s + i.perDayYield, 0),
+      count: enriched.length,
+    };
+  }, [investments, rates, isLoading]);
+}
+
+/** Back-compat summary used by the dashboard; now backed by the real return engine. */
 export function useNetWorth() {
-  const { data: investments = [] } = useInvestments();
-  // Work in integer cents to avoid floating-point drift when summing money.
-  const toCents = (v: number) => Math.round((Number(v) || 0) * 100);
-  const currentCents  = investments.reduce((s, i) => s + toCents(i.current_value), 0);
-  const investedCents = investments.reduce((s, i) => s + toCents(i.total_invested), 0);
-  const returnCents   = currentCents - investedCents;
-  const investmentTotal = currentCents / 100;
-  const totalInvested   = investedCents / 100;
-  const totalReturn     = returnCents / 100;
-  const returnPct = investedCents > 0 ? (returnCents / investedCents) * 100 : 0;
+  const p = usePortfolio();
   return {
-    investmentTotal,
-    totalInvested,
-    totalReturn,
-    returnPct,
-    count: investments.length,
-    investments,
+    investmentTotal: p.totalValue,
+    totalInvested: p.totalInvested,
+    totalReturn: p.totalYield,
+    returnPct: p.totalYieldPct,
+    perDayYield: p.perDayYield,
+    count: p.count,
+    investments: p.investments,
   };
 }
 
@@ -195,10 +249,10 @@ export function useAddInvestmentTransaction() {
     }) => {
       const { skipLedgerSync, ...txPayload } = data;
 
-      // 1. Load the investment (need its name + current balances)
+      // 1. Load the investment (need name, balances, and rate model for accrual)
       const { data: inv, error: invError } = await supabase
         .from('investments')
-        .select('current_value, total_invested, name')
+        .select('current_value, total_invested, name, index_type, cdi_percent, annual_rate, value_date, created_at')
         .eq('id', data.investment_id)
         .single();
       if (invError) throw invError;
@@ -248,11 +302,29 @@ export function useAddInvestmentTransaction() {
         .insert({ ...txPayload, user_id: user!.id, description: data.description ?? '' });
       if (txError) throw txError;
 
-      // 4. Update the denormalized investment balances (in integer cents)
+      // 4. Update investment balances. For AUTO-calc (CDI/prefixado/IPCA/poupança) we
+      // CRYSTALLIZE the accrued yield into the baseline up to the movement date and reset
+      // value_date — so the engine only ever compounds a single fresh baseline (no drift,
+      // no double-count). For MANUAL types the stored value is the truth, so we just apply.
+      const rates = loadRates();
+      const idx = inv.index_type || 'cdi';
+      const auto = isAutoCalc(idx);
       const toCents = (v: number) => Math.round((Number(v) || 0) * 100);
       let currentCents = toCents(inv.current_value);
       let investedCents = toCents(inv.total_invested);
       const amountCents = toCents(data.amount);
+      const movementDate = (data.date || '').slice(0, 10);
+      let newValueDate: string | null = inv.value_date ?? null;
+
+      if (auto) {
+        const annual = effectiveAnnualRate(inv as { index_type?: string; cdi_percent?: number; annual_rate?: number }, rates);
+        const base = idx === 'ipca' ? 365 : 252;
+        const from = parseDate(inv.value_date) || parseDate(inv.created_at) || parseDate(movementDate) || new Date();
+        const to = parseDate(movementDate) || new Date();
+        const factor = accrualFactor(annual, from, to, base);
+        currentCents = Math.round(currentCents * factor); // crystallized value at movement date
+        newValueDate = movementDate || newValueDate;
+      }
 
       if (data.type === 'aporte') {
         currentCents += amountCents;
@@ -266,9 +338,19 @@ export function useAddInvestmentTransaction() {
         currentCents -= amountCents;
       }
 
+      // A withdrawal/fee can never push a balance below zero (backstop; the UI also validates).
+      currentCents = Math.max(0, currentCents);
+      investedCents = Math.max(0, investedCents);
+
+      const updatePayload: Record<string, number | string | null> = {
+        current_value: currentCents / 100,
+        total_invested: investedCents / 100,
+      };
+      if (auto) updatePayload.value_date = newValueDate;
+
       const { error: updateError } = await supabase
         .from('investments')
-        .update({ current_value: currentCents / 100, total_invested: investedCents / 100 })
+        .update(updatePayload)
         .eq('id', data.investment_id);
       if (updateError) throw updateError;
     },
