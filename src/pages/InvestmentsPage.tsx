@@ -249,19 +249,19 @@ export default function InvestmentsPage() {
         <div className="pointer-events-none absolute -top-24 -right-20 h-72 w-72 rounded-full bg-primary/15 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-16 left-1/4 h-44 w-56 rounded-full bg-income/[0.08] blur-3xl" />
         <div className="relative z-10 flex flex-col gap-5">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex min-w-0 items-center gap-3">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/30 to-primary/5 shadow-inner sm:h-14 sm:w-14">
                 <PiggyBank className="h-6 w-6 text-primary sm:h-7 sm:w-7" />
               </div>
               <div className="min-w-0">
-                <h1 className="flex items-center gap-2 text-2xl font-extrabold leading-none tracking-tight sm:text-3xl">Investimentos <Sparkles className="h-4 w-4 shrink-0 text-primary opacity-70" /></h1>
-                <p className="mt-1.5 text-xs text-muted-foreground sm:text-sm">{portfolio.count} {portfolio.count === 1 ? 'caixinha' : 'caixinhas'} · rendendo de verdade</p>
+                <h1 className="flex items-center gap-2 text-2xl font-extrabold leading-none tracking-tight">Investimentos <Sparkles className="hidden h-4 w-4 shrink-0 text-primary opacity-70 min-[380px]:inline" /></h1>
+                <p className="mt-1.5 truncate text-xs text-muted-foreground sm:text-sm">{portfolio.count} {portfolio.count === 1 ? 'caixinha' : 'caixinhas'} · rendendo de verdade</p>
               </div>
             </div>
-            <div className="flex shrink-0 gap-2">
-              <Button variant="outline" onClick={() => setShowSim(true)} className="gap-2"><Calculator className="h-4 w-4" /><span className="hidden sm:inline">Simular</span></Button>
-              <Button onClick={openNew} className="gap-2 bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90"><Plus className="h-4 w-4" /><span className="hidden sm:inline">Nova caixinha</span><span className="sm:hidden">Nova</span></Button>
+            <div className="flex shrink-0 gap-2 max-sm:w-full">
+              <Button variant="outline" onClick={() => setShowSim(true)} className="gap-2 max-sm:flex-1"><Calculator className="h-4 w-4" /> Simular</Button>
+              <Button onClick={openNew} className="gap-2 bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90 max-sm:flex-1"><Plus className="h-4 w-4" /> Nova caixinha</Button>
             </div>
           </div>
 
@@ -279,21 +279,27 @@ export default function InvestmentsPage() {
                 )}
               </p>
             </div>
-            <div className="grid grid-cols-3 gap-2.5">
-              <div className="rounded-2xl border border-border/50 bg-background/50 p-3 backdrop-blur-sm">
-                <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-[11px]"><ShieldCheck className="h-3 w-3" /> Líquido</p>
-                <p className="mt-1 currency text-base font-bold leading-none sm:text-xl">{maskCurrency(formatCurrency(portfolio.totalNet))}</p>
-                <p className="mt-1 text-[10px] text-muted-foreground">resgatando hoje</p>
+            <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-3 min-[420px]:gap-2.5">
+              <div className="flex items-center justify-between gap-2 rounded-2xl border border-border/50 bg-background/50 p-3 backdrop-blur-sm min-[420px]:block">
+                <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><ShieldCheck className="h-3 w-3" /> Líquido</p>
+                <div className="text-right min-[420px]:mt-1 min-[420px]:text-left">
+                  <p className="currency whitespace-nowrap text-base font-bold leading-none sm:text-xl">{maskCurrency(formatCurrency(portfolio.totalNet))}</p>
+                  <p className="mt-1 hidden text-[10px] text-muted-foreground min-[420px]:block">resgatando hoje</p>
+                </div>
               </div>
-              <div className="rounded-2xl border border-income/20 bg-income/[0.06] p-3 backdrop-blur-sm">
-                <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-[11px]"><CalendarClock className="h-3 w-3" /> Rendeu 12m</p>
-                <p className="mt-1 currency text-base font-bold leading-none text-income sm:text-xl">+{maskCurrency(formatCurrency(portfolio.totalYield12m))}</p>
-                <p className="mt-1 text-[10px] text-muted-foreground">últimos 12 meses</p>
+              <div className="flex items-center justify-between gap-2 rounded-2xl border border-income/20 bg-income/[0.06] p-3 backdrop-blur-sm min-[420px]:block">
+                <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><CalendarClock className="h-3 w-3" /> Rendeu 12m</p>
+                <div className="text-right min-[420px]:mt-1 min-[420px]:text-left">
+                  <p className="currency whitespace-nowrap text-base font-bold leading-none text-income sm:text-xl">+{maskCurrency(formatCurrency(portfolio.totalYield12m))}</p>
+                  <p className="mt-1 hidden text-[10px] text-muted-foreground min-[420px]:block">últimos 12 meses</p>
+                </div>
               </div>
-              <div className="rounded-2xl border border-income/20 bg-income/[0.06] p-3 backdrop-blur-sm">
-                <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-[11px]"><Flame className="h-3 w-3" /> Rende/dia</p>
-                <p className="mt-1 currency text-base font-bold leading-none text-income sm:text-xl">≈ {maskCurrency(formatCurrency(portfolio.perDayYield))}</p>
-                <p className="mt-1 text-[10px] text-muted-foreground">no ritmo atual</p>
+              <div className="flex items-center justify-between gap-2 rounded-2xl border border-income/20 bg-income/[0.06] p-3 backdrop-blur-sm min-[420px]:block">
+                <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><Flame className="h-3 w-3" /> Rende/dia</p>
+                <div className="text-right min-[420px]:mt-1 min-[420px]:text-left">
+                  <p className="currency whitespace-nowrap text-base font-bold leading-none text-income sm:text-xl">≈ {maskCurrency(formatCurrency(portfolio.perDayYield))}</p>
+                  <p className="mt-1 hidden text-[10px] text-muted-foreground min-[420px]:block">no ritmo atual</p>
+                </div>
               </div>
             </div>
           </div>
