@@ -5,7 +5,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCategories, useAddExpenseBatch, useAddIncome, useExpenses, useIncome as useIncomeData } from '@/hooks/useFinanceData';
 import { useInvestments, useAddInvestmentTransaction } from '@/hooks/useInvestments';
 import { useCreditCards, useAddCreditCardTransaction } from '@/hooks/useCreditCards';
-import { useClassificationRules, classifyDescription, type ClassificationRule } from '@/hooks/useClassification';
+import { useClassificationRules } from '@/hooks/useClassification';
+import {
+  parseFile, bradescoStatementToRows,
+  type ParsedRow, type RowType,
+} from '@/lib/importParsers';
+import { parseBradescoPdfFile } from '@/lib/bradescoStatementParser';
 import { formatCurrency } from '@/lib/format';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { toast } from 'sonner';
@@ -15,59 +20,8 @@ import { Badge } from '@/components/ui/badge';
 import { useQueryClient } from '@tanstack/react-query';
 import NubankImporter from '@/components/finance/NubankImporter';
 
-type RowType = 'income' | 'expense' | 'investment' | 'cc_payment';
-
-type ParsedRow = {
-  date: string;
-  description: string;
-  amount: number;
-  type: RowType;
-  categoryId: string;
-  investmentId: string;
-  creditCardId: string;
-  selected: boolean;
-  confidence: 'high' | 'medium' | 'low';
-  classificationReason: string;
-  isDuplicate: boolean;
-  source: 'bank' | 'cc';
-  fitId?: string; // OFX unique ID for dedup
-};
-
-// â"€â"€ Parsing helpers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-
-function splitCsvLine(line: string): string[] {
-  const cols: string[] = [];
-  let cur = '', inQuote = false;
-  for (const ch of line) {
-    if (ch === '"') { inQuote = !inQuote; continue; }
-    if (ch === ',' && !inQuote) { cols.push(cur.trim()); cur = ''; continue; }
-    if (ch === ';' && !inQuote) { cols.push(cur.trim()); cur = ''; continue; }
-    cur += ch;
-  }
-  cols.push(cur.trim());
-  return cols;
-}
-
-function parseMoney(raw: string): number | null {
-  const s = raw.trim();
-  if (!s) return null;
-  if (/,\d{1,2}$/.test(s)) {
-    const n = parseFloat(s.replace(/\./g, '').replace(',', '.'));
-    return isNaN(n) ? null : n;
-  }
-  const n = parseFloat(s);
-  return isNaN(n) ? null : n;
-}
-
-function parseDateStr(raw: string): string {
-  const br = raw.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
-  if (br) {
-    const [, d, m, y] = br;
-    return `${y.length === 2 ? '20' + y : y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-  }
-  if (/^\d{4}-\d{2}-\d{2}/.test(raw.trim())) return raw.trim().substring(0, 10);
-  return new Date().toISOString().split('T')[0];
-}
+// Parsing lives in src/lib/importParsers.ts (CSV/OFX/Bradesco-PDF) — kept out of
+// the component so it can be unit-tested.
 
 function dedupeKey(date: string, description: string, amount: number): string {
   const month = date.substring(0, 7);
@@ -77,279 +31,6 @@ function dedupeKey(date: string, description: string, amount: number): string {
 function getImportedMonths(rows: ParsedRow[]): string[] {
   const months = new Set(rows.map(r => r.date.substring(0, 7)));
   return [...months].sort();
-}
-
-// â"€â"€ CC payment detection (used in both CSV and OFX parsers) â"€â"€â"€â"€â"€
-
-const CC_PAYMENT_KEYWORDS = [
-  'pagamento de fatura', 'pag fatura', 'fatura cartao', 'fatura cartão',
-  'pagto fatura', 'pgto cartao', 'pgto cartão', 'pag cartao', 'pag cartão',
-  'pagamento nubank', 'debito automatico cartao',
-];
-
-function detectCCPayment(description: string): boolean {
-  const lower = description.toLowerCase();
-  return CC_PAYMENT_KEYWORDS.some(kw => lower.includes(kw));
-}
-
-// â"€â"€ OFX type detection â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-
-type OFXType = 'bank' | 'creditcard';
-
-function detectOFXType(text: string): OFXType {
-  if (/<CREDITCARDMSGSRSV1>/i.test(text) || /<CCSTMTTRNRS>/i.test(text) || /<CCSTMTRS>/i.test(text)) {
-    return 'creditcard';
-  }
-  return 'bank';
-}
-
-/**
- * Extracts the bill month from a credit card OFX.
- * Uses DTEND from BANKTRANLIST which represents the closing date.
- * The bill month is the month AFTER the closing date (when you pay).
- */
-function extractCCBillMonth(text: string): string {
-  const dtEndMatch = text.match(/<DTEND>(\d{8})/i);
-  if (dtEndMatch) {
-    const dtStr = dtEndMatch[1];
-    const year = parseInt(dtStr.slice(0, 4));
-    const month = parseInt(dtStr.slice(4, 6));
-    // Bill month = month after closing (DTEND)
-    const billDate = new Date(year, month, 1); // month is already 0-indexed +1
-    return `${billDate.getFullYear()}-${String(billDate.getMonth() + 1).padStart(2, '0')}`;
-  }
-  // Fallback: current month
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
-
-// â"€â"€ CSV parser â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-
-function parseCSV(text: string, rules: ClassificationRule[], source: 'bank' | 'cc', categories: Array<{ id: string; name: string }> = []): ParsedRow[] {
-  const allLines = text.split(/\r?\n/);
-  if (allLines.length < 2) return [];
-
-  // Find the real header line — some banks prepend account info rows before the actual header
-  let headerIdx = 0;
-  for (let i = 0; i < Math.min(allLines.length, 10); i++) {
-    const lower = allLines[i].toLowerCase();
-    if (
-      (lower.includes('data') || lower.includes('date')) &&
-      (lower.includes('valor') || lower.includes('histórico') || lower.includes('historico') ||
-       lower.includes('descrição') || lower.includes('descricao') ||
-       lower.includes('crédito') || lower.includes('credito') || lower.includes('débito') || lower.includes('debito'))
-    ) {
-      headerIdx = i;
-      break;
-    }
-  }
-
-  const lines = allLines.slice(headerIdx);
-  if (lines.length < 2) return [];
-
-  const headerCols = splitCsvLine(lines[0]).map(c => c.toLowerCase().replace(/\s+/g, ' ').trim());
-
-  // Detect split credit/debit format (Bradesco, Itaú, CEF, Santander, etc.)
-  const creditIdx = headerCols.findIndex(c => c.startsWith('crédito') || c.startsWith('credito') || c === 'cr');
-  const debitIdx  = headerCols.findIndex(c => c.startsWith('débito')  || c.startsWith('debito')  || c === 'db');
-  const dateIdx   = headerCols.findIndex(c => c === 'data' || c === 'date' || c === 'dt' || c.startsWith('data'));
-  const descIdx   = headerCols.findIndex(c =>
-    c.includes('histórico') || c.includes('historico') ||
-    c.includes('descrição') || c.includes('descricao') ||
-    c.includes('memo') || c.includes('lançamento') || c.includes('lancamento')
-  );
-
-  const isSplitFormat = creditIdx !== -1 && debitIdx !== -1;
-  const isNubank = headerCols.some(c => c.includes('valor')) &&
-    (headerCols.some(c => c.includes('identificador')) || headerCols.some(c => c.includes('título') || c.includes('titulo')));
-
-  const rows: ParsedRow[] = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line.trim()) continue;
-
-    const cols = splitCsvLine(line);
-    if (cols.length < 2) continue;
-
-    // Stop at footer / summary rows (lines that don't start with a date-like value)
-    const firstCol = cols[0].trim();
-    if (firstCol && !/^\d{1,2}[-/]\d{1,2}[-/]\d{2,4}$/.test(firstCol) && !/^\d{4}-\d{2}-\d{2}/.test(firstCol)) continue;
-
-    let date: string;
-    let rawAmount: string;
-    let description: string;
-    let isIncomeRow = false;
-
-    if (isSplitFormat) {
-      // Bradesco / Itaú / CEF style: Date | Desc | [Docto] | Crédito | Débito | Saldo
-      const dIdx = dateIdx >= 0 ? dateIdx : 0;
-      const hIdx = descIdx >= 0 ? descIdx : (dIdx === 0 ? 1 : 0);
-
-      date = parseDateStr(cols[dIdx] ?? '');
-      description = (cols[hIdx] ?? '').trim() || 'Transação';
-
-      const creditVal = parseMoney(cols[creditIdx] ?? '');
-      const debitVal  = parseMoney(cols[debitIdx]  ?? '');
-
-      if (creditVal !== null && creditVal > 0) {
-        rawAmount = cols[creditIdx];
-        isIncomeRow = true;
-      } else if (debitVal !== null && debitVal > 0) {
-        rawAmount = cols[debitIdx];
-        isIncomeRow = false;
-      } else {
-        continue;
-      }
-    } else if (isNubank) {
-      date = parseDateStr(cols[0]);
-      rawAmount = cols[1];
-      description = (cols.length >= 4 ? cols[3] : cols[2]) || 'Transação';
-    } else {
-      // Generic fallback — only accept values that have a decimal separator (avoids picking up doc/transaction IDs)
-      date = new Date().toISOString().split('T')[0];
-      rawAmount = '0';
-      description = 'Transação importada';
-      let gotAmount = false;
-      for (const col of cols) {
-        if (!col) continue;
-        if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(col) || /^\d{4}-\d{2}-\d{2}/.test(col)) {
-          date = parseDateStr(col); continue;
-        }
-        // Must contain comma or period acting as decimal — pure integers are likely doc numbers
-        if (!gotAmount && /[,.]/.test(col) && col.length <= 15) {
-          const n = parseMoney(col);
-          if (n !== null) { rawAmount = col; gotAmount = true; continue; }
-        }
-        if (col.length > 3 && isNaN(Number(col.replace(/\./g, '').replace(',', '.')))) description = col;
-      }
-    }
-
-    const amount = parseMoney(rawAmount);
-    if (amount === null || amount === 0) continue;
-
-    const result = classifyDescription(description, amount, rules, categories);
-
-    let rowType: RowType;
-    if (source === 'cc') {
-      rowType = 'expense';
-    } else if (isSplitFormat) {
-      if (!isIncomeRow && detectCCPayment(description)) {
-        rowType = 'cc_payment';
-      } else {
-        rowType = isIncomeRow ? 'income' : result.type as RowType;
-      }
-    } else {
-      rowType = result.type as RowType;
-    }
-
-    rows.push({
-      date, description,
-      amount: Math.abs(amount),
-      type: rowType,
-      categoryId: result.categoryId ?? '',
-      investmentId: result.investmentId ?? '',
-      creditCardId: '',
-      selected: true,
-      confidence: result.confidence,
-      classificationReason: source === 'cc' ? 'Fatura do cartão' : result.reason,
-      isDuplicate: false,
-      source,
-    });
-  }
-  return rows;
-}
-
-// â"€â"€ OFX parser â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-
-const CC_CREDIT_SKIP_KEYWORDS = [
-  'pagamento recebido', 'ajuste a crédito',
-];
-
-function shouldSkipCCCredit(description: string): boolean {
-  const lower = description.toLowerCase();
-  return CC_CREDIT_SKIP_KEYWORDS.some(kw => lower.includes(kw));
-}
-
-function parseOFX(text: string, rules: ClassificationRule[], categories: Array<{ id: string; name: string }> = []): { rows: ParsedRow[]; detectedType: OFXType; billMonth?: string } {
-  const detectedType = detectOFXType(text);
-  const isCreditCard = detectedType === 'creditcard';
-  const source: 'bank' | 'cc' = isCreditCard ? 'cc' : 'bank';
-  const billMonth = isCreditCard ? extractCCBillMonth(text) : undefined;
-
-  const rows: ParsedRow[] = [];
-  const stmtRx = /<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi;
-  let match;
-  while ((match = stmtRx.exec(text)) !== null) {
-    const block = match[1];
-    const get = (tag: string) => {
-      const m = block.match(new RegExp(`<${tag}>([^<\n]+)`, 'i'));
-      return m ? m[1].trim() : '';
-    };
-    const dtStr = get('DTPOSTED');
-    const date = dtStr.length >= 8
-      ? `${dtStr.slice(0, 4)}-${dtStr.slice(4, 6)}-${dtStr.slice(6, 8)}`
-      : new Date().toISOString().split('T')[0];
-    const rawAmount = parseFloat(get('TRNAMT')) || 0;
-    if (rawAmount === 0) continue;
-    const description = get('MEMO') || get('NAME') || 'Transação OFX';
-    const fitId = get('FITID');
-    const trnType = get('TRNTYPE').toUpperCase();
-
-    // For credit card OFX: skip "Pagamento recebido" and other credits (they're not purchases)
-    if (isCreditCard && trnType === 'CREDIT' && shouldSkipCCCredit(description)) {
-      console.log('[OFX] Ignorando crédito no cartão:', description, rawAmount);
-      continue;
-    }
-
-    const amount = Math.abs(rawAmount);
-    const isIncome = !isCreditCard && rawAmount > 0;
-    
-    let rowType: RowType;
-    let classReason: string;
-    
-    if (isCreditCard) {
-      rowType = 'expense';
-      classReason = 'Fatura do cartão';
-    } else if (detectCCPayment(description)) {
-      rowType = 'cc_payment';
-      classReason = 'Pagamento de fatura detectado';
-    } else {
-      const result = classifyDescription(description, rawAmount, rules, categories);
-      rowType = isIncome ? 'income' : result.type as RowType;
-      classReason = result.reason;
-    }
-
-    const result = classifyDescription(description, rawAmount, rules, categories);
-
-    rows.push({
-      date, description, amount,
-      type: rowType,
-      categoryId: result.categoryId ?? '',
-      investmentId: result.investmentId ?? '',
-      creditCardId: '',
-      selected: true,
-      confidence: isCreditCard ? 'high' : result.confidence,
-      classificationReason: classReason,
-      isDuplicate: false,
-      source,
-      fitId,
-    });
-  }
-  return { rows, detectedType, billMonth };
-}
-
-function parseFile(text: string, fileName: string, rules: ClassificationRule[], forcedSource?: 'bank' | 'cc', categories: Array<{ id: string; name: string }> = []): { rows: ParsedRow[]; detectedType?: OFXType; billMonth?: string } {
-  const ext = fileName.toLowerCase();
-  if (ext.endsWith('.ofx') || ext.endsWith('.qfx')) {
-    const result = parseOFX(text, rules, categories);
-    // If user forced a source via upload slot, override
-    if (forcedSource && forcedSource !== (result.detectedType === 'creditcard' ? 'cc' : 'bank')) {
-      return { rows: result.rows.map(r => ({ ...r, source: forcedSource })), detectedType: result.detectedType, billMonth: result.billMonth };
-    }
-    return result;
-  }
-  return { rows: parseCSV(text, rules, forcedSource || 'bank', categories) };
 }
 
 // â"€â"€ Type labels & colors â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
@@ -436,7 +117,33 @@ export default function ImportPage() {
   const handleFileUpload = useCallback((slot: 'bank' | 'cc') => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
+    // ── PDF: Bradesco statement (the PDF carries the merchant name — much
+    // better auto-classification than the CSV, which only has the history).
+    if (file.name.toLowerCase().endsWith('.pdf')) {
+      e.target.value = '';
+      if (slot === 'cc') {
+        toast.error('PDF de fatura ainda não é suportado — exporte a fatura em OFX/CSV. PDFs de extrato (Bradesco) vão no slot "Extrato do Banco".');
+        return;
+      }
+      toast.info('Lendo PDF do extrato...');
+      parseBradescoPdfFile(file)
+        .then(statement => {
+          const rows = bradescoStatementToRows(statement, classificationRules, categories);
+          const marked = markRows(rows);
+          setBankFileName(file.name);
+          setBankRows(marked);
+          const dupes = marked.filter(r => r.isDuplicate).length;
+          setAutoDetectedInfo(`🏦 Extrato Bradesco detectado (${statement.accountInfo}${statement.periodStart ? ` · ${statement.periodStart.split('-').reverse().join('/')} a ${statement.periodEnd?.split('-').reverse().join('/')}` : ''}) — estabelecimentos extraídos do PDF.`);
+          toast.success(`${rows.length} transações lidas do PDF${dupes > 0 ? ` (${dupes} duplicadas)` : ''}`);
+        })
+        .catch((err: Error) => {
+          const isNubankHint = /nubank/i.test(file.name);
+          toast.error(`${err.message}${isNubankHint ? ' Para extratos do Nubank, use a aba "Nubank PDF".' : ' Suportamos PDF de extrato do Bradesco — para Nubank, use a aba "Nubank PDF".'}`, { duration: 8000 });
+        });
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
@@ -553,6 +260,10 @@ export default function ImportPage() {
     }
 
     // â"€â"€ Investimentos â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+    const invWithoutAsset = investmentRows.filter(r => !r.investmentId).length;
+    if (invWithoutAsset > 0) {
+      errorMessages.push(`${invWithoutAsset} investimento(s) sem ativo selecionado — escolha o ativo na coluna "Categoria / Ativo" ou mude o tipo para Despesa`);
+    }
     for (const r of investmentRows) {
       if (!r.investmentId) continue;
       try {
@@ -669,7 +380,8 @@ export default function ImportPage() {
     fileName: string,
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => void,
     hint: string,
-    loaded: boolean
+    loaded: boolean,
+    accept = '.csv,.ofx,.qfx',
   ) => (
     <label className={`flex flex-col items-center justify-center py-8 cursor-pointer rounded-xl border-2 border-dashed transition-all
       ${loaded
@@ -685,7 +397,7 @@ export default function ImportPage() {
       ) : (
         <p className="text-xs text-muted-foreground text-center px-4">{hint}</p>
       )}
-      <input type="file" className="hidden" onChange={onChange} accept=".csv,.ofx,.qfx" />
+      <input type="file" className="hidden" onChange={onChange} accept={accept} />
     </label>
   );
 
@@ -800,7 +512,7 @@ export default function ImportPage() {
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Importar Extrato</h1>
-        <p className="text-sm text-muted-foreground">Importe extratos do banco em PDF (Nubank), OFX ou CSV.</p>
+        <p className="text-sm text-muted-foreground">Importe extratos do banco em PDF (Nubank, Bradesco), OFX ou CSV.</p>
       </div>
 
       <Tabs defaultValue="nubank-pdf" className="w-full">
@@ -809,7 +521,7 @@ export default function ImportPage() {
             <FileText className="w-4 h-4" /> Nubank PDF
           </TabsTrigger>
           <TabsTrigger value="ofx-csv" className="gap-2">
-            <Building2 className="w-4 h-4" /> OFX / CSV
+            <Building2 className="w-4 h-4" /> Outros bancos
           </TabsTrigger>
         </TabsList>
 
@@ -825,7 +537,8 @@ export default function ImportPage() {
           <Info className="w-4 h-4 text-primary" /> Como funciona
         </div>
         <ol className="text-xs text-muted-foreground space-y-1 ml-6 list-decimal">
-          <li><strong>Extrato do banco:</strong> Exporte o OFX/CSV do seu banco (conta corrente)</li>
+          <li><strong>Extrato do banco:</strong> Exporte o PDF, OFX ou CSV do seu banco (conta corrente)</li>
+          <li><strong>Bradesco:</strong> prefira o <strong>PDF do extrato</strong> — ele traz o nome do estabelecimento e a classificação automática funciona muito melhor que no CSV</li>
           <li><strong>Fatura do cartão:</strong> Exporte o OFX/CSV da fatura do cartão de crédito</li>
           <li>O app <strong>detecta automaticamente</strong> se o arquivo é extrato ou fatura (pode soltar em qualquer slot!)</li>
           <li>"Pagamento de fatura" no extrato é <strong>substituído pelos itens detalhados</strong> da fatura</li>
@@ -848,8 +561,9 @@ export default function ImportPage() {
           <Building2 className={`w-6 h-6 ${bankFileName ? 'text-primary' : 'text-muted-foreground'}`} />,
           bankFileName,
           handleFileUpload('bank'),
-          'CSV ou OFX do extrato bancário do mês',
-          !!bankFileName
+          'PDF (Bradesco), CSV ou OFX do extrato do mês',
+          !!bankFileName,
+          '.csv,.ofx,.qfx,.pdf'
         )}
         {renderUploadArea(
           ccFileName ? 'Fatura carregada ✓' : 'Fatura do Cartão',

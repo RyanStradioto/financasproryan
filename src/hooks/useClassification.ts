@@ -11,6 +11,7 @@ const INVESTMENT_KEYWORDS = [
   'inter invest', 'itaú invest', 'genial', 'warren', 'vitreo',
   'transferência investimento', 'transferencia investimento',
   'rendimento', 'dividendo', 'jcp', 'bitcoin', 'ethereum', 'cripto',
+  'capitalizacao', 'capitalização', // Bradesco: "TITULO DE CAPITALIZACAO"
 ];
 
 // ---- Built-in income keywords
@@ -18,20 +19,29 @@ const INCOME_KEYWORDS = [
   'salário', 'salario', 'ordenado', 'pagamento recebido', 'freelance',
   'pix recebido', 'transferência recebida', 'reembolso', 'restituição',
   'dividendo', 'rendimento recebido', 'cashback',
+  'ted c sal', 'cred sal', 'provento', // Bradesco: "TED C SAL P/ C CORRENTE" (crédito de salário)
 ];
 
 // ---- Category keyword mapping for AI auto-categorization
+// NOTE: order matters — first group whose keyword matches AND has a matching user
+// category wins. Marketplaces come before 'alimentação' so "MERCADO LIVRE"
+// doesn't get caught by the generic 'mercado' keyword.
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  'alimentação': ['mercado', 'supermercado', 'padaria', 'restaurante', 'lanchonete', 'ifood', 'rappi', 'uber eats', 'pizza', 'burger', 'mcdonald', 'subway', 'starbucks', 'cafe', 'café', 'açougue', 'hortifruti', 'feira', 'almoço', 'almoco', 'jantar', 'refeição', 'refeicao', 'alimentacao', 'comida', 'delivery', 'sushi', 'churrasco', 'bar ', 'boteco', 'pao de acucar', 'carrefour', 'atacadao', 'assai', 'big', 'extra', 'dia', 'sams club', 'costco'],
-  'transporte': ['uber', 'lyft', '99', '99pop', 'cabify', 'gasolina', 'combustível', 'combustivel', 'estacionamento', 'pedágio', 'pedagio', 'posto', 'shell', 'ipiranga', 'br distribuidora', 'ônibus', 'onibus', 'metrô', 'metro', 'trem', 'passagem', 'bilhete', 'recarga transporte', 'sem parar', 'conectcar', 'veloe', 'move', 'bike', 'patinete'],
-  'moradia': ['aluguel', 'condomínio', 'condominio', 'iptu', 'luz', 'energia', 'enel', 'cemig', 'copel', 'cpfl', 'eletropaulo', 'água', 'agua', 'sabesp', 'copasa', 'sanepar', 'gás', 'gas', 'comgas', 'manutenção', 'manutencao', 'reforma', 'pintura', 'encanador', 'eletricista'],
-  'saúde': ['farmácia', 'farmacia', 'drogaria', 'droga raia', 'drogasil', 'pague menos', 'médico', 'medico', 'consulta', 'exame', 'hospital', 'clínica', 'clinica', 'dentista', 'ortodontista', 'fisioterapia', 'psicólogo', 'psicologo', 'terapia', 'cirurgia', 'plano de saude', 'plano de saúde', 'unimed', 'amil', 'sulamerica', 'bradesco saude', 'hapvida', 'notre dame'],
+  'compras': ['mercado livre', 'mercadolivre', 'marketplace', 'amazon', 'shopee', 'aliexpress', 'americanas', 'magazine luiza', 'magalu', 'havan', 'casas bahia', 'ponto frio', 'shopping'],
+  'alimentação': ['mercado', 'supermercado', 'superm', 'atacad', 'sacolao', 'sacolão', 'mercearia', 'emporio', 'empório', 'padaria', 'panificadora', 'restaurante', 'restaur', 'lanchonete', 'lanche', 'ifood', 'rappi', 'uber eats', 'pizza', 'pizz', 'pastel', 'burger', 'burguer', 'mcdonald', 'subway', 'starbucks', 'kfc', 'spoleto', 'habibs', 'fast food', 'cafe', 'café', 'açougue', 'acougue', 'hortifruti', 'feira', 'almoço', 'almoco', 'jantar', 'refeição', 'refeicao', 'alimentacao', 'alimentos', 'comida', 'delivery', 'sushi', 'churrasco', 'frango', 'acai', 'açaí', 'sorvete', 'doceria', 'bar ', 'boteco', 'quiosque', 'kiosque', 'pao de acucar', 'carrefour', 'atacadao', 'assai', 'big', 'extra', 'dia', 'sams club', 'costco', 'seara'],
+  'transporte': ['uber', 'lyft', '99', '99pop', 'cabify', 'gasolina', 'combustível', 'combustivel', 'estacionamento', 'pedágio', 'pedagio', 'posto', 'autoposto', 'auto posto', 'shell', 'ipiranga', 'br distribuidora', 'ônibus', 'onibus', 'metrô', 'metro', 'trem', 'passagem', 'bilhete', 'recarga transporte', 'sem parar', 'conectcar', 'veloe', 'move', 'bike', 'patinete', 'ipva', 'detran', 'licenciamento'],
+  'moradia': ['aluguel', 'condomínio', 'condominio', 'iptu', 'luz', 'energia', 'enel', 'cemig', 'copel', 'cpfl', 'eletropaulo', 'água', 'agua', 'esgoto', 'saneamento', 'sabesp', 'copasa', 'sanepar', 'gás', 'gas', 'comgas', 'manutenção', 'manutencao', 'reforma', 'pintura', 'encanador', 'eletricista'],
+  // alias group: same essentials for users whose category is called "Casa"
+  'casa': ['aluguel', 'condominio', 'iptu', 'luz', 'energia', 'cpfl', 'enel', 'agua', 'esgoto', 'saneamento', 'gas', 'mercado', 'supermercado', 'superm'],
+  'saúde': ['farmácia', 'farmacia', 'farma', 'drogaria', 'drogal', 'droga raia', 'drogasil', 'panvel', 'ultrafarma', 'pague menos', 'médico', 'medico', 'consulta', 'exame', 'hospital', 'clínica', 'clinica', 'dentista', 'ortodontista', 'fisioterapia', 'psicólogo', 'psicologo', 'terapia', 'cirurgia', 'plano de saude', 'plano de saúde', 'unimed', 'amil', 'sulamerica', 'bradesco saude', 'hapvida', 'notre dame'],
   'educação': ['escola', 'faculdade', 'universidade', 'curso', 'udemy', 'coursera', 'alura', 'rocketseat', 'livro', 'livraria', 'material escolar', 'mensalidade', 'matrícula', 'matricula', 'apostila'],
   'lazer': ['cinema', 'netflix', 'spotify', 'disney', 'hbo', 'amazon prime', 'globoplay', 'deezer', 'youtube', 'twitch', 'steam', 'playstation', 'xbox', 'nintendo', 'jogo', 'game', 'ingresso', 'teatro', 'show', 'concerto', 'parque', 'viagem', 'hotel', 'airbnb', 'booking', 'passeio'],
-  'vestuário': ['roupa', 'calçado', 'calcado', 'sapato', 'tênis', 'tenis', 'camisa', 'calça', 'calca', 'vestido', 'shein', 'renner', 'riachuelo', 'c&a', 'zara', 'hering', 'marisa', 'centauro', 'netshoes', 'magazine luiza', 'magalu'],
+  'vestuário': ['roupa', 'calçado', 'calcado', 'sapato', 'tênis', 'tenis', 'camisa', 'calça', 'calca', 'vestido', 'shein', 'renner', 'riachuelo', 'c&a', 'zara', 'hering', 'marisa', 'centauro', 'netshoes'],
   'assinaturas': ['assinatura', 'mensalidade', 'plano', 'premium', 'pro', 'plus', 'vip', 'icloud', 'google one', 'dropbox', 'adobe', 'microsoft', 'office', 'chatgpt', 'openai'],
-  'telecomunicações': ['telefone', 'celular', 'internet', 'wifi', 'vivo', 'claro', 'tim', 'oi', 'net', 'sky', 'fibra'],
-  'pets': ['pet', 'veterinário', 'veterinario', 'ração', 'racao', 'petshop', 'pet shop', 'petz', 'cobasi'],
+  'telecomunicações': ['telefone', 'celular', 'internet', 'wifi', 'vivo', 'claro', 'tim', 'oi', 'net', 'sky', 'fibra', 'recarga', 'pre pago', 'pré pago'],
+  'pets': ['pet', 'veterinário', 'veterinario', 'ração', 'racao', 'petshop', 'pet shop', 'petz', 'cobasi', 'agropecuaria', 'agropecuária', 'agro '],
+  'impostos': ['tributo', 'darf', 'das ', 'inss', 'fgts', 'taxa municipal', 'prefeitura', 'p.m '],
+  'doações': ['doação', 'doacao', 'dizimo', 'dízimo', 'mitra', 'diocese', 'paroquia', 'paróquia', 'igreja'],
   'seguros': ['seguro', 'porto seguro', 'bradesco seguros', 'itau seguros', 'liberty', 'tokio marine', 'zurich', 'mapfre', 'azul seguros'],
 };
 
