@@ -26,6 +26,28 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 3,
+    version: 'Junho 2026 • Investimentos',
+    date: '2026-06-16',
+    items: [
+      {
+        icon: '📡',
+        title: 'Cotações ao vivo',
+        desc: 'Dólar, Euro, Bitcoin e Ethereum atualizados em tempo real, direto na aba Investimentos.',
+      },
+      {
+        icon: '🧭',
+        title: 'Guia de tipos de investimento',
+        desc: 'Do Tesouro às criptos: risco, liquidez, potencial e pra quem serve cada um. Comece a entender o mundo dos investimentos.',
+      },
+      {
+        icon: '📊',
+        title: 'Simulador mais bonito (e sem bug no celular)',
+        desc: 'Os valores não quebram mais a tela no celular, e tem um banner mostrando o poder dos juros compostos.',
+      },
+    ],
+  },
+  {
     id: 2,
     version: 'Junho 2026',
     date: '2026-06-04',

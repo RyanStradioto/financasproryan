@@ -26,6 +26,8 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip as RTooltip } from 'recharts';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
+import MarketQuotes from '@/components/finance/MarketQuotes';
+import InvestmentExplorer from '@/components/finance/InvestmentExplorer';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const INVESTMENT_TYPES = [
@@ -312,6 +314,9 @@ export default function InvestmentsPage() {
         </div>
       </div>
 
+      {/* ─── Cotações ao vivo ──────────────────────────────────────────────── */}
+      <MarketQuotes />
+
       {/* ─── Allocation ────────────────────────────────────────────────────── */}
       {showDonut && (
         <div className="rounded-[1.5rem] border border-border/60 bg-card p-5 shadow-sm">
@@ -437,6 +442,23 @@ export default function InvestmentsPage() {
           })}
         </div>
       )}
+
+      {/* ─── Simulador (atalho) + Educação ─────────────────────────────────── */}
+      <button
+        onClick={() => setShowSim(true)}
+        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 to-info/[0.06] p-4 text-left transition-all hover:border-primary/40"
+      >
+        <span className="flex items-center gap-3 min-w-0">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15"><Calculator className="h-5 w-5 text-primary" /></span>
+          <span className="min-w-0">
+            <span className="block text-sm font-bold">Simular um investimento</span>
+            <span className="block text-xs text-muted-foreground">Quanto rende seu dinheiro com juros compostos?</span>
+          </span>
+        </span>
+        <ChevronRight className="h-5 w-5 shrink-0 text-primary" />
+      </button>
+
+      <InvestmentExplorer />
 
       {/* ─── Caixinha DETAIL dialog ────────────────────────────────────────── */}
       <Dialog open={!!detail} onOpenChange={o => !o && setDetailId(null)}>
@@ -726,8 +748,8 @@ export default function InvestmentsPage() {
               <p className="text-[11px] text-muted-foreground">Taxa estimada: <strong>{simAnnualPct.toFixed(2)}% a.a.</strong></p>
             </section>
             <div className="grid grid-cols-2 gap-2.5">
-              <div className="rounded-2xl border border-border/50 bg-background/50 p-3"><p className="text-[11px] uppercase tracking-wide text-muted-foreground">Você terá (bruto)</p><p className="mt-1 currency text-2xl font-black leading-none">{formatCurrency(simResult.gross)}</p></div>
-              <div className="rounded-2xl border border-income/20 bg-income/[0.06] p-3"><p className="text-[11px] uppercase tracking-wide text-muted-foreground">Líquido (após IR)</p><p className="mt-1 currency text-2xl font-black leading-none text-income">{formatCurrency(simResult.net)}</p></div>
+              <div className="rounded-2xl border border-border/50 bg-background/50 p-3"><p className="text-[11px] uppercase tracking-wide text-muted-foreground">Você terá (bruto)</p><p className="mt-1 currency text-lg font-black leading-tight sm:text-2xl">{formatCurrency(simResult.gross)}</p></div>
+              <div className="rounded-2xl border border-income/20 bg-income/[0.06] p-3"><p className="text-[11px] uppercase tracking-wide text-muted-foreground">Líquido (após IR)</p><p className="mt-1 currency text-lg font-black leading-tight sm:text-2xl text-income">{formatCurrency(simResult.net)}</p></div>
               <div className="rounded-2xl border border-border/50 bg-background/50 p-3"><p className="text-[11px] uppercase tracking-wide text-muted-foreground">Total investido</p><p className="mt-1 currency text-base font-bold leading-none">{formatCurrency(simResult.invested)}</p></div>
               <div className="rounded-2xl border border-border/50 bg-background/50 p-3"><p className="text-[11px] uppercase tracking-wide text-muted-foreground">Rendimento líquido</p><p className="mt-1 currency text-base font-bold leading-none text-income">+{formatCurrency(simResult.netGain)}</p></div>
             </div>
