@@ -151,31 +151,38 @@ export default function Dashboard() {
     if (!orphanFixAccountId || !orphanUser) return;
     setOrphanFixBusy(true);
     try {
-      // Update all expenses with null account_id, NOT being CC mirrors, status concluido
-      const { data: orphans, error: selErr } = await supabase
-        .from('expenses')
-        .select('id, notes')
-        .is('account_id', null)
-        .eq('status', 'concluido')
-        .eq('user_id', orphanUser.id);
-      if (selErr) throw selErr;
-      // Filter out CC mirror rows (those have notes starting with [Cartao de credito|card:)
-      const idsToFix = (orphans || [])
-        .filter(o => !o.notes?.includes('[Cartao de credito|card:'))
-        .map(o => o.id);
-      if (idsToFix.length === 0) {
+      // Despesa/receita órfã = sem account_id e que NÃO é espelho de cartão nem
+      // transferência de investimento (essas são patrimoniais/já tratadas).
+      // Pega TODOS os status (antes só 'concluido' deixava pendentes/agendados de fora).
+      const isFixable = (notes: string | null | undefined) =>
+        !notes?.includes('[Cartao de credito|card:') && !notes?.includes('[INVESTIMENTO]');
+
+      const [expRes, incRes] = await Promise.all([
+        supabase.from('expenses').select('id, notes').is('account_id', null).eq('user_id', orphanUser.id),
+        supabase.from('income').select('id, notes').is('account_id', null).eq('user_id', orphanUser.id),
+      ]);
+      if (expRes.error) throw expRes.error;
+      if (incRes.error) throw incRes.error;
+
+      const expIds = (expRes.data || []).filter(o => isFixable(o.notes)).map(o => o.id);
+      const incIds = (incRes.data || []).filter(o => isFixable(o.notes)).map(o => o.id);
+      if (expIds.length === 0 && incIds.length === 0) {
         toast.info('Nada para corrigir');
         setOrphanFixOpen(false);
         return;
       }
-      const { error: updErr } = await supabase
-        .from('expenses')
-        .update({ account_id: orphanFixAccountId })
-        .in('id', idsToFix);
-      if (updErr) throw updErr;
-      toast.success(`${idsToFix.length} despesa(s) atualizada(s) com sucesso!`);
+      if (expIds.length > 0) {
+        const { error } = await supabase.from('expenses').update({ account_id: orphanFixAccountId }).in('id', expIds);
+        if (error) throw error;
+      }
+      if (incIds.length > 0) {
+        const { error } = await supabase.from('income').update({ account_id: orphanFixAccountId }).in('id', incIds);
+        if (error) throw error;
+      }
+      toast.success(`${expIds.length + incIds.length} lançamento(s) vinculado(s) à conta!`);
       setOrphanFixOpen(false);
       orphanQc.invalidateQueries({ queryKey: ['expenses'] });
+      orphanQc.invalidateQueries({ queryKey: ['income'] });
       orphanQc.invalidateQueries({ queryKey: ['accumulated-balance'] });
     } catch (e) {
       toast.error('Erro: ' + (e as Error).message);

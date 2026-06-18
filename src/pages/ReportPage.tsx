@@ -18,8 +18,7 @@ import {
   AreaChart, Area, Legend,
 } from 'recharts';
 import { cn } from '@/lib/utils';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import type jsPDFType from 'jspdf';
 
 const CHART_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
 
@@ -277,8 +276,11 @@ export default function ReportPage() {
     ? getMonthLabel(startMonth)
     : `${getMonthLabel(startMonth)} — ${getMonthLabel(endMonth)}`;
 
-  const handleExportPDF = () => {
-    const doc = new jsPDF();
+  const handleExportPDF = async () => {
+    // Carrega jsPDF sob demanda — tira ~180KB do bundle de quem nunca exporta.
+    const { default: jsPDF } = await import('jspdf');
+    await import('jspdf-autotable');
+    const doc: jsPDFType = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     let y = 20;
 

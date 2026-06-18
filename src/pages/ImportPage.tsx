@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useCategories, useAddExpenseBatch, useAddIncome, useExpenses, useIncome as useIncomeData } from '@/hooks/useFinanceData';
+import { useCategories, useAddExpenseBatch, useAddIncome, useExpenses, useIncome as useIncomeData, useAccounts } from '@/hooks/useFinanceData';
 import { useInvestments, useAddInvestmentTransaction } from '@/hooks/useInvestments';
 import { useCreditCards, useAddCreditCardTransaction } from '@/hooks/useCreditCards';
 import { useClassificationRules } from '@/hooks/useClassification';
@@ -70,8 +70,12 @@ export default function ImportPage() {
   const [activeTab, setActiveTab] = useState('bank');
   const [forceImport, setForceImport] = useState(false);
   const [autoDetectedInfo, setAutoDetectedInfo] = useState('');
+  // Conta a que o extrato pertence — sem isso, as transações entram "órfãs"
+  // (sem account_id) e ficam fora do saldo. Era a causa das 97 órfãs.
+  const [importAccountId, setImportAccountId] = useState('');
 
   const { data: categories = [] } = useCategories();
+  const { data: accounts = [] } = useAccounts();
   const { data: investments = [] } = useInvestments();
   const { data: creditCards = [] } = useCreditCards();
   const { data: classificationRules = [] } = useClassificationRules();
@@ -233,30 +237,31 @@ export default function ImportPage() {
     let successCount = 0;
     const errorMessages: string[] = [];
 
+    // Conta de destino do extrato — vincula as transações ao saldo (evita órfãs).
+    const acctId = (importAccountId || accounts.find(a => !a.archived)?.id) || null;
+
     const { supabase: sb } = await import('@/integrations/supabase/client');
 
     // â"€â"€ Despesas â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     if (expenseRows.length > 0) {
       const payload = expenseRows.map(r => ({
         date: r.date, description: r.description, amount: r.amount,
-        category_id: r.categoryId || null, status: 'concluido', user_id: user!.id,
+        category_id: r.categoryId || null, account_id: acctId, status: 'concluido', user_id: user!.id,
       }));
-      console.log('[Import] Inserindo despesas:', payload);
       const { error } = await sb.from('expenses').insert(payload);
       if (error) { console.error('[Import] Erro despesas:', error); errorMessages.push(`Despesas: ${error.message}`); }
-      else { successCount += expenseRows.length; console.log('[Import] Despesas OK'); }
+      else { successCount += expenseRows.length; }
     }
 
     // â"€â"€ Receitas â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     if (incomeRows.length > 0) {
       const payload = incomeRows.map(r => ({
         date: r.date, description: r.description, amount: r.amount,
-        status: 'concluido', user_id: user!.id,
+        account_id: acctId, status: 'concluido', user_id: user!.id,
       }));
-      console.log('[Import] Inserindo receitas:', payload);
       const { error } = await sb.from('income').insert(payload);
       if (error) { console.error('[Import] Erro receitas:', error); errorMessages.push(`Receitas: ${error.message}`); }
-      else { successCount += incomeRows.length; console.log('[Import] Receitas OK'); }
+      else { successCount += incomeRows.length; }
     }
 
     // â"€â"€ Investimentos â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
@@ -264,12 +269,14 @@ export default function ImportPage() {
     if (invWithoutAsset > 0) {
       errorMessages.push(`${invWithoutAsset} investimento(s) sem ativo selecionado — escolha o ativo na coluna "Categoria / Ativo" ou mude o tipo para Despesa`);
     }
+    // Sequencial DE PROPÓSITO: o aporte faz read-modify-write em current_value do
+    // ativo; rodar em paralelo aportes do MESMO ativo perderia atualizações.
     for (const r of investmentRows) {
       if (!r.investmentId) continue;
       try {
         await addInvestmentTx.mutateAsync({
           investment_id: r.investmentId, type: 'aporte',
-          amount: r.amount, date: r.date, description: r.description,
+          amount: r.amount, date: r.date, account_id: acctId, description: r.description,
         });
         successCount++;
       } catch (e) {
@@ -551,6 +558,24 @@ export default function ImportPage() {
         <div className="rounded-lg bg-primary/5 border border-primary/20 px-4 py-3 text-sm text-primary flex items-center gap-2">
           <Info className="w-4 h-4 shrink-0" />
           {autoDetectedInfo}
+        </div>
+      )}
+
+      {/* Conta de destino — sem isso as transações entram sem conta e ficam fora do saldo */}
+      {accounts.filter(a => !a.archived).length > 0 && (
+        <div className="rounded-lg border border-border bg-muted/40 p-4">
+          <label className="mb-1.5 flex items-center gap-2 text-sm font-semibold">
+            <Building2 className="h-4 w-4 text-primary" /> Conta deste extrato
+          </label>
+          <p className="mb-2 text-xs text-muted-foreground">As transações importadas entram nesta conta e contam no seu saldo. (Itens da fatura do cartão são lançados no cartão, não aqui.)</p>
+          <Select value={importAccountId || accounts.find(a => !a.archived)?.id || ''} onValueChange={setImportAccountId}>
+            <SelectTrigger className="max-w-xs"><SelectValue placeholder="Selecione a conta..." /></SelectTrigger>
+            <SelectContent>
+              {accounts.filter(a => !a.archived).map(a => (
+                <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
 
