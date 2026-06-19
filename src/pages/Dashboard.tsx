@@ -44,7 +44,6 @@ import SectionHeader from '@/components/dashboard/SectionHeader';
 import DailyFlowChart from '@/components/dashboard/DailyFlowChart';
 import KpiCard from '@/components/dashboard/KpiCard';
 import BrandLogoBadge from '@/components/dashboard/BrandLogoBadge';
-import CreditCardsOverview from '@/components/dashboard/CreditCardsOverview';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { colorWithOpacity } from '@/lib/colors';
 
@@ -1111,9 +1110,6 @@ export default function Dashboard() {
           <KpiCard label="Saúde financeira" value={`${healthScore}/100`} icon={Gauge} color={healthScore >= 70 ? 'from-emerald-400/14' : healthScore >= 45 ? 'from-amber-400/14' : 'from-red-400/14'} trend={healthScore >= 70 ? 'up' : healthScore >= 45 ? 'neutral' : 'down'} sub={healthCopy} />
         </div>
       </section>
-
-      {/* ─── Cartões de crédito (fatura, limite, vencimento por cartão) ─────── */}
-      <CreditCardsOverview cards={creditCards} transactions={creditTransactions} month={month} maskCurrency={maskCurrency} />
 
       <section className="grid gap-4 lg:grid-cols-2">
         <PremiumCard className="relative overflow-hidden p-4 sm:p-5">
