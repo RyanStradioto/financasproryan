@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, CreditCard, Trash2, Check, ChevronLeft, ChevronRight, Wallet, CalendarDays, Zap, Receipt, Sparkles, Search, ShieldCheck, Layers3, PieChart, Pencil } from 'lucide-react';
+import { Plus, CreditCard, Trash2, Check, ChevronLeft, ChevronRight, Wallet, CalendarDays, Zap, Receipt, Sparkles, Search, ShieldCheck, Layers3, PieChart, Pencil, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCategories, useAccounts } from '@/hooks/useFinanceData';
 import { getMonthYear, formatCurrency, formatDate, calcBillMonth } from '@/lib/format';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
+import CreditCardAnalytics from '@/components/finance/CreditCardAnalytics';
 import { cn } from '@/lib/utils';
 import { CARD_COLORS } from '@/lib/colors';
 import { resolveAccountBrand, getAccountBrandPresets } from '@/lib/accountBrand';
@@ -107,6 +108,7 @@ export default function CreditCardsPage() {
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [showNewCard, setShowNewCard] = useState(false);
   const [showNewTx, setShowNewTx] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
   const [showPayBill, setShowPayBill] = useState(false);
   const [payBillAccountId, setPayBillAccountId] = useState('');
   const [txFilter, setTxFilter] = useState<TxFilter>('all');
@@ -874,6 +876,13 @@ export default function CreditCardsPage() {
             <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
               <Button
                 variant="outline"
+                onClick={() => setShowAnalytics(true)}
+                className="col-span-2 h-11 rounded-xl border-primary/30 bg-primary/10 px-4 text-primary hover:bg-primary/15 sm:col-span-1"
+              >
+                <BarChart3 className="mr-2 h-4 w-4" /> Análises
+              </Button>
+              <Button
+                variant="outline"
                 onClick={() => setShowNewCard(true)}
                 className="h-11 rounded-xl border-border/60 dark:border-white/10 bg-muted/50 dark:bg-white/[0.035] px-4 text-foreground hover:bg-muted/60 dark:bg-white/[0.07]"
               >
@@ -1351,6 +1360,18 @@ export default function CreditCardsPage() {
           <p className="text-sm font-bold text-muted-foreground dark:text-slate-400">Selecione um cartão para ver a fatura.</p>
         </div>
       )}
+      {/* ── Análises do cartão (dashboard sob demanda) ──────────────── */}
+      <Dialog open={showAnalytics} onOpenChange={setShowAnalytics}>
+        <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" /> Análises do cartão de crédito
+            </DialogTitle>
+          </DialogHeader>
+          <CreditCardAnalytics />
+        </DialogContent>
+      </Dialog>
+
       {/* ── Add Card Dialog ────────────────────────────────────────── */}
       <Dialog open={showNewCard} onOpenChange={setShowNewCard}>
         <DialogContent>
