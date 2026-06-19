@@ -1362,7 +1362,7 @@ export default function CreditCardsPage() {
       )}
       {/* ── Análises do cartão (dashboard sob demanda) ──────────────── */}
       <Dialog open={showAnalytics} onOpenChange={setShowAnalytics}>
-        <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-4xl">
+        <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-5xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-primary" /> Análises do cartão de crédito
