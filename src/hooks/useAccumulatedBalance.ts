@@ -7,11 +7,14 @@ import { queryWithSoftDeleteFallback } from '@/lib/softDeleteCompat';
  * Returns the accumulated balance (all income - all expenses)
  * from the very beginning up to the end of the given month.
  *
- * IMPORTANT: CC mirror expenses (created alongside credit_card_transactions,
- * notes starting with [Cartao de credito|...) are intentionally EXCLUDED from
- * the bank-account balance. A CC purchase does NOT reduce your bank balance;
- * only the bill PAYMENT (which creates a real expense with account_id tagged
- * [FATURA_CARTAO]) does. This prevents false double-counting.
+ * IMPORTANT: a CC mirror expense (notes starting with [Cartao de credito|...])
+ * only reduces the bank balance once it is marked PAID. useToggleCCTransactionPaid
+ * flips the same mirror to status='concluido' AND assigns its account_id, so it is
+ * then counted exactly once as a normal real expense (an expense with account_id).
+ * While unpaid, the mirror has no account_id / non-concluido status and is excluded.
+ * The in-app pay-bill flow does NOT create any separate [FATURA_CARTAO] expense —
+ * that legacy flow double-counted the bill against the mirror. ([FATURA_CARTAO]
+ * today only comes from Nubank PDF imports of past bill payments.)
  *
  * Returns diagnostic fields to help users understand balance discrepancies:
  * - orphanExpenses: expenses with no account_id that are NOT CC mirrors (should have been assigned)
@@ -75,7 +78,9 @@ export function useAccumulatedBalance(month: string) {
 
       // CC mirror rows: no account_id + notes contain '[Cartao de credito|card:'
       // These are tracking entries only — they do NOT reduce bank balance.
-      // Bank balance only changes when the bill is paid (expense with account_id + [FATURA_CARTAO]).
+      // Bank balance only changes when the mirror is PAID: it then gets
+      // status='concluido' + account_id and is counted as a normal real expense
+      // (no [FATURA_CARTAO] involved in the in-app pay-bill flow).
       const isCCMirror = (e: { account_id: string | null; notes: string | null }) =>
         !e.account_id && !!e.notes?.includes('[Cartao de credito|card:');
 

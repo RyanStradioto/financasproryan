@@ -44,6 +44,7 @@ import SectionHeader from '@/components/dashboard/SectionHeader';
 import DailyFlowChart from '@/components/dashboard/DailyFlowChart';
 import KpiCard from '@/components/dashboard/KpiCard';
 import BrandLogoBadge from '@/components/dashboard/BrandLogoBadge';
+import CreditCardsOverview from '@/components/dashboard/CreditCardsOverview';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { colorWithOpacity } from '@/lib/colors';
 
@@ -56,6 +57,22 @@ function safeRun<T>(fn: () => T, fallback: T, label?: string): T {
     console.warn('[dashboard analytics]', label || 'unknown', e);
     return fallback;
   }
+}
+
+/**
+ * Data de uma transacao de cartao alinhada ao seu bill_month (dia da compra
+ * limitado ao tamanho do mes). As transacoes de cartao guardam a data da COMPRA
+ * (que, em parcelas, pode ser de um mes anterior ao da fatura). Para qualquer
+ * agregacao por dia DENTRO do mes da fatura (burn rate, sparklines), precisamos
+ * datar pelo bill_month — senao parcelas carregadas de meses anteriores ficam
+ * de fora e o total nao bate com o KPI de Despesas.
+ */
+function ccBillDate(t: { date: string | null; bill_month: string }): string {
+  const [y, m] = (t.bill_month || '').split('-').map(Number);
+  if (!y || !m) return t.date || `${t.bill_month}-01`;
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const day = Math.min(Number((t.date || '').slice(8, 10)) || 1, daysInMonth);
+  return `${t.bill_month}-${String(day).padStart(2, '0')}`;
 }
 
 function ChartTooltipCard({
@@ -287,12 +304,23 @@ export default function Dashboard() {
     scopedCCTransactions.reduce((s, t) => s + Number(t.amount), 0)
   , [scopedCCTransactions]);
 
-  // Unpaid CC bills (past + current month) — these are obligations not yet reflected in account balance
+  // Faturas em aberto (passadas + mês atual) — obrigações ainda não refletidas no saldo.
+  // Respeita o foco de conta (mesma lógica de marca dos demais agregados de cartão).
   const unpaidCCTotal = useMemo(() => {
-    return creditTransactions
+    let txs = creditTransactions;
+    if (accountFocusId !== '__all__') {
+      const account = accounts.find(a => a.id === accountFocusId);
+      if (!account) return 0;
+      const accBrand = resolveAccountBrand(account.name).name;
+      const matchingCardIds = creditCards
+        .filter(c => resolveAccountBrand(c.name).name === accBrand)
+        .map(c => c.id);
+      txs = creditTransactions.filter(t => matchingCardIds.includes(t.credit_card_id));
+    }
+    return txs
       .filter(t => !t.paid && t.bill_month <= month)
       .reduce((s, t) => s + Number(t.amount), 0);
-  }, [creditTransactions, month]);
+  }, [creditTransactions, month, accountFocusId, accounts, creditCards]);
 
   const savings = totalIncome > 0 ? ((totalIncome - totalExpensesPaid) / totalIncome) * 100 : 0;
 
@@ -338,7 +366,7 @@ export default function Dashboard() {
   const expenseSparkline = useMemo(() => {
     const items = [
       ...scopedNonCCExpenses.filter(e => e.status === 'concluido').map(e => ({ date: e.date, amount: Number(e.amount) })),
-      ...scopedCCTransactions.map(t => ({ date: t.date, amount: Number(t.amount) })),
+      ...scopedCCTransactions.map(t => ({ date: ccBillDate(t), amount: Number(t.amount) })),
     ];
     return getDailyTrend(items);
   }, [scopedNonCCExpenses, scopedCCTransactions]);
@@ -352,7 +380,7 @@ export default function Dashboard() {
       ...scopedNonCCExpenses
         .filter(e => e.status === 'concluido')
         .map(e => ({ date: e.date, amount: -Number(e.amount) })),
-      ...scopedCCTransactions.map(t => ({ date: t.date, amount: -Number(t.amount) })),
+      ...scopedCCTransactions.map(t => ({ date: ccBillDate(t), amount: -Number(t.amount) })),
     ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
     let run = 0;
@@ -647,7 +675,7 @@ export default function Dashboard() {
       ...scopedNonCCExpenses
         .filter(e => e.status === 'concluido')
         .map(e => ({ amount: Number(e.amount), date: e.date })),
-      ...scopedCCTransactions.map(t => ({ amount: Number(t.amount), date: t.date })),
+      ...scopedCCTransactions.map(t => ({ amount: Number(t.amount), date: ccBillDate(t) })),
     ];
     return computeBurnRate({
       expenses: allMonthExpenses,
@@ -911,7 +939,7 @@ export default function Dashboard() {
 
   const attentionCards = [
     ...(unpaidCCTotal > 0 ? [{
-      title: 'Fatura pendente',
+      title: 'Faturas em aberto',
       value: maskCurrency(formatCurrency(unpaidCCTotal)),
       tone: 'info' as const,
       icon: CreditCard,
@@ -1083,6 +1111,9 @@ export default function Dashboard() {
           <KpiCard label="Saúde financeira" value={`${healthScore}/100`} icon={Gauge} color={healthScore >= 70 ? 'from-emerald-400/14' : healthScore >= 45 ? 'from-amber-400/14' : 'from-red-400/14'} trend={healthScore >= 70 ? 'up' : healthScore >= 45 ? 'neutral' : 'down'} sub={healthCopy} />
         </div>
       </section>
+
+      {/* ─── Cartões de crédito (fatura, limite, vencimento por cartão) ─────── */}
+      <CreditCardsOverview cards={creditCards} transactions={creditTransactions} month={month} maskCurrency={maskCurrency} />
 
       <section className="grid gap-4 lg:grid-cols-2">
         <PremiumCard className="relative overflow-hidden p-4 sm:p-5">

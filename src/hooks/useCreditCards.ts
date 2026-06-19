@@ -182,12 +182,18 @@ export function useAddCreditCardTransaction() {
       // that account_id — meaning the bank balance reflects the upcoming CC obligation
       // immediately (instead of waiting for "Pagar Fatura").
       const defaultAccountId = getCardDefaultAccount(data.credit_card_id);
-      const baseDate = new Date(`${data.date}T00:00:00`);
+      // Dia da compra (1-31), usado para datar cada espelho dentro do seu bill_month.
+      const purchaseDay = Number(data.date.slice(8, 10)) || 1;
       const expenseRows = rows.map((tx, i) => {
         const installmentNumber = start + i;
-        const d = new Date(baseDate);
-        d.setMonth(d.getMonth() + i);
-        const expenseDate = d.toISOString().split('T')[0];
+        // Data o espelho DENTRO do bill_month da parcela, com o dia limitado ao
+        // tamanho do mes. Antes usavamos setMonth(+i), que estoura (31/01 -> 03/03)
+        // e deslocava o espelho para um mes diferente do bill_month, bagunçando
+        // totais mensais, saldo e graficos. Agora mes do espelho == bill_month.
+        const [by, bm] = tx.bill_month.split('-').map(Number);
+        const daysInBillMonth = new Date(by, bm, 0).getDate();
+        const day = Math.min(purchaseDay, daysInBillMonth);
+        const expenseDate = `${by}-${String(bm).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const baseNote = data.notes?.trim();
         const cardMarker = `[Cartao de credito|card:${data.credit_card_id}|bill:${tx.bill_month}|tx:${tx.id}]`;
         return {
@@ -409,6 +415,33 @@ export function useAllFutureCCTransactions() {
           .gte('bill_month', currentMonth)
           .order('bill_month', { ascending: true })
           .order('date', { ascending: false });
+        if (supportsSoftDelete) q = q.is('deleted_at', null);
+        return q;
+      });
+      return data as CreditCardTransaction[];
+    },
+    enabled: !!user,
+  });
+}
+
+/**
+ * TODAS as transações não pagas de TODOS os cartões (qualquer bill_month,
+ * inclusive faturas atrasadas). É a dívida comprometida real — usada para o
+ * "% comprometido" do carrossel bater com o card de detalhe (que usa
+ * useCardOutstanding por cartão). Diferente de useAllFutureCCTransactions, que
+ * corta por bill_month >= mês atual e ignora atrasadas.
+ */
+export function useAllOutstandingCCTransactions() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['cc-all-outstanding', user?.id],
+    queryFn: async () => {
+      const data = await queryWithSoftDeleteFallback<CreditCardTransaction>((supportsSoftDelete) => {
+        let q = supabase
+          .from('credit_card_transactions')
+          .select('*')
+          .eq('paid', false)
+          .order('bill_month', { ascending: true });
         if (supportsSoftDelete) q = q.is('deleted_at', null);
         return q;
       });

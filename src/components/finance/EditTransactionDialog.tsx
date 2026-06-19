@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useCategories, useAccounts, useUpdateIncome, useUpdateExpense, useDeleteExpense, type Income, type Expense } from '@/hooks/useFinanceData';
-import { useAddCreditCardTransaction, useCreditCards } from '@/hooks/useCreditCards';
+import { useAddCreditCardTransaction, useDeleteCCTransaction, useCreditCards } from '@/hooks/useCreditCards';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { detectCreditCardExpense, stripCreditCardMarkers, parseStructuredCardMarker } from '@/lib/paymentMethod';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,6 +44,7 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
   const updateExpense = useUpdateExpense();
   const deleteExpense = useDeleteExpense();
   const addCreditCardTransaction = useAddCreditCardTransaction();
+  const deleteCCTransaction = useDeleteCCTransaction();
   const { upload, uploading } = useFileUpload();
 
   useEffect(() => {
@@ -135,6 +136,11 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
           return;
         }
 
+        // Se a despesa editada JÁ era espelho de um cartão, precisamos remover a
+        // transação de cartão ORIGINAL (e seu espelho) — senão ela fica órfã e
+        // duplica o valor na fatura/limite. deleteExpense só apaga a despesa.
+        const existingCardMarker = parseStructuredCardMarker(transaction.notes);
+
         await addCreditCardTransaction.mutateAsync({
           credit_card_id: selectedCard.id,
           category_id: categoryId || null,
@@ -149,7 +155,12 @@ export default function EditTransactionDialog({ open, onOpenChange, transaction 
           paid: status === 'concluido',
         });
 
-        await deleteExpense.mutateAsync(transaction.id);
+        if (existingCardMarker?.transactionId) {
+          // Remove a transação de cartão antiga + seu espelho (este `transaction`).
+          await deleteCCTransaction.mutateAsync(existingCardMarker.transactionId);
+        } else {
+          await deleteExpense.mutateAsync(transaction.id);
+        }
       } else {
         // Check if this expense is a CC mirror (linked to a credit_card_transaction).
         // If it is, we MUST also update the CC transaction amount so that the fatura total

@@ -16,6 +16,7 @@ import {
   useDeleteCCTransaction,
   useUpdateCCTransaction,
   useAllFutureCCTransactions,
+  useAllOutstandingCCTransactions,
   useCardOutstanding,
   getCardDefaultAccount,
   setCardDefaultAccount,
@@ -137,6 +138,7 @@ export default function CreditCardsPage() {
   // All transactions for the card (every bill month) — used by the estorno purchase picker.
   const { data: allCardTxns = [] } = useCreditCardTransactions(selectedCard ?? undefined);
   const { data: futureTxns = [] } = useAllFutureCCTransactions();
+  const { data: allOutstandingTxns = [] } = useAllOutstandingCCTransactions();
   const { data: outstandingTxns = [] } = useCardOutstanding(selectedCard ?? undefined);
   const addCard = useAddCreditCard();
   const updateCard = useUpdateCreditCard();
@@ -199,7 +201,7 @@ export default function CreditCardsPage() {
   const paidTotal = transactions.filter(t => t.paid).reduce((s, t) => s + Number(t.amount), 0);
   const unpaidTotal = billTotal - paidTotal;
   const limitUsagePercent = currentCard
-    ? Math.min(100, (billTotal / Math.max(Number(currentCard.credit_limit), 1)) * 100)
+    ? Math.min(100, Math.max(0, (billTotal / Math.max(Number(currentCard.credit_limit), 1)) * 100))
     : 0;
 
   const selectedFutureTxns = useMemo(
@@ -893,10 +895,13 @@ export default function CreditCardsPage() {
                 {cards.map((card) => {
                   const isSelected = selectedCard === card.id;
                   const brand = cardBrand(card);
-                  const cardCommitment = futureTxns
-                    .filter(t => t.credit_card_id === card.id && !t.paid)
+                  // Dívida comprometida = TODAS as não pagas (inclui atrasadas),
+                  // igual ao card de detalhe (useCardOutstanding). Antes usava
+                  // futureTxns (só bill_month >= mês atual) e divergia.
+                  const cardCommitment = allOutstandingTxns
+                    .filter(t => t.credit_card_id === card.id)
                     .reduce((s, t) => s + Number(t.amount), 0);
-                  const cardUsage = Math.min(100, (cardCommitment / Math.max(Number(card.credit_limit), 1)) * 100);
+                  const cardUsage = Math.min(100, Math.max(0, (cardCommitment / Math.max(Number(card.credit_limit), 1)) * 100));
 
                   return (
                     <button
@@ -1090,7 +1095,7 @@ export default function CreditCardsPage() {
 
               <div className="mt-5 space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-muted-foreground dark:text-slate-400">
-                  <span>Uso do limite — {fmt(billTotal)} de {fmt(Number(currentCard.credit_limit))}</span>
+                  <span>Fatura do mês — {fmt(Math.max(0, billTotal))} de {fmt(Number(currentCard.credit_limit))}</span>
                   <span className={cn('font-black', limitUsagePercent > 80 ? 'text-red-600 dark:text-red-300' : limitUsagePercent > 50 ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300')}>{limitUsagePercent.toFixed(0)}%</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-muted/70 dark:bg-white/[0.08]">
