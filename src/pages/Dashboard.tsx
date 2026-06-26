@@ -74,6 +74,22 @@ function ccBillDate(t: { date: string | null; bill_month: string }): string {
   return `${t.bill_month}-${String(day).padStart(2, '0')}`;
 }
 
+/** Sparkline SVG leve (sem recharts) — normaliza valores (aceita negativos). */
+function MiniSpark({ values, positive }: { values: number[]; positive: boolean }) {
+  if (!values || values.length < 2) return <div className="h-6" />;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const w = 100, h = 26;
+  const pts = values.map((v, i) => `${(i / (values.length - 1)) * w},${(h - 2) - ((v - min) / range) * (h - 4) + 2}`).join(' ');
+  const stroke = positive ? 'hsl(var(--income))' : 'hsl(var(--expense))';
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="h-6 w-full" preserveAspectRatio="none" aria-hidden>
+      <polyline points={pts} fill="none" stroke={stroke} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
 function ChartTooltipCard({
   title,
   rows,
@@ -421,15 +437,51 @@ export default function Dashboard() {
           .filter((e) => e.account_id === acc.id && e.status !== 'concluido')
           .reduce((s, e) => s + Number(e.amount), 0);
         const balance = accumulatedByAccount[acc.id] || 0;
-        // Renda da conta = salário definido (fonte) ou, se não houver, a receita
-        // registrada no mês. Taxa de poupança da conta = (renda - gastos) / renda.
-        const salary = Number(acc.monthly_salary) || 0;
-        const renda = salary > 0 ? salary : accIncome;
-        const savingsRate = renda > 0 ? ((renda - accExpenses) / renda) * 100 : null;
-        return { acc, accIncome, accExpenses, accPending, balance, salary, renda, savingsRate };
+        return { acc, accIncome, accExpenses, accPending, balance };
       })
       .sort((a, b) => b.balance - a.balance);
   }, [accounts, income, nonCCExpenses, accumulatedByAccount]);
+
+  // Análise por conta com histórico de 6 meses (renda × gastos × poupança).
+  // "gastos" = saídas reais da conta (concluído com account_id) — INCLUI faturas
+  // de cartão pagas por esta conta. "renda" = salário definido da conta (ou a
+  // receita registrada no mês, como fallback).
+  const accountAnalysis = useMemo(() => {
+    const [y, m] = month.split('-').map(Number);
+    const months: string[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(y, m - 1 - i, 1);
+      months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    }
+    const exp = new Map<string, number>();
+    for (const e of allExpenses) {
+      if (e.status !== 'concluido' || !e.account_id) continue;
+      const k = `${e.account_id}|${(e.date || '').slice(0, 7)}`;
+      exp.set(k, (exp.get(k) || 0) + Number(e.amount));
+    }
+    const inc = new Map<string, number>();
+    for (const i of allIncome) {
+      if (i.status !== 'concluido' || !i.account_id) continue;
+      const k = `${i.account_id}|${(i.date || '').slice(0, 7)}`;
+      inc.set(k, (inc.get(k) || 0) + Number(i.amount));
+    }
+    return accounts.filter((a) => !a.archived).map((acc) => {
+      const salary = Number(acc.monthly_salary) || 0;
+      const series = months.map((mm) => {
+        const renda = salary > 0 ? salary : inc.get(`${acc.id}|${mm}`) || 0;
+        const gastos = exp.get(`${acc.id}|${mm}`) || 0;
+        return { m: mm, renda, gastos, net: renda - gastos, rate: renda > 0 ? ((renda - gastos) / renda) * 100 : null };
+      });
+      const cur = series[5];
+      const prev = series[4];
+      return {
+        acc, salary,
+        renda: cur.renda, gastos: cur.gastos, net: cur.net, savingsRate: cur.rate,
+        prevRate: prev.rate,
+        nets: series.map((s) => s.net),
+      };
+    });
+  }, [month, allExpenses, allIncome, accounts]);
 
   const activeAccounts = useMemo(() => accounts.filter((acc) => !acc.archived), [accounts]);
   const focusedAccountInsight = useMemo(
@@ -1118,7 +1170,7 @@ export default function Dashboard() {
 
       {/* ─── Renda × gastos por conta (taxa de poupança por conta) ─────────── */}
       {(() => {
-        const rows = accountInsights.filter((a) => a.renda > 0 || a.accExpenses > 0);
+        const rows = accountAnalysis.filter((a) => a.renda > 0 || a.gastos > 0);
         if (rows.length === 0) return null;
         return (
           <section className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm sm:rounded-3xl sm:p-5">
@@ -1126,15 +1178,16 @@ export default function Dashboard() {
               <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10"><Landmark className="h-4 w-4 text-primary" /></span>
               <div className="min-w-0">
                 <h3 className="text-sm font-bold leading-tight">Renda × gastos por conta</h3>
-                <p className="text-[11px] text-muted-foreground">Quanto entra e sai em cada conta · taxa de poupança</p>
+                <p className="text-[11px] text-muted-foreground">Quanto entra e sai em cada conta · poupança e evolução (6 meses)</p>
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {rows.map(({ acc, renda, accExpenses, savingsRate, salary }) => {
+              {rows.map(({ acc, renda, gastos, net, savingsRate, prevRate, salary, nets }) => {
                 const sr = savingsRate;
                 const barPct = sr === null ? 0 : Math.min(100, Math.max(0, sr));
                 const negative = sr !== null && sr < 0;
                 const focused = accountFocusId === acc.id;
+                const delta = sr !== null && prevRate !== null ? sr - prevRate : null;
                 return (
                   <div key={acc.id} className={cn('rounded-2xl border p-3 transition-colors', focused ? 'border-primary/40 bg-primary/[0.05]' : 'border-border/60 bg-muted/20')}>
                     <div className="flex items-center justify-between gap-2">
@@ -1150,13 +1203,25 @@ export default function Dashboard() {
                     </div>
                     <div className="mt-2.5 flex items-center justify-between text-[11px]">
                       <span className="text-muted-foreground">{salary > 0 ? 'Renda' : 'Receita'} <b className="block text-sm text-income tabular-nums">{maskCurrency(formatCurrency(renda))}</b></span>
-                      <span className="text-right text-muted-foreground">Gastos <b className="block text-sm text-expense tabular-nums">{maskCurrency(formatCurrency(accExpenses))}</b></span>
+                      <span className="text-right text-muted-foreground">Gastos <b className="block text-sm text-expense tabular-nums">{maskCurrency(formatCurrency(gastos))}</b></span>
                     </div>
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
                       <div className={cn('h-full rounded-full', negative ? 'bg-expense' : 'bg-income')} style={{ width: `${negative ? 100 : barPct}%` }} />
                     </div>
+                    {/* Evolução da sobra (6 meses) */}
+                    <div className="mt-2.5 flex items-end justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[9px] uppercase tracking-wide text-muted-foreground/80">Sobra · 6 meses</p>
+                        <MiniSpark values={nets} positive={net >= 0} />
+                      </div>
+                      {delta !== null && Math.abs(delta) >= 1 && (
+                        <span className={cn('flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold', delta >= 0 ? 'bg-income/10 text-income' : 'bg-expense/10 text-expense')}>
+                          {delta >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}{Math.abs(delta).toFixed(0)}pp
+                        </span>
+                      )}
+                    </div>
                     <p className="mt-1 text-[10px] text-muted-foreground">
-                      {sr === null ? 'Defina a renda desta conta em Configurações' : negative ? `Gastou ${maskCurrency(formatCurrency(accExpenses - renda))} a mais que a renda` : `Sobrou ${maskCurrency(formatCurrency(renda - accExpenses))} neste mês`}
+                      {sr === null ? 'Defina a renda desta conta em Configurações' : negative ? `Gastou ${maskCurrency(formatCurrency(gastos - renda))} a mais que a renda` : `Sobrou ${maskCurrency(formatCurrency(net))} neste mês`}
                     </p>
                   </div>
                 );
