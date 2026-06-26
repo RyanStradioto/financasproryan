@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import PendingExpensesDialog from '@/components/finance/PendingExpensesDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import AccountAnalytics from '@/components/finance/AccountAnalytics';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -121,6 +122,7 @@ export default function Dashboard() {
   const { maskCurrency, maskText, isVisible } = useSensitiveData();
   const [month, setMonth] = useState(getMonthYear());
   const [accountFocusId, setAccountFocusId] = useState<string>('__all__');
+  const [analyticsAccountId, setAnalyticsAccountId] = useState<string | null>(null);
   const { data: profile } = useProfile();
   
   // Previous month string (for MoM comparisons)
@@ -1189,7 +1191,12 @@ export default function Dashboard() {
                 const focused = accountFocusId === acc.id;
                 const delta = sr !== null && prevRate !== null ? sr - prevRate : null;
                 return (
-                  <div key={acc.id} className={cn('rounded-2xl border p-3 transition-colors', focused ? 'border-primary/40 bg-primary/[0.05]' : 'border-border/60 bg-muted/20')}>
+                  <button
+                    key={acc.id}
+                    type="button"
+                    onClick={() => setAnalyticsAccountId(acc.id)}
+                    className={cn('group w-full rounded-2xl border p-3 text-left transition-colors hover:border-primary/50', focused ? 'border-primary/40 bg-primary/[0.05]' : 'border-border/60 bg-muted/20')}
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <span className="flex min-w-0 items-center gap-2">
                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-base" style={{ background: `${acc.color || 'hsl(var(--primary))'}22` }}>{acc.icon || '🏦'}</span>
@@ -1220,16 +1227,27 @@ export default function Dashboard() {
                         </span>
                       )}
                     </div>
-                    <p className="mt-1 text-[10px] text-muted-foreground">
-                      {sr === null ? 'Defina a renda desta conta em Configurações' : negative ? `Gastou ${maskCurrency(formatCurrency(gastos - renda))} a mais que a renda` : `Sobrou ${maskCurrency(formatCurrency(net))} neste mês`}
+                    <p className="mt-1 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+                      <span>{sr === null ? 'Defina a renda desta conta em Configurações' : negative ? `Gastou ${maskCurrency(formatCurrency(gastos - renda))} a mais que a renda` : `Sobrou ${maskCurrency(formatCurrency(net))} neste mês`}</span>
+                      <span className="flex shrink-0 items-center gap-0.5 font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100">análise <ChevronRight className="h-3 w-3" /></span>
                     </p>
-                  </div>
+                  </button>
                 );
               })}
             </div>
           </section>
         );
       })()}
+
+      {/* Dialog de análises por conta (abre ao clicar num card de conta) */}
+      <Dialog open={!!analyticsAccountId} onOpenChange={(o) => { if (!o) setAnalyticsAccountId(null); }}>
+        <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Landmark className="h-5 w-5 text-primary" /> Análises da conta</DialogTitle>
+          </DialogHeader>
+          {analyticsAccountId && <AccountAnalytics accountId={analyticsAccountId} />}
+        </DialogContent>
+      </Dialog>
 
       <section className="grid gap-4 lg:grid-cols-2">
         <PremiumCard className="relative overflow-hidden p-4 sm:p-5">
