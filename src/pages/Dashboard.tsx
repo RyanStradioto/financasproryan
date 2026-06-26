@@ -421,7 +421,12 @@ export default function Dashboard() {
           .filter((e) => e.account_id === acc.id && e.status !== 'concluido')
           .reduce((s, e) => s + Number(e.amount), 0);
         const balance = accumulatedByAccount[acc.id] || 0;
-        return { acc, accIncome, accExpenses, accPending, balance };
+        // Renda da conta = salário definido (fonte) ou, se não houver, a receita
+        // registrada no mês. Taxa de poupança da conta = (renda - gastos) / renda.
+        const salary = Number(acc.monthly_salary) || 0;
+        const renda = salary > 0 ? salary : accIncome;
+        const savingsRate = renda > 0 ? ((renda - accExpenses) / renda) * 100 : null;
+        return { acc, accIncome, accExpenses, accPending, balance, salary, renda, savingsRate };
       })
       .sort((a, b) => b.balance - a.balance);
   }, [accounts, income, nonCCExpenses, accumulatedByAccount]);
@@ -1110,6 +1115,56 @@ export default function Dashboard() {
           <KpiCard label="Saúde financeira" value={`${healthScore}/100`} icon={Gauge} color={healthScore >= 70 ? 'from-emerald-400/14' : healthScore >= 45 ? 'from-amber-400/14' : 'from-red-400/14'} trend={healthScore >= 70 ? 'up' : healthScore >= 45 ? 'neutral' : 'down'} sub={healthCopy} />
         </div>
       </section>
+
+      {/* ─── Renda × gastos por conta (taxa de poupança por conta) ─────────── */}
+      {(() => {
+        const rows = accountInsights.filter((a) => a.renda > 0 || a.accExpenses > 0);
+        if (rows.length === 0) return null;
+        return (
+          <section className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm sm:rounded-3xl sm:p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10"><Landmark className="h-4 w-4 text-primary" /></span>
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold leading-tight">Renda × gastos por conta</h3>
+                <p className="text-[11px] text-muted-foreground">Quanto entra e sai em cada conta · taxa de poupança</p>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {rows.map(({ acc, renda, accExpenses, savingsRate, salary }) => {
+                const sr = savingsRate;
+                const barPct = sr === null ? 0 : Math.min(100, Math.max(0, sr));
+                const negative = sr !== null && sr < 0;
+                const focused = accountFocusId === acc.id;
+                return (
+                  <div key={acc.id} className={cn('rounded-2xl border p-3 transition-colors', focused ? 'border-primary/40 bg-primary/[0.05]' : 'border-border/60 bg-muted/20')}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-base" style={{ background: `${acc.color || 'hsl(var(--primary))'}22` }}>{acc.icon || '🏦'}</span>
+                        <span className="truncate text-sm font-bold">{acc.name}</span>
+                      </span>
+                      {sr !== null && (
+                        <span className={cn('shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold', negative ? 'bg-expense/10 text-expense' : 'bg-income/10 text-income')}>
+                          {sr >= 0 ? '+' : ''}{sr.toFixed(0)}% poupança
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2.5 flex items-center justify-between text-[11px]">
+                      <span className="text-muted-foreground">{salary > 0 ? 'Renda' : 'Receita'} <b className="block text-sm text-income tabular-nums">{maskCurrency(formatCurrency(renda))}</b></span>
+                      <span className="text-right text-muted-foreground">Gastos <b className="block text-sm text-expense tabular-nums">{maskCurrency(formatCurrency(accExpenses))}</b></span>
+                    </div>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div className={cn('h-full rounded-full', negative ? 'bg-expense' : 'bg-income')} style={{ width: `${negative ? 100 : barPct}%` }} />
+                    </div>
+                    <p className="mt-1 text-[10px] text-muted-foreground">
+                      {sr === null ? 'Defina a renda desta conta em Configurações' : negative ? `Gastou ${maskCurrency(formatCurrency(accExpenses - renda))} a mais que a renda` : `Sobrou ${maskCurrency(formatCurrency(renda - accExpenses))} neste mês`}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })()}
 
       <section className="grid gap-4 lg:grid-cols-2">
         <PremiumCard className="relative overflow-hidden p-4 sm:p-5">
