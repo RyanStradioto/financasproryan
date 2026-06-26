@@ -1,7 +1,7 @@
 import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useCategories, useAddCategory, useUpdateCategory, useDeleteCategory, useExpenses, useAccounts, useCategoryAccountBudgets, useReplaceCategoryAccountBudgets, type Account } from '@/hooks/useFinanceData';
 import { useCCTransactionsForMonth, useCreditCards } from '@/hooks/useCreditCards';
-import { useProfile } from '@/hooks/useProfile';
+import { useTotalSalary } from '@/hooks/useProfile';
 import { formatCurrency, getMonthYear } from '@/lib/format';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -239,7 +239,7 @@ export default function CategoriesPage() {
   const { data: expenses = [] } = useExpenses(month);
   const { data: ccTransactions = [] } = useCCTransactionsForMonth(month);
   const { data: creditCards = [] } = useCreditCards();
-  const { data: profile } = useProfile();
+  const totalSalary = useTotalSalary();
   const addCategory = useAddCategory();
   const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
@@ -263,7 +263,7 @@ export default function CategoriesPage() {
   const [selectedStarter, setSelectedStarter] = useState<Set<string>>(new Set(STARTER_PACK.map(s => s.name)));
   const [importing, setImporting] = useState(false);
 
-  const monthlyIncome = profile?.monthly_salary && profile.monthly_salary > 0 ? Number(profile.monthly_salary) : 0;
+  const monthlyIncome = totalSalary > 0 ? totalSalary : 0;
 
   const activeCategories = categories.filter(c => !c.archived);
 

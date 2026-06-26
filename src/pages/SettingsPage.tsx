@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useProfile, useUpsertProfile } from '@/hooks/useProfile';
-import { useAccounts } from '@/hooks/useFinanceData';
+import { useAccounts, useUpdateAccount } from '@/hooks/useFinanceData';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { User, Briefcase, Clock, CalendarDays, CalendarClock, Landmark, Mail, Save, Trash2, AlertTriangle, Send, Sparkles, Lock, Eye, EyeOff, Palette, Sun, Moon, Check } from 'lucide-react';
@@ -56,7 +56,7 @@ export default function SettingsPage() {
   const { palette, setPalette } = usePalette();
 
   const [firstName, setFirstName] = useState('');
-  const [salary, setSalary] = useState('');
+  const [salaryByAccount, setSalaryByAccount] = useState<Record<string, string>>({});
   const [hoursPerDay, setHoursPerDay] = useState('');
   const [daysPerWeek, setDaysPerWeek] = useState('');
   const [weeklyEmail, setWeeklyEmail] = useState(true);
@@ -73,6 +73,7 @@ export default function SettingsPage() {
   const [accountIds, setAccountIds] = useState<string[] | null>(null);
   const { data: accounts = [] } = useAccounts();
   const activeAccounts = accounts.filter((a) => !a.archived);
+  const updateAccount = useUpdateAccount();
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -94,7 +95,6 @@ export default function SettingsPage() {
   useEffect(() => {
     if (profile) {
       setFirstName(profile.first_name || '');
-      setSalary(String(profile.monthly_salary || ''));
       setHoursPerDay(String(profile.work_hours_per_day || ''));
       setDaysPerWeek(String(profile.work_days_per_week || ''));
       setWeeklyEmail(profile.weekly_summary_enabled);
@@ -107,11 +107,33 @@ export default function SettingsPage() {
     }
   }, [profile]);
 
+  // Carrega a renda por conta a partir das contas (fonte da verdade).
+  useEffect(() => {
+    const map: Record<string, string> = {};
+    for (const a of accounts) map[a.id] = a.monthly_salary ? String(a.monthly_salary) : '';
+    setSalaryByAccount(map);
+  }, [accounts]);
+
+  // Salário total = soma da renda das contas; fallback para o valor antigo do
+  // perfil enquanto o usuário não distribuir a renda entre as contas.
+  const accountsSalaryTotal = activeAccounts.reduce((s, a) => s + (Number(salaryByAccount[a.id]) || 0), 0);
+  const monthlySalary = accountsSalaryTotal > 0 ? accountsSalaryTotal : Number(profile?.monthly_salary) || 0;
+
+  // Persiste a renda de cada conta que mudou.
+  const persistAccountSalaries = async () => {
+    await Promise.all(
+      activeAccounts
+        .filter((a) => (Number(salaryByAccount[a.id]) || 0) !== (Number(a.monthly_salary) || 0))
+        .map((a) => updateAccount.mutateAsync({ id: a.id, monthly_salary: Number(salaryByAccount[a.id]) || 0 })),
+    );
+  };
+
   const handleSave = async () => {
     try {
+      await persistAccountSalaries();
       await upsert.mutateAsync({
         first_name: firstName.trim() || undefined,
-        monthly_salary: Number(salary) || 0,
+        monthly_salary: monthlySalary, // espelho do total p/ compatibilidade (insights/edge)
         work_hours_per_day: Number(hoursPerDay) || 8,
         work_days_per_week: Number(daysPerWeek) || 5,
         weekly_summary_enabled: weeklyEmail,
@@ -263,8 +285,6 @@ export default function SettingsPage() {
       setIsDeleting(false);
     }
   };
-
-  const monthlySalary = Number(salary) || 0;
 
   const FUNCTIONS_BASE_URL = 'https://gashcjenhwamgxrrmbsa.supabase.co/functions/v1';
 
@@ -478,7 +498,7 @@ export default function SettingsPage() {
                   try {
                     await upsert.mutateAsync({
                       first_name: firstName.trim() || undefined,
-                      monthly_salary: Number(salary) || 0,
+                      monthly_salary: monthlySalary,
                       work_hours_per_day: Number(hoursPerDay) || 8,
                       work_days_per_week: Number(daysPerWeek) || 5,
                       weekly_summary_enabled: weeklyEmail,
@@ -579,16 +599,41 @@ export default function SettingsPage() {
           Dados Profissionais
         </div>
         <div className="grid gap-4 pl-0 sm:pl-6">
+          {/* Renda mensal POR CONTA — a soma vira o salário total */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Salário Mensal (R$)</label>
-            <input
-              type={isVisible ? 'number' : 'password'}
-              value={salary}
-              onChange={e => setSalary(e.target.value)}
-              placeholder={isVisible ? '5000' : '••••••'}
-              data-tutorial-target="salary-input"
-              className="flex h-11 md:h-10 w-full rounded-lg border border-border bg-muted/50 px-3 py-2 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
+            <label className="mb-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Landmark className="h-3.5 w-3.5" /> Renda mensal por conta
+            </label>
+            {activeAccounts.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border/60 bg-muted/20 p-3 text-xs text-muted-foreground">
+                Cadastre suas contas para informar quanto você recebe em cada uma.
+              </p>
+            ) : (
+              <div className="space-y-2" data-tutorial-target="salary-input">
+                {activeAccounts.map((acc) => (
+                  <div key={acc.id} className="flex items-center gap-2.5 rounded-xl border border-border/60 bg-muted/20 px-3 py-2">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-base" style={{ background: `${acc.color || 'hsl(var(--primary))'}22` }}>{acc.icon || '🏦'}</span>
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium">{acc.name}</span>
+                    <div className="relative w-32 shrink-0">
+                      <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+                      <input
+                        type={isVisible ? 'number' : 'password'}
+                        inputMode="decimal"
+                        value={salaryByAccount[acc.id] ?? ''}
+                        onChange={(e) => setSalaryByAccount((p) => ({ ...p, [acc.id]: e.target.value }))}
+                        placeholder={isVisible ? '0' : '••••'}
+                        className="h-10 w-full rounded-lg border border-border bg-background pl-8 pr-2 text-right text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                    </div>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between rounded-xl border border-primary/25 bg-primary/[0.06] px-3 py-2.5">
+                  <span className="flex items-center gap-1.5 text-sm font-semibold"><Briefcase className="h-3.5 w-3.5 text-primary" /> Salário total</span>
+                  <span className="currency text-base font-black tabular-nums text-primary">{fmt(monthlySalary)}</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">A soma de todas as contas é usada nos coeficientes (valor/hora), no orçamento e nos insights.</p>
+              </div>
+            )}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>

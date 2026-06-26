@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { mutateWithOptionalColumnsFallback } from '@/lib/softDeleteCompat';
 import { useAuth } from './useAuth';
+import { useAccounts } from './useFinanceData';
 
 // Colunas de agendamento de e-mail — opcionais para que o app funcione mesmo
 // antes da migration ser aplicada (o upsert reenvia sem elas se nao existirem).
@@ -64,11 +65,24 @@ export function useUpsertProfile() {
   });
 }
 
+/**
+ * Salário TOTAL = soma da renda mensal de todas as contas (fonte da verdade).
+ * Faz fallback para profile.monthly_salary enquanto as contas não tiverem renda
+ * definida (compatibilidade com o modelo antigo de salário único).
+ */
+export function useTotalSalary(): number {
+  const { data: profile } = useProfile();
+  const { data: accounts = [] } = useAccounts();
+  const sumAccounts = accounts.reduce((s, a) => s + (Number(a.monthly_salary) || 0), 0);
+  return sumAccounts > 0 ? sumAccounts : Number(profile?.monthly_salary) || 0;
+}
+
 export function useWorkTimeCalc() {
   const { data: profile } = useProfile();
+  const totalSalary = useTotalSalary();
 
-  const hourlyRate = profile && profile.monthly_salary > 0 && profile.work_hours_per_day > 0 && profile.work_days_per_week > 0
-    ? profile.monthly_salary / (profile.work_days_per_week * 4.33 * profile.work_hours_per_day)
+  const hourlyRate = profile && totalSalary > 0 && profile.work_hours_per_day > 0 && profile.work_days_per_week > 0
+    ? totalSalary / (profile.work_days_per_week * 4.33 * profile.work_hours_per_day)
     : null;
 
   const calcWorkTime = (amount: number) => {

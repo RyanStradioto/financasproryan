@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useIncome, useExpenses, useCategories } from '@/hooks/useFinanceData';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useCreditCards, useCreditCardTransactions } from '@/hooks/useCreditCards';
-import { useProfile } from '@/hooks/useProfile';
+import { useProfile, useTotalSalary } from '@/hooks/useProfile';
 import { useAccumulatedBalance } from '@/hooks/useAccumulatedBalance';
 import { getMonthYear, formatCurrency, getMonthLabel } from '@/lib/format';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
@@ -105,6 +105,7 @@ export default function InsightsPage() {
   const { data: cards = [] } = useCreditCards();
   const { data: ccTxns = [] } = useCreditCardTransactions(undefined, month);
   const { data: profile } = useProfile();
+  const totalSalary = useTotalSalary();
   const { data: balanceData } = useAccumulatedBalance(month);
   const balance = balanceData?.total || 0;
 
@@ -234,7 +235,7 @@ export default function InsightsPage() {
           prev_expenses: prevExpenses.map(e => ({ amount: e.amount, status: e.status, category_id: e.category_id, description: e.description, date: e.date, notes: e.notes })),
           cc_transactions: ccTxns.map(t => ({ amount: t.amount, category_id: t.category_id, description: t.description, date: t.date, bill_month: t.bill_month })),
           categories: categories.filter(c => !c.archived).map(c => ({ id: c.id, name: c.name, icon: c.icon, monthly_budget: c.monthly_budget })),
-          profile: profile ? { monthly_salary: profile.monthly_salary } : null,
+          profile: (totalSalary > 0 || profile) ? { monthly_salary: totalSalary } : null,
           investments: investments.map(i => ({ name: i.name, type: i.type, current_value: i.current_value, total_invested: i.total_invested })),
           month_label: getMonthLabel(month),
         },
