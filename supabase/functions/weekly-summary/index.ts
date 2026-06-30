@@ -86,17 +86,6 @@ function isReportExpense(row: Record<string, unknown>): boolean {
   return row.status === "concluido";
 }
 
-function decodeJwtPayload(token: string | null): Record<string, unknown> | null {
-  if (!token) return null;
-  const parts = token.split(".");
-  if (parts.length < 2) return null;
-  try {
-    const normalized = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
-    return JSON.parse(atob(padded));
-  } catch { return null; }
-}
-
 interface CatItem      { name: string; icon: string; value: number; budget: number; }
 interface TxItem       { description: string; amount: number; category: string; date: string; }
 interface AccountItem  { name: string; icon: string; income: number; expenses: number; net: number; }
@@ -551,7 +540,9 @@ Deno.serve(async (req) => {
   try {
     const brevoApiKey     = Deno.env.get("BREVO_API_KEY");
     const dataUrl          = Deno.env.get("DATA_SUPABASE_URL")          || Deno.env.get("SUPABASE_URL")!;
-    const dataAnonKey      = Deno.env.get("DATA_SUPABASE_ANON_KEY")      || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    // Fallback para a ANON key (nunca a service-role): este client é escopado pelo JWT
+    // do usuário e a RLS precisa valer. Cair na service-role aqui burlaria a RLS.
+    const dataAnonKey      = Deno.env.get("DATA_SUPABASE_ANON_KEY")      || Deno.env.get("SUPABASE_ANON_KEY")!;
     const dataServiceRole  = Deno.env.get("DATA_SUPABASE_SERVICE_ROLE_KEY");
     const cronSecret       = Deno.env.get("CRON_SECRET");
 
@@ -566,11 +557,14 @@ Deno.serve(async (req) => {
 
     const authHeader        = req.headers.get("Authorization");
     const userJwt           = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-    const jwtPayload        = decodeJwtPayload(userJwt);
-    const isServiceRoleToken =
+    // Só tratamos como service_role quando o token É EXATAMENTE a service-role key
+    // (impossível de forjar). NUNCA confiar no payload de um JWT apenas decodificado:
+    // sem verificar a assinatura, qualquer um poderia forjar {role:"service_role"} e
+    // cair no caminho admin (disparo de e-mails em massa para todos os usuários).
+    const isServiceRoleToken = Boolean(userJwt) && (
       userJwt === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ||
-      userJwt === dataServiceRole ||
-      (jwtPayload?.role === "service_role" && jwtPayload?.ref === "gashcjenhwamgxrrmbsa");
+      (Boolean(dataServiceRole) && userJwt === dataServiceRole)
+    );
     const isCronSecretCall  = cronSecret && req.headers.get("x-cron-secret") === cronSecret;
     const isServiceRoleCall = Boolean(isServiceRoleToken || isCronSecretCall);
 

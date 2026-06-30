@@ -123,6 +123,7 @@ export default function CreditCardsPage() {
     amount: '',
     date: '',
     category_id: '',
+    bill_month: '',
   });
 
   // Edit card + delete confirmation state
@@ -319,6 +320,23 @@ export default function CreditCardsPage() {
   }, [currentCard, newTx.date, billMonth]);
 
   const newTxBillLabel = useMemo(() => monthLabel(newTxBillMonth), [newTxBillMonth]);
+
+  // Faturas oferecidas no seletor da edição: uma janela em torno da fatura
+  // sugerida pela data + fechamento, garantindo que a fatura atual da compra
+  // (editTx.bill_month / editingTx) sempre apareça como opção.
+  const editTxBillSuggested = useMemo(
+    () => (currentCard && editTx.date ? calcBillMonth(editTx.date, Number(currentCard.closing_day)) : editTx.bill_month),
+    [currentCard, editTx.date, editTx.bill_month],
+  );
+  const editTxBillOptions = useMemo(() => {
+    const base = editTxBillSuggested || editTx.bill_month;
+    if (!base) return [];
+    const set = new Set<string>();
+    for (let i = -3; i <= 3; i++) set.add(addMonths(base, i));
+    if (editTx.bill_month) set.add(editTx.bill_month);
+    if (editingTx?.bill_month) set.add(editingTx.bill_month);
+    return Array.from(set).sort();
+  }, [editTxBillSuggested, editTx.bill_month, editingTx]);
 
   const categorySummary = useMemo(() => {
     const map = new Map<string, { id: string; name: string; icon: string; total: number }>();
@@ -566,6 +584,9 @@ export default function CreditCardsPage() {
     if (!selectedCard) return toast.error('Selecione um cartão');
     if (refundMode && !refundTxId) return toast.error('Escolha a compra que será reembolsada');
     if (!newTx.description || !newTx.amount) return toast.error('Preencha descrição e valor');
+    // Vale para compra e estorno: o estorno digita um valor positivo que depois é
+    // negativado (-Math.abs). Bloqueia 0, negativo digitado e texto inválido.
+    if (!(numericAmount > 0)) return toast.error('Informe um valor maior que zero');
     try {
       if (refundMode) {
         // Estorno/Reembolso: a NEGATIVE transaction on the chosen (usually open) fatura.
@@ -616,6 +637,7 @@ export default function CreditCardsPage() {
       amount: Number(tx.amount).toFixed(2),
       date: tx.date,
       category_id: tx.category_id || '',
+      bill_month: tx.bill_month,
     });
   };
 
@@ -632,7 +654,9 @@ export default function CreditCardsPage() {
         description: editTx.description.trim(),
         amount,
         date: editTx.date,
-        bill_month: currentCard ? calcBillMonth(editTx.date, Number(currentCard.closing_day)) : editingTx.bill_month,
+        // Fatura escolhida pelo usuário (o seletor permite mover a compra para
+        // qualquer fatura — o banco nem sempre segue a fórmula data+fechamento).
+        bill_month: editTx.bill_month || editingTx.bill_month,
         category_id: editTx.category_id || null,
       });
       toast.success('Compra atualizada e dashboard sincronizada');
@@ -1573,13 +1597,39 @@ export default function CreditCardsPage() {
               </div>
               <div>
                 <Label>Data</Label>
-                <Input type="date" value={editTx.date} onChange={(e) => setEditTx((p) => ({ ...p, date: e.target.value }))} />
+                <Input
+                  type="date"
+                  value={editTx.date}
+                  onChange={(e) => {
+                    const date = e.target.value;
+                    // Ao mudar a data, a fatura segue a sugestão (data + fechamento).
+                    // O usuário ainda pode sobrescrever no seletor "Fatura" abaixo.
+                    setEditTx((p) => ({
+                      ...p,
+                      date,
+                      bill_month: currentCard && date ? calcBillMonth(date, Number(currentCard.closing_day)) : p.bill_month,
+                    }));
+                  }}
+                />
               </div>
             </div>
-            {currentCard && editTx.date && (
-              <div className="flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium" style={{ backgroundColor: `${currentCard.color}10`, borderColor: `${currentCard.color}30`, color: currentCard.color }}>
-                <CreditCard className="w-3.5 h-3.5 shrink-0" />
-                <span>Fatura recalculada: <strong className="capitalize">{monthLabel(calcBillMonth(editTx.date, Number(currentCard.closing_day)))}</strong></span>
+            {currentCard && editTx.date && editTxBillOptions.length > 0 && (
+              <div>
+                <Label>Fatura</Label>
+                <Select value={editTx.bill_month} onValueChange={(v) => setEditTx((p) => ({ ...p, bill_month: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {editTxBillOptions.map((m) => (
+                      <SelectItem key={m} value={m} className="capitalize">{monthLabel(m)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {editTx.bill_month !== editTxBillSuggested && (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Pela data + fechamento (dia {currentCard.closing_day}), o padrão seria{' '}
+                    <span className="font-medium capitalize">{monthLabel(editTxBillSuggested)}</span>. Fatura definida manualmente.
+                  </p>
+                )}
               </div>
             )}
             <div>

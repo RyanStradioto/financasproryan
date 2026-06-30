@@ -158,6 +158,9 @@ export function useAddIncome() {
   const { user } = useAuth();
   return useMutation({
     mutationFn: async (data: Omit<TablesInsert<'income'>, 'user_id'>): Promise<Income> => {
+      // Receitas são sempre positivas. (Estornos/investimentos usam outros caminhos
+      // que inserem direto via supabase.from — não passam por aqui.)
+      if (!(Number(data.amount) > 0)) throw new Error('O valor da receita deve ser maior que zero.');
       const inserted = await mutateWithOptionalColumnsFallback<Income>(
         { ...data, user_id: user!.id },
         ATTACHMENT_OPTIONAL_COLUMNS,
@@ -187,6 +190,9 @@ export function useAddExpense() {
   const { user } = useAuth();
   return useMutation({
     mutationFn: async (data: Omit<TablesInsert<'expenses'>, 'user_id'>): Promise<Expense> => {
+      // Despesas criadas aqui são sempre positivas. O estorno (valor negativo) é
+      // lançado via useAddCreditCardTransaction, que insere o espelho direto — não aqui.
+      if (!(Number(data.amount) > 0)) throw new Error('O valor da despesa deve ser maior que zero.');
       const inserted = await mutateWithOptionalColumnsFallback<Expense>(
         { ...data, user_id: user!.id },
         ATTACHMENT_OPTIONAL_COLUMNS,
@@ -216,6 +222,8 @@ export function useAddExpenseBatch() {
   const { user } = useAuth();
   return useMutation({
     mutationFn: async (items: Omit<TablesInsert<'expenses'>, 'user_id'>[]) => {
+      // Único caller é o parcelamento do TransactionDialog (cada parcela = total/N > 0).
+      if (items.some(d => !(Number(d.amount) > 0))) throw new Error('Todos os valores devem ser maiores que zero.');
       const rows = items.map(d => ({ ...d, user_id: user!.id }));
       await mutateManyWithOptionalColumnsFallback(
         rows as Record<string, unknown>[],
