@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useProfile, useUpsertProfile } from '@/hooks/useProfile';
-import { useAccounts, useUpdateAccount } from '@/hooks/useFinanceData';
+import { useProfile, useUpsertProfile, useTotalSalary } from '@/hooks/useProfile';
+import { useAccounts, useUpdateAccount, useIncome } from '@/hooks/useFinanceData';
+import { notNeutralTransfer } from '@/lib/investmentMarker';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { User, Briefcase, Clock, CalendarDays, CalendarClock, Landmark, Mail, Save, Trash2, AlertTriangle, Send, Sparkles, Lock, Eye, EyeOff, Palette, Sun, Moon, Check } from 'lucide-react';
-import { formatCurrency } from '@/lib/format';
+import { formatCurrency, getMonthYear } from '@/lib/format';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -74,6 +75,9 @@ export default function SettingsPage() {
   const { data: accounts = [] } = useAccounts();
   const activeAccounts = accounts.filter((a) => !a.archived);
   const updateAccount = useUpdateAccount();
+  // Renda REAL recebida no mês atual (para os coeficientes valor/hora e valor/dia).
+  const realTotal = useTotalSalary();
+  const { data: incomeThisMonth = [] } = useIncome(getMonthYear());
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -367,8 +371,21 @@ export default function SettingsPage() {
 
   const hpd = Number(hoursPerDay) || 8;
   const dpw = Number(daysPerWeek) || 5;
-  const hourlyRate = monthlySalary > 0 ? monthlySalary / (dpw * 4.33 * hpd) : 0;
+  const monthlyHoursLocal = dpw * 4.33 * hpd;
+  // Coeficientes com base na RENDA REAL recebida no mês (não na meta).
+  const hourlyRate = realTotal > 0 && monthlyHoursLocal > 0 ? realTotal / monthlyHoursLocal : 0;
   const dailyRate = hourlyRate * hpd;
+  // Renda real por conta (mês atual) → valor/hora por conta.
+  const realByAccount: Record<string, number> = {};
+  for (const i of incomeThisMonth) {
+    if (i.status === 'concluido' && notNeutralTransfer(i) && i.account_id) {
+      realByAccount[i.account_id] = (realByAccount[i.account_id] || 0) + Number(i.amount);
+    }
+  }
+  const perAccountHourly = activeAccounts
+    .map((a) => ({ acc: a, income: realByAccount[a.id] || 0, hourly: monthlyHoursLocal > 0 ? (realByAccount[a.id] || 0) / monthlyHoursLocal : 0 }))
+    .filter((x) => x.income > 0)
+    .sort((a, b) => b.hourly - a.hourly);
   const weeklyDaysLabel = weeklyDays.length >= 7
     ? 'todos os dias'
     : joinPt(WEEKDAYS.filter((d) => weeklyDays.includes(d.v)).map((d) => d.full));
@@ -599,10 +616,10 @@ export default function SettingsPage() {
           Dados Profissionais
         </div>
         <div className="grid gap-4 pl-0 sm:pl-6">
-          {/* Renda mensal POR CONTA — a soma vira o salário total */}
+          {/* Renda planejada (META) POR CONTA — a soma vira a meta total */}
           <div>
             <label className="mb-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Landmark className="h-3.5 w-3.5" /> Renda mensal por conta
+              <Landmark className="h-3.5 w-3.5" /> Renda planejada (meta) por conta
             </label>
             {activeAccounts.length === 0 ? (
               <p className="rounded-lg border border-dashed border-border/60 bg-muted/20 p-3 text-xs text-muted-foreground">
@@ -628,10 +645,10 @@ export default function SettingsPage() {
                   </div>
                 ))}
                 <div className="flex items-center justify-between rounded-xl border border-primary/25 bg-primary/[0.06] px-3 py-2.5">
-                  <span className="flex items-center gap-1.5 text-sm font-semibold"><Briefcase className="h-3.5 w-3.5 text-primary" /> Salário total</span>
+                  <span className="flex items-center gap-1.5 text-sm font-semibold"><Briefcase className="h-3.5 w-3.5 text-primary" /> Meta total</span>
                   <span className="currency text-base font-black tabular-nums text-primary">{fmt(monthlySalary)}</span>
                 </div>
-                <p className="text-[11px] text-muted-foreground">A soma de todas as contas é usada nos coeficientes (valor/hora), no orçamento e nos insights.</p>
+                <p className="text-[11px] text-muted-foreground">A meta é só uma <b>referência</b>. Os cálculos (valor/hora, orçamento, insights) usam a <b>renda real recebida</b> — o que você registra em Receitas cada mês.</p>
               </div>
             )}
           </div>
@@ -666,6 +683,9 @@ export default function SettingsPage() {
         {hourlyRate > 0 && (
           <div className="ml-0 sm:ml-6 p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-3">
             <p className="text-xs font-semibold text-primary flex items-center gap-1.5">📊 Seus Coeficientes</p>
+            <p className="text-[11px] text-muted-foreground -mt-1">
+              Com base na renda <b>real recebida</b> este mês ({fmt(realTotal)}) ÷ {Math.round(monthlyHoursLocal)}h de jornada.
+            </p>
             <div className="flex flex-col gap-2 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Valor/hora</span>
@@ -676,6 +696,19 @@ export default function SettingsPage() {
                 <span className="font-bold currency text-foreground">{fmt(dailyRate)}</span>
               </div>
             </div>
+            {perAccountHourly.length > 1 && (
+              <div className="border-t border-primary/10 pt-2.5 space-y-1.5">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Valor/hora por conta</p>
+                {perAccountHourly.map((x) => (
+                  <div key={x.acc.id} className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <span>{x.acc.icon || '💰'}</span> {x.acc.name}
+                    </span>
+                    <span className="font-semibold currency text-foreground tabular-nums">{fmt(x.hourly)}<span className="text-[11px] font-normal text-muted-foreground">/h</span></span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

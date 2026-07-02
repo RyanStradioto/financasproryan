@@ -469,16 +469,16 @@ export default function Dashboard() {
       inc.set(k, (inc.get(k) || 0) + Number(i.amount));
     }
     return accounts.filter((a) => !a.archived).map((acc) => {
-      const salary = Number(acc.monthly_salary) || 0;
+      const meta = Number(acc.monthly_salary) || 0; // meta/planejado (referência)
       const series = months.map((mm) => {
-        const renda = salary > 0 ? salary : inc.get(`${acc.id}|${mm}`) || 0;
+        const renda = inc.get(`${acc.id}|${mm}`) || 0; // renda REAL recebida no mês
         const gastos = exp.get(`${acc.id}|${mm}`) || 0;
         return { m: mm, renda, gastos, net: renda - gastos, rate: renda > 0 ? ((renda - gastos) / renda) * 100 : null };
       });
       const cur = series[5];
       const prev = series[4];
       return {
-        acc, salary,
+        acc, meta,
         renda: cur.renda, gastos: cur.gastos, net: cur.net, savingsRate: cur.rate,
         prevRate: prev.rate,
         nets: series.map((s) => s.net),
@@ -1190,7 +1190,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {rows.map(({ acc, renda, gastos, net, savingsRate, prevRate, salary, nets }) => {
+              {rows.map(({ acc, renda, gastos, net, savingsRate, prevRate, meta, nets }) => {
                 const sr = savingsRate;
                 const barPct = sr === null ? 0 : Math.min(100, Math.max(0, sr));
                 const negative = sr !== null && sr < 0;
@@ -1215,7 +1215,7 @@ export default function Dashboard() {
                       )}
                     </div>
                     <div className="mt-2.5 flex items-center justify-between text-[11px]">
-                      <span className="text-muted-foreground">{salary > 0 ? 'Renda' : 'Receita'} <b className="block text-sm text-income tabular-nums">{maskCurrency(formatCurrency(renda))}</b></span>
+                      <span className="text-muted-foreground">Recebido{meta > 0 && ` / meta`} <b className="block text-sm text-income tabular-nums">{maskCurrency(formatCurrency(renda))}{meta > 0 && <span className="text-[10px] font-normal text-muted-foreground"> de {maskCurrency(formatCurrency(meta))}</span>}</b></span>
                       <span className="text-right text-muted-foreground">Gastos <b className="block text-sm text-expense tabular-nums">{maskCurrency(formatCurrency(gastos))}</b></span>
                     </div>
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">

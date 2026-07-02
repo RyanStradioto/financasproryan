@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { formatCurrency, getMonthYear } from '@/lib/format';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { useAccounts, useIncome, useExpenses, useCategories } from '@/hooks/useFinanceData';
+import { useMonthlyWorkHours } from '@/hooks/useProfile';
 import { notNeutralTransfer } from '@/lib/investmentMarker';
 
 const FALLBACK = '#64748b';
@@ -34,6 +35,7 @@ export default function AccountAnalytics({ accountId }: { accountId: string }) {
   const fmt = (v: number) => maskCurrency(formatCurrency(v));
   const nowMonth = getMonthYear();
   const account = accounts.find((a) => a.id === accountId);
+  const monthlyHours = useMonthlyWorkHours();
 
   const catMap = useMemo(() => {
     const m = new Map<string, { name: string; icon: string; color: string }>();
@@ -45,7 +47,7 @@ export default function AccountAnalytics({ accountId }: { accountId: string }) {
   const accIncome = useMemo(() => incomeRaw.filter((i) => i.account_id === accountId && i.status === 'concluido' && notNeutralTransfer(i)), [incomeRaw, accountId]);
   const accExpenses = useMemo(() => expensesRaw.filter((e) => e.account_id === accountId && e.status === 'concluido' && notNeutralTransfer(e)), [expensesRaw, accountId]);
 
-  const salary = Number(account?.monthly_salary) || 0;
+  const meta = Number(account?.monthly_salary) || 0; // meta/planejado (referência)
   const months = useMemo(() => lastMonths(range, nowMonth), [range, nowMonth]);
   const monthsSet = useMemo(() => new Set(months), [months]);
 
@@ -57,7 +59,7 @@ export default function AccountAnalytics({ accountId }: { accountId: string }) {
 
     const initial = Number(account?.initial_balance) || 0;
     const series = months.map((m) => {
-      const renda = salary > 0 ? salary : incByM.get(m) || 0;
+      const renda = incByM.get(m) || 0; // renda REAL recebida no mês
       const gastos = expByM.get(m) || 0;
       // saldo acumulado até o fim do mês m
       const balance = initial
@@ -89,7 +91,7 @@ export default function AccountAnalytics({ accountId }: { accountId: string }) {
     const mediaSobra = series.length ? series.reduce((s, x) => s + x.net, 0) / series.length : 0;
 
     return { series, cur, prev, cats: top5, topExp, totalGastos, totalRenda, mediaSobra };
-  }, [accIncome, accExpenses, months, monthsSet, salary, account, catMap]);
+  }, [accIncome, accExpenses, months, monthsSet, account, catMap]);
 
   const insights = useMemo(() => {
     const out: { icon: string; text: string; tone: 'good' | 'warn' | 'info' }[] = [];
@@ -109,6 +111,7 @@ export default function AccountAnalytics({ accountId }: { accountId: string }) {
 
   const cur = data.cur;
   const deltaNet = cur.rate !== null && data.prev.rate !== null ? cur.rate - data.prev.rate : null;
+  const contaHourly = monthlyHours > 0 && cur.renda > 0 ? cur.renda / monthlyHours : null;
 
   return (
     <div className="space-y-4">
@@ -117,7 +120,10 @@ export default function AccountAnalytics({ accountId }: { accountId: string }) {
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg" style={{ background: `${account.color || 'hsl(var(--primary))'}22` }}>{account.icon || '🏦'}</span>
           <span className="min-w-0">
             <span className="block truncate text-sm font-bold">{account.name}</span>
-            <span className="block text-[11px] text-muted-foreground">{salary > 0 ? `salário ${fmt(salary)}/mês` : 'renda pela receita registrada'}</span>
+            <span className="block text-[11px] text-muted-foreground">
+              {meta > 0 ? `meta ${fmt(meta)}/mês` : 'renda pela receita registrada'}
+              {contaHourly !== null && <> · <b className="text-foreground">{fmt(contaHourly)}/hora</b></>}
+            </span>
           </span>
         </span>
         <div className="flex shrink-0 overflow-hidden rounded-lg border border-border">
