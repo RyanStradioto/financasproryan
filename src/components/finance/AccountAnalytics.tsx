@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { formatCurrency, getMonthYear } from '@/lib/format';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
 import { useAccounts, useIncome, useExpenses, useCategories } from '@/hooks/useFinanceData';
-import { notInvestmentTransfer } from '@/lib/investmentMarker';
+import { notNeutralTransfer } from '@/lib/investmentMarker';
 
 const FALLBACK = '#64748b';
 const MONTHS_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
@@ -42,8 +42,8 @@ export default function AccountAnalytics({ accountId }: { accountId: string }) {
   }, [categories]);
 
   // Receitas/Despesas concluídas desta conta (exclui transferências de investimento).
-  const accIncome = useMemo(() => incomeRaw.filter((i) => i.account_id === accountId && i.status === 'concluido' && notInvestmentTransfer(i)), [incomeRaw, accountId]);
-  const accExpenses = useMemo(() => expensesRaw.filter((e) => e.account_id === accountId && e.status === 'concluido' && notInvestmentTransfer(e)), [expensesRaw, accountId]);
+  const accIncome = useMemo(() => incomeRaw.filter((i) => i.account_id === accountId && i.status === 'concluido' && notNeutralTransfer(i)), [incomeRaw, accountId]);
+  const accExpenses = useMemo(() => expensesRaw.filter((e) => e.account_id === accountId && e.status === 'concluido' && notNeutralTransfer(e)), [expensesRaw, accountId]);
 
   const salary = Number(account?.monthly_salary) || 0;
   const months = useMemo(() => lastMonths(range, nowMonth), [range, nowMonth]);

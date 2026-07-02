@@ -16,7 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useManualOrder } from '@/hooks/useManualOrder';
 import ReorderableBlocks from '@/components/finance/ReorderableBlocks';
-import { notInvestmentTransfer } from '@/lib/investmentMarker';
+import { notNeutralTransfer } from '@/lib/investmentMarker';
 
 type ExpenseRow = Expense & { _type: 'expense' };
 type CCRow = CreditCardTransaction & { _type: 'cc' };
@@ -125,7 +125,7 @@ export default function ExpensesPage() {
   // Investment "aporte"/"resgate" rows are mirrored as expenses tagged with the
   // [INVESTIMENTO] marker. They are patrimonial transfers, not real spending, so
   // exclude them here at the source — every downstream list, total and chart inherits it.
-  const expenses = useMemo(() => expensesRaw.filter(notInvestmentTransfer), [expensesRaw]);
+  const expenses = useMemo(() => expensesRaw.filter(notNeutralTransfer), [expensesRaw]);
   const { data: categories = [] } = useCategories();
   const { data: accounts = [] } = useAccounts();
   const [selectedAccountId, setSelectedAccountId] = useState<string>('__all__');

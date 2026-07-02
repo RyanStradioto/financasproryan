@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { accountBrandFromRow } from '@/lib/accountBrand';
 import { useManualOrder } from '@/hooks/useManualOrder';
 import ReorderableBlocks from '@/components/finance/ReorderableBlocks';
-import { notInvestmentTransfer } from '@/lib/investmentMarker';
+import { notNeutralTransfer } from '@/lib/investmentMarker';
 
 type PickerOption = { id: string; name: string; icon?: string | null };
 
@@ -128,8 +128,8 @@ export default function IncomePage() {
   const { data: prevIncomeRaw = [] } = useIncome(prevMonth);
   // Resgates de investimento são espelhados como receitas marcadas com [INVESTIMENTO];
   // são transferências patrimoniais, não receita real — excluímos de toda lista/total.
-  const income = useMemo(() => incomeRaw.filter(notInvestmentTransfer), [incomeRaw]);
-  const prevIncome = useMemo(() => prevIncomeRaw.filter(notInvestmentTransfer), [prevIncomeRaw]);
+  const income = useMemo(() => incomeRaw.filter(notNeutralTransfer), [incomeRaw]);
+  const prevIncome = useMemo(() => prevIncomeRaw.filter(notNeutralTransfer), [prevIncomeRaw]);
   const { data: accounts = [] } = useAccounts();
   const [selectedAccountId, setSelectedAccountId] = useState<string>('__all__');
   const deleteIncome = useDeleteIncome();

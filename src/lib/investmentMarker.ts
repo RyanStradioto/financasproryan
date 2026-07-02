@@ -35,3 +35,41 @@ export function isInvestmentTransferRow(row: { notes?: string | null } | null | 
 export function notInvestmentTransfer<T extends { notes?: string | null }>(row: T): boolean {
   return !isInvestmentTransfer(row.notes);
 }
+
+/**
+ * Transferência entre contas (dinheiro só mudou de conta — NEUTRO).
+ * Mesma semântica do marcador de investimento: afeta o SALDO das contas
+ * (sai de uma, entra na outra), mas NÃO é gasto nem receita em nenhuma
+ * agregação de análise. Cada transferência gera duas linhas com este marcador:
+ *   - despesa na conta de origem:  [TRANSFERENCIA|id:<uuid>|para:<contaDestino>]
+ *   - receita na conta de destino: [TRANSFERENCIA|id:<uuid>|de:<contaOrigem>]
+ */
+export const TRANSFER_MARKER = '[TRANSFERENCIA';
+
+export function isAccountTransfer(notes?: string | null): boolean {
+  return !!notes && notes.includes(TRANSFER_MARKER);
+}
+
+/** Extrai os metadados do marcador de transferência (id, para, de). */
+export function parseTransfer(notes?: string | null): { id?: string; para?: string; de?: string } | null {
+  if (!isAccountTransfer(notes)) return null;
+  const seg = (notes || '').match(/\[TRANSFERENCIA\|([^\]]*)\]/i)?.[1] ?? '';
+  const out: { id?: string; para?: string; de?: string } = {};
+  for (const part of seg.split('|')) {
+    const [k, v] = part.split(':');
+    if (k === 'id') out.id = v;
+    else if (k === 'para') out.para = v;
+    else if (k === 'de') out.de = v;
+  }
+  return out;
+}
+
+/** True para qualquer transferência NEUTRA (investimento OU entre contas). */
+export function isNeutralTransfer(notes?: string | null): boolean {
+  return isInvestmentTransfer(notes) || isAccountTransfer(notes);
+}
+
+/** Predicado p/ Array.filter: mantém só gastos/receitas reais (dropa neutros). */
+export function notNeutralTransfer<T extends { notes?: string | null }>(row: T): boolean {
+  return !isNeutralTransfer(row.notes);
+}

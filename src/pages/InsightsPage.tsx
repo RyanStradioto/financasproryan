@@ -6,7 +6,7 @@ import { useProfile, useTotalSalary } from '@/hooks/useProfile';
 import { useAccumulatedBalance } from '@/hooks/useAccumulatedBalance';
 import { getMonthYear, formatCurrency, getMonthLabel } from '@/lib/format';
 import { useSensitiveData } from '@/components/finance/SensitiveData';
-import { notInvestmentTransfer } from '@/lib/investmentMarker';
+import { notNeutralTransfer } from '@/lib/investmentMarker';
 import { supabase } from '@/integrations/supabase/client';
 import MonthSelector from '@/components/finance/MonthSelector';
 import {
@@ -112,10 +112,10 @@ export default function InsightsPage() {
   // Exclui transferências de investimento (aportes/resgates marcados com [INVESTIMENTO])
   // de todos os totais, listas, orçamentos e insights — não são gastos/receitas reais.
   // O saldo bancário (useAccumulatedBalance) mantém esses lançamentos de propósito.
-  const income = useMemo(() => incomeRaw.filter(notInvestmentTransfer), [incomeRaw]);
-  const prevIncome = useMemo(() => prevIncomeRaw.filter(notInvestmentTransfer), [prevIncomeRaw]);
-  const expenses = useMemo(() => expensesRaw.filter(notInvestmentTransfer), [expensesRaw]);
-  const prevExpenses = useMemo(() => prevExpensesRaw.filter(notInvestmentTransfer), [prevExpensesRaw]);
+  const income = useMemo(() => incomeRaw.filter(notNeutralTransfer), [incomeRaw]);
+  const prevIncome = useMemo(() => prevIncomeRaw.filter(notNeutralTransfer), [prevIncomeRaw]);
+  const expenses = useMemo(() => expensesRaw.filter(notNeutralTransfer), [expensesRaw]);
+  const prevExpenses = useMemo(() => prevExpensesRaw.filter(notNeutralTransfer), [prevExpensesRaw]);
 
   const totalIncome = useMemo(() => income.filter(i => i.status === 'concluido').reduce((s, i) => s + Number(i.amount), 0), [income]);
   const totalExpenses = useMemo(() => expenses.filter(e => e.status === 'concluido').reduce((s, e) => s + Number(e.amount), 0), [expenses]);

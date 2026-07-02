@@ -1,5 +1,5 @@
 import { useState, useMemo, type ReactNode } from 'react';
-import { TrendingUp, TrendingDown, Wallet, PiggyBank, BarChart3, ArrowUpRight, ArrowDownRight, Target, Clock, ChevronRight, BellRing, CreditCard, Activity, CalendarRange, Flame, Trophy, AlertTriangle, ShieldCheck, Gauge, Landmark, BrainCircuit } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, PiggyBank, BarChart3, ArrowUpRight, ArrowDownRight, ArrowLeftRight, Target, Clock, ChevronRight, BellRing, CreditCard, Activity, CalendarRange, Flame, Trophy, AlertTriangle, ShieldCheck, Gauge, Landmark, BrainCircuit } from 'lucide-react';
 import { useIncome, useExpenses, useAccounts, useCategoryAccountBudgets, type Income, type Expense } from '@/hooks/useFinanceData';
 import { useNetWorth } from '@/hooks/useInvestments';
 import { useCCTransactionsForMonth, useCreditCards, useCreditCardTransactions } from '@/hooks/useCreditCards';
@@ -20,6 +20,7 @@ import { useSensitiveData } from '@/components/finance/SensitiveData';
 import PendingExpensesDialog from '@/components/finance/PendingExpensesDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import AccountAnalytics from '@/components/finance/AccountAnalytics';
+import TransferDialog from '@/components/finance/TransferDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,7 +29,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { buildDescriptionAmountKey, buildExpenseMatchKey, detectCreditCardExpense, parseStructuredCardMarker } from '@/lib/paymentMethod';
 import { accountBrandFromRow, resolveAccountBrand } from '@/lib/accountBrand';
-import { notInvestmentTransfer } from '@/lib/investmentMarker';
+import { notNeutralTransfer } from '@/lib/investmentMarker';
 import {
   computeAllowance, computeBurnRate, detectAnomalies, detectRecurring,
   computeCategoryDeltas, aggregatePixCounterparties, buildExecutiveSummary,
@@ -143,12 +144,12 @@ export default function Dashboard() {
   // [INVESTIMENTO]. Elas movem patrimônio entre conta e investimento — NÃO são
   // gasto/receita, então saem de TODAS as agregações do dashboard. (O saldo via
   // useAccumulatedBalance as mantém, pois o dinheiro realmente saiu/entrou na conta.)
-  const income = useMemo(() => incomeRaw.filter(notInvestmentTransfer), [incomeRaw]);
-  const expenses = useMemo(() => expensesRaw.filter(notInvestmentTransfer), [expensesRaw]);
-  const allIncome = useMemo(() => allIncomeRaw.filter(notInvestmentTransfer), [allIncomeRaw]);
-  const allExpenses = useMemo(() => allExpensesRaw.filter(notInvestmentTransfer), [allExpensesRaw]);
-  const prevIncome = useMemo(() => prevIncomeRaw.filter(notInvestmentTransfer), [prevIncomeRaw]);
-  const prevExpenses = useMemo(() => prevExpensesRaw.filter(notInvestmentTransfer), [prevExpensesRaw]);
+  const income = useMemo(() => incomeRaw.filter(notNeutralTransfer), [incomeRaw]);
+  const expenses = useMemo(() => expensesRaw.filter(notNeutralTransfer), [expensesRaw]);
+  const allIncome = useMemo(() => allIncomeRaw.filter(notNeutralTransfer), [allIncomeRaw]);
+  const allExpenses = useMemo(() => allExpensesRaw.filter(notNeutralTransfer), [allExpensesRaw]);
+  const prevIncome = useMemo(() => prevIncomeRaw.filter(notNeutralTransfer), [prevIncomeRaw]);
+  const prevExpenses = useMemo(() => prevExpensesRaw.filter(notNeutralTransfer), [prevExpensesRaw]);
   const { data: prevCCTransactions = [] } = useCCTransactionsForMonth(prevMonth);
   const { data: categories = [] } = useCategories();
   const { data: accounts = [] } = useAccounts();
@@ -1105,6 +1106,11 @@ export default function Dashboard() {
                     <ArrowDownRight className="mr-1 h-4 w-4 shrink-0" /> Despesa
                   </button>
                 </TransactionDialog>
+                <TransferDialog defaultFromId={accountFocusId === '__all__' ? undefined : accountFocusId}>
+                  <button className="flex h-10 flex-1 min-[430px]:flex-none items-center justify-center rounded-xl border border-border/70 bg-muted/50 px-3 sm:px-4 text-xs font-black text-foreground transition-all hover:bg-muted active:scale-95 whitespace-nowrap">
+                    <ArrowLeftRight className="mr-1 h-4 w-4 shrink-0" /> Transferir
+                  </button>
+                </TransferDialog>
               </div>
             </div>
           </div>
